@@ -1,20 +1,18 @@
 import { createClient } from "@supabase/supabase-js";
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co";
+const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "BUILD_TIME_PLACEHOLDER_KEY";
 
-if (!url || !anonKey) {
-  throw new Error(
-    "Supabase config missing. Create .env.local with NEXT_PUBLIC_SUPABASE_URL " +
-    "and NEXT_PUBLIC_SUPABASE_ANON_KEY — see Project Settings > API in your Supabase dashboard."
-  );
+if (!process.env.NEXT_PUBLIC_SUPABASE_URL && typeof window !== 'undefined') {
+  console.error("Missing NEXT_PUBLIC_SUPABASE_URL environment variable.");
 }
 
 // Detect if Supabase is fully configured with real keys
 export const isSupabaseConfigured = 
-  !!url && 
-  !!anonKey && 
+  !!process.env.NEXT_PUBLIC_SUPABASE_URL && 
+  !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY && 
   !url.includes("your-project-ref") && 
-  !anonKey.includes("your-anon-public-key");
+  !anonKey.includes("your-anon-public-key") &&
+  !url.includes("placeholder");
 
 export const supabase = createClient(url, anonKey);
