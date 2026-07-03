@@ -21,7 +21,6 @@ export const metadata: Metadata = {
   description: "Enterprise OS for Field, Support, and Admin Operations.",
   icons: { icon: "/favicon-32x32.png" },
   manifest: "/manifest.json",
-  themeColor: "#ffffff",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
