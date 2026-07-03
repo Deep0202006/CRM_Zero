@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/db";
 import { ShieldAlert, Mail, Lock, Sparkles, LogIn } from "lucide-react";
+import Image from "next/image";
 
 export default function LoginPage() {
   const { currentUser, login, isLoading } = useAuth();
@@ -63,10 +64,13 @@ export default function LoginPage() {
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10">
         <div className="flex justify-center mb-8">
-          <img
+          <Image
             src="/ZeroData_Logo.png"
             alt="ZeroData - Your data is yours"
+            width={200}
+            height={56}
             className="h-14 w-auto object-contain"
+            priority
           />
         </div>
       </div>
