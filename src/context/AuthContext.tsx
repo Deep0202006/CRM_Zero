@@ -106,9 +106,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (data.user) {
-        // Find matching local user by email (as supabase ID might not be synced properly yet if this is a legacy local test)
-        // Ideally we would match by user_id if we seeded supabase properly, but for the MVP let's match by email
-        const user = await db.users.where("email").equals(data.user.email!).first();
+        // Find matching local user by email
+        let user = await db.users.where("email").equals(data.user.email!).first();
+        
+        // If not found locally, fetch from Supabase
+        if (!user) {
+          console.log("User not in local DB, fetching from Supabase...");
+          const { data: remoteUser, error: remoteError } = await supabase
+            .from("users")
+            .select("*")
+            .eq("email", data.user.email!)
+            .single();
+            
+          if (remoteError || !remoteUser) {
+            console.error("Failed to fetch user from Supabase:", remoteError);
+          } else {
+            // Transform boolean from postgres to number for dexie
+            user = {
+              ...remoteUser,
+              is_active: remoteUser.is_active ? 1 : 0
+            };
+            await db.users.put(user);
+            
+            // Also fetch capabilities
+            const { data: remoteCaps } = await supabase
+              .from("user_capabilities")
+              .select("*")
+              .eq("user_id", user.user_id);
+              
+            if (remoteCaps && remoteCaps.length > 0) {
+              await db.user_capabilities.bulkPut(remoteCaps);
+            }
+          }
+        }
+
         if (user) {
           setCurrentUser(user);
           localStorage.setItem("authenticated_user_id", user.user_id);
@@ -116,7 +147,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setIsLoading(false);
           return true;
         } else {
-          console.error("User authenticated in Supabase but not found in local Dexie db.");
+          console.error("User authenticated in Supabase but not found in remote users table.");
         }
       }
       setIsLoading(false);
