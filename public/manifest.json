@@ -1,0 +1,27 @@
+{
+    "name": "ZeroData CRM",
+    "short_name": "ZeroData",
+    "description": "Offline-first capability-driven CRM optimized for distributed networks",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#2563eb",
+    "icons": [
+        {
+            "src": "/icon-192x192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/icon-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+    "cache": {
+        "strategy": "network-first",
+        "maxAge": 86400
+    }
+}
