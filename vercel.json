@@ -22,5 +22,21 @@
                 }
             ]
         }
-    ]
+    ],
+    "env": {
+        "NEXT_PUBLIC_SUPABASE_URL": "https://gwfjkpsoaoherntwhdyf.supabase.co",
+        "NEXT_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd3ZmprcHNvYW9oZXJudHdoZHlmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwNjMxOTMsImV4cCI6MjA5ODYzOTE5M30.I3Pru9sRf3OfV8vpq2bQtPsT7rlZlsJO1BnVa_g1rW0",
+        "NEXT_PUBLIC_SYNC_INTERVAL": "30000",
+        "NEXT_PUBLIC_MAX_EXPORT_ROWS": "5000",
+        "NEXT_PUBLIC_DISABLE_ANALYTICS": "true"
+    },
+    "build": {
+        "env": {
+            "NEXT_PUBLIC_SUPABASE_URL": "https://gwfjkpsoaoherntwhdyf.supabase.co",
+            "NEXT_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd3ZmprcHNvYW9oZXJudHdoZHlmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwNjMxOTMsImV4cCI6MjA5ODYzOTE5M30.I3Pru9sRf3OfV8vpq2bQtPsT7rlZlsJO1BnVa_g1rW0",
+            "NEXT_PUBLIC_SYNC_INTERVAL": "30000",
+            "NEXT_PUBLIC_MAX_EXPORT_ROWS": "5000",
+            "NEXT_PUBLIC_DISABLE_ANALYTICS": "true"
+        }
+    }
 }
