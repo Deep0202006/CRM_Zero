@@ -132,7 +132,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const { data: remoteCaps } = await supabase
               .from("user_capabilities")
               .select("*")
-              .eq("user_id", user.user_id);
+              .eq("user_id", newUser.user_id);
               
             if (remoteCaps && remoteCaps.length > 0) {
               await db.user_capabilities.bulkPut(remoteCaps);
