@@ -121,12 +121,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (remoteError || !remoteUser) {
             console.error("Failed to fetch user from Supabase:", remoteError);
           } else {
-            // Transform boolean from postgres to number for dexie
-            user = {
+            const newUser = {
               ...remoteUser,
               is_active: remoteUser.is_active ? 1 : 0
-            };
-            await db.users.put(user);
+            } as any;
+            user = newUser;
+            await db.users.put(newUser);
             
             // Also fetch capabilities
             const { data: remoteCaps } = await supabase
