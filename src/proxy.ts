@@ -2,7 +2,7 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   let res = NextResponse.next({
     request: {
       headers: req.headers,
@@ -13,7 +13,7 @@ export async function middleware(req: NextRequest) {
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!url || !anonKey) {
-    console.error("[middleware] Supabase env vars missing — auth guard cannot run. Check .env.local (dev) or Vercel Environment Variables (production).");
+    console.error("[proxy] Supabase env vars missing — auth guard cannot run. Check .env.local (dev) or Vercel Environment Variables (production).");
     return NextResponse.next();
   }
 
