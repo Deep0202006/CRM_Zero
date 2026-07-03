@@ -46,7 +46,6 @@ CREATE POLICY "Users can read assigned leads" ON public.leads
 CREATE POLICY "Users can read assigned tickets" ON public.client_queries
     FOR SELECT USING (
         assigned_to = auth.uid() OR
-        created_by = auth.uid() OR
         EXISTS (
             SELECT 1 FROM public.user_capabilities 
             WHERE user_capabilities.user_id = auth.uid() 
