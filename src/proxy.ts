@@ -38,25 +38,10 @@ export async function proxy(req: NextRequest) {
     }
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  // If there is no user and the user is trying to access a protected route,
-  // redirect them to the login page.
-  if (!user && !req.nextUrl.pathname.startsWith('/login') && req.nextUrl.pathname !== '/') {
-    const redirectUrl = req.nextUrl.clone();
-    redirectUrl.pathname = '/login';
-    return NextResponse.redirect(redirectUrl);
-  }
-
-  // If there is a user and the user is on the login page, redirect them to the dashboard.
-  if (user && req.nextUrl.pathname.startsWith('/login')) {
-    const redirectUrl = req.nextUrl.clone();
-    redirectUrl.pathname = '/dashboard';
-    return NextResponse.redirect(redirectUrl);
-  }
-
+  // We bypass server-side auth redirection because this is an offline-first PWA.
+  // The client-side AuthContext relies on localStorage and Dexie.js for offline auth,
+  // which causes an infinite redirect loop if proxy.ts expects server cookies.
+  
   return res;
 }
 
