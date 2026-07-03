@@ -64,7 +64,7 @@ export default function LoginPage() {
       <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10">
         <div className="flex justify-center mb-8">
           <img
-            src="/logo-full.png"
+            src="/ZeroData_Logo.png"
             alt="ZeroData - Your data is yours"
             className="h-14 w-auto object-contain"
           />

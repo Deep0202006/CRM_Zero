@@ -1,9 +1,13 @@
-import { createServerClient } from '@supabase/auth-helpers-nextjs';
+import { createServerClient } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export async function middleware(req: NextRequest) {
-  let res = NextResponse.next();
+  let res = NextResponse.next({
+    request: {
+      headers: req.headers,
+    },
+  });
   
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -35,19 +39,19 @@ export async function middleware(req: NextRequest) {
   );
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  // If there is no session and the user is trying to access a protected route,
+  // If there is no user and the user is trying to access a protected route,
   // redirect them to the login page.
-  if (!session && !req.nextUrl.pathname.startsWith('/login') && req.nextUrl.pathname !== '/') {
+  if (!user && !req.nextUrl.pathname.startsWith('/login') && req.nextUrl.pathname !== '/') {
     const redirectUrl = req.nextUrl.clone();
     redirectUrl.pathname = '/login';
     return NextResponse.redirect(redirectUrl);
   }
 
-  // If there is a session and the user is on the login page, redirect them to the dashboard.
-  if (session && req.nextUrl.pathname.startsWith('/login')) {
+  // If there is a user and the user is on the login page, redirect them to the dashboard.
+  if (user && req.nextUrl.pathname.startsWith('/login')) {
     const redirectUrl = req.nextUrl.clone();
     redirectUrl.pathname = '/dashboard';
     return NextResponse.redirect(redirectUrl);
