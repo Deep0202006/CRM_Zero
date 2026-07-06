@@ -439,10 +439,12 @@ const TABLE_PK: Record<string, string> = {
   tasks: "task_id",
   task_templates: "template_id",
   task_status_history: "id",
-  kpi_daily_snapshot: "snapshot_id",
+  kpi_snapshots: "snapshot_id", // fixed name
   lead_registration_checklist: "checklist_id",
   lead_installation_details: "installation_id",
   lead_payment_details: "payment_id",
+  capabilities: "code",
+  user_capabilities: "id",
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -561,11 +563,49 @@ export async function pullDownSync() {
       }
       
       if (data && data.length > 0) {
-        // Overwrite the local tables with the remote source of truth.
-        // We use bulkPut so that it acts as an upsert, which ensures that local unsynced edits in the queue 
-        // won't be immediately destroyed unless they conflict on ID (which is expected for standard records).
-        // Since this is a CRM meant to be synced across 10 team members, this is the safest MVP sync.
-        await (db as any)[tableName].bulkPut(data);
+        const table = (db as any)[tableName];
+        const pk = TABLE_PK[tableName] ?? "id";
+        
+        // Find local items
+        const localItems = await table.toArray();
+        const localIds = new Set(localItems.map((item: any) => item[pk]));
+        const remoteIds = new Set(data.map((d: any) => d[pk]));
+
+        // Get IDs in local that are NOT in remote
+        const idsToDelete = [...localIds].filter(id => !remoteIds.has(id));
+
+        // Check if these IDs are waiting to be inserted in the sync_queue
+        const pendingInserts = await db.sync_queue
+          .filter(item => item.table_name === tableName && item.action === "INSERT")
+          .toArray();
+        const pendingInsertIds = new Set(pendingInserts.map(item => item.data[pk]));
+
+        const safeIdsToDelete = idsToDelete.filter(id => !pendingInsertIds.has(id));
+
+        await db.transaction('rw', table, async () => {
+          if (safeIdsToDelete.length > 0) {
+            await table.bulkDelete(safeIdsToDelete);
+          }
+          await table.bulkPut(data);
+        });
+      } else if (data && data.length === 0) {
+        // If remote table is empty, delete all local items that are not pending insert
+        const table = (db as any)[tableName];
+        const pk = TABLE_PK[tableName] ?? "id";
+        const localItems = await table.toArray();
+        
+        const pendingInserts = await db.sync_queue
+          .filter(item => item.table_name === tableName && item.action === "INSERT")
+          .toArray();
+        const pendingInsertIds = new Set(pendingInserts.map(item => item.data[pk]));
+
+        const idsToDelete = localItems.map((item: any) => item[pk]).filter((id: any) => !pendingInsertIds.has(id));
+
+        await db.transaction('rw', table, async () => {
+          if (idsToDelete.length > 0) {
+            await table.bulkDelete(idsToDelete);
+          }
+        });
       }
     }
     
