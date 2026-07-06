@@ -28,6 +28,10 @@ export async function POST(req: NextRequest) {
   const token = req.headers.get("authorization")?.replace("Bearer ", "");
   if (!token) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY === "BUILD_TIME_PLACEHOLDER_KEY") {
+    return NextResponse.json({ error: "Server Configuration Error: SUPABASE_SERVICE_ROLE_KEY is missing in Vercel Environment Variables. Please add it in Vercel settings and redeploy." }, { status: 500 });
+  }
+
   const { data: { user: caller }, error: authError } = await supabaseAdmin.auth.getUser(token);
   if (authError || !caller) return NextResponse.json({ error: "Invalid session" }, { status: 401 });
 
