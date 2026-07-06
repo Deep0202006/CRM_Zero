@@ -12,7 +12,6 @@ import {
   RefreshCw,
   Download,
 } from "lucide-react";
-import { SearchableSelect } from "@/components/SearchableSelect";
 import { exportSupport } from "@/lib/excelExport";
 
 type QueryStatus = "Open" | "In Progress" | "Resolved";
@@ -30,7 +29,7 @@ export default function SupportPage() {
   const [queries, setQueries] = useState<LocalClientQuery[]>([]);
 
   // Form (Queries)
-  const [queryLeadId, setQueryLeadId]   = useState("");
+  const [clientNameInput, setClientNameInput] = useState("");
   const [queryProblem, setQueryProblem] = useState("");
 
   const [errorMsg,   setErrorMsg]   = useState<string | null>(null);
@@ -64,9 +63,9 @@ export default function SupportPage() {
       setLeads(scopedLeads);
 
       const allQueries = await db.client_queries.orderBy("created_at").reverse().toArray();
-      // Filter queries to scoped lead IDs
+      // Filter queries: show if they have a mapped lead_id in our scope OR if they don't have a lead_id (unregistered)
       const scopedIds = new Set(scopedLeads.map(l => l.lead_id));
-      setQueries(allQueries.filter(q => scopedIds.has(q.lead_id)));
+      setQueries(allQueries.filter(q => !q.lead_id || scopedIds.has(q.lead_id)));
     } catch (err) {
       console.error("Failed to load support data", err);
     }
@@ -78,14 +77,17 @@ export default function SupportPage() {
   const handleLogQuery = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
-    if (!queryLeadId || !queryProblem.trim()) {
-      setErrorMsg("Select a client and describe the issue.");
+    if (!clientNameInput.trim() || !queryProblem.trim()) {
+      setErrorMsg("Enter a client name and describe the issue.");
       return;
     }
     try {
+      const match = leads.find(l => l.business_name.toLowerCase() === clientNameInput.trim().toLowerCase());
+      
       const newQuery: LocalClientQuery = {
         query_id:       crypto.randomUUID(),
-        lead_id:        queryLeadId,
+        lead_id:        match ? match.lead_id : null,
+        client_name_unregistered: match ? null : clientNameInput.trim(),
         client_problem: queryProblem.trim(),
         problem_status: "Open", // Always Open
         assigned_to:    currentUser?.user_id || null,
@@ -96,7 +98,7 @@ export default function SupportPage() {
 
       setSuccessMsg("Query logged.");
       setTimeout(() => setSuccessMsg(null), 2500);
-      setQueryLeadId("");
+      setClientNameInput("");
       setQueryProblem("");
       await loadData();
     } catch (err) {
@@ -137,8 +139,10 @@ export default function SupportPage() {
     }
   };
 
-  const getLeadName = (id: string) => leads.find(l => l.lead_id === id)?.business_name || "Unknown";
-
+  const getLeadName = (query: LocalClientQuery) => {
+    if (query.lead_id) return leads.find(l => l.lead_id === query.lead_id)?.business_name || "Unknown";
+    return query.client_name_unregistered || "Unknown";
+  };
   const filteredQueries = queries.filter(q => {
     if (filterTab === "open")     return q.problem_status !== "Resolved";
     if (filterTab === "resolved") return q.problem_status === "Resolved";
@@ -214,12 +218,13 @@ export default function SupportPage() {
               <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
                 Client Account
               </label>
-              <SearchableSelect
-                options={leads.map(l => ({ value: l.lead_id, label: `${l.business_name} (${l.segment_type})` }))}
-                value={queryLeadId}
-                onChange={setQueryLeadId}
-                placeholder="— Search Client —"
+              <input
                 required
+                type="text"
+                value={clientNameInput}
+                onChange={e => setClientNameInput(e.target.value)}
+                placeholder="Type client name..."
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-semibold text-slate-900 placeholder-slate-300 focus:outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/10 transition-all"
               />
             </div>
 
@@ -284,7 +289,7 @@ export default function SupportPage() {
                 <div className="flex justify-between items-start gap-2">
                   <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                      {getLeadName(query.lead_id)}
+                      {getLeadName(query)}
                     </p>
                     <p className="text-sm font-bold text-slate-900 mt-0.5 leading-snug">
                       "{query.client_problem}"
@@ -334,7 +339,7 @@ export default function SupportPage() {
               <CheckCircle2 size={18} className="text-emerald-500" /> Mark Resolved
             </h3>
             <p className="text-xs font-semibold text-slate-500 mb-4">
-              {getLeadName(resolveModalQuery.lead_id)}
+              {getLeadName(resolveModalQuery)}
             </p>
             <form onSubmit={handleResolveSubmit} className="space-y-4">
               <div>

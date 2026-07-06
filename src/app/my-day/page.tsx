@@ -9,6 +9,8 @@ import {
   getMyDayStats,
   type LocalTask,
 } from "@/lib/taskEngine";
+import { CONVERTED_STAGES } from "@/lib/pipelineRules";
+import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
 import { db } from "@/lib/db";
 import { CheckCircle2, Clock, AlertCircle, ListTodo, PhoneCall, Trophy, CheckSquare, Target, Download } from "lucide-react";
 import { exportPipelineToExcel } from "@/lib/pipelineExport";
@@ -26,12 +28,13 @@ const PRIORITY_BADGE: Record<string, string> = {
 };
 
 export default function MyDayPage() {
-  const { currentUser, capabilities, hasOnboarding, hasSupport, isFieldStaff, isOfficeStaff } = useAuth();
+  const { currentUser, capabilities, hasOnboarding, hasSupport, isFieldStaff, isOfficeStaff, isAdmin } = useAuth();
   
   const [tasks, setTasks] = useState<LocalTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [markingId, setMarkingId] = useState<string | null>(null);
   const [stats, setStats] = useState({ pendingToday: 0, scheduledLater: 0 });
+  const [weeklyDigest, setWeeklyDigest] = useState<any>(null);
 
   // Scoped KPIs
   const [callsToday, setCallsToday] = useState(0);
@@ -57,7 +60,7 @@ export default function MyDayPage() {
         
         // Leads converted (moved to Registration or beyond)
         const allLeads = await db.leads.where("assigned_to").equals(currentUser.user_id).toArray();
-        setLeadsConverted(allLeads.filter(l => ["Registration", "Installation", "Payment"].includes(l.status)).length);
+        setLeadsConverted(allLeads.filter(l => CONVERTED_STAGES.includes(l.status as any)).length);
       }
       
       if (hasSupport) {
@@ -81,6 +84,32 @@ export default function MyDayPage() {
     if (!currentUser) return;
     getMyDayStats(currentUser.user_id).then(setStats);
   }, [currentUser, tasks]);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    if (isAdmin) {
+      if (isSupabaseConfigured) {
+        supabase
+          .from('weekly_digest_log')
+          .select('*')
+          .order('week_start', { ascending: false })
+          .limit(1)
+          .then(({ data }) => {
+            if (data && data.length > 0) setWeeklyDigest(data[0]);
+          });
+      } else {
+        // Mock digest when running local-only
+        setWeeklyDigest({
+          week_start: new Date().toISOString().slice(0, 10),
+          data: {
+            stuck_leads: [{ id: "1", name: "Acme Corp", status: "Interested", days_in_stage: 15, assigned_to: currentUser.user_id }],
+            task_performance: [{ assigned_to: currentUser.user_id, completed_count: 14, total_count: 15 }],
+            upcoming_renewals: [{ id: "2", name: "Global Tech", renewal_date: "2026-07-20" }]
+          }
+        });
+      }
+    }
+  }, [currentUser]);
 
   const handleComplete = async (task: LocalTask) => {
     if (!currentUser || markingId) return;
@@ -120,6 +149,32 @@ export default function MyDayPage() {
 
   return (
       <div className="space-y-6 w-full">
+        {weeklyDigest && (
+          <div className="bg-slate-900 text-white rounded-2xl p-5 shadow-lg border border-slate-800">
+            <h2 className="text-lg font-black mb-3">Weekly Digest (Week of {weeklyDigest.week_start})</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-slate-800 rounded-xl p-3">
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Stuck Leads ({">"}14 days)</h3>
+                <p className="text-2xl font-black">{weeklyDigest.data.stuck_leads?.length || 0}</p>
+              </div>
+              <div className="bg-slate-800 rounded-xl p-3">
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Upcoming Renewals</h3>
+                <p className="text-2xl font-black">{weeklyDigest.data.upcoming_renewals?.length || 0}</p>
+              </div>
+              <div className="bg-slate-800 rounded-xl p-3">
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Team Task Avg</h3>
+                {weeklyDigest.data.task_performance?.length > 0 ? (
+                  <p className="text-2xl font-black text-brand-primary">
+                    {Math.round(weeklyDigest.data.task_performance.reduce((acc: number, p: any) => acc + (p.completed_count/p.total_count), 0) / weeklyDigest.data.task_performance.length * 100)}%
+                  </p>
+                ) : (
+                  <p className="text-2xl font-black text-slate-500">N/A</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Header & Main Progress */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>

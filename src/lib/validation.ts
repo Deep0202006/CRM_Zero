@@ -1,44 +1,19 @@
 import { z } from "zod";
+import { PIPELINE_STAGES, PipelineStage as LeadStatus, isTransitionAllowed } from "./pipelineRules";
 
-// Pipeline stage constants
-export const PIPELINE_STAGES = [
-  "New",
-  "Contacted",
-  "Interested",
-  "Not Interested",
-  "Registration",
-  "Installation",
-  "Payment",
-  "Renewal Due"
-] as const;
-
-export type LeadStatus = typeof PIPELINE_STAGES[number];
+export { PIPELINE_STAGES };
+export type { LeadStatus };
 
 // Segment type constants
 export const SEGMENT_TYPES = ["Distributor", "Retailer"] as const;
 export type LeadSegment = typeof SEGMENT_TYPES[number];
 
-// Define allowed linear transitions
-// Sequence: New -> Contacted -> Interested (or Not Interested) -> Registration -> Payment -> Installation
-export const ALLOWED_TRANSITIONS: Record<LeadStatus, LeadStatus[]> = {
-  "New": ["Contacted"],
-  "Contacted": ["Interested", "Not Interested"],
-  "Interested": ["Registration"],
-  "Not Interested": ["Contacted"], // can re-contact a lost lead
-  "Registration": ["Installation"],
-  "Installation": ["Payment"],
-  "Payment": [], // final stage (agent cannot trigger Renewal Due manually)
-  "Renewal Due": ["Payment", "Not Interested"]
-};
-
 /**
  * Validates if a transition from currentStatus to nextStatus is allowed in the linear pipeline
  */
-export function validateLeadStatusTransition(currentStatus: LeadStatus, nextStatus: LeadStatus): boolean {
+export function validateLeadStatusTransition(currentStatus: LeadStatus, nextStatus: LeadStatus, actor: "agent" | "system" = "agent"): boolean {
   if (currentStatus === nextStatus) return true;
-  const allowed = ALLOWED_TRANSITIONS[currentStatus];
-  if (!allowed) return false;
-  return allowed.includes(nextStatus);
+  return isTransitionAllowed(currentStatus, nextStatus, actor);
 }
 
 // UUID validation helper

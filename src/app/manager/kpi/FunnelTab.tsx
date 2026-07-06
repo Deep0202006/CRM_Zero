@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
 import { db } from "@/lib/db";
+import { PIPELINE_STAGES } from "@/lib/pipelineRules";
 import {
   BarChart,
   Bar,
@@ -124,18 +125,18 @@ export default function FunnelTab() {
   }, []);
 
   // Prepare filtered data for rendering
-  const STAGES = ["New", "Contacted", "Interested", "Registration", "Installation", "Payment", "Renewal Due"];
   const COLORS: Record<string, string> = {
     "New": "#3b82f6",
     "Contacted": "#8b5cf6",
     "Interested": "#ec4899",
+    "Not Interested": "#64748b",
     "Registration": "#f59e0b",
     "Installation": "#10b981",
     "Payment": "#059669",
     "Renewal Due": "#f43f5e"
   };
 
-  const currentFunnel = STAGES.map(stage => {
+  const currentFunnel = PIPELINE_STAGES.map(stage => {
     const leadsInStage = funnelData
       .filter(f => (activeSegment === "All" || f.segment_type === activeSegment) && f.status === stage)
       .reduce((sum, f) => sum + f.lead_count, 0);
@@ -159,9 +160,9 @@ export default function FunnelTab() {
     }, [] as SourcePerformance[])
     .sort((a, b) => b.total_leads - a.total_leads); // Rank by total leads
 
-  const currentTime = STAGES.filter(s => s !== "Payment" && s !== "Not Interested").map(stage => {
+  const currentTime = PIPELINE_STAGES.filter((s: string) => s !== "Payment" && s !== "Not Interested").map((stage: string) => {
     const stageData = timeData
-      .filter(t => (activeSegment === "All" || t.segment_type === activeSegment) && t.status === stage);
+      .filter((t: any) => (activeSegment === "All" || t.segment_type === activeSegment) && t.status === stage);
     
     let avg = 0;
     if (stageData.length > 0) {
@@ -244,8 +245,8 @@ export default function FunnelTab() {
                   contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 12, fontWeight: 700 }}
                 />
                 <Bar dataKey="avg_days" radius={[6, 6, 0, 0]} maxBarSize={60}>
-                  {currentTime.map((entry, index) => (
-                    <Cell key={index} fill={COLORS[entry.status] || "#f59e0b"} />
+                  {currentTime.map((entry: any, index: number) => (
+                    <Cell key={index} fill={COLORS[entry.status as keyof typeof COLORS] || "#f59e0b"} />
                   ))}
                 </Bar>
               </BarChart>

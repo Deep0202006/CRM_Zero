@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
-import { db } from "@/lib/db";import {
+import { CONVERTED_STAGES } from "@/lib/pipelineRules";
+import { db } from "@/lib/db";
+import {
   BarChart,
   Bar,
   XAxis,
@@ -53,7 +55,7 @@ async function buildLocalKpiRows(date: string): Promise<KpiRow[]> {
     const converted = leads.filter(
       (l) =>
         l.assigned_to === u.user_id &&
-        ["Registration", "Installation", "Payment"].includes(l.status)
+        CONVERTED_STAGES.includes(l.status as any)
     ).length;
     const callsMade = calls.filter((c) => c.user_id === u.user_id && c.timestamp.startsWith(date)).length;
 

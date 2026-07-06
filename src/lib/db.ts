@@ -50,7 +50,8 @@ export interface LocalLead {
 
 export interface LocalClientQuery {
   query_id: string;
-  lead_id: string;
+  lead_id?: string | null;
+  client_name_unregistered?: string | null;
   client_problem: string;
   problem_status: "Open" | "In Progress" | "Resolved";
   assigned_to?: string | null;
@@ -62,8 +63,10 @@ export interface LocalClientQuery {
 
 export interface LocalMapping {
   mapping_id: string;
-  distributor_lead_id: string;
-  retailer_lead_id: string;
+  distributor_lead_id?: string | null;
+  retailer_lead_id?: string | null;
+  distributor_name_unregistered?: string | null;
+  retailer_name_unregistered?: string | null;
   requested_by: string;
   mapped_by?: string | null;
   notes?: string | null;
@@ -74,8 +77,10 @@ export interface LocalMapping {
 
 export interface LocalMappingRequest {
   request_id: string;
-  distributor_lead_id: string;
-  retailer_lead_id: string;
+  distributor_lead_id?: string | null;
+  retailer_lead_id?: string | null;
+  distributor_name_unregistered?: string | null;
+  retailer_name_unregistered?: string | null;
   mapped_by?: string | null;
   status: "Pending" | "Completed";
   notes?: string | null;
