@@ -42,6 +42,7 @@ export async function POST(req: NextRequest) {
   const tempPassword = password || generatePassword();
   const { data, error } = await supabaseAdmin.auth.admin.updateUserById(user_id, {
     password: tempPassword,
+    user_metadata: { must_change_password: true },
   });
 
   if (error) {
