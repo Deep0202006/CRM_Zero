@@ -53,6 +53,11 @@ export default function AdminPage() {
   const [newPasswordResult, setNewPasswordResult] = useState<string | null>(null);
   const [isResetting, setIsResetting] = useState(false);
 
+  // Edit User state
+  const [editingUser, setEditingUser] = useState<LocalUser | null>(null);
+  const [editUserForm, setEditUserForm] = useState({ name: "", email: "", is_active: false });
+  const [isUpdatingUser, setIsUpdatingUser] = useState(false);
+
   const ALL_CAPABILITIES = [
     { code: "admin", label: "Admin" },
     { code: "task_assigner", label: "Task Assigner" },
@@ -148,6 +153,55 @@ export default function AdminPage() {
       setErrorMsg(err.message || "Failed to reset password");
     } finally {
       setIsResetting(false);
+    }
+  };
+
+  const handleUpdateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser) return;
+    setIsUpdatingUser(true);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("No session");
+      
+      const res = await fetch("/api/admin/update-user", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          user_id: editingUser.user_id,
+          name: editUserForm.name,
+          email: editUserForm.email,
+          is_active: editUserForm.is_active
+        })
+      });
+      
+      const data = await res.json();
+      // Handle the nested error object if it's from Zod (data.error.formErrors) or generic error string
+      const errDetail = typeof data.error === 'object' && data.error.formErrors 
+        ? data.error.formErrors.join(", ") 
+        : data.error;
+      if (!res.ok) throw new Error(errDetail || "Failed to update user");
+
+      // Update local db
+      await db.users.update(editingUser.user_id, {
+        name: editUserForm.name,
+        email: editUserForm.email,
+        is_active: editUserForm.is_active ? 1 : 0
+      });
+      await loadAdminData();
+      
+      setSuccessMsg(`Updated user ${editUserForm.name} successfully.`);
+      setEditingUser(null);
+      setTimeout(() => setSuccessMsg(null), 3000);
+    } catch (err: any) {
+      setErrorMsg(err.message || "Failed to update user");
+    } finally {
+      setIsUpdatingUser(false);
     }
   };
 
@@ -317,15 +371,30 @@ export default function AdminPage() {
                       </div>
                     </div>
                     
-                    <button
-                      onClick={() => {
-                        setResetPasswordInput("");
-                        setResettingPasswordFor(user.user_id);
-                      }}
-                      className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-1 rounded-lg hover:bg-amber-100 transition-all uppercase tracking-wider min-w-[110px]"
-                    >
-                      Reset Password
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          setEditingUser(user);
+                          setEditUserForm({
+                            name: user.name,
+                            email: user.email,
+                            is_active: String(user.is_active) === "1" || String(user.is_active) === "true",
+                          });
+                        }}
+                        className="text-[10px] font-bold text-slate-600 bg-white border border-slate-200 px-2 py-1 rounded-lg hover:bg-slate-50 transition-all uppercase tracking-wider flex-1 text-center"
+                      >
+                        Edit Details
+                      </button>
+                      <button
+                        onClick={() => {
+                          setResetPasswordInput("");
+                          setResettingPasswordFor(user.user_id);
+                        }}
+                        className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-1 rounded-lg hover:bg-amber-100 transition-all uppercase tracking-wider flex-1 text-center"
+                      >
+                        Reset PW
+                      </button>
+                    </div>
                     
                     <div className="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-3">
                       {ALL_CAPABILITIES.map((cap) => {
@@ -693,6 +762,77 @@ export default function AdminPage() {
                 </button>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Edit User Modal */}
+      {editingUser && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-md shadow-xl p-6">
+            <h3 className="text-lg font-black text-slate-900 mb-4 flex items-center gap-2">
+              <Edit2 size={18} className="text-brand-primary" /> Edit User Details
+            </h3>
+            
+            <form onSubmit={handleUpdateUser} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Name</label>
+                <input 
+                  required
+                  type="text" 
+                  value={editUserForm.name} 
+                  onChange={(e) => setEditUserForm(p => ({...p, name: e.target.value}))} 
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary/50 text-sm" 
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Email / Username</label>
+                <input 
+                  required
+                  type="email" 
+                  value={editUserForm.email} 
+                  onChange={(e) => setEditUserForm(p => ({...p, email: e.target.value}))} 
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary/50 text-sm" 
+                />
+              </div>
+
+              <div className="pt-2">
+                <label className="flex items-center space-x-2 cursor-pointer p-3 border border-slate-200 rounded-xl hover:bg-slate-50 transition-all">
+                  <input 
+                    type="checkbox" 
+                    checked={editUserForm.is_active} 
+                    onChange={(e) => setEditUserForm(p => ({...p, is_active: e.target.checked}))} 
+                    className="rounded text-brand-primary w-4 h-4" 
+                  />
+                  <span className="text-sm font-bold text-slate-700">Account is Active</span>
+                </label>
+              </div>
+
+              {errorMsg && (
+                <div className="p-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-xs font-bold flex items-start gap-2">
+                  <AlertCircle size={16} className="shrink-0 mt-0.5" />
+                  <span>{errorMsg}</span>
+                </div>
+              )}
+              
+              <div className="flex gap-2 pt-4">
+                <button
+                  type="button"
+                  onClick={() => { setEditingUser(null); setErrorMsg(null); }}
+                  className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-slate-200 cursor-pointer transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isUpdatingUser}
+                  className="flex-1 py-3 bg-brand-primary text-white rounded-xl text-xs font-black uppercase tracking-wider hover:bg-brand-secondary cursor-pointer shadow-md shadow-brand-primary/20 disabled:opacity-50 transition-all"
+                >
+                  {isUpdatingUser ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
