@@ -55,6 +55,7 @@ export default function AdminPage() {
 
   const ALL_CAPABILITIES = [
     { code: "admin", label: "Admin" },
+    { code: "task_assigner", label: "Task Assigner" },
     { code: "dist_onboarding", label: "Dist. Onboarding" },
     { code: "dist_support", label: "Dist. Support" },
     { code: "ret_onboarding", label: "Retail Onboarding" },

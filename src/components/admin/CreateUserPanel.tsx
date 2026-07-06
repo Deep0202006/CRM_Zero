@@ -4,7 +4,7 @@ import { useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
 const CAPABILITY_LABELS: Record<string, string> = {
-  admin: "Admin", dist_onboarding: "Distributor Sales", dist_support: "Distributor Support",
+  admin: "Admin", task_assigner: "Task Assigner", dist_onboarding: "Distributor Sales", dist_support: "Distributor Support",
   ret_onboarding: "Retailer Sales", ret_support: "Retailer Support",
   field_dist: "Field Sales (Distributor)", field_ret: "Field Sales (Retailer)", tech_support: "Technical Support",
 };
