@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { db, LocalLead, LocalMappingRequest } from "@/lib/db";
 import { AlertCircle, CheckCircle2, Clock, Link2, RefreshCw, Download, ArrowRightLeft } from "lucide-react";
+import { SearchableSelect } from "@/components/SearchableSelect";
 
 export default function MappingsPage() {
   const { currentUser, hasSupport } = useAuth();
@@ -18,6 +19,31 @@ export default function MappingsPage() {
   
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  const SEED_DISTRIBUTORS = ["Distributor Alpha", "Distributor Beta", "Global Logistics Corp", "Apex Supply Hub", "Prime Wholesale", "Omega Distributors"];
+  const SEED_RETAILERS = ["Retailer One", "Retailer Two", "Metro Mart", "Cornerstone Retail", "Boutique Express", "Urban Goods", "Summit Outlets"];
+
+  const distributorOptions = React.useMemo(() => {
+    const dbOptions = leads.filter(l => l.segment_type === "Distributor").map(l => ({ value: l.business_name, label: l.business_name }));
+    const seedOptions = SEED_DISTRIBUTORS.map(name => ({ value: name, label: name }));
+    const map = new Map();
+    dbOptions.forEach(opt => map.set(opt.value.toLowerCase(), opt));
+    seedOptions.forEach(opt => {
+      if (!map.has(opt.value.toLowerCase())) map.set(opt.value.toLowerCase(), opt);
+    });
+    return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label));
+  }, [leads]);
+
+  const retailerOptions = React.useMemo(() => {
+    const dbOptions = leads.filter(l => l.segment_type === "Retailer").map(l => ({ value: l.business_name, label: l.business_name }));
+    const seedOptions = SEED_RETAILERS.map(name => ({ value: name, label: name }));
+    const map = new Map();
+    dbOptions.forEach(opt => map.set(opt.value.toLowerCase(), opt));
+    seedOptions.forEach(opt => {
+      if (!map.has(opt.value.toLowerCase())) map.set(opt.value.toLowerCase(), opt);
+    });
+    return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label));
+  }, [leads]);
 
   const loadData = async () => {
     try {
@@ -212,12 +238,11 @@ export default function MappingsPage() {
               <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
                 Primary {primaryLabel}
               </label>
-              <input
-                type="text"
+              <SearchableSelect
+                options={activeSegment === "Distributor" ? distributorOptions : retailerOptions}
                 value={primaryName}
-                onChange={e => setPrimaryName(e.target.value)}
+                onChange={setPrimaryName}
                 placeholder={`Type ${primaryLabel.toLowerCase()} name...`}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-semibold text-slate-900 placeholder-slate-300 focus:outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/10 transition-all"
                 required
               />
             </div>
@@ -231,12 +256,11 @@ export default function MappingsPage() {
                 Secondary {secondaryLabel}{cardinality === "1:N" ? "s (Comma Separated)" : ""}
               </label>
               {cardinality === "1:1" ? (
-                <input
-                  type="text"
+                <SearchableSelect
+                  options={activeSegment === "Distributor" ? retailerOptions : distributorOptions}
                   value={secondaryNames}
-                  onChange={e => setSecondaryNames(e.target.value)}
+                  onChange={setSecondaryNames}
                   placeholder={`Type ${secondaryLabel.toLowerCase()} name...`}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-semibold text-slate-900 placeholder-slate-300 focus:outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/10 transition-all"
                   required
                 />
               ) : (

@@ -56,8 +56,10 @@ export const clientQuerySchema = z.object({
 // 4. Mappings Validation Schema
 export const mappingSchema = z.object({
   mapping_id: uuidSchema.optional(),
-  distributor_lead_id: uuidSchema,
-  retailer_lead_id: uuidSchema,
+  distributor_lead_id: uuidSchema.optional().nullable(),
+  retailer_lead_id: uuidSchema.optional().nullable(),
+  distributor_name_unregistered: z.string().optional().nullable(),
+  retailer_name_unregistered: z.string().optional().nullable(),
   requested_by: z.string().min(2, "Requested by must be at least 2 characters"),
   mapped_by: uuidSchema.optional().nullable(),
   notes: z.string().optional().nullable(),
@@ -69,8 +71,10 @@ export const mappingSchema = z.object({
 // 5. Mapping Request Validation Schema
 export const mappingRequestSchema = z.object({
   request_id: uuidSchema.optional(),
-  distributor_lead_id: uuidSchema,
-  retailer_lead_id: uuidSchema,
+  distributor_lead_id: uuidSchema.optional().nullable(),
+  retailer_lead_id: uuidSchema.optional().nullable(),
+  distributor_name_unregistered: z.string().optional().nullable(),
+  retailer_name_unregistered: z.string().optional().nullable(),
   mapped_by: uuidSchema.optional().nullable(),
   status: z.enum(["Pending", "Completed"]).default("Pending"),
   notes: z.string().optional().nullable(),

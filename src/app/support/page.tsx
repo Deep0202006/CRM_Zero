@@ -13,6 +13,7 @@ import {
   Download,
 } from "lucide-react";
 import { exportSupport } from "@/lib/excelExport";
+import { SearchableSelect } from "@/components/SearchableSelect";
 
 type QueryStatus = "Open" | "In Progress" | "Resolved";
 
@@ -28,13 +29,34 @@ export default function SupportPage() {
   const [leads, setLeads] = useState<LocalLead[]>([]);
   const [queries, setQueries] = useState<LocalClientQuery[]>([]);
 
-  // Form (Queries)
   const [clientNameInput, setClientNameInput] = useState("");
   const [queryProblem, setQueryProblem] = useState("");
 
   const [errorMsg,   setErrorMsg]   = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [filterTab,  setFilterTab]  = useState<"all" | "open" | "resolved">("open");
+
+  const SEED_DISTRIBUTORS = ["Distributor Alpha", "Distributor Beta", "Global Logistics Corp", "Apex Supply Hub", "Prime Wholesale", "Omega Distributors"];
+  const SEED_RETAILERS = ["Retailer One", "Retailer Two", "Metro Mart", "Cornerstone Retail", "Boutique Express", "Urban Goods", "Summit Outlets"];
+
+  const clientOptions = React.useMemo(() => {
+    const dbOptions = leads.map(l => ({ value: l.business_name, label: l.business_name }));
+    let seedNames: string[] = [];
+    if (isAdmin) {
+      seedNames = [...SEED_DISTRIBUTORS, ...SEED_RETAILERS];
+    } else {
+      if (hasDistSupport) seedNames.push(...SEED_DISTRIBUTORS);
+      if (hasRetSupport) seedNames.push(...SEED_RETAILERS);
+    }
+    const seedOptions = seedNames.map(name => ({ value: name, label: name }));
+    
+    const map = new Map();
+    dbOptions.forEach(opt => map.set(opt.value.toLowerCase(), opt));
+    seedOptions.forEach(opt => {
+      if (!map.has(opt.value.toLowerCase())) map.set(opt.value.toLowerCase(), opt);
+    });
+    return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label));
+  }, [leads, isAdmin, hasDistSupport, hasRetSupport]);
 
   // Resolve Modal
   const [resolveModalQuery, setResolveModalQuery] = useState<LocalClientQuery | null>(null);
@@ -218,13 +240,12 @@ export default function SupportPage() {
               <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
                 Client Account
               </label>
-              <input
-                required
-                type="text"
+              <SearchableSelect
+                options={clientOptions}
                 value={clientNameInput}
-                onChange={e => setClientNameInput(e.target.value)}
+                onChange={setClientNameInput}
                 placeholder="Type client name..."
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-semibold text-slate-900 placeholder-slate-300 focus:outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/10 transition-all"
+                required
               />
             </div>
 

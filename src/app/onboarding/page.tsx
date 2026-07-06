@@ -50,7 +50,8 @@ const STAGE_META: { display: string; code: LeadStatus; color: string; dot: strin
 ];
 
 // Active stages shown in kanban (Not Interested is a terminal state shown separately)
-const KANBAN_STAGES = STAGE_META.filter(s => s.code !== "Not Interested");
+const DISTRIBUTOR_STAGES = STAGE_META.filter(s => s.code !== "Not Interested");
+const RETAILER_STAGES = STAGE_META.filter(s => ["New", "Contacted", "Interested", "Registration"].includes(s.code));
 
 export default function OnboardingPage() {
   const { currentUser, capabilities, isAdmin, hasOnboarding, hasDistOnboarding, hasRetOnboarding } = useAuth();
@@ -295,20 +296,13 @@ export default function OnboardingPage() {
   };
 
   // ── Visible leads ────────────────────────────────────────────────────────
-  const visibleLeads = leads.filter(l => {
-    if (l.segment_type !== segmentTab) return false;
-    if (l.segment_type === "Distributor" && !canViewDistributors) return false;
-    if (l.segment_type === "Retailer"    && !canViewRetailers)    return false;
-    
-    if (searchQuery.trim() !== "") {
-      const q = searchQuery.toLowerCase();
-      const matchBusiness = l.business_name.toLowerCase().includes(q);
-      const matchContact = l.contact_person.toLowerCase().includes(q);
-      if (!matchBusiness && !matchContact) return false;
-    }
-    
-    return true;
-  });
+  const visibleLeads = leads.filter(l => 
+    l.segment_type === segmentTab && 
+    (l.business_name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+     l.contact_person.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
+  const activeStages = segmentTab === "Retailer" ? RETAILER_STAGES : DISTRIBUTOR_STAGES;
 
   const getDaysAge = (createdAt: string) => {
     const days = Math.ceil((Date.now() - new Date(createdAt).getTime()) / 86400000);
@@ -390,7 +384,7 @@ export default function OnboardingPage() {
 
       {/* Funnel summary bar */}
       <div className="flex gap-2 overflow-x-auto pb-1">
-        {KANBAN_STAGES.map(stage => {
+        {activeStages.map(stage => {
           const count = visibleLeads.filter(l => l.status === stage.code).length;
           return (
             <div key={stage.code} className={`shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-bold ${stage.color}`}>
@@ -405,7 +399,7 @@ export default function OnboardingPage() {
       {/* ── Kanban Board ── */}
       <div className="w-full overflow-x-auto flex-1 min-h-0">
         <div className="flex gap-4 min-w-max px-1 pb-6 h-full">
-        {KANBAN_STAGES.map(stage => {
+        {activeStages.map(stage => {
           const stageLeads = visibleLeads.filter(l => l.status === stage.code);
           return (
             <div key={stage.code} className="w-[300px] shrink-0 flex flex-col">

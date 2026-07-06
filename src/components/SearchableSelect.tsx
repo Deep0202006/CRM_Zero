@@ -20,14 +20,24 @@ export function SearchableSelect({
   options,
   value,
   onChange,
-  placeholder = "Select an option...",
+  placeholder = "Select or type...",
   required = false,
 }: SearchableSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const selectedOption = options.find((opt) => opt.value === value);
+  // We want to display the label if the value matches an option's value,
+  // but if it's free-text, we just show the free-text.
+  const [displayValue, setDisplayValue] = useState("");
+
+  useEffect(() => {
+    const matchedOption = options.find((opt) => opt.value === value);
+    if (matchedOption) {
+      setDisplayValue(matchedOption.label);
+    } else {
+      setDisplayValue(value);
+    }
+  }, [value, options]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -40,49 +50,42 @@ export function SearchableSelect({
   }, []);
 
   const filteredOptions = options.filter((opt) =>
-    opt.label.toLowerCase().includes(searchTerm.toLowerCase())
+    opt.label.toLowerCase().includes(displayValue.toLowerCase())
   );
 
   return (
     <div className="relative" ref={containerRef}>
-      {/* Hidden input to enforce required constraint natively if needed */}
-      <input
-        type="text"
-        required={required}
-        value={value}
-        onChange={() => {}}
-        className="sr-only"
-        tabIndex={-1}
-      />
-      
       <div
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-semibold text-slate-900 focus-within:border-brand-primary focus-within:ring-2 focus-within:ring-brand-primary/10 transition-all flex items-center justify-between cursor-pointer"
+        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-semibold text-slate-900 focus-within:border-brand-primary focus-within:ring-2 focus-within:ring-brand-primary/10 transition-all flex items-center justify-between"
       >
-        <span className={selectedOption ? "text-slate-900" : "text-slate-400"}>
-          {selectedOption ? selectedOption.label : placeholder}
-        </span>
-        <ChevronDown size={14} className="text-slate-400" />
+        <input
+          type="text"
+          value={displayValue}
+          onChange={(e) => {
+            const val = e.target.value;
+            setDisplayValue(val);
+            onChange(val); // By default, pass the text up. If it's a UUID, it gets set when an option is clicked.
+            setIsOpen(true);
+          }}
+          onFocus={() => setIsOpen(true)}
+          placeholder={placeholder}
+          required={required}
+          className="bg-transparent border-none focus:outline-none w-full"
+        />
+        <ChevronDown 
+          size={14} 
+          className="text-slate-400 cursor-pointer ml-2 flex-shrink-0" 
+          onClick={() => setIsOpen(!isOpen)}
+        />
       </div>
 
       {isOpen && (
         <div className="absolute z-50 w-full mt-2 bg-white border border-slate-100 rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-100">
-          <div className="p-2 border-b border-slate-100 flex items-center gap-2">
-            <Search size={14} className="text-slate-400 ml-2" />
-            <input
-              type="text"
-              autoFocus
-              placeholder="Search..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-transparent border-none focus:outline-none text-xs font-semibold text-slate-900 py-2"
-            />
-          </div>
-          
           <div className="max-h-60 overflow-y-auto p-2 space-y-1">
             {filteredOptions.length === 0 ? (
-              <div className="p-3 text-xs text-slate-400 text-center font-semibold">
-                No results found.
+              <div className="p-3 text-xs text-slate-400 font-semibold flex flex-col gap-1">
+                <span>No exact matches.</span>
+                <span className="text-[10px] opacity-70">"{displayValue}" will be saved as custom.</span>
               </div>
             ) : (
               filteredOptions.map((opt) => (
@@ -91,7 +94,6 @@ export function SearchableSelect({
                   onClick={() => {
                     onChange(opt.value);
                     setIsOpen(false);
-                    setSearchTerm("");
                   }}
                   className={`px-3 py-2.5 rounded-lg text-xs font-bold cursor-pointer transition-all ${
                     value === opt.value

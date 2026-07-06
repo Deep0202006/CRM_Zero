@@ -18,8 +18,8 @@ export async function exportClientQueriesToExcel(userId: string, isAdmin: boolea
     'Client Problem': q.client_problem,
     'Problem Status': q.problem_status,
     'Assigned To': q.assigned_to,
-    'Created At': q.created_at ? new Date(q.created_at).toISOString().slice(0, 19).replace('T', ' ') : '',
-    'Resolved At': q.resolved_at ? new Date(q.resolved_at).toISOString().slice(0, 19).replace('T', ' ') : '',
+    'Created At': q.created_at ? new Date(q.created_at).toISOString().slice(0, 16).replace('T', ' ') : '',
+    'Resolved At': q.resolved_at ? new Date(q.resolved_at).toISOString().slice(0, 16).replace('T', ' ') : '',
     'Resolution Notes': q.resolution_notes || '',
     'Resolved By': q.resolved_by || ''
   }));
