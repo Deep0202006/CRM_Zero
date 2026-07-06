@@ -63,13 +63,13 @@ export default function LoginPage() {
       <div className="absolute bottom-1/4 right-1/4 h-[300px] w-[300px] rounded-full bg-brand-secondary/5 blur-[100px] pointer-events-none"></div>
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10">
-        <div className="flex justify-center mb-8">
+        <div className="flex justify-center mb-6">
           <Image
             src="/ZeroData_Logo.png"
             alt="ZeroData - Your data is yours"
-            width={200}
-            height={56}
-            className="h-14 w-auto object-contain"
+            width={320}
+            height={90}
+            className="h-20 w-auto object-contain mix-blend-multiply drop-shadow-sm"
             priority
           />
         </div>

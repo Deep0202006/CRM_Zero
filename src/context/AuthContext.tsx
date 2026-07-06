@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { db, LocalUser } from "@/lib/db";
+import { db, LocalUser, pullDownSync } from "@/lib/db";
 import { supabase } from "@/lib/supabaseClient";
 
 interface AuthContextType {
@@ -57,6 +57,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setCurrentUser(matchedUser);
             const caps = await db.user_capabilities.where("user_id").equals(matchedUser.user_id).toArray();
             setCapabilities(caps.map(c => c.capability_code));
+            
+            // Background pull down to hydrate robust offline DB for 10-person team
+            pullDownSync().catch(console.error);
           } else {
             localStorage.removeItem("authenticated_user_id");
           }
@@ -145,6 +148,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           localStorage.setItem("authenticated_user_id", user.user_id);
           await loadUserCapabilities(user.user_id);
           setIsLoading(false);
+          
+          // Trigger downward sync to populate the local DB with team data
+          pullDownSync().catch(console.error);
+          
           return true;
         } else {
           console.error("User authenticated in Supabase but not found in remote users table.");

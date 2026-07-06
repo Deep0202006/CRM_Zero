@@ -535,6 +535,53 @@ export async function processSyncQueue() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// PULL DOWN SYNC — Fetch full dataset from Supabase for local robustness
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function pullDownSync() {
+  if (typeof window === "undefined" || !navigator.onLine || !isSupabaseConfigured) {
+    return;
+  }
+
+  console.log("Pulling latest data from Supabase...");
+
+  try {
+    const tables = [
+      "users",
+      "capabilities",
+      "user_capabilities",
+      "leads",
+      "client_queries",
+      "mapping_requests",
+      "task_templates",
+      "tasks",
+      "internal_tickets",
+    ];
+
+    for (const tableName of tables) {
+      const { data, error } = await supabase.from(tableName).select("*");
+      if (error) {
+        console.warn(`Failed to pull table ${tableName}:`, error);
+        continue;
+      }
+      
+      if (data && data.length > 0) {
+        // Overwrite the local tables with the remote source of truth.
+        // We use bulkPut so that it acts as an upsert, which ensures that local unsynced edits in the queue 
+        // won't be immediately destroyed unless they conflict on ID (which is expected for standard records).
+        // Since this is a CRM meant to be synced across 10 team members, this is the safest MVP sync.
+        await (db as any)[tableName].bulkPut(data);
+      }
+    }
+    
+    console.log("Downward sync complete.");
+  } catch (err) {
+    console.error("Failed to perform pull down sync:", err);
+  }
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
 // AUTO SYNC — online event + 60s periodic (Part 6)
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -542,10 +589,14 @@ if (typeof window !== "undefined") {
   window.addEventListener("online", () => {
     console.log("Browser went online. Triggering sync...");
     processSyncQueue().catch(console.error);
+    pullDownSync().catch(console.error);
   });
 
   // Part 6.2 — catch flaky connections that never fully drop
   setInterval(() => {
-    if (navigator.onLine) processSyncQueue().catch(console.error);
+    if (navigator.onLine) {
+      processSyncQueue().catch(console.error);
+      pullDownSync().catch(console.error);
+    }
   }, 60_000);
 }
