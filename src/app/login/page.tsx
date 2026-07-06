@@ -34,7 +34,7 @@ export default function LoginPage() {
     setErrorMsg(null);
 
     if (!email.trim() || !password.trim()) {
-      setErrorMsg("Corporate email and access password are required.");
+      setErrorMsg("Username and access password are required.");
       return;
     }
 
@@ -43,17 +43,13 @@ export default function LoginPage() {
       // Go to attendance page for clock-in; login effect will skip if already clocked in today
       window.location.href = "/attendance";
     } else {
-      setErrorMsg("Invalid email address or corporate password.");
+      setErrorMsg("Invalid username or access password.");
     }
   };
 
   const presets = [
-    { name: "Alice (Admin)", email: "alice@crm.org", role: "Full Access & KPI Dashboard" },
-    { name: "Bob (Retailer Support)", email: "bob@crm.org", role: "Retailer Queries & Mappings" },
-    { name: "Charlie (Distributor Support)", email: "charlie@crm.org", role: "Distributor Queries & Mappings" },
-    { name: "Daisy (Retailer Onboarding)", email: "daisy@crm.org", role: "Retailer Sales Onboarding" },
-    { name: "Frank (Distributor Onboarding)", email: "frank@crm.org", role: "Distributor Sales Onboarding" },
-    { name: "Grace (Tech Support)", email: "grace@crm.org", role: "IT Ticket Queue Resolution" }
+    { name: "Alice (Admin)", email: "admin@zerodata", role: "Full Access & KPI Dashboard" },
+    { name: "Prince (Sales)", email: "prince@zerodata", role: "Retailer Sales Onboarding" }
   ];
 
   return (
@@ -87,17 +83,17 @@ export default function LoginPage() {
 
             <div>
               <label htmlFor="email" className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-                Corporate Email Address
+                Username
               </label>
               <div className="relative">
                 <Mail size={16} className="absolute left-3.5 top-3.5 text-slate-400" />
                 <input
                   id="email"
-                  type="email"
+                  type="text"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="name@company.org"
+                  placeholder="username@zerodata"
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/10 transition-all font-semibold"
                 />
               </div>

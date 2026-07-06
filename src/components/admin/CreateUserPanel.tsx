@@ -45,7 +45,7 @@ export function CreateUserPanel() {
         <h3 className="mb-2 font-black text-amber-900 text-lg">Account created — save this now</h3>
         <p className="text-sm text-amber-800">This password will not be shown again. Share it with {result.name} securely, not over email or chat.</p>
         <div className="mt-4 p-4 bg-white rounded-lg font-mono text-sm border border-amber-200">
-          <div className="mb-2"><strong>Email:</strong> {result.email}</div>
+          <div className="mb-2"><strong>Username:</strong> {result.email}</div>
           <div><strong>Temporary password:</strong> {result.tempPassword}</div>
         </div>
         <button onClick={() => setResult(null)} className="mt-4 px-4 py-2 bg-amber-100 text-amber-900 hover:bg-amber-200 font-bold rounded-lg text-sm transition-colors border border-amber-300">
@@ -62,8 +62,8 @@ export function CreateUserPanel() {
         <input required placeholder="E.g., Jane Doe" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary/50 text-sm" />
       </div>
       <div>
-        <label className="block text-sm font-bold text-slate-700 mb-1">Email</label>
-        <input required type="email" placeholder="jane.doe@nexus.org" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary/50 text-sm" />
+        <label className="block text-sm font-bold text-slate-700 mb-1">Username</label>
+        <input required type="text" placeholder="e.g. employee@zerodata" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary/50 text-sm" />
       </div>
       <div>
         <label className="block text-sm font-bold text-slate-700 mb-1">Set Password <span className="text-slate-400 font-normal">(Optional)</span></label>
