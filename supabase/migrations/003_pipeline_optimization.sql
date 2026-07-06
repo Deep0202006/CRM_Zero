@@ -67,14 +67,17 @@ alter table public.lead_registration_checklist enable row level security;
 alter table public.lead_installation_details enable row level security;
 alter table public.lead_payment_details enable row level security;
 
+DROP POLICY IF EXISTS checklist_access ON public.lead_registration_checklist;
 create policy checklist_access on public.lead_registration_checklist for all using (
     exists (select 1 from public.leads l where l.lead_id = lead_registration_checklist.lead_id
         and (l.assigned_to = auth.uid() or public.has_capability('admin')))
 );
+DROP POLICY IF EXISTS installation_access ON public.lead_installation_details;
 create policy installation_access on public.lead_installation_details for all using (
     exists (select 1 from public.leads l where l.lead_id = lead_installation_details.lead_id
         and (l.assigned_to = auth.uid() or public.has_capability('admin')))
 );
+DROP POLICY IF EXISTS payment_access ON public.lead_payment_details;
 create policy payment_access on public.lead_payment_details for all using (
     exists (select 1 from public.leads l where l.lead_id = lead_payment_details.lead_id
         and (l.assigned_to = auth.uid() or public.has_capability('admin')))

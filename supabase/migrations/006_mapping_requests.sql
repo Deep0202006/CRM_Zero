@@ -19,6 +19,7 @@ CREATE TABLE public.mapping_requests (
 ALTER TABLE public.mapping_requests ENABLE ROW LEVEL SECURITY;
 
 -- Create RLS Policies
+DROP POLICY IF EXISTS mapping_requests_access ON public.mapping_requests;
 CREATE POLICY mapping_requests_access ON public.mapping_requests
 FOR ALL
 USING (
@@ -40,6 +41,7 @@ $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS on_mapping_request_completed ON public.mapping_requests;
 
+DROP TRIGGER IF EXISTS on_mapping_request_completed ON public.mapping_requests;
 CREATE TRIGGER on_mapping_request_completed
 AFTER UPDATE ON public.mapping_requests
 FOR EACH ROW

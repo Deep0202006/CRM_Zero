@@ -111,22 +111,27 @@ ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.task_status_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.kpi_daily_snapshot ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS task_templates_read ON public.task_templates;
 CREATE POLICY task_templates_read ON public.task_templates
     FOR SELECT USING (true);
+DROP POLICY IF EXISTS task_templates_write ON public.task_templates;
 CREATE POLICY task_templates_write ON public.task_templates
     FOR ALL USING (public.has_capability('admin'));
 
+DROP POLICY IF EXISTS tasks_read ON public.tasks;
 CREATE POLICY tasks_read ON public.tasks
     FOR SELECT USING (
         assigned_to = auth.uid() OR
         public.has_capability('admin')
     );
+DROP POLICY IF EXISTS tasks_write ON public.tasks;
 CREATE POLICY tasks_write ON public.tasks
     FOR ALL USING (
         assigned_to = auth.uid() OR
         public.has_capability('admin')
     );
 
+DROP POLICY IF EXISTS task_history_read ON public.task_status_history;
 CREATE POLICY task_history_read ON public.task_status_history
     FOR SELECT USING (
         EXISTS (
@@ -135,9 +140,11 @@ CREATE POLICY task_history_read ON public.task_status_history
             AND (t.assigned_to = auth.uid() OR public.has_capability('admin'))
         )
     );
+DROP POLICY IF EXISTS task_history_write ON public.task_status_history;
 CREATE POLICY task_history_write ON public.task_status_history
     FOR INSERT WITH CHECK (true);
 
+DROP POLICY IF EXISTS kpi_read ON public.kpi_daily_snapshot;
 CREATE POLICY kpi_read ON public.kpi_daily_snapshot
     FOR SELECT USING (
         user_id = auth.uid() OR
@@ -145,6 +152,7 @@ CREATE POLICY kpi_read ON public.kpi_daily_snapshot
         EXISTS (SELECT 1 FROM public.users u WHERE u.user_id = kpi_daily_snapshot.user_id AND u.manager_id = auth.uid())
     );
 -- KPI rows are written only by the nightly server-side job (service role)
+DROP POLICY IF EXISTS kpi_write_service_only ON public.kpi_daily_snapshot;
 CREATE POLICY kpi_write_service_only ON public.kpi_daily_snapshot
     FOR ALL USING (false) WITH CHECK (false);
 
@@ -301,10 +309,13 @@ CREATE TABLE IF NOT EXISTS public.attendance_regularization_requests (
 );
 ALTER TABLE public.attendance_regularization_requests ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS regularization_own_read ON public.attendance_regularization_requests;
 CREATE POLICY regularization_own_read ON public.attendance_regularization_requests
     FOR SELECT USING (user_id = auth.uid() OR public.has_capability('admin'));
+DROP POLICY IF EXISTS regularization_own_insert ON public.attendance_regularization_requests;
 CREATE POLICY regularization_own_insert ON public.attendance_regularization_requests
     FOR INSERT WITH CHECK (user_id = auth.uid());
+DROP POLICY IF EXISTS regularization_admin_update ON public.attendance_regularization_requests;
 CREATE POLICY regularization_admin_update ON public.attendance_regularization_requests
     FOR UPDATE USING (public.has_capability('admin'));
 

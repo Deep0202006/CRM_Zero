@@ -13,6 +13,7 @@ begin
 end;
 $$ language plpgsql;
 
+drop trigger if exists trg_set_renewal_date on public.clients;
 create trigger trg_set_renewal_date
 after insert on public.lead_payment_details
 for each row execute function public.set_renewal_date();
@@ -86,6 +87,7 @@ begin
 end;
 $$ language plpgsql;
 
+drop trigger if exists trg_call_followup_task on public.call_logs;
 create trigger trg_call_followup_task
 after insert on public.call_logs
 for each row execute function public.create_task_from_call_followup();
