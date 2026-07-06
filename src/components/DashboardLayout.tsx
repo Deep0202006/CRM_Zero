@@ -39,6 +39,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     isOfficeStaff,
     hasOnboarding,
     hasSupport,
+    isTaskAssigner,
     logout,
   } = useAuth();
 
@@ -103,7 +104,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { icon: Clock,          label: "Attendance",       path: "/attendance",        visible: isFieldStaff || isOfficeStaff },
     // Admin tools
     { icon: ShieldCheck,    label: "Admin Control",    path: "/admin",             visible: isAdmin },
-    { icon: UserPlus,       label: "Assign Task",      path: "/manager/tasks",     visible: isAdmin },
+    { icon: UserPlus,       label: "Assign Task",      path: "/manager/tasks",     visible: isTaskAssigner },
     { icon: TrendingUp,     label: "Team KPIs",        path: "/manager/kpi",       visible: isAdmin },
     { icon: CalendarDays,   label: "Team Attendance",  path: "/admin/attendance",  visible: isAdmin },
     { icon: BarChart3,      label: "Insights",         path: "/",                  visible: isAdmin },

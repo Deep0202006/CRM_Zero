@@ -15,7 +15,7 @@ const PRIORITY_COLORS: Record<Priority, string> = {
 };
 
 export default function AssignTaskPage() {
-  const { currentUser, capabilities, isAdmin } = useAuth();
+  const { currentUser, capabilities, isTaskAssigner } = useAuth();
   const [users, setUsers] = useState<LocalUser[]>([]);
   const [form, setForm] = useState({
     assignedTo: "",
@@ -31,7 +31,7 @@ export default function AssignTaskPage() {
     db.users.toArray().then((u) => setUsers(u.filter((x) => String(x.is_active) === "1" || String(x.is_active) === "true")));
   }, []);
 
-  if (!isAdmin) {
+  if (!isTaskAssigner) {
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-4 text-slate-400">
         <AlertCircle size={40} />

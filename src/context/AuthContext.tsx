@@ -14,6 +14,7 @@ interface AuthContextType {
   // Role flags
   isAdmin: boolean;
   isTechSupport: boolean;
+  isTaskAssigner: boolean;
   // Onboarding
   hasDistOnboarding: boolean;
   hasRetOnboarding: boolean;
@@ -184,6 +185,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // ─── Derived role flags ──────────────────────────────────────────────────
   const isAdmin              = capabilities.includes("admin");
   const isTechSupport        = capabilities.includes("tech_support") || isAdmin;
+  const isTaskAssigner       = capabilities.includes("task_assigner") || isAdmin;
 
   const hasDistOnboarding    = capabilities.includes("dist_onboarding") || isAdmin;
   const hasRetOnboarding     = capabilities.includes("ret_onboarding") || isAdmin;
@@ -249,6 +251,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         logout,
         isAdmin,
         isTechSupport,
+        isTaskAssigner,
         hasDistOnboarding,
         hasRetOnboarding,
         hasOnboarding,

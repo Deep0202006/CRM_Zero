@@ -149,7 +149,8 @@ INSERT INTO capabilities (code, label) VALUES
   ('ret_support', 'Retailer Support'),
   ('field_dist', 'Field Distributor Agent'),
   ('field_ret', 'Field Retailer Agent'),
-  ('tech_support', 'Technical Support')
+  ('tech_support', 'Technical Support'),
+  ('task_assigner', 'Task Assigner')
 ON CONFLICT (code) DO NOTHING;
 
 

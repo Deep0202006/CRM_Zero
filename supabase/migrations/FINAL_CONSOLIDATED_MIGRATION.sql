@@ -1,3 +1,8 @@
+
+-- =====================================================================
+-- PART 0 - New Role / Capability
+-- =====================================================================
+INSERT INTO public.capabilities (code, label) VALUES ('task_assigner', 'Task Assigner') ON CONFLICT DO NOTHING;
 -- =====================================================================
 -- Nexus CRM — Consolidated Schema Addendum
 -- File: supabase/migrations/002_addendum.sql
@@ -118,21 +123,21 @@ CREATE POLICY task_templates_read ON public.task_templates
 
 DROP POLICY IF EXISTS "task_templates_write" ON public.task_templates;
 CREATE POLICY task_templates_write ON public.task_templates
-    FOR ALL USING (public.has_capability('admin'));
+    FOR ALL USING (public.has_capability('admin') OR public.has_capability('task_assigner'));
 
 
 DROP POLICY IF EXISTS "tasks_read" ON public.tasks;
 CREATE POLICY tasks_read ON public.tasks
     FOR SELECT USING (
         assigned_to = auth.uid() OR
-        public.has_capability('admin')
+        public.has_capability('admin') OR public.has_capability('task_assigner')
     );
 
 DROP POLICY IF EXISTS "tasks_write" ON public.tasks;
 CREATE POLICY tasks_write ON public.tasks
     FOR ALL USING (
         assigned_to = auth.uid() OR
-        public.has_capability('admin')
+        public.has_capability('admin') OR public.has_capability('task_assigner')
     );
 
 
@@ -142,7 +147,7 @@ CREATE POLICY task_history_read ON public.task_status_history
         EXISTS (
             SELECT 1 FROM public.tasks t
             WHERE t.task_id = task_status_history.task_id
-            AND (t.assigned_to = auth.uid() OR public.has_capability('admin'))
+            AND (t.assigned_to = auth.uid() OR public.has_capability('admin') OR public.has_capability('task_assigner'))
         )
     );
 
@@ -320,7 +325,7 @@ ALTER TABLE public.attendance_regularization_requests ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "regularization_own_read" ON public.attendance_regularization_requests;
 CREATE POLICY regularization_own_read ON public.attendance_regularization_requests
-    FOR SELECT USING (user_id = auth.uid() OR public.has_capability('admin'));
+    FOR SELECT USING (user_id = auth.uid() OR public.has_capability('admin') OR public.has_capability('task_assigner'));
 
 DROP POLICY IF EXISTS "regularization_own_insert" ON public.attendance_regularization_requests;
 CREATE POLICY regularization_own_insert ON public.attendance_regularization_requests
