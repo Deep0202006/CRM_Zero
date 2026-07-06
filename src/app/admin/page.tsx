@@ -642,6 +642,13 @@ export default function AdminPage() {
                   />
                 </div>
                 
+                {errorMsg && (
+                  <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-xs font-bold flex items-start gap-2">
+                    <AlertCircle size={16} className="shrink-0 mt-0.5" />
+                    <span>{errorMsg}</span>
+                  </div>
+                )}
+                
                 <div className="flex gap-2">
                   <button
                     onClick={() => { setResettingPasswordFor(null); setErrorMsg(null); setResetPasswordInput(""); }}
