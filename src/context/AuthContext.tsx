@@ -57,9 +57,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setCurrentUser(matchedUser);
             const caps = await db.user_capabilities.where("user_id").equals(matchedUser.user_id).toArray();
             setCapabilities(caps.map(c => c.capability_code));
-            
             // Background pull down to hydrate robust offline DB for 10-person team
-            pullDownSync().catch(console.error);
+            pullDownSync().then(async () => {
+              const updatedCaps = await db.user_capabilities.where("user_id").equals(matchedUser.user_id).toArray();
+              setCapabilities(updatedCaps.map(c => c.capability_code));
+            }).catch(console.error);
           } else {
             localStorage.removeItem("authenticated_user_id");
           }
@@ -150,7 +152,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setIsLoading(false);
           
           // Trigger downward sync to populate the local DB with team data
-          pullDownSync().catch(console.error);
+          pullDownSync().then(async () => {
+            const updatedCaps = await db.user_capabilities.where("user_id").equals(user.user_id).toArray();
+            setCapabilities(updatedCaps.map(c => c.capability_code));
+          }).catch(console.error);
           
           return true;
         } else {
