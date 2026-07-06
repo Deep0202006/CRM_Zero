@@ -9,6 +9,7 @@ const supabaseAdmin = createClient(
 
 const ResetPasswordSchema = z.object({
   user_id: z.string().uuid("Invalid user ID"),
+  password: z.string().min(6, "Password must be at least 6 characters").optional(),
 });
 
 function generatePassword() {
@@ -31,9 +32,9 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
-  const { user_id } = parsed.data;
+  const { user_id, password } = parsed.data;
 
-  const tempPassword = generatePassword();
+  const tempPassword = password || generatePassword();
   const { data, error } = await supabaseAdmin.auth.admin.updateUserById(user_id, {
     password: tempPassword,
     user_metadata: { must_change_password: true }

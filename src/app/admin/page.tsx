@@ -49,6 +49,7 @@ export default function AdminPage() {
 
   // Password reset state
   const [resettingPasswordFor, setResettingPasswordFor] = useState<string | null>(null);
+  const [resetPasswordInput, setResetPasswordInput] = useState<string>("");
   const [newPasswordResult, setNewPasswordResult] = useState<string | null>(null);
   const [isResetting, setIsResetting] = useState(false);
 
@@ -135,7 +136,7 @@ export default function AdminPage() {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${session.access_token}`
         },
-        body: JSON.stringify({ user_id: userId })
+        body: JSON.stringify({ user_id: userId, password: resetPasswordInput || undefined })
       });
       
       const data = await res.json();
@@ -316,7 +317,10 @@ export default function AdminPage() {
                     </div>
                     
                     <button
-                      onClick={() => setResettingPasswordFor(user.user_id)}
+                      onClick={() => {
+                        setResetPasswordInput("");
+                        setResettingPasswordFor(user.user_id);
+                      }}
                       className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-1 rounded-lg hover:bg-amber-100 transition-all uppercase tracking-wider min-w-[110px]"
                     >
                       Reset Password
@@ -623,13 +627,24 @@ export default function AdminPage() {
             
             {!newPasswordResult ? (
               <>
-                <p className="text-xs font-semibold text-slate-500 mb-6 leading-relaxed">
+                <p className="text-xs font-semibold text-slate-500 mb-4 leading-relaxed">
                   Are you sure you want to reset the password for <strong className="text-slate-900">{usersList.find(u => u.user_id === resettingPasswordFor)?.name}</strong>? They will be given a temporary password and must change it upon their next login.
                 </p>
+
+                <div className="mb-6">
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Set Password <span className="text-slate-400 font-normal">(Optional)</span></label>
+                  <input 
+                    type="text" 
+                    placeholder="Leave empty to auto-generate" 
+                    value={resetPasswordInput} 
+                    onChange={(e) => setResetPasswordInput(e.target.value)} 
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/50 text-sm" 
+                  />
+                </div>
                 
                 <div className="flex gap-2">
                   <button
-                    onClick={() => { setResettingPasswordFor(null); setErrorMsg(null); }}
+                    onClick={() => { setResettingPasswordFor(null); setErrorMsg(null); setResetPasswordInput(""); }}
                     className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-slate-200 cursor-pointer transition-all"
                   >
                     Cancel
