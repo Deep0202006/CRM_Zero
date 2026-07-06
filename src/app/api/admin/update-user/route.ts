@@ -39,6 +39,7 @@ export async function POST(req: NextRequest) {
   // 1. Update Supabase Auth email (this handles both the login email and triggers confirmation if needed based on project settings)
   const { error: authUpdateError } = await supabaseAdmin.auth.admin.updateUserById(user_id, {
     email,
+    email_confirm: true,
     user_metadata: { name }
   });
   
@@ -46,10 +47,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `Failed to update auth user: ${authUpdateError.message}` }, { status: 400 });
   }
 
-  // 2. Update public.users
+  // 2. Update public.users - is_active is an integer in the schema (1 = active, 0 = inactive)
+  const is_active_int = is_active ? 1 : 0;
+  
   const { error: dbError } = await supabaseAdmin
     .from("users")
-    .update({ name, email, is_active })
+    .update({ name, email, is_active: is_active_int })
     .eq("user_id", user_id);
 
   if (dbError) {
