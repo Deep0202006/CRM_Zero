@@ -15,10 +15,7 @@ DROP POLICY IF EXISTS "Allow managers and admins to view digests" ON public.week
 CREATE POLICY "Allow managers and admins to view digests" 
 ON public.weekly_digest_log FOR SELECT 
 USING (
-    auth.uid() IN (
-        SELECT id FROM public.users 
-        WHERE role IN ('Admin', 'Manager')
-    )
+    public.has_capability('admin') OR public.has_capability('manager')
 );
 
 -- 2. Create the generation function
