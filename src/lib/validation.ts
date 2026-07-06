@@ -94,11 +94,13 @@ export const mappingSchema = z.object({
 // 5. Mapping Request Validation Schema
 export const mappingRequestSchema = z.object({
   request_id: uuidSchema.optional(),
-  requester_id: uuidSchema,
-  assigned_to_id: uuidSchema.optional().nullable(),
-  status: z.enum(["Pending", "Resolved", "Overdue"]).default("Pending"),
+  distributor_lead_id: uuidSchema,
+  retailer_lead_id: uuidSchema,
+  mapped_by: uuidSchema.optional().nullable(),
+  status: z.enum(["Pending", "Completed"]).default("Pending"),
+  notes: z.string().optional().nullable(),
   created_at: z.string().optional(),
-  updated_at: z.string().optional()
+  completed_at: z.string().optional().nullable()
 });
 
 // 6. Internal Ticket Validation Schema

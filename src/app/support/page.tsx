@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { db, LocalClientQuery, LocalLead } from "@/lib/db";
+import { db, LocalClientQuery, LocalLead, LocalMappingRequest } from "@/lib/db";
 import {
   Headphones,
   AlertCircle,
@@ -11,6 +11,7 @@ import {
   MessageSquare,
   RefreshCw,
   Download,
+  Link2,
 } from "lucide-react";
 import { exportClientQueriesToExcel } from "@/lib/clientQueriesExport";
 
@@ -27,10 +28,17 @@ export default function SupportPage() {
 
   const [leads, setLeads] = useState<LocalLead[]>([]);
   const [queries, setQueries] = useState<LocalClientQuery[]>([]);
+  const [mappings, setMappings] = useState<any[]>([]);
 
-  // Form
+  const [uiMode, setUiMode] = useState<"queries" | "mappings">("queries");
+
+  // Form (Queries)
   const [queryLeadId, setQueryLeadId]   = useState("");
   const [queryProblem, setQueryProblem] = useState("");
+
+  // Form (Mappings)
+  const [mapDistId, setMapDistId] = useState("");
+  const [mapRetId,  setMapRetId]  = useState("");
 
   const [errorMsg,   setErrorMsg]   = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -66,6 +74,9 @@ export default function SupportPage() {
       // Filter queries to scoped lead IDs
       const scopedIds = new Set(scopedLeads.map(l => l.lead_id));
       setQueries(allQueries.filter(q => scopedIds.has(q.lead_id)));
+
+      const allMappings = await db.mapping_requests.toArray();
+      setMappings(allMappings.filter(m => scopedIds.has(m.distributor_lead_id) || scopedIds.has(m.retailer_lead_id)));
     } catch (err) {
       console.error("Failed to load support data", err);
     }
@@ -100,6 +111,52 @@ export default function SupportPage() {
       await loadData();
     } catch (err) {
       setErrorMsg("Failed to log query.");
+    }
+  };
+
+  // ── Log new mapping request ───────────────────────────────────────────────
+  const handleLogMapping = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg(null);
+    if (!mapDistId || !mapRetId) {
+      setErrorMsg("Select both distributor and retailer.");
+      return;
+    }
+    if (mapDistId === mapRetId) {
+      setErrorMsg("Cannot map a lead to itself.");
+      return;
+    }
+    try {
+      const newMapping: LocalMappingRequest = {
+        request_id: crypto.randomUUID(),
+        distributor_lead_id: mapDistId,
+        retailer_lead_id: mapRetId,
+        status: "Pending",
+        mapped_by: currentUser?.user_id || "system",
+        created_at: new Date().toISOString(),
+      };
+      await db.mapping_requests.add(newMapping);
+      await db.sync_queue.add({ idempotency_key: crypto.randomUUID(),  table_name: "mapping_requests", action: "INSERT", data: newMapping, timestamp: new Date().toISOString() });
+
+      setSuccessMsg("Mapping task logged.");
+      setTimeout(() => setSuccessMsg(null), 2500);
+      setMapDistId("");
+      setMapRetId("");
+      await loadData();
+    } catch (err) {
+      setErrorMsg("Failed to log mapping task.");
+    }
+  };
+
+  const handleUpdateMappingStatus = async (request_id: string, newStatus: string) => {
+    try {
+      const updates: any = { status: newStatus };
+      if (newStatus === "Completed") updates.completed_at = new Date().toISOString();
+      await db.mapping_requests.update(request_id, updates);
+      await db.sync_queue.add({ idempotency_key: crypto.randomUUID(),  table_name: "mapping_requests", action: "UPDATE", data: { request_id, ...updates }, timestamp: new Date().toISOString() });
+      await loadData();
+    } catch (err) {
+      setErrorMsg("Failed to update mapping status.");
     }
   };
 
@@ -165,19 +222,52 @@ export default function SupportPage() {
         <div className="flex items-center gap-2">
           <Headphones size={20} className="text-brand-primary" />
           <div>
-            <h2 className="text-2xl font-black text-slate-900">Client Support</h2>
+            <h2 className="text-2xl font-black text-slate-900">Support & Operations</h2>
             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
               {isAdmin ? "All segments" : [hasDistSupport && "Distributors", hasRetSupport && "Retailers"].filter(Boolean).join(" & ")}
             </p>
           </div>
         </div>
+        
+        <div className="flex gap-2">
+          {uiMode === "queries" ? (
+            <button
+              onClick={() => {
+                import('@/lib/excelExport').then(m => currentUser && m.exportSupport(currentUser.user_id));
+              }}
+              className="flex items-center gap-1.5 px-3 py-2 bg-brand-primary text-white rounded-xl text-xs font-black cursor-pointer hover:bg-brand-secondary transition-all w-fit"
+            >
+              <Download size={14} /> Queries
+            </button>
+          ) : (
+            <button
+              onClick={() => {
+                import('@/lib/excelExport').then(m => currentUser && m.exportMappings(currentUser.user_id));
+              }}
+              className="flex items-center gap-1.5 px-3 py-2 bg-brand-primary text-white rounded-xl text-xs font-black cursor-pointer hover:bg-brand-secondary transition-all w-fit"
+            >
+              <Download size={14} /> Mappings
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="flex gap-2 bg-slate-100 p-1 rounded-xl w-fit">
         <button
-          onClick={() => {
-            if (currentUser) exportClientQueriesToExcel(currentUser.user_id, isAdmin);
-          }}
-          className="flex items-center gap-1.5 px-3 py-2 bg-brand-primary text-white rounded-xl text-xs font-black cursor-pointer hover:bg-brand-secondary transition-all w-fit"
+          onClick={() => setUiMode("queries")}
+          className={`px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer ${
+            uiMode === "queries" ? "bg-white text-brand-primary shadow-sm" : "text-slate-500 hover:text-slate-700"
+          }`}
         >
-          <Download size={14} /> Queries
+          Client Queries
+        </button>
+        <button
+          onClick={() => setUiMode("mappings")}
+          className={`px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer ${
+            uiMode === "mappings" ? "bg-white text-brand-primary shadow-sm" : "text-slate-500 hover:text-slate-700"
+          }`}
+        >
+          Mapping Tasks
         </button>
       </div>
 
@@ -199,8 +289,9 @@ export default function SupportPage() {
       {successMsg && <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-700 text-xs font-bold">✓ {successMsg}</div>}
       {errorMsg   && <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl text-rose-600 text-xs font-bold flex gap-2 items-center"><AlertCircle size={14}/>{errorMsg}</div>}
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        {/* ── Log Query Form ── */}
+      {uiMode === "queries" ? (
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+          {/* ── Log Query Form ── */}
         <div className="lg:col-span-2 bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-4">
           <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
             <MessageSquare size={16} className="text-brand-primary" />
@@ -329,6 +420,109 @@ export default function SupportPage() {
           </div>
         </div>
       </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+          {/* ── Log Mapping Form ── */}
+          <div className="lg:col-span-2 bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-4">
+            <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+              <Link2 size={16} className="text-brand-primary" />
+              Log Mapping Task
+            </h3>
+
+            <form onSubmit={handleLogMapping} className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
+                  Distributor
+                </label>
+                <select
+                  required
+                  value={mapDistId}
+                  onChange={e => setMapDistId(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-semibold text-slate-900 focus:outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/10 transition-all"
+                >
+                  <option value="">— Select Distributor —</option>
+                  {leads.filter(l => l.segment_type === "Distributor").map(l => (
+                    <option key={l.lead_id} value={l.lead_id}>{l.business_name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
+                  Retailer
+                </label>
+                <select
+                  required
+                  value={mapRetId}
+                  onChange={e => setMapRetId(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-semibold text-slate-900 focus:outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/10 transition-all"
+                >
+                  <option value="">— Select Retailer —</option>
+                  {leads.filter(l => l.segment_type === "Retailer").map(l => (
+                    <option key={l.lead_id} value={l.lead_id}>{l.business_name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-3.5 bg-brand-primary hover:bg-brand-secondary text-white font-black rounded-2xl transition-all shadow-md shadow-brand-primary/10 text-xs tracking-wider uppercase cursor-pointer"
+              >
+                Log Mapping Task
+              </button>
+            </form>
+          </div>
+
+          {/* ── Mapping Tracker ── */}
+          <div className="lg:col-span-3 bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                <Clock size={16} className="text-brand-secondary" /> Mapping Queue
+              </h3>
+              <button onClick={loadData} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 cursor-pointer" title="Refresh">
+                <RefreshCw size={14} />
+              </button>
+            </div>
+
+            <div className="space-y-3 max-h-[480px] overflow-y-auto pr-1">
+              {mappings.length === 0 && (
+                <p className="text-xs italic text-slate-400 text-center py-10 font-semibold">No mappings recorded.</p>
+              )}
+              {mappings.map(map => (
+                <div
+                  key={map.request_id}
+                  className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-3 hover:border-slate-200 transition-all"
+                >
+                  <div className="flex justify-between items-start gap-2">
+                    <div>
+                      <p className="text-sm font-bold text-slate-900 mt-0.5 leading-snug">
+                        {getLeadName(map.retailer_lead_id)} <span className="text-slate-400 font-normal mx-1">→</span> {getLeadName(map.distributor_lead_id)}
+                      </p>
+                    </div>
+                    <span className={`shrink-0 text-[9px] font-black uppercase px-2 py-0.5 rounded-full border ${map.status === "Completed" ? "bg-emerald-50 text-emerald-600 border-emerald-200" : "bg-amber-50 text-amber-700 border-amber-200"}`}>
+                      {map.status}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] text-slate-400 font-semibold border-t border-slate-200/50 pt-2">
+                    <span>{new Date(map.created_at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+                    {map.status !== "Completed" && (
+                      <button
+                        onClick={() => handleUpdateMappingStatus(map.request_id, "Completed")}
+                        className="px-2.5 py-1 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-lg text-[10px] font-black hover:bg-emerald-100 transition-all cursor-pointer"
+                      >
+                        Mark Complete ✓
+                      </button>
+                    )}
+                    {map.status === "Completed" && (
+                      <span className="text-emerald-500 font-black flex items-center gap-1"><CheckCircle2 size={10}/> Done</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Resolve Modal */}
       {resolveModalQuery && (

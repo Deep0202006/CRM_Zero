@@ -9,9 +9,10 @@ import {
 } from "lucide-react";
 import { exportPipelineToExcel } from "@/lib/pipelineExport";
 import { exportClientQueriesToExcel } from "@/lib/clientQueriesExport";
+import { exportMasterSales, exportMasterSupport, exportMasterMappings } from "@/lib/excelExport";
 import { CreateUserPanel } from "@/components/admin/CreateUserPanel";
 
-type AdminTab = "capabilities" | "managers" | "templates" | "attendance" | "create_user";
+type AdminTab = "capabilities" | "managers" | "templates" | "attendance" | "create_user" | "exports";
 
 const TAB_META: { id: AdminTab; label: string; icon: React.ElementType }[] = [
   { id: "capabilities", label: "Capability Matrix", icon: ShieldCheck },
@@ -19,6 +20,7 @@ const TAB_META: { id: AdminTab; label: string; icon: React.ElementType }[] = [
   { id: "templates", label: "Task Templates", icon: ListTodo },
   { id: "attendance", label: "Attendance Settings", icon: ClockIcon },
   { id: "create_user", label: "Create User", icon: UserPlus },
+  { id: "exports", label: "Master Exports", icon: Download },
 ];
 
 export default function AdminPage() {
@@ -502,6 +504,59 @@ export default function AdminPage() {
             Provision new team member accounts with appropriate capability clearances. A secure temporary password will be generated automatically.
           </p>
           <CreateUserPanel />
+        </div>
+      )}
+
+      {/* ── MASTER EXPORTS TAB ── */}
+      {activeTab === "exports" && (
+        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-6">
+          <div>
+            <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+              <Download size={18} className="text-brand-primary" /> Master System Exports
+            </h3>
+            <p className="text-xs font-semibold text-slate-500 mt-1">Download complete data dumps across the entire CRM platform.</p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="p-5 border border-slate-200 rounded-2xl bg-slate-50 space-y-3 flex flex-col justify-between">
+              <div>
+                <h4 className="text-sm font-black text-slate-900">Sales Pipeline</h4>
+                <p className="text-[11px] text-slate-500 font-medium mt-1">All leads, segments, and current stage data.</p>
+              </div>
+              <button
+                onClick={() => exportMasterSales()}
+                className="w-full py-2.5 bg-brand-primary text-white font-black rounded-xl text-xs hover:bg-brand-secondary transition-all cursor-pointer"
+              >
+                Download Sales Data
+              </button>
+            </div>
+
+            <div className="p-5 border border-slate-200 rounded-2xl bg-slate-50 space-y-3 flex flex-col justify-between">
+              <div>
+                <h4 className="text-sm font-black text-slate-900">Support Operations</h4>
+                <p className="text-[11px] text-slate-500 font-medium mt-1">All client queries, resolutions, and notes.</p>
+              </div>
+              <button
+                onClick={() => exportMasterSupport()}
+                className="w-full py-2.5 bg-brand-primary text-white font-black rounded-xl text-xs hover:bg-brand-secondary transition-all cursor-pointer"
+              >
+                Download Support Data
+              </button>
+            </div>
+
+            <div className="p-5 border border-slate-200 rounded-2xl bg-slate-50 space-y-3 flex flex-col justify-between">
+              <div>
+                <h4 className="text-sm font-black text-slate-900">Distributor-Retailer Mappings</h4>
+                <p className="text-[11px] text-slate-500 font-medium mt-1">All link requests, statuses, and agent trackers.</p>
+              </div>
+              <button
+                onClick={() => exportMasterMappings()}
+                className="w-full py-2.5 bg-brand-primary text-white font-black rounded-xl text-xs hover:bg-brand-secondary transition-all cursor-pointer"
+              >
+                Download Mapping Data
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

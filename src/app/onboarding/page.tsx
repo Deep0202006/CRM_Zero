@@ -59,6 +59,7 @@ export default function OnboardingPage() {
   const [segmentTab, setSegmentTab] = useState<"Distributor" | "Retailer">("Retailer");
   const [selectedLead, setSelectedLead] = useState<LocalLead | null>(null);
   const [callLogs, setCallLogs] = useState<LocalCallLog[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [errorMsg, setErrorMsg]   = useState<string | null>(null);
@@ -298,6 +299,14 @@ export default function OnboardingPage() {
     if (l.segment_type !== segmentTab) return false;
     if (l.segment_type === "Distributor" && !canViewDistributors) return false;
     if (l.segment_type === "Retailer"    && !canViewRetailers)    return false;
+    
+    if (searchQuery.trim() !== "") {
+      const q = searchQuery.toLowerCase();
+      const matchBusiness = l.business_name.toLowerCase().includes(q);
+      const matchContact = l.contact_person.toLowerCase().includes(q);
+      if (!matchBusiness && !matchContact) return false;
+    }
+    
     return true;
   });
 
@@ -354,6 +363,30 @@ export default function OnboardingPage() {
       {/* Feedback */}
       {successMsg && <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-700 text-xs font-bold">✓ {successMsg}</div>}
       {errorMsg   && <div className="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-rose-600 text-xs font-bold flex gap-2 items-center"><AlertCircle size={14}/>{errorMsg}</div>}
+
+      {/* Fuzzy Search Bar */}
+      <div className="w-full sm:max-w-sm">
+        <div className="relative">
+          <input 
+            type="text" 
+            placeholder="Search leads by business or contact name..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:border-brand-primary focus:ring-1 focus:ring-brand-primary focus:outline-none transition-all"
+          />
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          </div>
+          {searchQuery && (
+            <button 
+              onClick={() => setSearchQuery("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
+      </div>
 
       {/* Funnel summary bar */}
       <div className="flex gap-2 overflow-x-auto pb-1">
