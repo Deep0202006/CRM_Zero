@@ -19,6 +19,7 @@ import {
   AlertTriangle,
   CalendarDays,
   LineChart,
+  Link2,
 } from 'lucide-react';
 import { db } from '@/lib/db';
 
@@ -97,6 +98,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { icon: LayoutDashboard,label: "Pipeline",         path: "/onboarding",        visible: hasOnboarding },
     // Support only
     { icon: Headphones,     label: "Client Support",   path: "/support",           visible: hasSupport },
+    { icon: Link2,          label: "Mappings",         path: "/mappings",          visible: hasSupport },
     // Not admin (admin doesn't clock in)
     { icon: Clock,          label: "Attendance",       path: "/attendance",        visible: isFieldStaff || isOfficeStaff },
     // Admin tools

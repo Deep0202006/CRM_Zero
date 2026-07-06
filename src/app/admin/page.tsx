@@ -5,8 +5,9 @@ import { useAuth } from "@/context/AuthContext";
 import { db, LocalUser, LocalUserCapability, LocalTaskTemplate } from "@/lib/db";
 import {
   ShieldCheck, User, Users, CheckSquare, Sparkles, Activity, AlertCircle,
-  ListTodo, UserCheck, Clock as ClockIcon, Edit2, Save, ToggleLeft, ToggleRight, Download, UserPlus
+  ListTodo, UserCheck, Clock as ClockIcon, Edit2, Save, ToggleLeft, ToggleRight, Download, UserPlus, Key
 } from "lucide-react";
+import { supabase } from "@/lib/supabaseClient";
 import { exportPipelineToExcel } from "@/lib/pipelineExport";
 import { exportClientQueriesToExcel } from "@/lib/clientQueriesExport";
 import { exportMasterSales, exportMasterSupport, exportMasterMappings } from "@/lib/excelExport";
@@ -45,6 +46,11 @@ export default function AdminPage() {
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  // Password reset state
+  const [resettingPasswordFor, setResettingPasswordFor] = useState<string | null>(null);
+  const [newPasswordResult, setNewPasswordResult] = useState<string | null>(null);
+  const [isResetting, setIsResetting] = useState(false);
 
   const ALL_CAPABILITIES = [
     { code: "admin", label: "Admin" },
@@ -112,6 +118,34 @@ export default function AdminPage() {
       setTimeout(() => setHighlightRowId(null), 1200);
     } catch (err) {
       setErrorMsg("Failed to update capabilities mapping in database.");
+    }
+  };
+
+  const handleResetPassword = async (userId: string) => {
+    setIsResetting(true);
+    setErrorMsg(null);
+    setNewPasswordResult(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("No session");
+      
+      const res = await fetch("/api/admin/reset-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ user_id: userId })
+      });
+      
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to reset password");
+      
+      setNewPasswordResult(data.tempPassword);
+    } catch (err: any) {
+      setErrorMsg(err.message || "Failed to reset password");
+    } finally {
+      setIsResetting(false);
     }
   };
 
@@ -280,6 +314,14 @@ export default function AdminPage() {
                         <p className="text-[10px] text-slate-400 font-semibold">{user.email}</p>
                       </div>
                     </div>
+                    
+                    <button
+                      onClick={() => setResettingPasswordFor(user.user_id)}
+                      className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-1 rounded-lg hover:bg-amber-100 transition-all uppercase tracking-wider min-w-[110px]"
+                    >
+                      Reset Password
+                    </button>
+                    
                     <div className="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-3">
                       {ALL_CAPABILITIES.map((cap) => {
                         const hasCap = userCaps.includes(cap.code);
@@ -570,6 +612,67 @@ export default function AdminPage() {
           Toggling corporate capabilities writes database sync logs locally. Operational clearances take effect instantly upon save, restricting module views and Supabase query policies dynamically.
         </p>
       </div>
+
+      {/* Password Reset Modal */}
+      {resettingPasswordFor && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-md shadow-xl p-6">
+            <h3 className="text-lg font-black text-slate-900 mb-2 flex items-center gap-2">
+              <Key size={18} className="text-amber-500" /> Reset Password
+            </h3>
+            
+            {!newPasswordResult ? (
+              <>
+                <p className="text-xs font-semibold text-slate-500 mb-6 leading-relaxed">
+                  Are you sure you want to reset the password for <strong className="text-slate-900">{usersList.find(u => u.user_id === resettingPasswordFor)?.name}</strong>? They will be given a temporary password and must change it upon their next login.
+                </p>
+                
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { setResettingPasswordFor(null); setErrorMsg(null); }}
+                    className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-slate-200 cursor-pointer transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => handleResetPassword(resettingPasswordFor)}
+                    disabled={isResetting}
+                    className="flex-1 py-3 bg-amber-500 text-white rounded-xl text-xs font-black uppercase tracking-wider hover:bg-amber-600 cursor-pointer shadow-md shadow-amber-500/20 disabled:opacity-50 transition-all"
+                  >
+                    {isResetting ? "Resetting..." : "Confirm Reset"}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl mb-6">
+                  <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-2">
+                    Password Reset Successful
+                  </p>
+                  <p className="text-xs text-slate-600 font-semibold mb-2">
+                    Temporary Password for <strong className="text-slate-900">{usersList.find(u => u.user_id === resettingPasswordFor)?.name}</strong>:
+                  </p>
+                  <div className="bg-white border border-emerald-100 p-3 rounded-xl flex justify-center">
+                    <code className="text-sm font-black text-slate-900 select-all font-mono tracking-widest">
+                      {newPasswordResult}
+                    </code>
+                  </div>
+                  <p className="text-[10px] text-emerald-600/70 font-semibold mt-3 text-center">
+                    Please securely share this password with the user.
+                  </p>
+                </div>
+                
+                <button
+                  onClick={() => { setResettingPasswordFor(null); setNewPasswordResult(null); }}
+                  className="w-full py-3 bg-slate-100 text-slate-600 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-slate-200 cursor-pointer transition-all"
+                >
+                  Close
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

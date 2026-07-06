@@ -15,6 +15,7 @@ const VALID_CAPABILITIES = [
 const CreateUserSchema = z.object({
   email: z.string().email(),
   name: z.string().min(2, "Name is required"),
+  password: z.string().min(6, "Password must be at least 6 characters").optional(),
   capabilities: z.array(z.enum(VALID_CAPABILITIES)).min(1, "Select at least one role"),
   manager_id: z.string().uuid().nullable().optional(),
 });
@@ -39,9 +40,9 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
-  const { email, name, capabilities, manager_id } = parsed.data;
+  const { email, name, password, capabilities, manager_id } = parsed.data;
 
-  const tempPassword = generatePassword();
+  const tempPassword = password || generatePassword();
   const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
     email, password: tempPassword, email_confirm: true,
     user_metadata: { name, must_change_password: true },

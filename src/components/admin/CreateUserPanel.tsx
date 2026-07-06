@@ -10,7 +10,7 @@ const CAPABILITY_LABELS: Record<string, string> = {
 };
 
 export function CreateUserPanel() {
-  const [form, setForm] = useState({ email: "", name: "", capabilities: [] as string[] });
+  const [form, setForm] = useState({ email: "", name: "", password: "", capabilities: [] as string[] });
   const [result, setResult] = useState<{ email: string; tempPassword: string; name: string } | null>(null);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -31,7 +31,7 @@ export function CreateUserPanel() {
       if (!res.ok) { setError(data.error?.formErrors?.join(", ") || data.error || "Failed to create user"); return; }
 
       setResult(data);
-      setForm({ email: "", name: "", capabilities: [] });
+      setForm({ email: "", name: "", password: "", capabilities: [] });
     } catch (err: any) {
       setError(err.message || "An unexpected error occurred");
     } finally {
@@ -64,6 +64,10 @@ export function CreateUserPanel() {
       <div>
         <label className="block text-sm font-bold text-slate-700 mb-1">Email</label>
         <input required type="email" placeholder="jane.doe@nexus.org" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary/50 text-sm" />
+      </div>
+      <div>
+        <label className="block text-sm font-bold text-slate-700 mb-1">Set Password <span className="text-slate-400 font-normal">(Optional)</span></label>
+        <input type="text" placeholder="Leave empty to auto-generate" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary/50 text-sm" />
       </div>
       <div>
         <div className="text-sm font-bold text-slate-700 mb-2">Roles (select all that apply)</div>
