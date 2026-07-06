@@ -161,6 +161,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     setIsLoading(true);
+    await supabase.auth.signOut();
     setCurrentUser(null);
     setCapabilities([]);
     localStorage.removeItem("authenticated_user_id");

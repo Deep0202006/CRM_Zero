@@ -30,14 +30,14 @@ export async function POST(req: NextRequest) {
 
   const parsed = ResetPasswordSchema.safeParse(await req.json());
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+    const errorMsg = Object.values(parsed.error.flatten().fieldErrors).flat()[0] || "Invalid input";
+    return NextResponse.json({ error: errorMsg }, { status: 400 });
   }
   const { user_id, password } = parsed.data;
 
   const tempPassword = password || generatePassword();
   const { data, error } = await supabaseAdmin.auth.admin.updateUserById(user_id, {
     password: tempPassword,
-    user_metadata: { must_change_password: true }
   });
 
   if (error) {
