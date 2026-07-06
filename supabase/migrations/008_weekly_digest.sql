@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS public.weekly_digest_log (
 -- RLS: Only admins/managers can view digests
 ALTER TABLE public.weekly_digest_log ENABLE ROW LEVEL SECURITY;
 
+
 DROP POLICY IF EXISTS "Allow managers and admins to view digests" ON public.weekly_digest_log;
 CREATE POLICY "Allow managers and admins to view digests" 
 ON public.weekly_digest_log FOR SELECT 

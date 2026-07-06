@@ -13,7 +13,7 @@ begin
 end;
 $$ language plpgsql;
 
-drop trigger if exists trg_set_renewal_date on public.clients;
+drop trigger if exists trg_set_renewal_date on public.lead_payment_details;
 create trigger trg_set_renewal_date
 after insert on public.lead_payment_details
 for each row execute function public.set_renewal_date();

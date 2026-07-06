@@ -454,3 +454,469 @@ $$ LANGUAGE plpgsql;
 -- SELECT * FROM public.stale_leads LIMIT 10;
 -- SELECT * FROM public.overdue_queries LIMIT 10;
 -- SELECT * FROM public.attendance_shift_config;
+-- =====================================================================
+-- A. Lead source — required at creation, feeds channel-performance KPIs
+-- =====================================================================
+alter table public.leads add column if not exists lead_source text
+    check (lead_source in ('Referral','Cold Call','Inbound Inquiry','Exhibition/Event','Field Visit','Other'));
+
+alter table public.leads add column if not exists area text;
+
+-- Re-engagement date for lost leads — a "Not Interested" lead is not dead,
+-- it's dormant. This is what brings it back instead of losing it forever.
+alter table public.leads add column if not exists re_engage_after date;
+
+-- =====================================================================
+-- B. Structured call outcomes — extends the existing call_logs table.
+-- One tap instead of a typed note, and it's now queryable for KPIs.
+-- =====================================================================
+alter table public.call_logs add column if not exists outcome text
+    check (outcome in ('No Answer','Call Back Later','Interested','Not Interested','Switched Off','Wrong Number', 'Contacted'));
+alter table public.call_logs add column if not exists next_call_at timestamp with time zone;
+
+-- =====================================================================
+-- C. Registration checklist — the single biggest cause of deals stalling.
+-- =====================================================================
+CREATE TABLE IF NOT EXISTS public.lead_registration_checklist (
+    checklist_id uuid primary key default gen_random_uuid(),
+    lead_id uuid references public.leads(lead_id) unique not null,
+    gst_certificate_uploaded boolean not null default false,
+    pan_uploaded boolean not null default false,
+    bank_details_captured boolean not null default false,
+    agreement_signed boolean not null default false,
+    territory_assigned text,
+    updated_at timestamp with time zone default timezone('utc'::text, now())
+);
+
+-- =====================================================================
+-- D. Installation details — proof of work, not just a status flip.
+-- =====================================================================
+CREATE TABLE IF NOT EXISTS public.lead_installation_details (
+    installation_id uuid primary key default gen_random_uuid(),
+    lead_id uuid references public.leads(lead_id) unique not null,
+    installed_by uuid references public.users(user_id),
+    installation_date date,
+    software_version text,
+    staff_trained_count int default 0,
+    issues_encountered text,
+    proof_photo_url text,
+    created_at timestamp with time zone default timezone('utc'::text, now())
+);
+
+-- =====================================================================
+-- E. Payment details — clean structured record, not a note in a text box.
+-- =====================================================================
+CREATE TABLE IF NOT EXISTS public.lead_payment_details (
+    payment_id uuid primary key default gen_random_uuid(),
+    lead_id uuid references public.leads(lead_id) unique not null,
+    amount numeric not null,
+    payment_mode text check (payment_mode in ('Bank Transfer','UPI','Cheque','Cash')),
+    receipt_url text,
+    collected_by uuid references public.users(user_id),
+    paid_at timestamp with time zone default timezone('utc'::text, now())
+);
+
+-- =====================================================================
+-- F. RLS — same visibility pattern as leads: own records + admin.
+-- =====================================================================
+alter table public.lead_registration_checklist enable row level security;
+alter table public.lead_installation_details enable row level security;
+alter table public.lead_payment_details enable row level security;
+
+
+DROP POLICY IF EXISTS "checklist_access" ON public.lead_registration_checklist;
+create policy checklist_access on public.lead_registration_checklist for all using (
+    exists (select 1 from public.leads l where l.lead_id = lead_registration_checklist.lead_id
+        and (l.assigned_to = auth.uid() or public.has_capability('admin')))
+);
+
+DROP POLICY IF EXISTS "installation_access" ON public.lead_installation_details;
+create policy installation_access on public.lead_installation_details for all using (
+    exists (select 1 from public.leads l where l.lead_id = lead_installation_details.lead_id
+        and (l.assigned_to = auth.uid() or public.has_capability('admin')))
+);
+
+DROP POLICY IF EXISTS "payment_access" ON public.lead_payment_details;
+create policy payment_access on public.lead_payment_details for all using (
+    exists (select 1 from public.leads l where l.lead_id = lead_payment_details.lead_id
+        and (l.assigned_to = auth.uid() or public.has_capability('admin')))
+);
+
+-- =====================================================================
+-- G. Triggers
+-- =====================================================================
+create or replace function public.init_registration_checklist()
+returns trigger as $$
+begin
+    if new.status = 'Registration' and old.status is distinct from 'Registration' then
+        insert into public.lead_registration_checklist (lead_id)
+        values (new.lead_id)
+        on conflict (lead_id) do nothing;
+
+        insert into public.tasks (assigned_to, title, description, priority, source, related_lead_id, due_date)
+        values
+        (new.assigned_to, 'Collect GST certificate: ' || new.business_name, 'Required for registration.', 'High', 'manual', new.lead_id, current_date + 1),
+        (new.assigned_to, 'Collect PAN card: ' || new.business_name, 'Required for registration.', 'High', 'manual', new.lead_id, current_date + 1),
+        (new.assigned_to, 'Capture bank details: ' || new.business_name, 'Required for payment setup.', 'Medium', 'manual', new.lead_id, current_date + 1),
+        (new.assigned_to, 'Get agreement signed: ' || new.business_name, 'Final step before installation.', 'High', 'manual', new.lead_id, current_date + 2);
+    end if;
+    return new;
+end;
+$$ language plpgsql;
+
+drop trigger if exists trg_init_registration_checklist on public.leads;
+create trigger trg_init_registration_checklist
+after update on public.leads
+for each row execute function public.init_registration_checklist();
+
+create or replace function public.surface_reengagement_leads()
+returns void as $$
+begin
+    insert into public.tasks (assigned_to, title, description, priority, source, related_lead_id, due_date)
+    select assigned_to, 'Re-engage: ' || business_name,
+           'Marked not interested earlier — scheduled re-engagement window has arrived.',
+           'Medium', 'manual', lead_id, current_date
+    from public.leads
+    where status = 'Not Interested' and re_engage_after = current_date and assigned_to is not null;
+end;
+$$ language plpgsql;
+
+-- =====================================================================
+-- H. Views
+-- =====================================================================
+create or replace view public.pipeline_funnel_summary as
+select segment_type, status, count(*) as lead_count
+from public.leads
+group by segment_type, status;
+
+create or replace view public.lead_source_performance as
+select
+    lead_source, segment_type,
+    count(*) as total_leads,
+    count(*) filter (where status = 'Payment') as converted,
+    round(100.0 * count(*) filter (where status = 'Payment') / nullif(count(*),0), 1) as conversion_rate_pct
+from public.leads
+where lead_source is not null
+group by lead_source, segment_type;
+
+create or replace view public.avg_time_in_stage as
+select
+    status, segment_type,
+    round(avg(extract(epoch from (now() - (case when stage_entered_at is null then created_at else stage_entered_at end))) / 86400), 1) as avg_days_in_current_stage
+from public.leads
+where status not in ('Payment', 'Not Interested')
+group by status, segment_type;
+-- Track the renewal clock on the lead itself
+alter table public.leads add column if not exists renewal_date date;
+alter table public.leads add column if not exists renewal_reminder_sent boolean not null default false;
+
+-- The moment payment is recorded, set the renewal date exactly 1 year out
+create or replace function public.set_renewal_date()
+returns trigger as $$
+begin
+    update public.leads
+    set renewal_date = (new.paid_at::date + interval '1 year')::date
+    where lead_id = new.lead_id;
+    return new;
+end;
+$$ language plpgsql;
+
+drop trigger if exists trg_set_renewal_date on public.lead_payment_details;
+create trigger trg_set_renewal_date
+after insert on public.lead_payment_details
+for each row execute function public.set_renewal_date();
+
+-- Nightly job: 30-day-out heads-up, then the actual stage flip on the day itself
+create or replace function public.process_renewals(target_date date)
+returns void as $$
+begin
+    -- 30 days out: heads-up task, status stays "Payment" (still an active client)
+    insert into public.tasks (assigned_to, title, description, priority, source, related_lead_id, due_date)
+    select assigned_to, 'Renewal coming up: ' || business_name,
+           'Renewal due on ' || renewal_date || '. Reach out to confirm continuation.',
+           'Medium', 'manual', lead_id, target_date
+    from public.leads
+    where status = 'Payment'
+      and renewal_date = target_date + interval '30 days'
+      and renewal_reminder_sent = false;
+
+    update public.leads set renewal_reminder_sent = true
+    where status = 'Payment' and renewal_date = target_date + interval '30 days';
+
+    -- On the exact renewal date: flip stage, force a High-priority task
+    update public.leads
+    set status = 'Renewal Due'
+    where status = 'Payment' and renewal_date = target_date;
+
+    insert into public.tasks (assigned_to, title, description, priority, source, related_lead_id, due_date)
+    select assigned_to, 'Renewal due today: ' || business_name,
+           'Contact the client today to renew.', 'High', 'manual', lead_id, target_date
+    from public.leads
+    where status = 'Renewal Due' and renewal_date = target_date;
+end;
+$$ language plpgsql;
+
+-- 1.2 Registration checklist — corrected document set
+alter table public.lead_registration_checklist drop column if exists bank_details_captured;
+alter table public.lead_registration_checklist drop column if exists agreement_signed;
+alter table public.lead_registration_checklist add column if not exists drug_licence_uploaded boolean not null default false;
+alter table public.lead_registration_checklist add column if not exists bill_photo_uploaded boolean not null default false;
+
+create or replace function public.init_registration_checklist()
+returns trigger as $$
+begin
+    if new.status = 'Registration' and old.status is distinct from 'Registration' then
+        insert into public.lead_registration_checklist (lead_id)
+        values (new.lead_id)
+        on conflict (lead_id) do nothing;
+
+        insert into public.tasks (assigned_to, title, description, priority, source, related_lead_id, due_date)
+        values
+        (new.assigned_to, 'Collect GST certificate: ' || new.business_name, 'Required for registration.', 'High', 'manual', new.lead_id, current_date + 1),
+        (new.assigned_to, 'Collect PAN card: ' || new.business_name, 'Required for registration.', 'High', 'manual', new.lead_id, current_date + 1),
+        (new.assigned_to, 'Collect Drug Licence: ' || new.business_name, 'Required for registration.', 'High', 'manual', new.lead_id, current_date + 1),
+        (new.assigned_to, 'Collect Bill Photo: ' || new.business_name, 'Required for registration.', 'Medium', 'manual', new.lead_id, current_date + 1);
+    end if;
+    return new;
+end;
+$$ language plpgsql;
+
+-- 1.3 Universal rule: every scheduled follow-up becomes a My Day reminder
+create or replace function public.create_task_from_call_followup()
+returns trigger as $$
+begin
+    if new.next_call_at is not null then
+        insert into public.tasks (assigned_to, title, description, priority, source, related_lead_id, due_date)
+        select l.assigned_to, 'Call back: ' || l.business_name, 'Scheduled follow-up call.',
+               'Medium', 'manual', l.lead_id, new.next_call_at::date
+        from public.leads l where l.lead_id = new.lead_id;
+    end if;
+    return new;
+end;
+$$ language plpgsql;
+
+drop trigger if exists trg_call_followup_task on public.call_logs;
+create trigger trg_call_followup_task
+after insert on public.call_logs
+for each row execute function public.create_task_from_call_followup();
+
+-- 1.4 Client support: require resolution notes on every closed ticket
+alter table public.client_queries add column if not exists resolution_notes text;
+alter table public.client_queries add column if not exists resolved_by uuid references public.users(user_id);
+alter table public.client_queries add column if not exists resolved_at timestamp with time zone;
+
+alter table public.internal_tickets add column if not exists resolution_notes text;
+
+alter table public.client_queries add constraint resolution_notes_required
+    check (problem_status != 'Resolved' or (resolution_notes is not null and length(trim(resolution_notes)) > 0));
+-- Replace the old check constraint with the corrected option list
+alter table public.leads drop constraint if exists leads_lead_source_check;
+alter table public.leads add constraint leads_lead_source_check
+    check (lead_source in ('Referral','Cold Call','Inbound Inquiry','Social Media','Field Visit','Other'));
+
+-- New column to capture free text when "Other" is selected
+alter table public.leads add column if not exists lead_source_other text;
+
+-- Migrate existing "Exhibition/Event" leads to "Other"
+update public.leads set lead_source = 'Other', lead_source_other = 'Exhibition/Event'
+where lead_source = 'Exhibition/Event';
+-- 006_mapping_requests.sql
+
+-- Drop existing mapping_requests table (since this is just a log, dropping is acceptable as discussed)
+DROP TABLE IF EXISTS public.mapping_requests CASCADE;
+
+-- Recreate mapping_requests with new structure
+CREATE TABLE IF NOT EXISTS public.mapping_requests (
+  request_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  distributor_lead_id UUID NOT NULL REFERENCES public.leads(lead_id) ON DELETE CASCADE,
+  retailer_lead_id UUID NOT NULL REFERENCES public.leads(lead_id) ON DELETE CASCADE,
+  mapped_by UUID REFERENCES public.users(user_id) ON DELETE SET NULL,
+  status text NOT NULL CHECK (status IN ('Pending', 'Completed')) DEFAULT 'Pending',
+  notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  completed_at TIMESTAMP WITH TIME ZONE
+);
+
+-- Enable RLS
+ALTER TABLE public.mapping_requests ENABLE ROW LEVEL SECURITY;
+
+-- Create RLS Policies
+
+DROP POLICY IF EXISTS "mapping_requests_access" ON public.mapping_requests;
+CREATE POLICY mapping_requests_access ON public.mapping_requests
+FOR ALL
+USING (
+  has_capability('ret_support') OR has_capability('dist_support') OR has_capability('admin')
+);
+
+-- Trigger for KPI update on status transition to 'Completed'
+CREATE OR REPLACE FUNCTION update_kpi_mapping_request()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.status = 'Completed' AND OLD.status != 'Completed' THEN
+    UPDATE public.kpi_daily_snapshot
+    SET mapping_requests_resolved = mapping_requests_resolved + 1
+    WHERE user_id = NEW.mapped_by AND date = CURRENT_DATE;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS on_mapping_request_completed ON public.mapping_requests;
+
+DROP TRIGGER IF EXISTS on_mapping_request_completed ON public.mapping_requests;
+CREATE TRIGGER on_mapping_request_completed
+AFTER UPDATE ON public.mapping_requests
+FOR EACH ROW
+EXECUTE FUNCTION update_kpi_mapping_request();
+-- Enable RLS on remaining tables to comply with Part 2 Security Checklist
+
+ALTER TABLE public.capabilities ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.attendance_shift_config ENABLE ROW LEVEL SECURITY;
+
+-- Add basic read-only policies for all authenticated users to capabilities
+
+DROP POLICY IF EXISTS "Capabilities are readable by authenticated users" ON public.capabilities;
+CREATE POLICY "Capabilities are readable by authenticated users"
+ON public.capabilities
+FOR SELECT
+TO authenticated
+USING (true);
+
+-- Add read-only policies for all authenticated users to attendance_shift_config
+
+DROP POLICY IF EXISTS "Attendance shift config is readable by authenticated users" ON public.attendance_shift_config;
+CREATE POLICY "Attendance shift config is readable by authenticated users"
+ON public.attendance_shift_config
+FOR SELECT
+TO authenticated
+USING (true);
+
+-- Allow admin users to modify attendance_shift_config
+
+DROP POLICY IF EXISTS "Admins can update attendance shift config" ON public.attendance_shift_config;
+CREATE POLICY "Admins can update attendance shift config"
+ON public.attendance_shift_config
+FOR ALL
+TO authenticated
+USING (public.has_capability('admin'))
+WITH CHECK (public.has_capability('admin'));
+-- Weekly Digest Migration
+-- 1. Create the digest table
+CREATE TABLE IF NOT EXISTS public.weekly_digest_log (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    week_start DATE NOT NULL,
+    generated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    data JSONB NOT NULL,
+    UNIQUE(week_start)
+);
+
+-- RLS: Only admins/managers can view digests
+ALTER TABLE public.weekly_digest_log ENABLE ROW LEVEL SECURITY;
+
+
+DROP POLICY IF EXISTS "Allow managers and admins to view digests" ON public.weekly_digest_log;
+CREATE POLICY "Allow managers and admins to view digests" 
+ON public.weekly_digest_log FOR SELECT 
+USING (
+    public.has_capability('admin') OR public.has_capability('manager')
+);
+
+-- 2. Create the generation function
+CREATE OR REPLACE FUNCTION public.generate_weekly_digest()
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_week_start DATE;
+    v_data JSONB;
+BEGIN
+    -- Determine the start of the current week (Monday)
+    v_week_start := date_trunc('week', current_date)::DATE;
+    
+    -- Generate the JSON structure. This simplifies what managers see.
+    -- We aggregate stuck leads, task completions, and upcoming renewals.
+    WITH stuck_leads AS (
+        SELECT jsonb_agg(
+            jsonb_build_object(
+                'id', lead_id,
+                'name', business_name,
+                'status', status,
+                'days_in_stage', current_date - COALESCE(stage_entered_at, created_at)::date,
+                'assigned_to', assigned_to
+            )
+        ) as leads
+        FROM public.leads
+        WHERE current_date - COALESCE(stage_entered_at, created_at)::date > 14
+        AND status NOT IN ('Payment', 'Installation')
+    ),
+    task_performance AS (
+        SELECT jsonb_agg(
+            jsonb_build_object(
+                'assigned_to', assigned_to,
+                'completed_count', count(*) FILTER (WHERE status = 'Completed'),
+                'total_count', count(*)
+            )
+        ) as tasks
+        FROM public.tasks
+        WHERE created_at >= v_week_start - interval '7 days'
+        GROUP BY assigned_to
+    ),
+    upcoming_renewals AS (
+        SELECT jsonb_agg(
+            jsonb_build_object(
+                'id', lead_id,
+                'name', business_name,
+                'renewal_date', renewal_date
+            )
+        ) as renewals
+        FROM public.leads
+        WHERE status = 'Payment' 
+        AND renewal_date >= current_date
+        AND renewal_date <= current_date + interval '30 days'
+    )
+    SELECT jsonb_build_object(
+        'stuck_leads', COALESCE((SELECT leads FROM stuck_leads), '[]'::jsonb),
+        'task_performance', COALESCE((SELECT tasks FROM task_performance), '[]'::jsonb),
+        'upcoming_renewals', COALESCE((SELECT renewals FROM upcoming_renewals), '[]'::jsonb)
+    ) INTO v_data;
+    
+    -- Upsert the digest for the current week
+    INSERT INTO public.weekly_digest_log (week_start, data)
+    VALUES (v_week_start, v_data)
+    ON CONFLICT (week_start) DO UPDATE SET
+        data = EXCLUDED.data,
+        generated_at = NOW();
+END;
+$$;
+
+-- 3. Schedule via pg_cron (runs every Monday at 1:00 AM)
+-- Note: pg_cron requires the pg_cron extension to be enabled in Supabase.
+-- Uncomment and run the following if pg_cron is enabled:
+-- SELECT cron.schedule('generate_weekly_digest_job', '0 1 * * 1', 'SELECT public.generate_weekly_digest();');
+-- Migration to revert free-text unstructured columns and enforce strict relational mappings
+
+-- 1. Revert client_queries table
+ALTER TABLE public.client_queries DROP COLUMN IF EXISTS client_name_unregistered;
+-- Assuming there might be NULLs, we can only set NOT NULL if we clean them up, but since it's fresh we can try:
+-- For safety, we won't strictly enforce NOT NULL on old rows if they are null, but going forward the schema requires it.
+-- We will enforce NOT NULL if possible.
+DO $$ 
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM public.client_queries WHERE lead_id IS NULL) THEN
+    ALTER TABLE public.client_queries ALTER COLUMN lead_id SET NOT NULL;
+  END IF;
+END $$;
+
+-- 2. Revert mapping_requests table
+ALTER TABLE public.mapping_requests DROP COLUMN IF EXISTS distributor_name_unregistered;
+ALTER TABLE public.mapping_requests DROP COLUMN IF EXISTS retailer_name_unregistered;
+
+DO $$ 
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM public.mapping_requests WHERE distributor_lead_id IS NULL OR retailer_lead_id IS NULL) THEN
+    ALTER TABLE public.mapping_requests ALTER COLUMN distributor_lead_id SET NOT NULL;
+    ALTER TABLE public.mapping_requests ALTER COLUMN retailer_lead_id SET NOT NULL;
+  END IF;
+END $$;

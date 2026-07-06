@@ -717,11 +717,16 @@ export default function OnboardingPage() {
                         await db.table('lead_registration_checklist').add(data);
                         await db.sync_queue.add({ idempotency_key: crypto.randomUUID(),  table_name: "lead_registration_checklist", action: "INSERT", data, timestamp: data.updated_at });
                       }
-                      handleRequestTransition(selectedLead, "Installation");
+                      if (selectedLead.segment_type === "Distributor") {
+                        handleRequestTransition(selectedLead, "Installation");
+                      } else {
+                        setSuccessMsg("Registration documents saved successfully.");
+                        setTimeout(() => setSuccessMsg(null), 3000);
+                      }
                     }}
                     className="w-full py-3 bg-brand-primary text-white rounded-xl text-xs font-black uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed hover:bg-brand-secondary shadow-md shadow-brand-primary/20 transition-all"
                     title={(!regGst || !regPan || !regDrug || !regBill) ? "Complete all documents first" : ""}>
-                    Move to Installation →
+                    {selectedLead.segment_type === "Distributor" ? "Move to Installation →" : "Save Documents"}
                   </button>
                 </div>
               )}

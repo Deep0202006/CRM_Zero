@@ -4,7 +4,8 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { db, LocalLead, LocalMappingRequest } from "@/lib/db";
 import { AlertCircle, CheckCircle2, Clock, Link2, RefreshCw, Download, ArrowRightLeft } from "lucide-react";
-import { SearchableSelect } from "@/components/SearchableSelect";
+import { SearchableSelect, SearchableOption } from "@/components/SearchableSelect";
+import excelUsers from "@/lib/excel_users.json";
 
 export default function MappingsPage() {
   const { currentUser, hasSupport } = useAuth();
@@ -20,30 +21,34 @@ export default function MappingsPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  const SEED_DISTRIBUTORS = ["Distributor Alpha", "Distributor Beta", "Global Logistics Corp", "Apex Supply Hub", "Prime Wholesale", "Omega Distributors"];
-  const SEED_RETAILERS = ["Retailer One", "Retailer Two", "Metro Mart", "Cornerstone Retail", "Boutique Express", "Urban Goods", "Summit Outlets"];
+  const excelOptions: SearchableOption[] = React.useMemo(() => excelUsers.map((eu: any) => ({
+    value: `EXCEL::${eu.username}::${eu.name || eu.username}`,
+    label: `[${eu.username}] - ${eu.name || "Unknown"}`,
+    searchText: eu.username + " " + eu.name
+  })), []);
 
   const distributorOptions = React.useMemo(() => {
-    const dbOptions = leads.filter(l => l.segment_type === "Distributor").map(l => ({ value: l.business_name, label: l.business_name }));
-    const seedOptions = SEED_DISTRIBUTORS.map(name => ({ value: name, label: name }));
-    const map = new Map();
-    dbOptions.forEach(opt => map.set(opt.value.toLowerCase(), opt));
-    seedOptions.forEach(opt => {
-      if (!map.has(opt.value.toLowerCase())) map.set(opt.value.toLowerCase(), opt);
+    const dbOptions: SearchableOption[] = leads.filter(l => l.segment_type === "Distributor").map(l => ({ value: l.lead_id, label: l.business_name }));
+    const map = new Map<string, SearchableOption>();
+    dbOptions.forEach(opt => map.set(opt.label.toLowerCase(), opt));
+    excelOptions.forEach(opt => {
+      // Don't duplicate if business name matches exactly
+      const rawName = opt.value.split("::")[2]?.toLowerCase();
+      if (!map.has(rawName)) map.set(rawName, opt);
     });
     return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label));
-  }, [leads]);
+  }, [leads, excelOptions]);
 
   const retailerOptions = React.useMemo(() => {
-    const dbOptions = leads.filter(l => l.segment_type === "Retailer").map(l => ({ value: l.business_name, label: l.business_name }));
-    const seedOptions = SEED_RETAILERS.map(name => ({ value: name, label: name }));
-    const map = new Map();
-    dbOptions.forEach(opt => map.set(opt.value.toLowerCase(), opt));
-    seedOptions.forEach(opt => {
-      if (!map.has(opt.value.toLowerCase())) map.set(opt.value.toLowerCase(), opt);
+    const dbOptions: SearchableOption[] = leads.filter(l => l.segment_type === "Retailer").map(l => ({ value: l.lead_id, label: l.business_name }));
+    const map = new Map<string, SearchableOption>();
+    dbOptions.forEach(opt => map.set(opt.label.toLowerCase(), opt));
+    excelOptions.forEach(opt => {
+      const rawName = opt.value.split("::")[2]?.toLowerCase();
+      if (!map.has(rawName)) map.set(rawName, opt);
     });
     return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label));
-  }, [leads]);
+  }, [leads, excelOptions]);
 
   const loadData = async () => {
     try {
@@ -60,6 +65,50 @@ export default function MappingsPage() {
     loadData();
   }, []);
 
+  const resolveLeadId = async (input: string, segmentType: "Distributor" | "Retailer"): Promise<string> => {
+    if (!input.trim()) throw new Error("Empty input");
+    
+    // If it's already an existing UUID
+    const existing = leads.find(l => l.lead_id === input);
+    if (existing) return existing.lead_id;
+
+    let bName = input;
+    if (input.startsWith("EXCEL::")) {
+      const parts = input.split("::");
+      bName = parts[2] || parts[1];
+    }
+
+    // Attempt name match
+    const nameMatch = leads.find(l => l.business_name.toLowerCase() === bName.trim().toLowerCase() && l.segment_type === segmentType);
+    if (nameMatch) return nameMatch.lead_id;
+
+    // Create new lead dynamically
+    const newLeadId = crypto.randomUUID();
+    const newLead: LocalLead = {
+      lead_id: newLeadId,
+      business_name: bName.trim(),
+      contact_person: bName.trim(),
+      phone: "0000000000",
+      segment_type: segmentType,
+      status: "New",
+      assigned_to: currentUser?.user_id || "system",
+      created_at: new Date().toISOString(),
+      lead_source: "Mapping Form"
+    };
+
+    await db.leads.add(newLead);
+    await db.sync_queue.add({
+      idempotency_key: crypto.randomUUID(),
+      table_name: "leads",
+      action: "INSERT",
+      data: newLead,
+      timestamp: new Date().toISOString()
+    });
+
+    setLeads(prev => [...prev, newLead]);
+    return newLeadId;
+  };
+
   const handleLogMapping = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!primaryName.trim() || !secondaryNames.trim()) {
@@ -68,10 +117,8 @@ export default function MappingsPage() {
     }
     
     try {
-      // Find primary lead match
-      const pMatch = leads.find(l => l.business_name.toLowerCase() === primaryName.trim().toLowerCase() && l.segment_type === activeSegment);
+      const primaryLeadId = await resolveLeadId(primaryName, activeSegment);
       
-      // Parse secondary names
       let sNames = [secondaryNames.trim()];
       if (cardinality === "1:N") {
         sNames = secondaryNames.split(/[,\n]+/).map(s => s.trim()).filter(Boolean);
@@ -89,16 +136,14 @@ export default function MappingsPage() {
       for (let i = 0; i < sNames.length; i++) {
         const sName = sNames[i];
         const secondarySegment = activeSegment === "Distributor" ? "Retailer" : "Distributor";
-        const sMatch = leads.find(l => l.business_name.toLowerCase() === sName.toLowerCase() && l.segment_type === secondarySegment);
         
+        const secondaryLeadId = await resolveLeadId(sName, secondarySegment);
         const isDistPrimary = activeSegment === "Distributor";
         
         const newMapping: LocalMappingRequest = {
           request_id: crypto.randomUUID(),
-          distributor_lead_id: isDistPrimary ? (pMatch ? pMatch.lead_id : null) : (sMatch ? sMatch.lead_id : null),
-          retailer_lead_id: isDistPrimary ? (sMatch ? sMatch.lead_id : null) : (pMatch ? pMatch.lead_id : null),
-          distributor_name_unregistered: isDistPrimary ? (pMatch ? null : primaryName.trim()) : (sMatch ? null : sName),
-          retailer_name_unregistered: isDistPrimary ? (sMatch ? null : sName) : (pMatch ? null : primaryName.trim()),
+          distributor_lead_id: isDistPrimary ? primaryLeadId : secondaryLeadId,
+          retailer_lead_id: isDistPrimary ? secondaryLeadId : primaryLeadId,
           status: "Pending",
           mapped_by: currentUser?.user_id || "system",
           created_at: timestamp,
@@ -108,7 +153,6 @@ export default function MappingsPage() {
       
       await db.mapping_requests.bulkAdd(newMaps);
       
-      // Queue syncs
       for (let i = 0; i < newMaps.length; i++) {
          await db.sync_queue.add({ 
            idempotency_key: `${idempotencyBase}-${i}`, 
@@ -143,13 +187,11 @@ export default function MappingsPage() {
   };
 
   const getDistributorName = (map: LocalMappingRequest) => {
-    if (map.distributor_lead_id) return leads.find(l => l.lead_id === map.distributor_lead_id)?.business_name || "Unknown";
-    return map.distributor_name_unregistered || "Unknown";
+    return leads.find(l => l.lead_id === map.distributor_lead_id)?.business_name || "Unknown Distributor";
   };
   
   const getRetailerName = (map: LocalMappingRequest) => {
-    if (map.retailer_lead_id) return leads.find(l => l.lead_id === map.retailer_lead_id)?.business_name || "Unknown";
-    return map.retailer_name_unregistered || "Unknown";
+    return leads.find(l => l.lead_id === map.retailer_lead_id)?.business_name || "Unknown Retailer";
   };
 
   if (!hasSupport) {

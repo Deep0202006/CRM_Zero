@@ -125,8 +125,8 @@ export async function exportMasterMappings() {
 
   const data = requests.map(r => ({
     'Request ID': r.request_id,
-    'Distributor Name': (r.distributor_lead_id ? leadMap.get(r.distributor_lead_id) : r.distributor_name_unregistered) || r.distributor_lead_id || r.distributor_name_unregistered || '',
-    'Retailer Name': (r.retailer_lead_id ? leadMap.get(r.retailer_lead_id) : r.retailer_name_unregistered) || r.retailer_lead_id || r.retailer_name_unregistered || '',
+    'Distributor Name': (r.distributor_lead_id ? leadMap.get(r.distributor_lead_id) : '') || r.distributor_lead_id || '',
+    'Retailer Name': (r.retailer_lead_id ? leadMap.get(r.retailer_lead_id) : '') || r.retailer_lead_id || '',
     'Mapped By Username': r.mapped_by ? (userMap.get(r.mapped_by) || r.mapped_by) : '',
     'Status': r.status,
     'Notes': r.notes || '',

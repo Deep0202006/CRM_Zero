@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/db";
 import { UserPlus, Send, Users, CalendarDays, AlertCircle } from "lucide-react";import type { LocalUser } from "@/lib/db";
+import { SearchableSelect } from "@/components/SearchableSelect";
 
 type Priority = "High" | "Medium" | "Low";
 
@@ -27,7 +28,7 @@ export default function AssignTaskPage() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    db.users.toArray().then((u) => setUsers(u.filter((x) => x.is_active === 1)));
+    db.users.toArray().then((u) => setUsers(u.filter((x) => String(x.is_active) === "1" || String(x.is_active) === "true")));
   }, []);
 
   if (!isAdmin) {
@@ -104,19 +105,13 @@ export default function AssignTaskPage() {
             <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
               <Users size={10} className="inline mr-1" />Team Member
             </label>
-            <select
+            <SearchableSelect
               required
+              placeholder="Select team member…"
               value={form.assignedTo}
-              onChange={(e) => setForm({ ...form, assignedTo: e.target.value })}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-900 focus:outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/10 transition-all"
-            >
-              <option value="">Select team member…</option>
-              {users.map((u) => (
-                <option key={u.user_id} value={u.user_id}>
-                  {u.name}
-                </option>
-              ))}
-            </select>
+              onChange={(val) => setForm({ ...form, assignedTo: val })}
+              options={users.map((u) => ({ value: u.user_id, label: u.name }))}
+            />
           </div>
 
           {/* Title */}

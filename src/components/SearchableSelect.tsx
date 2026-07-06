@@ -6,6 +6,7 @@ import { ChevronDown, Search } from "lucide-react";
 export interface SearchableOption {
   value: string;
   label: string;
+  searchText?: string;
 }
 
 interface SearchableSelectProps {
@@ -49,9 +50,10 @@ export function SearchableSelect({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const filteredOptions = options.filter((opt) =>
-    opt.label.toLowerCase().includes(displayValue.toLowerCase())
-  );
+  const filteredOptions = options.filter((opt) => {
+    const searchTarget = (opt.label + " " + opt.value + " " + (opt.searchText || "")).toLowerCase();
+    return searchTarget.includes(displayValue.toLowerCase());
+  });
 
   return (
     <div className="relative" ref={containerRef}>

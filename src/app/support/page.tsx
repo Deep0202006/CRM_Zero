@@ -13,7 +13,8 @@ import {
   Download,
 } from "lucide-react";
 import { exportSupport } from "@/lib/excelExport";
-import { SearchableSelect } from "@/components/SearchableSelect";
+import { SearchableSelect, SearchableOption } from "@/components/SearchableSelect";
+import excelUsers from "@/lib/excel_users.json";
 
 type QueryStatus = "Open" | "In Progress" | "Resolved";
 
@@ -36,24 +37,24 @@ export default function SupportPage() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [filterTab,  setFilterTab]  = useState<"all" | "open" | "resolved">("open");
 
-  const SEED_DISTRIBUTORS = ["Distributor Alpha", "Distributor Beta", "Global Logistics Corp", "Apex Supply Hub", "Prime Wholesale", "Omega Distributors"];
-  const SEED_RETAILERS = ["Retailer One", "Retailer Two", "Metro Mart", "Cornerstone Retail", "Boutique Express", "Urban Goods", "Summit Outlets"];
-
   const clientOptions = React.useMemo(() => {
-    const dbOptions = leads.map(l => ({ value: l.business_name, label: l.business_name }));
-    let seedNames: string[] = [];
-    if (isAdmin) {
-      seedNames = [...SEED_DISTRIBUTORS, ...SEED_RETAILERS];
-    } else {
-      if (hasDistSupport) seedNames.push(...SEED_DISTRIBUTORS);
-      if (hasRetSupport) seedNames.push(...SEED_RETAILERS);
-    }
-    const seedOptions = seedNames.map(name => ({ value: name, label: name }));
+    const dbOptions: SearchableOption[] = leads.map(l => ({ 
+      value: l.lead_id, 
+      label: l.business_name 
+    }));
     
-    const map = new Map();
-    dbOptions.forEach(opt => map.set(opt.value.toLowerCase(), opt));
-    seedOptions.forEach(opt => {
-      if (!map.has(opt.value.toLowerCase())) map.set(opt.value.toLowerCase(), opt);
+    // Convert excel users into options
+    const excelOptions: SearchableOption[] = excelUsers.map((eu: any) => ({
+      value: `EXCEL::${eu.username}::${eu.name || eu.username}`,
+      label: `[${eu.username}] - ${eu.name || "Unknown"}`,
+      searchText: eu.username + " " + eu.name
+    }));
+    
+    const map = new Map<string, SearchableOption>();
+    dbOptions.forEach(opt => map.set(opt.label.toLowerCase(), opt));
+    excelOptions.forEach(opt => {
+      const rawName = opt.value.split("::")[2]?.toLowerCase();
+      if (!map.has(rawName)) map.set(rawName, opt);
     });
     return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label));
   }, [leads, isAdmin, hasDistSupport, hasRetSupport]);
@@ -85,15 +86,55 @@ export default function SupportPage() {
       setLeads(scopedLeads);
 
       const allQueries = await db.client_queries.orderBy("created_at").reverse().toArray();
-      // Filter queries: show if they have a mapped lead_id in our scope OR if they don't have a lead_id (unregistered)
       const scopedIds = new Set(scopedLeads.map(l => l.lead_id));
-      setQueries(allQueries.filter(q => !q.lead_id || scopedIds.has(q.lead_id)));
+      setQueries(allQueries.filter(q => scopedIds.has(q.lead_id)));
     } catch (err) {
       console.error("Failed to load support data", err);
     }
   };
 
   useEffect(() => { loadData(); }, [currentUser]);
+
+  const resolveLeadId = async (input: string): Promise<string> => {
+    if (!input.trim()) throw new Error("Empty input");
+    
+    const existing = leads.find(l => l.lead_id === input);
+    if (existing) return existing.lead_id;
+
+    let bName = input;
+    if (input.startsWith("EXCEL::")) {
+      const parts = input.split("::");
+      bName = parts[2] || parts[1];
+    }
+
+    const nameMatch = leads.find(l => l.business_name.toLowerCase() === bName.trim().toLowerCase());
+    if (nameMatch) return nameMatch.lead_id;
+
+    const newLeadId = crypto.randomUUID();
+    const newLead: LocalLead = {
+      lead_id: newLeadId,
+      business_name: bName.trim(),
+      contact_person: bName.trim(),
+      phone: "0000000000",
+      segment_type: "Retailer", // Default to retailer if unknown, could be improved
+      status: "New",
+      assigned_to: currentUser?.user_id || "system",
+      created_at: new Date().toISOString(),
+      lead_source: "Support Form"
+    };
+
+    await db.leads.add(newLead);
+    await db.sync_queue.add({
+      idempotency_key: crypto.randomUUID(),
+      table_name: "leads",
+      action: "INSERT",
+      data: newLead,
+      timestamp: new Date().toISOString()
+    });
+
+    setLeads(prev => [...prev, newLead]);
+    return newLeadId;
+  };
 
   // ── Log new query ─────────────────────────────────────────────────────────
   const handleLogQuery = async (e: React.FormEvent) => {
@@ -104,12 +145,11 @@ export default function SupportPage() {
       return;
     }
     try {
-      const match = leads.find(l => l.business_name.toLowerCase() === clientNameInput.trim().toLowerCase());
+      const primaryLeadId = await resolveLeadId(clientNameInput);
       
       const newQuery: LocalClientQuery = {
         query_id:       crypto.randomUUID(),
-        lead_id:        match ? match.lead_id : null,
-        client_name_unregistered: match ? null : clientNameInput.trim(),
+        lead_id:        primaryLeadId,
         client_problem: queryProblem.trim(),
         problem_status: "Open", // Always Open
         assigned_to:    currentUser?.user_id || null,
@@ -162,8 +202,7 @@ export default function SupportPage() {
   };
 
   const getLeadName = (query: LocalClientQuery) => {
-    if (query.lead_id) return leads.find(l => l.lead_id === query.lead_id)?.business_name || "Unknown";
-    return query.client_name_unregistered || "Unknown";
+    return leads.find(l => l.lead_id === query.lead_id)?.business_name || "Unknown";
   };
   const filteredQueries = queries.filter(q => {
     if (filterTab === "open")     return q.problem_status !== "Resolved";

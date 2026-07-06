@@ -21,7 +21,7 @@ alter table public.call_logs add column if not exists next_call_at timestamp wit
 -- =====================================================================
 -- C. Registration checklist — the single biggest cause of deals stalling.
 -- =====================================================================
-create table public.lead_registration_checklist (
+CREATE TABLE IF NOT EXISTS public.lead_registration_checklist (
     checklist_id uuid primary key default gen_random_uuid(),
     lead_id uuid references public.leads(lead_id) unique not null,
     gst_certificate_uploaded boolean not null default false,
@@ -35,7 +35,7 @@ create table public.lead_registration_checklist (
 -- =====================================================================
 -- D. Installation details — proof of work, not just a status flip.
 -- =====================================================================
-create table public.lead_installation_details (
+CREATE TABLE IF NOT EXISTS public.lead_installation_details (
     installation_id uuid primary key default gen_random_uuid(),
     lead_id uuid references public.leads(lead_id) unique not null,
     installed_by uuid references public.users(user_id),
@@ -50,7 +50,7 @@ create table public.lead_installation_details (
 -- =====================================================================
 -- E. Payment details — clean structured record, not a note in a text box.
 -- =====================================================================
-create table public.lead_payment_details (
+CREATE TABLE IF NOT EXISTS public.lead_payment_details (
     payment_id uuid primary key default gen_random_uuid(),
     lead_id uuid references public.leads(lead_id) unique not null,
     amount numeric not null,
@@ -67,17 +67,20 @@ alter table public.lead_registration_checklist enable row level security;
 alter table public.lead_installation_details enable row level security;
 alter table public.lead_payment_details enable row level security;
 
-DROP POLICY IF EXISTS checklist_access ON public.lead_registration_checklist;
+
+DROP POLICY IF EXISTS "checklist_access" ON public.lead_registration_checklist;
 create policy checklist_access on public.lead_registration_checklist for all using (
     exists (select 1 from public.leads l where l.lead_id = lead_registration_checklist.lead_id
         and (l.assigned_to = auth.uid() or public.has_capability('admin')))
 );
-DROP POLICY IF EXISTS installation_access ON public.lead_installation_details;
+
+DROP POLICY IF EXISTS "installation_access" ON public.lead_installation_details;
 create policy installation_access on public.lead_installation_details for all using (
     exists (select 1 from public.leads l where l.lead_id = lead_installation_details.lead_id
         and (l.assigned_to = auth.uid() or public.has_capability('admin')))
 );
-DROP POLICY IF EXISTS payment_access ON public.lead_payment_details;
+
+DROP POLICY IF EXISTS "payment_access" ON public.lead_payment_details;
 create policy payment_access on public.lead_payment_details for all using (
     exists (select 1 from public.leads l where l.lead_id = lead_payment_details.lead_id
         and (l.assigned_to = auth.uid() or public.has_capability('admin')))

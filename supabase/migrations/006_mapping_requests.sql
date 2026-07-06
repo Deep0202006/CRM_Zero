@@ -4,7 +4,7 @@
 DROP TABLE IF EXISTS public.mapping_requests CASCADE;
 
 -- Recreate mapping_requests with new structure
-CREATE TABLE public.mapping_requests (
+CREATE TABLE IF NOT EXISTS public.mapping_requests (
   request_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   distributor_lead_id UUID NOT NULL REFERENCES public.leads(lead_id) ON DELETE CASCADE,
   retailer_lead_id UUID NOT NULL REFERENCES public.leads(lead_id) ON DELETE CASCADE,
@@ -19,7 +19,8 @@ CREATE TABLE public.mapping_requests (
 ALTER TABLE public.mapping_requests ENABLE ROW LEVEL SECURITY;
 
 -- Create RLS Policies
-DROP POLICY IF EXISTS mapping_requests_access ON public.mapping_requests;
+
+DROP POLICY IF EXISTS "mapping_requests_access" ON public.mapping_requests;
 CREATE POLICY mapping_requests_access ON public.mapping_requests
 FOR ALL
 USING (
