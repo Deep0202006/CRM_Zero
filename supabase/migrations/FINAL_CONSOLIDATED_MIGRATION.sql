@@ -707,6 +707,7 @@ alter table public.client_queries add column if not exists resolved_at timestamp
 
 alter table public.internal_tickets add column if not exists resolution_notes text;
 
+alter table public.client_queries drop constraint if exists resolution_notes_required;
 alter table public.client_queries add constraint resolution_notes_required
     check (problem_status != 'Resolved' or (resolution_notes is not null and length(trim(resolution_notes)) > 0));
 -- Replace the old check constraint with the corrected option list
