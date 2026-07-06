@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
   if (createError) return NextResponse.json({ error: createError.message }, { status: 400 });
 
   await supabaseAdmin.from("users").insert({
-    user_id: newUser.user.id, name, email, is_active: 1, manager_id: manager_id || null,
+    user_id: newUser.user.id, name, email, is_active: true, manager_id: manager_id || null,
   });
 
   await supabaseAdmin.from("user_capabilities").insert(

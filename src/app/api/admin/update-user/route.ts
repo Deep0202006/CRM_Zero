@@ -47,12 +47,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `Failed to update auth user: ${authUpdateError.message}` }, { status: 400 });
   }
 
-  // 2. Update public.users - is_active is an integer in the schema (1 = active, 0 = inactive)
-  const is_active_int = is_active ? 1 : 0;
-  
+  // 2. Update public.users - is_active is a boolean in the schema
   const { error: dbError } = await supabaseAdmin
     .from("users")
-    .update({ name, email, is_active: is_active_int })
+    .update({ name, email, is_active })
     .eq("user_id", user_id);
 
   if (dbError) {

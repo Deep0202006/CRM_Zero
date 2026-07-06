@@ -105,26 +105,26 @@ export default function AdminPage() {
         const rows = await db.user_capabilities.where("user_id").equals(targetUserId).toArray();
         const targetRow = rows.find((r) => r.capability_code === capCode);
         if (targetRow) {
+          const { error } = await supabase.from('user_capabilities').delete().eq('id', targetRow.id);
+          if (error) throw error;
           await db.user_capabilities.delete(targetRow.id);
-          await db.sync_queue.add({ idempotency_key: crypto.randomUUID(),  table_name: "user_capabilities", action: "DELETE", data: { id: targetRow.id }, timestamp: new Date().toISOString() });
         }
       } else {
-        const newCap: LocalUserCapability = {
-          id: crypto.randomUUID(),
+        const newCap = {
           user_id: targetUserId,
           capability_code: capCode,
-          assigned_by: currentUser?.user_id || "admin",
-          assigned_at: new Date().toISOString(),
+          assigned_by: currentUser?.user_id || null,
         };
-        await db.user_capabilities.add(newCap);
-        await db.sync_queue.add({ idempotency_key: crypto.randomUUID(),  table_name: "user_capabilities", action: "INSERT", data: newCap, timestamp: new Date().toISOString() });
+        const { data, error } = await supabase.from('user_capabilities').insert(newCap).select().single();
+        if (error) throw error;
+        await db.user_capabilities.add(data);
       }
       await refreshCapabilities();
       await loadAdminData();
       setHighlightRowId(targetUserId);
       setTimeout(() => setHighlightRowId(null), 1200);
-    } catch (err) {
-      setErrorMsg("Failed to update capabilities mapping in database.");
+    } catch (err: any) {
+      setErrorMsg(err.message || "Failed to update capabilities mapping in database.");
     }
   };
 
@@ -209,18 +209,15 @@ export default function AdminPage() {
 
   const handleSetManager = async (userId: string, managerId: string | null) => {
     try {
+      const { error } = await supabase.from('users').update({ manager_id: managerId || null }).eq('user_id', userId);
+      if (error) throw error;
+      
       await db.users.update(userId, { manager_id: managerId || undefined });
-      await db.sync_queue.add({ idempotency_key: crypto.randomUUID(), 
-        table_name: "users",
-        action: "UPDATE",
-        data: { user_id: userId, manager_id: managerId },
-        timestamp: new Date().toISOString(),
-      });
       await loadAdminData();
       setSuccessMsg("Manager assignment updated.");
       setTimeout(() => setSuccessMsg(null), 2000);
-    } catch (err) {
-      setErrorMsg("Failed to update manager assignment.");
+    } catch (err: any) {
+      setErrorMsg(err.message || "Failed to update manager assignment.");
     }
   };
 
@@ -228,33 +225,31 @@ export default function AdminPage() {
 
   const handleSaveTemplate = async (templateId: string) => {
     try {
+      const { error } = await supabase.from('task_templates').update(templateEdits).eq('template_id', templateId);
+      if (error) throw error;
+      
       await db.task_templates.update(templateId, templateEdits);
-      await db.sync_queue.add({ idempotency_key: crypto.randomUUID(), 
-        table_name: "task_templates",
-        action: "UPDATE",
-        data: { template_id: templateId, ...templateEdits },
-        timestamp: new Date().toISOString(),
-      });
       setEditingTemplate(null);
       setTemplateEdits({});
       await loadAdminData();
       setSuccessMsg("Template saved.");
       setTimeout(() => setSuccessMsg(null), 2000);
-    } catch (err) {
-      setErrorMsg("Failed to save template.");
+    } catch (err: any) {
+      setErrorMsg(err.message || "Failed to save template.");
     }
   };
 
   const handleToggleTemplate = async (tpl: LocalTaskTemplate) => {
-    const newActive = tpl.is_active === 1 ? 0 : 1;
-    await db.task_templates.update(tpl.template_id, { is_active: newActive });
-    await db.sync_queue.add({ idempotency_key: crypto.randomUUID(), 
-      table_name: "task_templates",
-      action: "UPDATE",
-      data: { template_id: tpl.template_id, is_active: newActive },
-      timestamp: new Date().toISOString(),
-    });
-    await loadAdminData();
+    try {
+      const newActive = tpl.is_active === 1 ? 0 : 1;
+      const { error } = await supabase.from('task_templates').update({ is_active: newActive }).eq('template_id', tpl.template_id);
+      if (error) throw error;
+      
+      await db.task_templates.update(tpl.template_id, { is_active: newActive });
+      await loadAdminData();
+    } catch (err: any) {
+      setErrorMsg(err.message || "Failed to toggle template.");
+    }
   };
 
   // ─── Attendance Settings ──────────────────────────────────────────────────
