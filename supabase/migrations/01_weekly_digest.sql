@@ -38,15 +38,15 @@ BEGIN
     WITH stuck_leads AS (
         SELECT jsonb_agg(
             jsonb_build_object(
-                'id', id,
-                'name', name,
+                'id', lead_id,
+                'name', business_name,
                 'status', status,
-                'days_in_stage', current_date - updated_at::date,
+                'days_in_stage', current_date - COALESCE(stage_entered_at, created_at)::date,
                 'assigned_to', assigned_to
             )
         ) as leads
         FROM public.leads
-        WHERE current_date - updated_at::date > 14
+        WHERE current_date - COALESCE(stage_entered_at, created_at)::date > 14
         AND status NOT IN ('Payment', 'Installation')
     ),
     task_performance AS (
@@ -64,8 +64,8 @@ BEGIN
     upcoming_renewals AS (
         SELECT jsonb_agg(
             jsonb_build_object(
-                'id', id,
-                'name', name,
+                'id', lead_id,
+                'name', business_name,
                 'renewal_date', renewal_date
             )
         ) as renewals
