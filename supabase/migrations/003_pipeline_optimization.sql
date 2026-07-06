@@ -69,15 +69,15 @@ alter table public.lead_payment_details enable row level security;
 
 create policy checklist_access on public.lead_registration_checklist for all using (
     exists (select 1 from public.leads l where l.lead_id = lead_registration_checklist.lead_id
-        and (l.assigned_to = auth.uid() or public.check_user_capability(auth.uid(), 'admin')))
+        and (l.assigned_to = auth.uid() or public.has_capability('admin')))
 );
 create policy installation_access on public.lead_installation_details for all using (
     exists (select 1 from public.leads l where l.lead_id = lead_installation_details.lead_id
-        and (l.assigned_to = auth.uid() or public.check_user_capability(auth.uid(), 'admin')))
+        and (l.assigned_to = auth.uid() or public.has_capability('admin')))
 );
 create policy payment_access on public.lead_payment_details for all using (
     exists (select 1 from public.leads l where l.lead_id = lead_payment_details.lead_id
-        and (l.assigned_to = auth.uid() or public.check_user_capability(auth.uid(), 'admin')))
+        and (l.assigned_to = auth.uid() or public.has_capability('admin')))
 );
 
 -- =====================================================================

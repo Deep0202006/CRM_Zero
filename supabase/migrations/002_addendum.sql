@@ -114,17 +114,17 @@ ALTER TABLE public.kpi_daily_snapshot ENABLE ROW LEVEL SECURITY;
 CREATE POLICY task_templates_read ON public.task_templates
     FOR SELECT USING (true);
 CREATE POLICY task_templates_write ON public.task_templates
-    FOR ALL USING (public.check_user_capability(auth.uid(), 'admin'));
+    FOR ALL USING (public.has_capability('admin'));
 
 CREATE POLICY tasks_read ON public.tasks
     FOR SELECT USING (
         assigned_to = auth.uid() OR
-        public.check_user_capability(auth.uid(), 'admin')
+        public.has_capability('admin')
     );
 CREATE POLICY tasks_write ON public.tasks
     FOR ALL USING (
         assigned_to = auth.uid() OR
-        public.check_user_capability(auth.uid(), 'admin')
+        public.has_capability('admin')
     );
 
 CREATE POLICY task_history_read ON public.task_status_history
@@ -132,7 +132,7 @@ CREATE POLICY task_history_read ON public.task_status_history
         EXISTS (
             SELECT 1 FROM public.tasks t
             WHERE t.task_id = task_status_history.task_id
-            AND (t.assigned_to = auth.uid() OR public.check_user_capability(auth.uid(), 'admin'))
+            AND (t.assigned_to = auth.uid() OR public.has_capability('admin'))
         )
     );
 CREATE POLICY task_history_write ON public.task_status_history
@@ -141,7 +141,7 @@ CREATE POLICY task_history_write ON public.task_status_history
 CREATE POLICY kpi_read ON public.kpi_daily_snapshot
     FOR SELECT USING (
         user_id = auth.uid() OR
-        public.check_user_capability(auth.uid(), 'admin') OR
+        public.has_capability('admin') OR
         EXISTS (SELECT 1 FROM public.users u WHERE u.user_id = kpi_daily_snapshot.user_id AND u.manager_id = auth.uid())
     );
 -- KPI rows are written only by the nightly server-side job (service role)
@@ -302,11 +302,11 @@ CREATE TABLE IF NOT EXISTS public.attendance_regularization_requests (
 ALTER TABLE public.attendance_regularization_requests ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY regularization_own_read ON public.attendance_regularization_requests
-    FOR SELECT USING (user_id = auth.uid() OR public.check_user_capability(auth.uid(), 'admin'));
+    FOR SELECT USING (user_id = auth.uid() OR public.has_capability('admin'));
 CREATE POLICY regularization_own_insert ON public.attendance_regularization_requests
     FOR INSERT WITH CHECK (user_id = auth.uid());
 CREATE POLICY regularization_admin_update ON public.attendance_regularization_requests
-    FOR UPDATE USING (public.check_user_capability(auth.uid(), 'admin'));
+    FOR UPDATE USING (public.has_capability('admin'));
 
 -- =====================================================================
 -- PART 1F (cont.) — Nightly KPI computation function

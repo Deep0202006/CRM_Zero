@@ -22,5 +22,5 @@ CREATE POLICY "Admins can update attendance shift config"
 ON public.attendance_shift_config
 FOR ALL
 TO authenticated
-USING (public.check_user_capability(auth.uid(), 'admin'))
-WITH CHECK (public.check_user_capability(auth.uid(), 'admin'));
+USING (public.has_capability('admin'))
+WITH CHECK (public.has_capability('admin'));
