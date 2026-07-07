@@ -100,8 +100,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     try {
+      const rawUsername = email.trim().toLowerCase();
+      const authEmail = rawUsername.includes('@') ? rawUsername : `${rawUsername}@zerodata.local`;
+      
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim().toLowerCase(),
+        email: authEmail,
         password,
       });
 
@@ -112,8 +115,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (data.user) {
-        // Find matching local user by email
-        let user = await db.users.where("email").equals(data.user.email!).first();
+        // Find matching local user by raw username (which is stored in email field of public.users)
+        let user = await db.users.where("email").equals(rawUsername).first();
         
         // If not found locally, fetch from Supabase
         if (!user) {
@@ -121,7 +124,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const { data: remoteUser, error: remoteError } = await supabase
             .from("users")
             .select("*")
-            .eq("email", data.user.email!)
+            .eq("email", rawUsername)
             .single();
             
           if (remoteError || !remoteUser) {

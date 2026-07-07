@@ -59,8 +59,12 @@ export async function POST(req: NextRequest) {
   }
 
   const tempPassword = password || generatePassword();
+  
+  // Dummy Email Pattern to bypass Supabase's strict email formatting requirement
+  const authEmail = email.includes('@') ? email.toLowerCase() : `${email.toLowerCase()}@zerodata.local`;
+  
   const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-    email, password: tempPassword, email_confirm: true,
+    email: authEmail, password: tempPassword, email_confirm: true,
     user_metadata: { name, must_change_password: true },
   });
   if (createError) return NextResponse.json({ error: createError.message }, { status: 400 });

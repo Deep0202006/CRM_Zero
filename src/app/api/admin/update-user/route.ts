@@ -39,13 +39,15 @@ export async function POST(req: NextRequest) {
   const { data: existingUser } = await supabaseAdmin.auth.admin.getUserById(user_id);
   const currentMeta = existingUser?.user?.user_metadata || {};
 
+  const authEmail = email.includes('@') ? email.toLowerCase() : `${email.toLowerCase()}@zerodata.local`;
+  
   const updatePayload: any = {
     email_confirm: true,
     user_metadata: { ...currentMeta, name }
   };
   
-  if (existingUser?.user?.email !== email) {
-    updatePayload.email = email;
+  if (existingUser?.user?.email !== authEmail) {
+    updatePayload.email = authEmail;
   }
 
   // 1. Update Supabase Auth email (this handles both the login email and triggers confirmation if needed based on project settings)
