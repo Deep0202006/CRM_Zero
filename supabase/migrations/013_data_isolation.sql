@@ -135,14 +135,14 @@ CREATE POLICY "Mappings insert"
 CREATE POLICY "Mapping requests strict isolation select" 
   ON mapping_requests FOR SELECT 
   USING (
-    assigned_to_id = auth.uid() OR 
+    mapped_by = auth.uid() OR 
     has_capability('admin')
   );
 
 CREATE POLICY "Mapping requests strict isolation update" 
   ON mapping_requests FOR UPDATE 
   USING (
-    assigned_to_id = auth.uid() OR 
+    mapped_by = auth.uid() OR 
     has_capability('admin')
   );
 
