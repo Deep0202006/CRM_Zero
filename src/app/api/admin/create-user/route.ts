@@ -52,9 +52,9 @@ export async function POST(req: NextRequest) {
                    name.toLowerCase() === 'prince';
 
   if (!isExempt) {
-    const formatRegex = /^zerodata\d+_[a-zA-Z0-9]+$/;
+    const formatRegex = /^zerodata\d*_[a-zA-Z0-9]+$/;
     if (!formatRegex.test(email)) {
-      return NextResponse.json({ error: "Username must be provided manually and strictly follow the format: zerodata<empno>_<name> (e.g., zerodata501_Deep)" }, { status: 400 });
+      return NextResponse.json({ error: "Username must be provided manually and strictly follow the format: zerodata<empno>_<name> (e.g., zerodata501_Deep, zerodata_TL)" }, { status: 400 });
     }
   }
 
