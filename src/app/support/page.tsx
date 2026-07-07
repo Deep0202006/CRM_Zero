@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { db, LocalClientQuery, LocalLead } from "@/lib/db";
+import { db, LocalClientQuery } from "@/lib/db";
 import {
   Headphones,
   AlertCircle,
@@ -27,7 +27,6 @@ const STATUS_STYLES: Record<QueryStatus, string> = {
 export default function SupportPage() {
   const { currentUser, hasDistSupport, hasRetSupport, isAdmin, hasSupport } = useAuth();
 
-  const [leads, setLeads] = useState<LocalLead[]>([]);
   const [queries, setQueries] = useState<LocalClientQuery[]>([]);
 
   const [clientNameInput, setClientNameInput] = useState("");
@@ -38,26 +37,13 @@ export default function SupportPage() {
   const [filterTab,  setFilterTab]  = useState<"all" | "open" | "resolved">("open");
 
   const clientOptions = React.useMemo(() => {
-    const dbOptions: SearchableOption[] = leads.map(l => ({ 
-      value: l.lead_id, 
-      label: l.business_name 
-    }));
-    
-    // Convert excel users into options
     const excelOptions: SearchableOption[] = excelUsers.map((eu: any) => ({
       value: `EXCEL::${eu.username}::${eu.name || eu.username}`,
       label: `[${eu.username}] - ${eu.name || "Unknown"}`,
       searchText: eu.username + " " + eu.name
     }));
-    
-    const map = new Map<string, SearchableOption>();
-    dbOptions.forEach(opt => map.set(opt.label.toLowerCase(), opt));
-    excelOptions.forEach(opt => {
-      const rawName = opt.value.split("::")[2]?.toLowerCase();
-      if (!map.has(rawName)) map.set(rawName, opt);
-    });
-    return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label));
-  }, [leads, isAdmin, hasDistSupport, hasRetSupport]);
+    return excelOptions.sort((a, b) => a.label.localeCompare(b.label));
+  }, []);
 
   // Resolve Modal
   const [resolveModalQuery, setResolveModalQuery] = useState<LocalClientQuery | null>(null);
@@ -73,25 +59,10 @@ export default function SupportPage() {
 
   const loadData = async () => {
     try {
-      const allLeads = await db.leads.toArray();
-
-      // Segment-scope: dist_support → distributors, ret_support → retailers, admin → all
-      let scopedLeads = allLeads;
-      if (!isAdmin) {
-        const allowed: string[] = [];
-        if (hasDistSupport) allowed.push("Distributor");
-        if (hasRetSupport)  allowed.push("Retailer");
-        scopedLeads = allLeads.filter(l => allowed.includes(l.segment_type));
-      }
-      setLeads(scopedLeads);
-
       const allQueries = await db.client_queries.toArray();
-      // Fallback JS-side sort in case Dexie index on created_at fails on un-migrated local DBs
+      // Fallback JS-side sort
       allQueries.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
-      
-      const scopedIds = new Set(scopedLeads.map(l => l.lead_id));
-      // In case of legacy free-text logs where lead_id might be missing or invalid, we still want to show them if no leads exist locally but they were synced, but the RLS already filtered them. We will allow them if they have a non-UUID lead_id just in case, but usually scopedIds.has is enough.
-      setQueries(allQueries.filter(q => scopedIds.has(q.lead_id) || q.lead_id.length < 36));
+      setQueries(allQueries);
     } catch (err) {
       console.error("Failed to load support data", err);
     }
@@ -99,48 +70,7 @@ export default function SupportPage() {
 
   useEffect(() => { loadData(); }, [currentUser]);
 
-  const resolveLeadId = async (input: string): Promise<string> => {
-    if (!input.trim()) throw new Error("Empty input");
-    
-    const existing = leads.find(l => l.lead_id === input);
-    if (existing) return existing.lead_id;
-
-    let bName = input;
-    if (input.startsWith("EXCEL::")) {
-      const parts = input.split("::");
-      bName = parts[2] || parts[1];
-    }
-
-    const nameMatch = leads.find(l => l.business_name.toLowerCase() === bName.trim().toLowerCase());
-    if (nameMatch) return nameMatch.lead_id;
-
-    const newLeadId = crypto.randomUUID();
-    const newLead: LocalLead = {
-      lead_id: newLeadId,
-      business_name: bName.trim(),
-      contact_person: bName.trim(),
-      phone: "0000000000",
-      segment_type: "Retailer", // Default to retailer if unknown, could be improved
-      status: "New",
-      assigned_to: currentUser?.user_id || null,
-      created_at: new Date().toISOString(),
-      lead_source: "Support Form"
-    };
-
-    await db.leads.add(newLead);
-    await db.sync_queue.add({
-      idempotency_key: crypto.randomUUID(),
-      table_name: "leads",
-      action: "INSERT",
-      data: newLead,
-      timestamp: new Date().toISOString()
-    });
-
-    setLeads(prev => [...prev, newLead]);
-    return newLeadId;
-  };
-
-  // ── Log new query ─────────────────────────────────────────────────────────
+  // â”€â”€ Log new query â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleLogQuery = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
@@ -149,16 +79,25 @@ export default function SupportPage() {
       return;
     }
     try {
-      const primaryLeadId = await resolveLeadId(clientNameInput);
+      let client_username = "UNKNOWN";
+      let client_name = clientNameInput.trim();
+      
+      if (clientNameInput.startsWith("EXCEL::")) {
+        const parts = clientNameInput.split("::");
+        client_username = parts[1] || "UNKNOWN";
+        client_name = parts[2] || parts[1] || "Unknown Client";
+      }
       
       const newQuery: LocalClientQuery = {
         query_id:       crypto.randomUUID(),
-        lead_id:        primaryLeadId,
+        client_username: client_username,
+        client_name:    client_name,
         client_problem: queryProblem.trim(),
-        problem_status: "Open", // Always Open
+        problem_status: "Open",
         assigned_to:    currentUser?.user_id || null,
         created_at:     new Date().toISOString(),
       };
+      
       await db.client_queries.add(newQuery);
       await db.sync_queue.add({ idempotency_key: crypto.randomUUID(),  table_name: "client_queries", action: "INSERT", data: newQuery, timestamp: new Date().toISOString() });
 
@@ -172,7 +111,7 @@ export default function SupportPage() {
     }
   };
 
-  // ── Update query status ───────────────────────────────────────────────────
+  // â”€â”€ Update query status â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleUpdateStatus = async (query: LocalClientQuery, newStatus: QueryStatus) => {
     try {
       const updates: Partial<LocalClientQuery & { resolved_at?: string }> = { problem_status: newStatus };
@@ -205,9 +144,6 @@ export default function SupportPage() {
     }
   };
 
-  const getLeadName = (query: LocalClientQuery) => {
-    return leads.find(l => l.lead_id === query.lead_id)?.business_name || "Unknown/Legacy Lead";
-  };
   const filteredQueries = queries.filter(q => {
     if (filterTab === "open")     return q.problem_status !== "Resolved";
     if (filterTab === "resolved") return q.problem_status === "Resolved";
@@ -267,11 +203,11 @@ export default function SupportPage() {
       </div>
 
       {/* Feedback */}
-      {successMsg && <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-700 text-xs font-bold">✓ {successMsg}</div>}
+      {successMsg && <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-700 text-xs font-bold">âœ“ {successMsg}</div>}
       {errorMsg   && <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl text-rose-600 text-xs font-bold flex gap-2 items-center"><AlertCircle size={14}/>{errorMsg}</div>}
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        {/* ── Log Query Form ── */}
+        {/* â”€â”€ Log Query Form â”€â”€ */}
         <div className="lg:col-span-2 bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-4">
           <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
             <MessageSquare size={16} className="text-brand-primary" />
@@ -301,7 +237,7 @@ export default function SupportPage() {
                 rows={3}
                 value={queryProblem}
                 onChange={e => setQueryProblem(e.target.value)}
-                placeholder="Describe the issue reported by the client…"
+                placeholder="Describe the issue reported by the clientâ€¦"
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-semibold text-slate-900 placeholder-slate-300 focus:outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/10 transition-all resize-none"
               />
             </div>
@@ -315,7 +251,7 @@ export default function SupportPage() {
           </form>
         </div>
 
-        {/* ── Query Queue ── */}
+        {/* â”€â”€ Query Queue â”€â”€ */}
         <div className="lg:col-span-3 bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
@@ -353,7 +289,7 @@ export default function SupportPage() {
                 <div className="flex justify-between items-start gap-2">
                   <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                      {getLeadName(query)}
+                      {query.client_name}
                     </p>
                     <p className="text-sm font-bold text-slate-900 mt-0.5 leading-snug">
                       "{query.client_problem}"
@@ -374,14 +310,14 @@ export default function SupportPage() {
                           onClick={() => handleUpdateStatus(query, "In Progress")}
                           className="px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg text-[10px] font-black hover:bg-amber-100 transition-all cursor-pointer"
                         >
-                          Start →
+                          Start â†’
                         </button>
                       )}
                       <button
                         onClick={() => setResolveModalQuery(query)}
                         className="px-2.5 py-1 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-lg text-[10px] font-black hover:bg-emerald-100 transition-all cursor-pointer"
                       >
-                        Resolve ✓
+                        Resolve âœ“
                       </button>
                     </div>
                   )}
@@ -403,7 +339,7 @@ export default function SupportPage() {
               <CheckCircle2 size={18} className="text-emerald-500" /> Mark Resolved
             </h3>
             <p className="text-xs font-semibold text-slate-500 mb-4">
-              {getLeadName(resolveModalQuery)}
+              {resolveModalQuery.client_name}
             </p>
             <form onSubmit={handleResolveSubmit} className="space-y-4">
               <div>
@@ -460,3 +396,4 @@ export default function SupportPage() {
     </div>
   );
 }
+

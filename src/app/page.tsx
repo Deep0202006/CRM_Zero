@@ -77,7 +77,7 @@ export default function HomePage() {
         queries.slice(0, 2).forEach(q => {
           feed.push({
             type: "query",
-            title: `Client Query: ${leads.find(l => l.lead_id === q.lead_id)?.business_name || 'Unknown'}`,
+            title: `Client Query: ${leads.find(l => l.lead_id === q.client_username)?.business_name || 'Unknown'}`,
             time: new Date(q.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             status: q.problem_status,
             date: new Date(q.created_at)

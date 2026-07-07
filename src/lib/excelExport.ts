@@ -44,7 +44,7 @@ export async function exportSupport(userId: string) {
   const queries = await db.client_queries.where('assigned_to').equals(userId).toArray();
   const data = queries.map(q => ({
     'Query ID': q.query_id,
-    'Lead ID': q.lead_id,
+    'Lead ID': q.client_username,
     'Client Problem': q.client_problem,
     'Status': q.problem_status,
     'Resolution Notes': q.resolution_notes || '',
@@ -100,7 +100,7 @@ export async function exportMasterSupport() {
   const queries = await db.client_queries.toArray();
   const data = queries.map(q => ({
     'Query ID': q.query_id,
-    'Lead ID': q.lead_id,
+    'Lead ID': q.client_username,
     'Client Problem': q.client_problem,
     'Status': q.problem_status,
     'Assigned To': q.assigned_to || '',

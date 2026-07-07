@@ -14,7 +14,8 @@ export async function exportClientQueriesToExcel(userId: string, isAdmin: boolea
 
   const exportData = queries.map(q => ({
     'Query ID': q.query_id,
-    'Lead ID': q.lead_id,
+    'Client Username': q.client_username,
+    'Client Name': q.client_name,
     'Client Problem': q.client_problem,
     'Problem Status': q.problem_status,
     'Assigned To': q.assigned_to,

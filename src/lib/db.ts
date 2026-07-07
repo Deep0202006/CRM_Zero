@@ -50,7 +50,8 @@ export interface LocalLead {
 
 export interface LocalClientQuery {
   query_id: string;
-  lead_id: string;
+  client_username: string;
+  client_name: string;
   client_problem: string;
   problem_status: "Open" | "In Progress" | "Resolved";
   assigned_to?: string | null;
@@ -406,6 +407,26 @@ class CRMDatabase extends Dexie {
       lead_installation_details: "installation_id, lead_id",
       lead_payment_details: "payment_id, lead_id",
     });
+    this.version(8).stores({
+      users: "user_id, email, is_active, manager_id",
+      capabilities: "code",
+      user_capabilities: "id, user_id, capability_code, [user_id+capability_code]",
+      leads: "lead_id, business_name, segment_type, status, assigned_to, stage_entered_at, lead_source, area, renewal_date",
+      client_queries: "query_id, client_username, problem_status, assigned_to, created_at",
+      mappings: "mapping_id, distributor_lead_id, retailer_lead_id, [distributor_lead_id+retailer_lead_id], mapped_by",
+      mapping_requests: "request_id, distributor_lead_id, retailer_lead_id, mapped_by, status, created_at",
+      internal_tickets: "ticket_id, raised_by, status, assigned_to",
+      attendance: "attendance_id, user_id, date, [user_id+date]",
+      call_logs: "log_id, user_id, lead_id, timestamp",
+      sync_queue: "++id, idempotency_key, table_name, action, timestamp, retry_count",
+      task_templates: "template_id, applies_to_capability, is_active",
+      tasks: "task_id, assigned_to, due_date, status, [assigned_to+due_date], template_id",
+      task_status_history: "id, task_id, changed_at",
+      kpi_snapshots: "snapshot_id, user_id, date, [user_id+date]",
+      lead_registration_checklist: "checklist_id, lead_id",
+      lead_installation_details: "installation_id, lead_id",
+      lead_payment_details: "payment_id, lead_id",
+    });
   }
 }
 
@@ -657,3 +678,4 @@ if (typeof window !== "undefined") {
     }
   }, 60_000);
 }
+
