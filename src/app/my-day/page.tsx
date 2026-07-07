@@ -54,9 +54,9 @@ export default function MyDayPage() {
     
     try {
       if (hasOnboarding) {
-        // Calls today
+        // Calls today (excluding automatic stage movement notes which contain "→")
         const allCalls = await db.call_logs.where("user_id").equals(currentUser.user_id).toArray();
-        setCallsToday(allCalls.filter(c => c.timestamp.startsWith(todayStr)).length);
+        setCallsToday(allCalls.filter(c => c.timestamp.startsWith(todayStr) && !c.outcome.includes("→")).length);
         
         // Leads converted (moved to Registration or beyond)
         const allLeads = await db.leads.where("assigned_to").equals(currentUser.user_id).toArray();

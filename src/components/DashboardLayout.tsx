@@ -20,6 +20,7 @@ import {
   CalendarDays,
   LineChart,
   Link2,
+  PhoneCall,
 } from 'lucide-react';
 import { db } from '@/lib/db';
 
@@ -95,6 +96,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const navItems = [
     // Everyone
     { icon: ListTodo,       label: "My Day",           path: "/my-day" },
+    { icon: PhoneCall,      label: "Log Call",         path: "/call-logs" },
     // Onboarding only
     { icon: LayoutDashboard,label: "Pipeline",         path: "/onboarding",        visible: hasOnboarding },
     // Support only

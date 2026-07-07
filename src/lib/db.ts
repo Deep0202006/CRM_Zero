@@ -625,11 +625,21 @@ export async function pullDownSync() {
 
         const safeIdsToDelete = idsToDelete.filter(id => !pendingInsertIds.has(id));
 
+        // Check if items have pending updates or deletes in the sync_queue
+        const pendingMutations = await db.sync_queue
+          .filter(item => item.table_name === tableName && (item.action === "UPDATE" || item.action === "DELETE"))
+          .toArray();
+        const pendingMutationIds = new Set(pendingMutations.map(item => item.data[pk]));
+
+        const safeDataToPut = data.filter((d: any) => !pendingMutationIds.has(d[pk]));
+
         await db.transaction('rw', table, async () => {
           if (safeIdsToDelete.length > 0) {
             await table.bulkDelete(safeIdsToDelete);
           }
-          await table.bulkPut(data);
+          if (safeDataToPut.length > 0) {
+            await table.bulkPut(safeDataToPut);
+          }
         });
       } else if (data && data.length === 0) {
         // If remote table is empty, delete all local items that are not pending insert

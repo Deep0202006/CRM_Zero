@@ -52,6 +52,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setAllUsers(users);
 
         const savedUserId = localStorage.getItem("authenticated_user_id");
+        
+        // SECURITY FIX: Verify session with Supabase instead of blindly trusting localStorage
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError || !session || session.user.id !== savedUserId) {
+          if (savedUserId) {
+            console.warn("Local storage session spoofing detected or session expired. Clearing local auth.");
+            localStorage.removeItem("authenticated_user_id");
+            setCurrentUser(null);
+            setCapabilities([]);
+          }
+          setIsLoading(false);
+          return;
+        }
+
         if (savedUserId) {
           const matchedUser = users.find(u => u.user_id === savedUserId);
           if (matchedUser) {
