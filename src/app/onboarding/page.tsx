@@ -160,6 +160,7 @@ export default function OnboardingPage() {
 
   // ── Stage transition — open gate if required ─────────────────────────────
   const handleRequestTransition = (lead: LocalLead, targetStatus: LeadStatus) => {
+    if (!lead || !targetStatus) return; // Defensive null check for async mutations
     if (lead.status === targetStatus) return;
     if (!validateLeadStatusTransition(lead.status, targetStatus)) {
       setErrorMsg(`Transition from "${lead.status}" → "${targetStatus}" is not permitted.`);
@@ -179,6 +180,7 @@ export default function OnboardingPage() {
 
   // ── Execute stage transition + optional call log ─────────────────────────
   const executeTransition = async (lead: LocalLead, targetStatus: LeadStatus, note: string | null) => {
+    if (!lead || !targetStatus) return; // Defensive null check for async mutations
     setGateLoading(true);
     try {
       const now = new Date().toISOString();
@@ -804,7 +806,7 @@ export default function OnboardingPage() {
                 { k: "Segment",   v: selectedLead.segment_type },
                 { k: "Source",    v: selectedLead.lead_source === "Other" && selectedLead.lead_source_other ? `Other: ${selectedLead.lead_source_other}` : selectedLead.lead_source },
                 { k: "Area",      v: selectedLead.area },
-                { k: "Registered",v: new Date(selectedLead.created_at).toLocaleDateString() },
+                { k: "Registered",v: selectedLead.created_at ? new Date(selectedLead.created_at).toISOString().split('T')[0] : "N/A" },
               ].map(row => row.v ? (
                 <div key={row.k} className="flex justify-between border-b border-slate-100 pb-1.5 last:border-0 last:pb-0">
                   <span className="text-slate-400 font-bold">{row.k}</span>
@@ -822,12 +824,12 @@ export default function OnboardingPage() {
                     <div key={log.log_id} className="p-3.5 bg-white border border-slate-100 rounded-xl space-y-1">
                       <div className="flex justify-between text-[10px] text-slate-400 font-bold">
                         <span className="font-black text-slate-700">{log.outcome}</span>
-                        <span>{new Date(log.timestamp).toLocaleDateString()}</span>
+                        <span>{log.timestamp ? new Date(log.timestamp).toISOString().split('T')[0] : "N/A"}</span>
                       </div>
                       {log.notes && <p className="text-[11px] text-slate-500 italic">"{log.notes}"</p>}
                       {log.next_followup_date && (
                         <p className="text-[9px] text-brand-primary font-black uppercase">
-                          Follow up: {new Date(log.next_followup_date).toLocaleDateString()}
+                          Follow up: {new Date(log.next_followup_date).toISOString().split('T')[0]}
                         </p>
                       )}
                     </div>

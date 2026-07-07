@@ -53,9 +53,16 @@ export async function POST(req: NextRequest) {
   });
   if (createError) return NextResponse.json({ error: createError.message }, { status: 400 });
 
-  await supabaseAdmin.from("users").insert({
+  // Use upsert so it doesn't conflict with DB trigger if it fires first
+  const { error: dbError } = await supabaseAdmin.from("users").upsert({
     user_id: newUser.user.id, name, email, is_active: true, manager_id: manager_id || null,
   });
+
+  if (dbError) {
+    // Transactional fallback: Delete auth user if public profile insertion fails
+    await supabaseAdmin.auth.admin.deleteUser(newUser.user.id);
+    return NextResponse.json({ error: `Failed to create public profile. Auth user rolled back. Reason: ${dbError.message}` }, { status: 400 });
+  }
 
   await supabaseAdmin.from("user_capabilities").insert(
     capabilities.map((cap) => ({ user_id: newUser.user.id, capability_code: cap }))

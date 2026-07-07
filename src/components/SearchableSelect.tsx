@@ -52,7 +52,7 @@ export function SearchableSelect({
 
   const filteredOptions = options.filter((opt) => {
     const searchTarget = (opt.label + " " + opt.value + " " + (opt.searchText || "")).toLowerCase();
-    return searchTarget.includes(displayValue.toLowerCase());
+    return searchTarget.includes((displayValue || "").toLowerCase());
   });
 
   return (
