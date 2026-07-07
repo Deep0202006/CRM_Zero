@@ -109,12 +109,12 @@ export default function ManagerKpiPage() {
         const mapped: KpiRow[] = (data || []).map((r: any) => ({
           user_id: r.user_id,
           name: r.users.name,
-          completion_rate: Number(r.completion_rate),
-          tasks_assigned: r.tasks_assigned,
-          tasks_completed: r.tasks_completed,
+          completion_rate: Number(r.completion_rate) || 0,
+          tasks_assigned: r.tasks_assigned || 0,
+          tasks_completed: r.tasks_completed || 0,
           attendance_status: r.attendance_status ?? "Absent",
-          leads_converted: r.leads_converted,
-          tickets_resolved: r.tickets_resolved,
+          leads_converted: r.leads_converted || 0,
+          tickets_resolved: r.tickets_resolved || 0,
           calls_made: r.calls_made || 0,
         }));
         let finalMapped = mapped;
@@ -148,7 +148,7 @@ export default function ManagerKpiPage() {
   const avgCompletion =
     rows.length === 0
       ? 0
-      : Math.round(rows.reduce((s, r) => s + r.completion_rate, 0) / rows.length);
+      : Math.round(rows.reduce((s, r) => s + (r.completion_rate || 0), 0) / rows.length) || 0;
 
   return (
       <div className="space-y-6 w-full">

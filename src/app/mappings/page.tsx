@@ -54,7 +54,9 @@ export default function MappingsPage() {
     try {
       const allLeads = await db.leads.toArray();
       setLeads(allLeads);
-      const allMaps = await db.mapping_requests.orderBy("created_at").reverse().toArray();
+      const allMaps = await db.mapping_requests.toArray();
+      // Fallback JS-side sort in case Dexie index on created_at fails on un-migrated local DBs
+      allMaps.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
       setMappings(allMaps);
     } catch (err) {
       console.error(err);
@@ -187,11 +189,11 @@ export default function MappingsPage() {
   };
 
   const getDistributorName = (map: LocalMappingRequest) => {
-    return leads.find(l => l.lead_id === map.distributor_lead_id)?.business_name || "Unknown Distributor";
+    return leads.find(l => l.lead_id === map.distributor_lead_id)?.business_name || "Unknown/Legacy Distributor";
   };
   
   const getRetailerName = (map: LocalMappingRequest) => {
-    return leads.find(l => l.lead_id === map.retailer_lead_id)?.business_name || "Unknown Retailer";
+    return leads.find(l => l.lead_id === map.retailer_lead_id)?.business_name || "Unknown/Legacy Retailer";
   };
 
   if (!hasSupport) {

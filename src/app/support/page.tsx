@@ -85,9 +85,13 @@ export default function SupportPage() {
       }
       setLeads(scopedLeads);
 
-      const allQueries = await db.client_queries.orderBy("created_at").reverse().toArray();
+      const allQueries = await db.client_queries.toArray();
+      // Fallback JS-side sort in case Dexie index on created_at fails on un-migrated local DBs
+      allQueries.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+      
       const scopedIds = new Set(scopedLeads.map(l => l.lead_id));
-      setQueries(allQueries.filter(q => scopedIds.has(q.lead_id)));
+      // In case of legacy free-text logs where lead_id might be missing or invalid, we still want to show them if no leads exist locally but they were synced, but the RLS already filtered them. We will allow them if they have a non-UUID lead_id just in case, but usually scopedIds.has is enough.
+      setQueries(allQueries.filter(q => scopedIds.has(q.lead_id) || q.lead_id.length < 36));
     } catch (err) {
       console.error("Failed to load support data", err);
     }
@@ -202,7 +206,7 @@ export default function SupportPage() {
   };
 
   const getLeadName = (query: LocalClientQuery) => {
-    return leads.find(l => l.lead_id === query.lead_id)?.business_name || "Unknown";
+    return leads.find(l => l.lead_id === query.lead_id)?.business_name || "Unknown/Legacy Lead";
   };
   const filteredQueries = queries.filter(q => {
     if (filterTab === "open")     return q.problem_status !== "Resolved";
