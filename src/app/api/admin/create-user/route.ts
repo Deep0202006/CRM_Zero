@@ -46,6 +46,18 @@ export async function POST(req: NextRequest) {
   }
   const { email, name, password, capabilities, manager_id } = parsed.data;
 
+  // Strict format validation for non-admin accounts
+  const isExempt = capabilities.includes('admin') || 
+                   name.toLowerCase() === 'system administrator' || 
+                   name.toLowerCase() === 'prince';
+
+  if (!isExempt) {
+    const formatRegex = /^zerodata\d+_[a-zA-Z0-9]+$/;
+    if (!formatRegex.test(email)) {
+      return NextResponse.json({ error: "Username must be provided manually and strictly follow the format: zerodata<empno>_<name> (e.g., zerodata501_Deep)" }, { status: 400 });
+    }
+  }
+
   const tempPassword = password || generatePassword();
   const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
     email, password: tempPassword, email_confirm: true,
