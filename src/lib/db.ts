@@ -109,7 +109,7 @@ export interface LocalAttendance {
 
 export interface LocalCallLog {
   log_id: string;
-  user_id: string;
+  user_id?: string | null;
   lead_id: string;
   timestamp: string;
   outcome: string;

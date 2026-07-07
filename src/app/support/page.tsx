@@ -118,7 +118,7 @@ export default function SupportPage() {
       phone: "0000000000",
       segment_type: "Retailer", // Default to retailer if unknown, could be improved
       status: "New",
-      assigned_to: currentUser?.user_id || "system",
+      assigned_to: currentUser?.user_id || null,
       created_at: new Date().toISOString(),
       lead_source: "Support Form"
     };

@@ -91,7 +91,7 @@ export default function MappingsPage() {
       phone: "0000000000",
       segment_type: segmentType,
       status: "New",
-      assigned_to: currentUser?.user_id || "system",
+      assigned_to: currentUser?.user_id || null,
       created_at: new Date().toISOString(),
       lead_source: "Mapping Form"
     };
@@ -145,7 +145,7 @@ export default function MappingsPage() {
           distributor_lead_id: isDistPrimary ? primaryLeadId : secondaryLeadId,
           retailer_lead_id: isDistPrimary ? secondaryLeadId : primaryLeadId,
           status: "Pending",
-          mapped_by: currentUser?.user_id || "system",
+          mapped_by: currentUser?.user_id || null,
           created_at: timestamp,
         };
         newMaps.push(newMapping);

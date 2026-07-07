@@ -191,7 +191,7 @@ export default function OnboardingPage() {
         const gateLabel = STAGE_GATES[gateKey]?.label || "Stage note";
         const logEntry: LocalCallLog = {
           log_id:             crypto.randomUUID(),
-          user_id:            currentUser?.user_id || "system",
+          user_id:            currentUser?.user_id || null,
           lead_id:            lead.lead_id,
           timestamp:          now,
           outcome:            `[${gateLabel}] → ${targetStatus}`,
@@ -250,7 +250,7 @@ export default function OnboardingPage() {
     try {
       const log: LocalCallLog = {
         log_id:             crypto.randomUUID(),
-        user_id:            currentUser?.user_id || "system",
+        user_id:            currentUser?.user_id || null,
         lead_id:            selectedLead.lead_id,
         timestamp:          new Date().toISOString(),
         outcome:            callOutcome.trim(),
@@ -645,7 +645,7 @@ export default function OnboardingPage() {
                             // STEP 2 — record the call itself (existing call_logs insert logic)
                             const log: LocalCallLog = {
                               log_id: crypto.randomUUID(),
-                              user_id: currentUser?.user_id || "system",
+                              user_id: currentUser?.user_id || null,
                               lead_id: currentLead.lead_id,
                               timestamp: new Date().toISOString(),
                               outcome: outcome,

@@ -9,7 +9,7 @@ const supabaseAdmin = createClient(
 
 const UpdateUserSchema = z.object({
   user_id: z.string().uuid(),
-  email: z.string().email(),
+  email: z.string().min(3, "Email/Username is required"),
   name: z.string().min(2, "Name is required"),
   is_active: z.boolean(),
 });
@@ -36,12 +36,20 @@ export async function POST(req: NextRequest) {
   }
   const { user_id, email, name, is_active } = parsed.data;
 
-  // 1. Update Supabase Auth email (this handles both the login email and triggers confirmation if needed based on project settings)
-  const { error: authUpdateError } = await supabaseAdmin.auth.admin.updateUserById(user_id, {
-    email,
+  const { data: existingUser } = await supabaseAdmin.auth.admin.getUserById(user_id);
+  const currentMeta = existingUser?.user?.user_metadata || {};
+
+  const updatePayload: any = {
     email_confirm: true,
-    user_metadata: { name }
-  });
+    user_metadata: { ...currentMeta, name }
+  };
+  
+  if (existingUser?.user?.email !== email) {
+    updatePayload.email = email;
+  }
+
+  // 1. Update Supabase Auth email (this handles both the login email and triggers confirmation if needed based on project settings)
+  const { error: authUpdateError } = await supabaseAdmin.auth.admin.updateUserById(user_id, updatePayload);
   
   if (authUpdateError) {
     return NextResponse.json({ error: `Failed to update auth user: ${authUpdateError.message}` }, { status: 400 });

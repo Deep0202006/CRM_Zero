@@ -13,7 +13,7 @@ const VALID_CAPABILITIES = [
 ] as const;
 
 const CreateUserSchema = z.object({
-  email: z.string().email(),
+  email: z.string().min(3, "Email/Username is required"),
   name: z.string().min(2, "Name is required"),
   password: z.string().min(6, "Password must be at least 6 characters").optional(),
   capabilities: z.array(z.enum(VALID_CAPABILITIES)).min(1, "Select at least one role"),
