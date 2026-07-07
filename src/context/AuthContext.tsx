@@ -115,8 +115,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (data.user) {
-        // Find matching local user by raw username (which is stored in email field of public.users)
-        let user = await db.users.where("email").equals(rawUsername).first();
+        // Find matching local user by exact UUID
+        let user = await db.users.where("user_id").equals(data.user.id).first();
         
         // If not found locally, fetch from Supabase
         if (!user) {
@@ -124,7 +124,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const { data: remoteUser, error: remoteError } = await supabase
             .from("users")
             .select("*")
-            .eq("email", rawUsername)
+            .eq("user_id", data.user.id)
             .single();
             
           if (remoteError || !remoteUser) {
