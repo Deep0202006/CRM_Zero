@@ -145,6 +145,8 @@ export default function MyDayPage() {
   const missed = tasks.filter((t) => t.status === "Missed");
   const progressPct = tasks.length === 0 ? 0 : Math.round((done.length / tasks.length) * 100);
 
+  const followUpsToday = pending.filter(t => t.source === "manual" && (t.title.includes("Follow-up") || t.title.includes("Re-engage")));
+
   const today = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
 
   return (
@@ -277,6 +279,19 @@ export default function MyDayPage() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* ─── Follow-up Alerts ────────────────────────────────────────── */}
+        {!loading && followUpsToday.length > 0 && (
+          <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 flex items-start gap-3 shadow-sm mb-4 animate-in fade-in slide-in-from-top-4">
+            <AlertCircle size={20} className="text-rose-500 shrink-0 mt-0.5" />
+            <div>
+              <h3 className="text-sm font-black text-rose-700">Action Required: Scheduled Follow-ups</h3>
+              <p className="text-xs text-rose-600 font-semibold mt-1">
+                You have {followUpsToday.length} follow-up{followUpsToday.length > 1 ? "s" : ""} scheduled for today. Check your Pending tasks below.
+              </p>
+            </div>
           </div>
         )}
 

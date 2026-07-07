@@ -199,7 +199,7 @@ export default function CallLogsPage() {
                   type="date"
                   value={nextFollowup}
                   onChange={(e) => setNextFollowup(e.target.value)}
-                  className="w-full sm:w-64 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-900 focus-within:border-brand-primary focus-within:ring-2 focus-within:ring-brand-primary/10 transition-all outline-none"
+                  className="w-full sm:w-64 bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-brand-primary transition-all"
                 />
               </div>
             )}

@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { db, LocalLead, LocalCallLog } from "@/lib/db";
+import { type LocalTask } from "@/lib/taskEngine";
 import { validateLeadStatusTransition, LeadStatus } from "@/lib/validation";
 import { isMobileDevice } from "@/lib/deviceUtils";
 import {
@@ -205,7 +206,39 @@ export default function OnboardingPage() {
       // Update lead status
       const updateData: any = { status: targetStatus };
       if (targetStatus === "Installation") updateData.onboarded_at = now;
-      if (targetStatus === "Not Interested" && reEngageDate) updateData.re_engage_after = reEngageDate;
+      if (targetStatus === "Not Interested" && reEngageDate) {
+        updateData.re_engage_after = reEngageDate;
+        
+        // Schedule a follow-up task
+        if (currentUser) {
+          const followupTask: LocalTask = {
+            task_id: crypto.randomUUID(),
+            assigned_to: currentUser.user_id,
+            assigned_by: currentUser.user_id,
+            title: `Re-engage: ${lead.business_name}`,
+            description: `Re-engage lead. Gate note: ${note || ""}`,
+            priority: "Medium",
+            status: "Pending",
+            source: "manual",
+            template_id: null,
+            related_lead_id: lead.lead_id,
+            due_date: reEngageDate,
+            started_at: null,
+            completed_at: null,
+            proof_note: null,
+            proof_photo_url: null,
+            created_at: now,
+          };
+          await db.tasks.add(followupTask);
+          await db.sync_queue.add({
+            idempotency_key: crypto.randomUUID(),
+            table_name: "tasks",
+            action: "INSERT",
+            data: followupTask,
+            timestamp: now,
+          });
+        }
+      }
       
       await db.leads.update(lead.lead_id, updateData);
       await db.sync_queue.add({ idempotency_key: crypto.randomUUID(),  table_name: "leads", action: "UPDATE", data: { lead_id: lead.lead_id, ...updateData }, timestamp: now });
@@ -259,6 +292,36 @@ export default function OnboardingPage() {
       };
       await db.call_logs.add(log);
       await db.sync_queue.add({ idempotency_key: crypto.randomUUID(),  table_name: "call_logs", action: "INSERT", data: log, timestamp: new Date().toISOString() });
+      
+      if (followup && currentUser) {
+        const followupTask: LocalTask = {
+          task_id: crypto.randomUUID(),
+          assigned_to: currentUser.user_id,
+          assigned_by: currentUser.user_id,
+          title: `Follow-up: ${selectedLead.business_name}`,
+          description: `Follow up based on pipeline call: ${callOutcome}`,
+          priority: "Medium",
+          status: "Pending",
+          source: "manual",
+          template_id: null,
+          related_lead_id: selectedLead.lead_id,
+          due_date: followup,
+          started_at: null,
+          completed_at: null,
+          proof_note: null,
+          proof_photo_url: null,
+          created_at: new Date().toISOString(),
+        };
+        await db.tasks.add(followupTask);
+        await db.sync_queue.add({
+          idempotency_key: crypto.randomUUID(),
+          table_name: "tasks",
+          action: "INSERT",
+          data: followupTask,
+          timestamp: new Date().toISOString(),
+        });
+      }
+
       const logs = await db.call_logs.where("lead_id").equals(selectedLead.lead_id).toArray();
       setCallLogs(logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
       setCallOutcome(""); setCallNotes(""); setFollowup("");
