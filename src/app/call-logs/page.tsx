@@ -5,11 +5,12 @@ import { useAuth } from "@/context/AuthContext";
 import { db, queueOfflineMutation } from "@/lib/db";
 import { SearchableSelect } from "@/components/SearchableSelect";
 import { PhoneCall, CheckCircle2, AlertCircle } from "lucide-react";
+import excelUsers from "@/lib/excel_users.json";
+import { SearchableOption } from "@/components/SearchableSelect";
 
 export default function CallLogsPage() {
   const { currentUser } = useAuth();
   
-  const [leads, setLeads] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
   const [selectedLeadId, setSelectedLeadId] = useState("");
@@ -22,33 +23,27 @@ export default function CallLogsPage() {
   const [error, setError] = useState("");
 
   const commonOutcomes = [
-    "Interested - Follow up",
-    "Not Interested",
-    "Busy - Call back later",
+    "No response (followup)",
+    "Happy call",
+    "Not interested",
+    "Requested more info",
     "Wrong Number",
-    "Requested Demo",
-    "Converted",
+    "Other"
   ];
 
-  useEffect(() => {
-    async function loadLeads() {
-      try {
-        const allLeads = await db.leads.orderBy("created_at").reverse().toArray();
-        setLeads(allLeads);
-      } catch (err) {
-        console.error("Failed to load leads:", err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadLeads();
+  const leadOptions = React.useMemo(() => {
+    const excelOptions: SearchableOption[] = excelUsers.map((eu: any) => ({
+      value: `EXCEL::${eu.username}::${eu.name || eu.username}`,
+      label: `[${eu.username}] - ${eu.name || "Unknown"}`,
+      searchText: eu.username + " " + eu.name
+    }));
+    return excelOptions.sort((a, b) => a.label.localeCompare(b.label));
   }, []);
 
-  const leadOptions = leads.map(l => ({
-    value: l.lead_id,
-    label: `[${l.segment_type}] ${l.business_name} (${l.contact_person}) | ${l.phone}`,
-    searchText: l.phone + " " + l.contact_person
-  }));
+  useEffect(() => {
+    // Mock loading delay to match existing pattern if needed
+    setLoading(false);
+  }, []);
 
   const handleLogCall = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,7 +58,7 @@ export default function CallLogsPage() {
       return;
     }
     if (!outcome) {
-      setError("Please enter or select a call outcome/response.");
+      setError("Please select a call outcome/response.");
       return;
     }
 
@@ -72,22 +67,50 @@ export default function CallLogsPage() {
     setSuccess(false);
 
     try {
+      const nextFollowupDate = (outcome === "No response (followup)" || outcome === "Requested more info") ? (nextFollowup || null) : null;
+
       const log = {
         log_id: crypto.randomUUID(),
         user_id: currentUser.user_id,
-        lead_id: selectedLeadId,
+        lead_id: selectedLeadId, // This is now in format EXCEL::username::name
         timestamp: new Date().toISOString(),
         outcome: outcome,
         notes: notes.trim() || null,
-        next_followup_date: nextFollowup || null,
+        next_followup_date: nextFollowupDate,
       };
 
       await db.call_logs.add(log);
       await queueOfflineMutation("call_logs", "INSERT", log);
 
+      if (nextFollowupDate) {
+        const leadNameMatch = selectedLeadId.split("::");
+        const leadDisplay = leadNameMatch.length === 3 ? leadNameMatch[2] : selectedLeadId;
+        
+        const followupTask = {
+          task_id: crypto.randomUUID(),
+          assigned_to: currentUser.user_id,
+          assigned_by: currentUser.user_id,
+          title: "Follow-up Call",
+          description: `Scheduled follow-up for: ${leadDisplay}\nNotes: ${notes.trim() || "No notes"}`,
+          priority: "High" as const,
+          status: "Pending" as const,
+          source: "manual" as const,
+          template_id: null,
+          related_lead_id: selectedLeadId,
+          due_date: nextFollowupDate,
+          started_at: null,
+          completed_at: null,
+          proof_note: null,
+          proof_photo_url: null,
+          created_at: new Date().toISOString(),
+        };
+        await db.tasks.add(followupTask);
+        await queueOfflineMutation("tasks", "INSERT", followupTask);
+      }
+
       setSuccess(true);
       
-      // Reset form (keep selected lead if they want to log another, or clear it)
+      // Reset form
       setSelectedLeadId("");
       setOutcome("");
       setNotes("");
@@ -100,6 +123,8 @@ export default function CallLogsPage() {
       setSubmitting(false);
     }
   };
+
+  const showFollowup = outcome === "No response (followup)" || outcome === "Requested more info";
 
   return (
     <main className="flex-1 p-6 lg:p-10 pt-20 max-w-4xl mx-auto">
@@ -115,7 +140,7 @@ export default function CallLogsPage() {
 
       <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
         {loading ? (
-          <div className="flex justify-center p-8 text-slate-400">Loading leads...</div>
+          <div className="flex justify-center p-8 text-slate-400">Loading options...</div>
         ) : (
           <form onSubmit={handleLogCall} className="space-y-6">
             
@@ -138,20 +163,17 @@ export default function CallLogsPage() {
               <label className="block text-sm font-semibold text-slate-700 mb-2">
                 Call Response / Outcome
               </label>
-              <input
-                type="text"
-                list="outcome-suggestions"
+              <select
                 value={outcome}
                 onChange={(e) => setOutcome(e.target.value)}
-                placeholder="Type response or select from dropdown..."
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-900 focus-within:border-brand-primary focus-within:ring-2 focus-within:ring-brand-primary/10 transition-all outline-none"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-900 focus-within:border-brand-primary focus-within:ring-2 focus-within:ring-brand-primary/10 transition-all outline-none appearance-none"
                 required
-              />
-              <datalist id="outcome-suggestions">
+              >
+                <option value="" disabled>Select an outcome...</option>
                 {commonOutcomes.map((opt) => (
-                  <option key={opt} value={opt} />
+                  <option key={opt} value={opt}>{opt}</option>
                 ))}
-              </datalist>
+              </select>
             </div>
 
             {/* Notes */}
@@ -167,18 +189,20 @@ export default function CallLogsPage() {
               />
             </div>
 
-            {/* Next Followup */}
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
-                Next Follow-up Date <span className="text-slate-400 font-normal">(Optional)</span>
-              </label>
-              <input
-                type="date"
-                value={nextFollowup}
-                onChange={(e) => setNextFollowup(e.target.value)}
-                className="w-full sm:w-64 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-900 focus-within:border-brand-primary focus-within:ring-2 focus-within:ring-brand-primary/10 transition-all outline-none"
-              />
-            </div>
+            {/* Next Followup (Conditional) */}
+            {showFollowup && (
+              <div className="animate-in fade-in slide-in-from-top-4 duration-300">
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Next Follow-up Date <span className="text-slate-400 font-normal">(Optional)</span>
+                </label>
+                <input
+                  type="date"
+                  value={nextFollowup}
+                  onChange={(e) => setNextFollowup(e.target.value)}
+                  className="w-full sm:w-64 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-900 focus-within:border-brand-primary focus-within:ring-2 focus-within:ring-brand-primary/10 transition-all outline-none"
+                />
+              </div>
+            )}
 
             {error && (
               <div className="p-4 bg-rose-50 text-rose-700 rounded-xl flex items-start gap-3 border border-rose-100">
