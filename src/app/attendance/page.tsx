@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { db, LocalAttendance } from "@/lib/db";
+import { db, transactionalMutation, LocalAttendance } from "@/lib/db";
 import {
   Camera,
   CheckCircle,
@@ -120,13 +120,7 @@ export default function AttendancePage() {
         longitude: null,
       };
 
-      await db.attendance.add(newAttendance);
-      await db.sync_queue.add({ idempotency_key: crypto.randomUUID(), 
-        table_name: "attendance",
-        action: "INSERT",
-        data: newAttendance,
-        timestamp: new Date().toISOString(),
-      });
+      await transactionalMutation("attendance", "INSERT", newAttendance);
 
       setTodayRecord(newAttendance);
       setCapturedImage(selfieUrl);

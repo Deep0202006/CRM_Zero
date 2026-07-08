@@ -12,7 +12,7 @@ import {
 import { CONVERTED_STAGES } from "@/lib/pipelineRules";
 import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
 import { db } from "@/lib/db";
-import { CheckCircle2, Clock, AlertCircle, ListTodo, PhoneCall, Trophy, CheckSquare, Target, Download } from "lucide-react";
+import { CheckCircle2, Clock, AlertCircle, ListTodo, PhoneCall, Trophy, CheckSquare, Target, Download, Trash2 } from "lucide-react";
 import { exportPipelineToExcel } from "@/lib/pipelineExport";
 
 const PRIORITY_DOT: Record<string, string> = {
@@ -136,6 +136,21 @@ export default function MyDayPage() {
         )
       )
     );
+    setMarkingId(null);
+  };
+
+  const handleDelete = async (task: LocalTask) => {
+    if (!currentUser || markingId) return;
+    if (!isAdmin && currentUser.user_id !== task.assigned_by) {
+      alert("You do not have permission to delete this task.");
+      return;
+    }
+    const confirmed = window.confirm("Are you sure you want to delete this task?");
+    if (!confirmed) return;
+    
+    setMarkingId(task.task_id);
+    await transactionalMutation("tasks", "DELETE", { task_id: task.task_id });
+    setTasks((prev) => prev.filter((t) => t.task_id !== task.task_id));
     setMarkingId(null);
   };
 
@@ -333,6 +348,9 @@ export default function MyDayPage() {
                   task={task}
                   markingId={markingId}
                   onComplete={handleComplete}
+                  onDelete={handleDelete}
+                  currentUser={currentUser}
+                  isAdmin={isAdmin}
                   accent="border-l-amber-400"
                 />
               ))}
@@ -354,6 +372,9 @@ export default function MyDayPage() {
                   markingId={markingId}
                   onStart={handleStart}
                   onComplete={handleComplete}
+                  onDelete={handleDelete}
+                  currentUser={currentUser}
+                  isAdmin={isAdmin}
                   accent="border-l-brand-primary"
                 />
               ))}
@@ -431,15 +452,22 @@ function TaskCard({
   markingId,
   onStart,
   onComplete,
+  onDelete,
+  currentUser,
+  isAdmin,
   accent,
 }: {
   task: LocalTask;
   markingId: string | null;
   onStart?: (t: LocalTask) => void;
   onComplete: (t: LocalTask) => void;
+  onDelete?: (t: LocalTask) => void;
+  currentUser: any;
+  isAdmin: boolean;
   accent: string;
 }) {
   const isActing = markingId === task.task_id;
+  const canDelete = isAdmin || currentUser?.user_id === task.assigned_by;
 
   return (
     <div
@@ -481,6 +509,16 @@ function TaskCard({
         >
           {isActing ? "..." : "Done ✓"}
         </button>
+        {onDelete && canDelete && (
+          <button
+            onClick={() => onDelete(task)}
+            disabled={!!markingId}
+            className="px-3 py-1.5 text-[11px] font-black rounded-xl border border-rose-200 text-rose-500 hover:bg-rose-50 hover:border-rose-300 transition-all disabled:opacity-50 cursor-pointer flex items-center justify-center"
+            title="Delete Task"
+          >
+            <Trash2 size={12} />
+          </button>
+        )}
       </div>
     </div>
   );

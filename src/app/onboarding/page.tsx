@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { db, LocalLead, LocalCallLog } from "@/lib/db";
+import { db, transactionalMutation, LocalLead, LocalCallLog } from "@/lib/db";
 import { type LocalTask } from "@/lib/taskEngine";
 import { validateLeadStatusTransition, LeadStatus } from "@/lib/validation";
 import { isMobileDevice } from "@/lib/deviceUtils";
@@ -199,8 +199,7 @@ export default function OnboardingPage() {
           notes:              note.trim(),
           next_followup_date: null,
         };
-        await db.call_logs.add(logEntry);
-        await db.sync_queue.add({ idempotency_key: crypto.randomUUID(),  table_name: "call_logs", action: "INSERT", data: logEntry, timestamp: now });
+        await transactionalMutation("call_logs", "INSERT", logEntry);
       }
 
       // Update lead status
@@ -229,19 +228,11 @@ export default function OnboardingPage() {
             proof_photo_url: null,
             created_at: now,
           };
-          await db.tasks.add(followupTask);
-          await db.sync_queue.add({
-            idempotency_key: crypto.randomUUID(),
-            table_name: "tasks",
-            action: "INSERT",
-            data: followupTask,
-            timestamp: now,
-          });
+          await transactionalMutation("tasks", "INSERT", followupTask);
         }
       }
       
-      await db.leads.update(lead.lead_id, updateData);
-      await db.sync_queue.add({ idempotency_key: crypto.randomUUID(),  table_name: "leads", action: "UPDATE", data: { lead_id: lead.lead_id, ...updateData }, timestamp: now });
+      await transactionalMutation("leads", "UPDATE", { lead_id: lead.lead_id, ...updateData });
 
       await loadLeads();
       if (selectedLead?.lead_id === lead.lead_id) {
@@ -290,8 +281,7 @@ export default function OnboardingPage() {
         notes:              callNotes.trim(),
         next_followup_date: followup || null,
       };
-      await db.call_logs.add(log);
-      await db.sync_queue.add({ idempotency_key: crypto.randomUUID(),  table_name: "call_logs", action: "INSERT", data: log, timestamp: new Date().toISOString() });
+      await transactionalMutation("call_logs", "INSERT", log);
       
       if (followup && currentUser) {
         const followupTask: LocalTask = {
@@ -351,8 +341,7 @@ export default function OnboardingPage() {
         assigned_to:    currentUser?.user_id || "unassigned",
         created_at:     new Date().toISOString(),
       };
-      await db.leads.add(lead);
-      await db.sync_queue.add({ idempotency_key: crypto.randomUUID(),  table_name: "leads", action: "INSERT", data: lead, timestamp: new Date().toISOString() });
+      await transactionalMutation("leads", "INSERT", lead);
       setNewBusinessName(""); setNewContactPerson(""); setNewPhone(""); setNewArea(""); setNewLeadSource("Cold Call"); setNewLeadSourceOther("");
       setShowAddModal(false);
       await loadLeads();
@@ -698,8 +687,7 @@ export default function OnboardingPage() {
                             // is the ONLY hop allowed from New, and it's always valid.
                             if (currentLead.status === "New") {
                               const updatedFields = { status: "Contacted" as const };
-                              await db.leads.update(currentLead.lead_id, updatedFields);
-                              await db.sync_queue.add({ idempotency_key: crypto.randomUUID(),  table_name: "leads", action: "UPDATE", data: { lead_id: currentLead.lead_id, ...updatedFields }, timestamp: new Date().toISOString() });
+                              await transactionalMutation("leads", "UPDATE", { lead_id: currentLead.lead_id, ...updatedFields });
                               currentLead = { ...currentLead, ...updatedFields };
                               setSelectedLead(currentLead);
                               await loadLeads();
@@ -715,8 +703,7 @@ export default function OnboardingPage() {
                               notes: "",
                               next_followup_date: null,
                             };
-                            await db.call_logs.add(log);
-                            await db.sync_queue.add({ idempotency_key: crypto.randomUUID(),  table_name: "call_logs", action: "INSERT", data: log, timestamp: log.timestamp });
+                            await transactionalMutation("call_logs", "INSERT", log);
                             const logs = await db.call_logs.where("lead_id").equals(currentLead.lead_id).toArray();
                             setCallLogs(logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
 

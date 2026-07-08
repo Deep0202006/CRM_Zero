@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { db } from "@/lib/db";
+import { db, transactionalMutation } from "@/lib/db";
 import { UserPlus, Send, Users, CalendarDays, AlertCircle } from "lucide-react";import type { LocalUser } from "@/lib/db";
 import { SearchableSelect } from "@/components/SearchableSelect";
 
@@ -64,13 +64,7 @@ export default function AssignTaskPage() {
       created_at: new Date().toISOString(),
     };
 
-    await db.tasks.add(task);
-    await db.sync_queue.add({ idempotency_key: crypto.randomUUID(), 
-      table_name: "tasks",
-      action: "INSERT",
-      data: task,
-      timestamp: new Date().toISOString(),
-    });
+    await transactionalMutation("tasks", "INSERT", task);
 
     const assignee = users.find((u) => u.user_id === form.assignedTo);
     setSuccessMsg(`Task assigned to ${assignee?.name || "team member"}.`);

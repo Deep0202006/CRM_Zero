@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { db, LocalClientQuery } from "@/lib/db";
+import { db, transactionalMutation, LocalClientQuery } from "@/lib/db";
 import {
   Headphones,
   AlertCircle,
@@ -98,8 +98,7 @@ export default function SupportPage() {
         created_at:     new Date().toISOString(),
       };
       
-      await db.client_queries.add(newQuery);
-      await db.sync_queue.add({ idempotency_key: crypto.randomUUID(),  table_name: "client_queries", action: "INSERT", data: newQuery, timestamp: new Date().toISOString() });
+      await transactionalMutation("client_queries", "INSERT", newQuery);
 
       setSuccessMsg("Query logged.");
       setTimeout(() => setSuccessMsg(null), 2500);
@@ -116,8 +115,7 @@ export default function SupportPage() {
     try {
       const updates: Partial<LocalClientQuery & { resolved_at?: string }> = { problem_status: newStatus };
       if (newStatus === "Resolved") updates.resolved_at = new Date().toISOString();
-      await db.client_queries.update(query.query_id, updates);
-      await db.sync_queue.add({ idempotency_key: crypto.randomUUID(),  table_name: "client_queries", action: "UPDATE", data: { query_id: query.query_id, ...updates }, timestamp: new Date().toISOString() });
+      await transactionalMutation("client_queries", "UPDATE", { query_id: query.query_id, ...updates });
       await loadData();
     } catch (err) {
       setErrorMsg("Failed to update query status.");
@@ -134,8 +132,7 @@ export default function SupportPage() {
         resolution_notes: resolutionNotes.trim(),
         resolved_by: currentUser?.user_id
       };
-      await db.client_queries.update(resolveModalQuery.query_id, updates);
-      await db.sync_queue.add({ idempotency_key: crypto.randomUUID(),  table_name: "client_queries", action: "UPDATE", data: { query_id: resolveModalQuery.query_id, ...updates }, timestamp: new Date().toISOString() });
+      await transactionalMutation("client_queries", "UPDATE", { query_id: resolveModalQuery.query_id, ...updates });
       await loadData();
       setResolveModalQuery(null);
       setResolutionNotes("");

@@ -4,7 +4,7 @@
 // them from task_templates matching the user's active capabilities, writes to
 // Dexie and queues for sync using the same sync_queue pattern as leads/attendance.
 
-import { db, type LocalTask, type LocalTaskTemplate, type SyncQueueItem } from "./db";
+import { db, transactionalMutation, type LocalTask, type LocalTaskTemplate, type SyncQueueItem } from "./db";
 
 export type { LocalTask, LocalTaskTemplate };
 
@@ -56,16 +56,7 @@ export async function getOrGenerateTodayTasks(
       created_at: new Date().toISOString(),
     };
 
-    await db.tasks.add(task);
-
-    const queueItem: SyncQueueItem = {
-      idempotency_key: crypto.randomUUID(),
-      table_name: "tasks",
-      action: "INSERT",
-      data: task,
-      timestamp: new Date().toISOString(),
-    };
-    await db.sync_queue.add(queueItem);
+    await transactionalMutation("tasks", "INSERT", task);
 
     generated.push(task);
     }
@@ -131,14 +122,7 @@ export async function updateTaskStatus(
     if (proof?.photoUrl) updates.proof_photo_url = proof.photoUrl;
   }
 
-  await db.tasks.update(task.task_id, updates);
-
-  await db.sync_queue.add({ idempotency_key: crypto.randomUUID(), 
-    table_name: "tasks",
-    action: "UPDATE",
-    data: { task_id: task.task_id, ...updates },
-    timestamp: now,
-  });
+  await transactionalMutation("tasks", "UPDATE", { task_id: task.task_id, ...updates });
 
   const historyEntry = {
     id: crypto.randomUUID(),
@@ -148,11 +132,5 @@ export async function updateTaskStatus(
     new_status: newStatus,
     changed_at: now,
   };
-  await db.task_status_history.add(historyEntry);
-  await db.sync_queue.add({ idempotency_key: crypto.randomUUID(), 
-    table_name: "task_status_history",
-    action: "INSERT",
-    data: historyEntry,
-    timestamp: now,
-  });
+  await transactionalMutation("task_status_history", "INSERT", historyEntry);
 }

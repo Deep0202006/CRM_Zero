@@ -494,6 +494,39 @@ const TABLE_PK: Record<string, string> = {
 // OFFLINE QUEUE HELPERS
 // ─────────────────────────────────────────────────────────────────────────────
 
+export async function transactionalMutation(
+  tableName: string,
+  action: "INSERT" | "UPDATE" | "DELETE",
+  data: any
+) {
+  const table = (db as any)[tableName];
+  await db.transaction('rw', [table, db.sync_queue], async () => {
+    if (action === "INSERT") {
+      await table.add(data);
+    } else if (action === "UPDATE") {
+      const pk = TABLE_PK[tableName] ?? "id";
+      await table.update(data[pk], data);
+    } else if (action === "DELETE") {
+      const pk = TABLE_PK[tableName] ?? "id";
+      await table.delete(data[pk]);
+    }
+
+    const item: SyncQueueItem = {
+      idempotency_key: crypto.randomUUID(),
+      table_name: tableName,
+      action,
+      data,
+      timestamp: new Date().toISOString(),
+    };
+    await db.sync_queue.add(item);
+  });
+
+  console.log(`Transactional mutation completed for table ${tableName} (${action})`);
+  if (typeof navigator !== "undefined" && navigator.onLine) {
+    processSyncQueue().catch(console.error);
+  }
+}
+
 export async function queueOfflineMutation(
   tableName: string,
   action: "INSERT" | "UPDATE" | "DELETE",
@@ -596,6 +629,9 @@ export async function pullDownSync() {
       "task_templates",
       "tasks",
       "internal_tickets",
+      "attendance",
+      "call_logs",
+      "kpi_daily_snapshot",
     ];
 
     for (const tableName of tables) {

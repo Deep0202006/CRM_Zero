@@ -76,6 +76,35 @@ export async function exportMappings(userId: string) {
 
 // 2. Unified Administrative Master Export Panels
 
+export async function exportCallLogs(userId: string, isAdmin: boolean) {
+  let logs;
+  if (isAdmin) {
+    logs = await db.call_logs.toArray();
+  } else {
+    logs = await db.call_logs.where('user_id').equals(userId).toArray();
+  }
+  
+  // Need users array to map user_id to name if admin
+  const usersArray = await db.users.toArray();
+  const userMap = new Map(usersArray.map(u => [u.user_id, u.name || u.username]));
+
+  const data = logs.map(l => ({
+    'Log ID': l.log_id,
+    'User Name': userMap.get(l.user_id) || l.user_id,
+    'Lead/Contact': l.lead_id,
+    'Outcome': l.outcome,
+    'Notes': l.notes || '',
+    'Next Follow-up': formatIsoDate(l.next_followup_date),
+    'Date Logged': formatIsoDate(l.timestamp),
+  }));
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, isAdmin ? 'Master Call Logs' : 'My Call Logs');
+  triggerDownload(wb, isAdmin ? 'Master_Call_Logs_Export' : 'My_Call_Logs_Export');
+}
+
+// 3. Unified Administrative Master Export Panels
+
 export async function exportMasterSales() {
   const leads = await db.leads.toArray();
   const data = leads.map(l => ({

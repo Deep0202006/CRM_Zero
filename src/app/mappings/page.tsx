@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { db, LocalLead, LocalMappingRequest } from "@/lib/db";
+import { db, transactionalMutation, LocalLead, LocalMappingRequest } from "@/lib/db";
 import { AlertCircle, CheckCircle2, Clock, Link2, RefreshCw, Download, ArrowRightLeft } from "lucide-react";
 import { SearchableSelect, SearchableOption } from "@/components/SearchableSelect";
 import excelUsers from "@/lib/excel_users.json";
@@ -98,14 +98,7 @@ export default function MappingsPage() {
       lead_source: "Mapping Form"
     };
 
-    await db.leads.add(newLead);
-    await db.sync_queue.add({
-      idempotency_key: crypto.randomUUID(),
-      table_name: "leads",
-      action: "INSERT",
-      data: newLead,
-      timestamp: new Date().toISOString()
-    });
+    await transactionalMutation("leads", "INSERT", newLead);
 
     setLeads(prev => [...prev, newLead]);
     return newLeadId;
@@ -153,16 +146,8 @@ export default function MappingsPage() {
         newMaps.push(newMapping);
       }
       
-      await db.mapping_requests.bulkAdd(newMaps);
-      
       for (let i = 0; i < newMaps.length; i++) {
-         await db.sync_queue.add({ 
-           idempotency_key: `${idempotencyBase}-${i}`, 
-           table_name: "mapping_requests", 
-           action: "INSERT", 
-           data: newMaps[i], 
-           timestamp: timestamp 
-         });
+         await transactionalMutation("mapping_requests", "INSERT", newMaps[i]);
       }
 
       setSuccessMsg(`Successfully logged ${newMaps.length} mapping task(s).`);
@@ -180,8 +165,7 @@ export default function MappingsPage() {
     try {
       const updates: any = { status: newStatus };
       if (newStatus === "Completed") updates.completed_at = new Date().toISOString();
-      await db.mapping_requests.update(request_id, updates);
-      await db.sync_queue.add({ idempotency_key: crypto.randomUUID(),  table_name: "mapping_requests", action: "UPDATE", data: { request_id, ...updates }, timestamp: new Date().toISOString() });
+      await transactionalMutation("mapping_requests", "UPDATE", { request_id, ...updates });
       await loadData();
     } catch (err) {
       setErrorMsg("Failed to update mapping status.");

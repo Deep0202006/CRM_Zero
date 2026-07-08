@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { db, LocalUser, pullDownSync } from "@/lib/db";
+import { db, transactionalMutation, LocalUser, pullDownSync } from "@/lib/db";
 import { supabase } from "@/lib/supabaseClient";
 
 interface AuthContextType {
@@ -240,13 +240,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             latitude: null,
             longitude: null
           };
-          await db.attendance.add(newRecord);
-          await db.sync_queue.add({ idempotency_key: crypto.randomUUID(), 
-            table_name: "attendance",
-            action: "INSERT",
-            data: newRecord,
-            timestamp: new Date().toISOString(),
-          });
+          await transactionalMutation("attendance", "INSERT", newRecord);
         }
       } catch (err) {
         console.error("Auto attendance logging failed", err);

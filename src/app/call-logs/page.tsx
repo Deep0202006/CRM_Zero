@@ -2,12 +2,12 @@
 
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { db, queueOfflineMutation } from "@/lib/db";
+import { db, transactionalMutation } from "@/lib/db";
 import { SearchableSelect } from "@/components/SearchableSelect";
-import { PhoneCall, CheckCircle2, AlertCircle } from "lucide-react";
-import excelUsers from "@/lib/excel_users.json";
 import { SearchableOption } from "@/components/SearchableSelect";
-
+import { PhoneCall, CheckCircle2, AlertCircle, Download } from "lucide-react";
+import excelUsers from "@/lib/excel_users.json";
+import { exportCallLogs } from "@/lib/excelExport";
 export default function CallLogsPage() {
   const { currentUser } = useAuth();
   
@@ -79,8 +79,7 @@ export default function CallLogsPage() {
         next_followup_date: nextFollowupDate,
       };
 
-      await db.call_logs.add(log);
-      await queueOfflineMutation("call_logs", "INSERT", log);
+      await transactionalMutation("call_logs", "INSERT", log);
 
       if (nextFollowupDate) {
         const leadNameMatch = selectedLeadId.split("::");
@@ -104,8 +103,7 @@ export default function CallLogsPage() {
           proof_photo_url: null,
           created_at: new Date().toISOString(),
         };
-        await db.tasks.add(followupTask);
-        await queueOfflineMutation("tasks", "INSERT", followupTask);
+        await transactionalMutation("tasks", "INSERT", followupTask);
       }
 
       setSuccess(true);
@@ -128,14 +126,26 @@ export default function CallLogsPage() {
 
   return (
     <main className="flex-1 p-6 lg:p-10 pt-20 max-w-4xl mx-auto">
-      <div className="flex items-center gap-4 mb-10">
-        <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shadow-sm">
-          <PhoneCall size={24} />
+      <div className="flex sm:flex-row flex-col sm:items-center justify-between gap-4 mb-10">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shadow-sm">
+            <PhoneCall size={24} />
+          </div>
+          <div>
+            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Log a Call</h1>
+            <p className="text-slate-500 mt-1">Record manual calls made to distributors and retailers.</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Log a Call</h1>
-          <p className="text-slate-500 mt-1">Record manual calls made to distributors and retailers.</p>
-        </div>
+        
+        {currentUser && (
+          <button
+            onClick={() => exportCallLogs(currentUser.user_id, currentUser.capabilities.includes("admin"))}
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-semibold rounded-xl transition-colors border border-emerald-200 shadow-sm"
+          >
+            <Download size={18} />
+            <span>Download Excel</span>
+          </button>
+        )}
       </div>
 
       <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
