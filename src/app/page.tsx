@@ -25,6 +25,7 @@ export default function HomePage() {
   const [pendingQueries, setPendingQueries] = useState(0);
   const [activeUsersCount, setActiveUsersCount] = useState(0);
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
+  const [mappedTasksCount, setMappedTasksCount] = useState(0);
 
   useEffect(() => {
     async function loadStats() {
@@ -100,12 +101,30 @@ export default function HomePage() {
         feed.sort((a, b) => b.date.getTime() - a.date.getTime());
         setRecentActivities(feed.slice(0, 5));
         
+        // 6. Mapped Tasks Today
+        if (currentUser && (isAdmin || capabilities.includes('mapping'))) {
+          const mappings = await db.mappings.toArray();
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const tomorrow = new Date(today);
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          
+          const mappedToday = mappings.filter(m => {
+            if (!m.completion_timestamp) return false;
+            // The mapping module user completion check
+            if (m.mapped_by !== currentUser.user_id) return false;
+            const completionDate = new Date(m.completion_timestamp);
+            return completionDate >= today && completionDate < tomorrow;
+          }).length;
+          setMappedTasksCount(mappedToday);
+        }
+
       } catch (err) {
         console.error("Failed to load dashboard metrics", err);
       }
     }
     loadStats();
-  }, []);
+  }, [currentUser, isAdmin, capabilities]);
 
   const metrics = [
     { label: 'Total Leads Managed', value: totalLeads.toString(), trend: '+12%', color: 'text-brand-primary', icon: BarChart },
@@ -113,6 +132,10 @@ export default function HomePage() {
     { label: 'Open Client Queries', value: pendingQueries.toString(), trend: 'SLA Active', color: 'text-brand-secondary', icon: MessageSquare },
     { label: 'Active Team Members', value: activeUsersCount.toString(), trend: 'Live', color: 'text-status-pending', icon: Users },
   ];
+
+  if (isAdmin || capabilities.includes('mapping')) {
+    metrics.push({ label: 'Mapped Tasks (Today)', value: mappedTasksCount.toString(), trend: 'Daily', color: 'text-brand-primary', icon: Activity });
+  }
 
   return (
     <div className="space-y-8">

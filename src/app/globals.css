@@ -47,13 +47,15 @@
   --color-foreground: var(--color-slate-900);
 }
 
-html, body {
-  background-color: var(--color-canvas);
-  color: var(--color-slate-600);
-  font-family: 'Outfit', 'Inter', system-ui, sans-serif;
-  overflow-x: hidden;
-  max-width: 100%;
-  -webkit-font-smoothing: antialiased;
+@layer base {
+  html, body {
+    background-color: var(--color-canvas);
+    color: var(--color-slate-600);
+    font-family: 'Outfit', 'Inter', system-ui, sans-serif;
+    overflow-x: hidden;
+    max-width: 100%;
+    -webkit-font-smoothing: antialiased;
+  }
 }
 
 /* Glassmorphism panel styles */
@@ -97,8 +99,10 @@ html, body {
   display: none;
 }
 
-h1, h2, h3, h4 {
-  font-weight: 900;
-  letter-spacing: -0.025em;
-  color: var(--color-slate-900);
+@layer base {
+  h1, h2, h3, h4 {
+    font-weight: 900;
+    letter-spacing: -0.025em;
+    color: var(--color-slate-900);
+  }
 }
