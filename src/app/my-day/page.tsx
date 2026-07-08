@@ -11,7 +11,7 @@ import {
 } from "@/lib/taskEngine";
 import { CONVERTED_STAGES } from "@/lib/pipelineRules";
 import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
-import { db } from "@/lib/db";
+import { db, transactionalMutation } from "@/lib/db";
 import { CheckCircle2, Clock, AlertCircle, ListTodo, PhoneCall, Trophy, CheckSquare, Target, Download, Trash2 } from "lucide-react";
 import { exportPipelineToExcel } from "@/lib/pipelineExport";
 

@@ -9,7 +9,7 @@ import { PhoneCall, CheckCircle2, AlertCircle, Download } from "lucide-react";
 import excelUsers from "@/lib/excel_users.json";
 import { exportCallLogs } from "@/lib/excelExport";
 export default function CallLogsPage() {
-  const { currentUser } = useAuth();
+  const { currentUser, isAdmin } = useAuth();
   
   const [loading, setLoading] = useState(true);
   
@@ -139,7 +139,7 @@ export default function CallLogsPage() {
         
         {currentUser && (
           <button
-            onClick={() => exportCallLogs(currentUser.user_id, currentUser.capabilities.includes("admin"))}
+            onClick={() => exportCallLogs(currentUser.user_id, isAdmin)}
             className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-semibold rounded-xl transition-colors border border-emerald-200 shadow-sm"
           >
             <Download size={18} />

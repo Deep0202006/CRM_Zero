@@ -86,15 +86,15 @@ export async function exportCallLogs(userId: string, isAdmin: boolean) {
   
   // Need users array to map user_id to name if admin
   const usersArray = await db.users.toArray();
-  const userMap = new Map(usersArray.map(u => [u.user_id, u.name || u.username]));
+  const userMap = new Map(usersArray.map(u => [u.user_id, u.name || u.email]));
 
   const data = logs.map(l => ({
     'Log ID': l.log_id,
-    'User Name': userMap.get(l.user_id) || l.user_id,
+    'User Name': userMap.get(l.user_id || '') || l.user_id || 'Unknown',
     'Lead/Contact': l.lead_id,
     'Outcome': l.outcome,
     'Notes': l.notes || '',
-    'Next Follow-up': formatIsoDate(l.next_followup_date),
+    'Next Follow-up': formatIsoDate(l.next_followup_date || null),
     'Date Logged': formatIsoDate(l.timestamp),
   }));
   const ws = XLSX.utils.json_to_sheet(data);
