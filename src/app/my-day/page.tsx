@@ -41,6 +41,7 @@ export default function MyDayPage() {
   const [leadsConverted, setLeadsConverted] = useState(0);
   const [queriesResolvedToday, setQueriesResolvedToday] = useState(0);
   const [openQueries, setOpenQueries] = useState(0);
+  const [mappedToday, setMappedToday] = useState(0);
 
   const loadTasksAndKpis = useCallback(async () => {
     if (!currentUser) return;
@@ -53,6 +54,10 @@ export default function MyDayPage() {
     const todayStr = new Date().toISOString().slice(0, 10);
     
     try {
+      // Mapped Tasks (for all users)
+      const allMappings = await db.mappings.toArray();
+      setMappedToday(allMappings.filter(m => m.mapped_by === currentUser.user_id && m.completion_timestamp?.startsWith(todayStr)).length);
+
       if (hasOnboarding) {
         // Calls today (excluding automatic stage movement notes which contain "→")
         const allCalls = await db.call_logs.where("user_id").equals(currentUser.user_id).toArray();
@@ -233,7 +238,7 @@ export default function MyDayPage() {
         </div>
 
         {/* ─── Role-Scoped KPIs ─────────────────────────────────────────── */}
-        {!loading && (hasOnboarding || hasSupport || isFieldStaff) && (
+        {!loading && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {/* Common: Tasks Completed */}
             <div className="bg-white rounded-2xl border border-slate-100 p-4 flex flex-col justify-between">
@@ -241,6 +246,15 @@ export default function MyDayPage() {
               <div>
                 <p className="text-2xl font-black text-slate-900">{done.length}</p>
                 <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Tasks Done</p>
+              </div>
+            </div>
+
+            {/* Common: Mapped Tasks */}
+            <div className="bg-white rounded-2xl border border-slate-100 p-4 flex flex-col justify-between">
+              <Target size={16} className="text-brand-primary mb-2" />
+              <div>
+                <p className="text-2xl font-black text-slate-900">{mappedToday}</p>
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Mapped Today</p>
               </div>
             </div>
             
