@@ -55,8 +55,8 @@ export default function MyDayPage() {
     
     try {
       // Mapped Tasks (for all users)
-      const allMappings = await db.mappings.toArray();
-      setMappedToday(allMappings.filter(m => m.mapped_by === currentUser.user_id && m.completion_timestamp?.startsWith(todayStr)).length);
+      const allMappings = await db.mapping_requests.toArray();
+      setMappedToday(allMappings.filter(m => m.mapped_by === currentUser.user_id && m.status === 'Completed' && m.completed_at?.startsWith(todayStr)).length);
 
       if (hasOnboarding) {
         // Calls today (excluding automatic stage movement notes which contain "→")

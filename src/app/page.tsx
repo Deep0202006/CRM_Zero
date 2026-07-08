@@ -101,19 +101,18 @@ export default function HomePage() {
         feed.sort((a, b) => b.date.getTime() - a.date.getTime());
         setRecentActivities(feed.slice(0, 5));
         
-        // 6. Mapped Tasks Today
         if (currentUser && (isAdmin || capabilities.includes('mapping'))) {
-          const mappings = await db.mappings.toArray();
+          const mappingRequests = await db.mapping_requests.toArray();
           const today = new Date();
           today.setHours(0, 0, 0, 0);
           const tomorrow = new Date(today);
           tomorrow.setDate(tomorrow.getDate() + 1);
           
-          const mappedToday = mappings.filter(m => {
-            if (!m.completion_timestamp) return false;
+          const mappedToday = mappingRequests.filter(m => {
+            if (m.status !== "Completed" || !m.completed_at) return false;
             // The mapping module user completion check
             if (m.mapped_by !== currentUser.user_id) return false;
-            const completionDate = new Date(m.completion_timestamp);
+            const completionDate = new Date(m.completed_at);
             return completionDate >= today && completionDate < tomorrow;
           }).length;
           setMappedTasksCount(mappedToday);
