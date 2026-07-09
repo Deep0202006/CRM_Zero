@@ -2,16 +2,20 @@
 
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { db, transactionalMutation } from "@/lib/db";
-import { SearchableSelect } from "@/components/SearchableSelect";
-import { SearchableOption } from "@/components/SearchableSelect";
-import { PhoneCall, CheckCircle2, AlertCircle, Download } from "lucide-react";
+import { db, transactionalMutation, LocalCallLog, LocalUser, LocalLead } from "@/lib/db";
+import { SearchableSelect, SearchableOption } from "@/components/SearchableSelect";
+import { PhoneCall, CheckCircle2, AlertCircle, Download, Clock } from "lucide-react";
 import excelUsers from "@/lib/excel_users.json";
 import { exportCallLogs } from "@/lib/excelExport";
+import { QueueList, QueueItem } from "@/components/QueueList";
+
 export default function CallLogsPage() {
   const { currentUser, isAdmin } = useAuth();
   
   const [loading, setLoading] = useState(true);
+  const [logs, setLogs] = useState<LocalCallLog[]>([]);
+  const [usersMap, setUsersMap] = useState<Map<string, LocalUser>>(new Map());
+  const [leadsMap, setLeadsMap] = useState<Map<string, LocalLead>>(new Map());
   
   const [selectedLeadId, setSelectedLeadId] = useState("");
   const [outcome, setOutcome] = useState("");
@@ -40,9 +44,32 @@ export default function CallLogsPage() {
     return excelOptions.sort((a, b) => a.label.localeCompare(b.label));
   }, []);
 
+  const loadData = async () => {
+    try {
+      const fetchedLogs = await db.call_logs.toArray();
+      // Sort by descending timestamp
+      fetchedLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      
+      const allUsers = await db.users.toArray();
+      const uMap = new Map<string, LocalUser>();
+      allUsers.forEach(u => uMap.set(u.user_id, u));
+      
+      const allLeads = await db.leads.toArray();
+      const lMap = new Map<string, LocalLead>();
+      allLeads.forEach(l => lMap.set(l.lead_id, l));
+      
+      setUsersMap(uMap);
+      setLeadsMap(lMap);
+      setLogs(fetchedLogs);
+    } catch (err) {
+      console.error("Failed to load logs:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    // Mock loading delay to match existing pattern if needed
-    setLoading(false);
+    loadData();
   }, []);
 
   const handleLogCall = async (e: React.FormEvent) => {
@@ -69,7 +96,7 @@ export default function CallLogsPage() {
     try {
       const nextFollowupDate = (outcome === "No response (followup)" || outcome === "Requested more info") ? (nextFollowup || null) : null;
 
-      const log = {
+      const log: LocalCallLog = {
         log_id: crypto.randomUUID(),
         user_id: currentUser.user_id,
         lead_id: selectedLeadId, // This is now in format EXCEL::username::name
@@ -114,6 +141,8 @@ export default function CallLogsPage() {
       setNotes("");
       setNextFollowup("");
       
+      await loadData();
+      
       setTimeout(() => setSuccess(false), 3000);
     } catch (err: any) {
       setError(err.message || "Failed to log call.");
@@ -124,15 +153,36 @@ export default function CallLogsPage() {
 
   const showFollowup = outcome === "No response (followup)" || outcome === "Requested more info";
 
+  const getLeadDisplay = (lead_id: string) => {
+    if (lead_id.startsWith("EXCEL::")) {
+      const parts = lead_id.split("::");
+      if (parts.length === 3) {
+        return `[${parts[1]}] - ${parts[2]}`;
+      }
+    }
+    const lead = leadsMap.get(lead_id);
+    if (lead) {
+      return `[${lead.business_name}] - ${lead.contact_person || lead.phone || "Unknown"}`;
+    }
+    return lead_id;
+  };
+
+  const getAgentDisplay = (user_id?: string | null) => {
+    if (!user_id) return "System/Unknown";
+    const user = usersMap.get(user_id);
+    if (!user) return "Unknown Agent";
+    return `${user.name} (@${user.email})`;
+  };
+
   return (
-    <main className="flex-1 p-6 lg:p-10 pt-20 max-w-4xl mx-auto">
-      <div className="flex sm:flex-row flex-col sm:items-center justify-between gap-4 mb-10">
+    <main className="flex-1 p-6 lg:p-10 pt-20 w-full max-w-7xl mx-auto space-y-6">
+      <div className="flex sm:flex-row flex-col sm:items-center justify-between gap-4 mb-4">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shadow-sm">
             <PhoneCall size={24} />
           </div>
           <div>
-            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Log a Call</h1>
+            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Call Logs</h1>
             <p className="text-slate-500 mt-1">Record manual calls made to distributors and retailers.</p>
           </div>
         </div>
@@ -148,12 +198,13 @@ export default function CallLogsPage() {
         )}
       </div>
 
-      <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
-        {loading ? (
-          <div className="flex justify-center p-8 text-slate-400">Loading options...</div>
-        ) : (
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        <div className="lg:col-span-2 bg-white rounded-3xl p-6 border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] h-fit">
+          <h3 className="text-base font-black text-slate-900 flex items-center gap-2 mb-6">
+            <PhoneCall size={16} className="text-brand-primary" />
+            Log Call
+          </h3>
           <form onSubmit={handleLogCall} className="space-y-6">
-            
             {/* Lead Selection */}
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-2">
@@ -232,13 +283,41 @@ export default function CallLogsPage() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="bg-brand-primary text-white font-bold px-8 py-3 rounded-xl shadow-[0_4px_14px_0_rgba(10,51,217,0.39)] hover:shadow-[0_6px_20px_rgba(10,51,217,0.23)] hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:pointer-events-none"
+                className="bg-brand-primary text-white font-bold px-8 py-3 rounded-xl shadow-[0_4px_14px_0_rgba(10,51,217,0.39)] hover:shadow-[0_6px_20px_rgba(10,51,217,0.23)] hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:pointer-events-none w-full"
               >
                 {submitting ? "Logging..." : "Log Call"}
               </button>
             </div>
           </form>
-        )}
+        </div>
+
+        {/* Queue Template Section */}
+        <QueueList
+          title="Call History"
+          items={logs.map(log => ({
+            id: log.log_id,
+            primaryNode: (
+              <div>
+                <p className="text-sm font-bold text-slate-900 mt-0.5 leading-snug">
+                  {getLeadDisplay(log.lead_id)}
+                </p>
+                <p className="text-[10px] font-semibold text-slate-500 mt-1 uppercase tracking-wider">
+                  Agent: <span className="text-slate-700">{getAgentDisplay(log.user_id)}</span>
+                </p>
+                {log.notes && (
+                  <p className="text-xs text-slate-500 mt-2 bg-slate-100 p-2 rounded-lg italic">
+                    {log.notes}
+                  </p>
+                )}
+              </div>
+            ),
+            statusText: log.outcome,
+            statusColorClasses: "bg-indigo-50 text-indigo-600 border-indigo-200",
+            timestamp: new Date(log.timestamp).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }),
+          }))}
+          emptyMessage="No calls logged yet."
+          onRefresh={loadData}
+        />
       </div>
     </main>
   );

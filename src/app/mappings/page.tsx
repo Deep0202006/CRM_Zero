@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { db, transactionalMutation, LocalLead, LocalMappingRequest } from "@/lib/db";
 import { AlertCircle, CheckCircle2, Clock, Link2, RefreshCw, Download, ArrowRightLeft } from "lucide-react";
 import { SearchableSelect, SearchableOption } from "@/components/SearchableSelect";
+import { QueueList } from "@/components/QueueList";
 import excelUsers from "@/lib/excel_users.json";
 
 export default function MappingsPage() {
@@ -175,11 +176,27 @@ export default function MappingsPage() {
   };
 
   const getDistributorName = (map: LocalMappingRequest) => {
-    return leads.find(l => l.lead_id === map.distributor_lead_id)?.business_name || "Unknown/Legacy Distributor";
+    if (map.distributor_lead_id) {
+      if (map.distributor_lead_id.startsWith("EXCEL::")) {
+        const parts = map.distributor_lead_id.split("::");
+        if (parts.length === 3) return `[${parts[1]}] - ${parts[2]}`;
+      }
+      const l = leads.find(l => l.lead_id === map.distributor_lead_id);
+      if (l) return `[${l.business_name}] - ${l.contact_person || l.phone || "Unknown"}`;
+    }
+    return map.distributor_name_unregistered || "Unknown";
   };
   
   const getRetailerName = (map: LocalMappingRequest) => {
-    return leads.find(l => l.lead_id === map.retailer_lead_id)?.business_name || "Unknown/Legacy Retailer";
+    if (map.retailer_lead_id) {
+      if (map.retailer_lead_id.startsWith("EXCEL::")) {
+        const parts = map.retailer_lead_id.split("::");
+        if (parts.length === 3) return `[${parts[1]}] - ${parts[2]}`;
+      }
+      const l = leads.find(l => l.lead_id === map.retailer_lead_id);
+      if (l) return `[${l.business_name}] - ${l.contact_person || l.phone || "Unknown"}`;
+    }
+    return map.retailer_name_unregistered || "Unknown";
   };
 
   if (!hasSupport) {
@@ -314,53 +331,32 @@ export default function MappingsPage() {
           </form>
         </div>
 
-        <div className="lg:col-span-3 bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
-              <Clock size={16} className="text-brand-secondary" /> Mapping Queue
-            </h3>
-            <button onClick={loadData} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 cursor-pointer" title="Refresh">
-              <RefreshCw size={14} />
-            </button>
-          </div>
-
-          <div className="space-y-3 max-h-[480px] overflow-y-auto pr-1">
-            {mappings.length === 0 && (
-              <p className="text-xs italic text-slate-400 text-center py-10 font-semibold">No mappings recorded.</p>
-            )}
-            {mappings.map(map => (
-              <div
-                key={map.request_id}
-                className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-3 hover:border-slate-200 transition-all"
+        <QueueList
+          title="Mapping Queue"
+          items={mappings.map(map => ({
+            id: map.request_id,
+            primaryNode: (
+              <p className="text-sm font-bold text-slate-900 mt-0.5 leading-snug">
+                {getRetailerName(map)} <span className="text-slate-400 font-normal mx-1">→</span> {getDistributorName(map)}
+              </p>
+            ),
+            statusText: map.status,
+            statusColorClasses: map.status === "Completed" ? "bg-emerald-50 text-emerald-600 border-emerald-200" : "bg-amber-50 text-amber-700 border-amber-200",
+            timestamp: new Date(map.created_at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }),
+            actions: map.status !== "Completed" ? (
+              <button
+                onClick={() => handleUpdateMappingStatus(map.request_id, "Completed")}
+                className="px-2.5 py-1 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-lg text-[10px] font-black hover:bg-emerald-100 transition-all cursor-pointer"
               >
-                <div className="flex justify-between items-start gap-2">
-                  <div>
-                    <p className="text-sm font-bold text-slate-900 mt-0.5 leading-snug">
-                      {getRetailerName(map)} <span className="text-slate-400 font-normal mx-1">→</span> {getDistributorName(map)}
-                    </p>
-                  </div>
-                  <span className={`shrink-0 text-[9px] font-black uppercase px-2 py-0.5 rounded-full border ${map.status === "Completed" ? "bg-emerald-50 text-emerald-600 border-emerald-200" : "bg-amber-50 text-amber-700 border-amber-200"}`}>
-                    {map.status}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-[10px] text-slate-400 font-semibold border-t border-slate-200/50 pt-2">
-                  <span>{new Date(map.created_at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
-                  {map.status !== "Completed" && (
-                    <button
-                      onClick={() => handleUpdateMappingStatus(map.request_id, "Completed")}
-                      className="px-2.5 py-1 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-lg text-[10px] font-black hover:bg-emerald-100 transition-all cursor-pointer"
-                    >
-                      Mark Complete ✓
-                    </button>
-                  )}
-                  {map.status === "Completed" && (
-                    <span className="text-emerald-500 font-black flex items-center gap-1"><CheckCircle2 size={10}/> Done</span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+                Mark Complete ✓
+              </button>
+            ) : (
+              <span className="text-emerald-500 font-black flex items-center gap-1"><CheckCircle2 size={10}/> Done</span>
+            )
+          }))}
+          emptyMessage="No mappings recorded."
+          onRefresh={loadData}
+        />
       </div>
     </div>
   );
