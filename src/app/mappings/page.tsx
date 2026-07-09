@@ -184,7 +184,7 @@ export default function MappingsPage() {
       const l = leads.find(l => l.lead_id === map.distributor_lead_id);
       if (l) return `[${l.business_name}] - ${l.contact_person || l.phone || "Unknown"}`;
     }
-    return map.distributor_name_unregistered || "Unknown";
+    return "Unknown/Legacy Distributor";
   };
   
   const getRetailerName = (map: LocalMappingRequest) => {
@@ -196,7 +196,7 @@ export default function MappingsPage() {
       const l = leads.find(l => l.lead_id === map.retailer_lead_id);
       if (l) return `[${l.business_name}] - ${l.contact_person || l.phone || "Unknown"}`;
     }
-    return map.retailer_name_unregistered || "Unknown";
+    return "Unknown/Legacy Retailer";
   };
 
   if (!hasSupport) {
