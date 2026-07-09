@@ -79,7 +79,7 @@ export default function MappingsPage() {
       const parts = input.split("::");
       const uName = parts[1];
       const fullName = parts[2] || uName;
-      bName = `${fullName} (@${uName})`;
+      bName = `[${uName}] - ${fullName}`;
     }
 
     // Attempt name match

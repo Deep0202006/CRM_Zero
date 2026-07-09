@@ -86,7 +86,7 @@ export default function SupportPage() {
         const parts = clientNameInput.split("::");
         client_username = parts[1] || "UNKNOWN";
         const rawName = parts[2] || parts[1] || "Unknown Client";
-        client_name = `${rawName} (@${client_username})`;
+        client_name = `[${client_username}] - ${rawName}`;
       }
       
       const newQuery: LocalClientQuery = {
