@@ -678,23 +678,37 @@ export async function pullDownSync() {
           }
         });
       } else if (data && data.length === 0) {
-        // If remote table is empty, delete all local items that are not pending insert
+        // HOTFIX RECOVERY: Supabase is empty, DO NOT DELETE local data!
+        // Instead, we act as a master node and PUSH our local data back up to Supabase to restore it.
         const table = (db as any)[tableName];
-        const pk = TABLE_PK[tableName] ?? "id";
         const localItems = await table.toArray();
         
-        const pendingInserts = await db.sync_queue
-          .filter(item => item.table_name === tableName && item.action === "INSERT")
-          .toArray();
-        const pendingInsertIds = new Set(pendingInserts.map(item => item.data[pk]));
+        if (localItems.length > 0) {
+          console.warn(`[RECOVERY] Remote table ${tableName} is empty, but local has ${localItems.length} records. Pushing local data to restore remote...`);
+          for (const item of localItems) {
+            // Reformat mappings format on the fly if it's a lead or client_query
+            if (tableName === 'leads' && item.business_name && typeof item.business_name === 'string') {
+              if (item.business_name.includes('(@')) {
+                // old format: Name (@Username) -> new format: [Username] - Name
+                const match = item.business_name.match(/(.+) \(@(.+)\)/);
+                if (match) {
+                  item.business_name = `[${match[2]}] - ${match[1]}`;
+                  if (item.contact_person === match[0]) item.contact_person = item.business_name;
+                }
+              }
+            } else if (tableName === 'client_queries' && item.client_name && typeof item.client_name === 'string') {
+               if (item.client_name.includes('(@')) {
+                const match = item.client_name.match(/(.+) \(@(.+)\)/);
+                if (match) {
+                  item.client_name = `[${match[2]}] - ${match[1]}`;
+                }
+              }
+            }
 
-        const idsToDelete = localItems.map((item: any) => item[pk]).filter((id: any) => !pendingInsertIds.has(id));
-
-        await db.transaction('rw', table, async () => {
-          if (idsToDelete.length > 0) {
-            await table.bulkDelete(idsToDelete);
+            // Queue an insert to push this local item back to Supabase
+            await queueOfflineMutation(tableName, "INSERT", item);
           }
-        });
+        }
       }
     }
     
