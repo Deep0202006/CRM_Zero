@@ -77,7 +77,9 @@ export default function MappingsPage() {
     let bName = input;
     if (input.startsWith("EXCEL::")) {
       const parts = input.split("::");
-      bName = parts[2] || parts[1];
+      const uName = parts[1];
+      const fullName = parts[2] || uName;
+      bName = `${fullName} (@${uName})`;
     }
 
     // Attempt name match

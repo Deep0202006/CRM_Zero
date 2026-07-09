@@ -83,7 +83,7 @@ export default function CallLogsPage() {
 
       if (nextFollowupDate) {
         const leadNameMatch = selectedLeadId.split("::");
-        const leadDisplay = leadNameMatch.length === 3 ? leadNameMatch[2] : selectedLeadId;
+        const leadDisplay = leadNameMatch.length === 3 ? `${leadNameMatch[2]} (@${leadNameMatch[1]})` : selectedLeadId;
         
         const followupTask = {
           task_id: crypto.randomUUID(),

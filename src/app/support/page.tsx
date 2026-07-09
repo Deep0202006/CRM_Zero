@@ -85,7 +85,8 @@ export default function SupportPage() {
       if (clientNameInput.startsWith("EXCEL::")) {
         const parts = clientNameInput.split("::");
         client_username = parts[1] || "UNKNOWN";
-        client_name = parts[2] || parts[1] || "Unknown Client";
+        const rawName = parts[2] || parts[1] || "Unknown Client";
+        client_name = `${rawName} (@${client_username})`;
       }
       
       const newQuery: LocalClientQuery = {
