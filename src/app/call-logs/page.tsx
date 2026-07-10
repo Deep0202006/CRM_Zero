@@ -162,6 +162,9 @@ export default function CallLogsPage() {
     }
     const lead = leadsMap.get(lead_id);
     if (lead) {
+      if (lead.business_name.startsWith("[") && lead.business_name.includes("] - ")) {
+        return lead.business_name;
+      }
       return `[${lead.business_name}] - ${lead.contact_person || lead.phone || "Unknown"}`;
     }
     return lead_id;

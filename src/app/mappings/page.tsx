@@ -182,7 +182,12 @@ export default function MappingsPage() {
         if (parts.length === 3) return `[${parts[1]}] - ${parts[2]}`;
       }
       const l = leads.find(l => l.lead_id === map.distributor_lead_id);
-      if (l) return `[${l.business_name}] - ${l.contact_person || l.phone || "Unknown"}`;
+      if (l) {
+        if (l.business_name.startsWith("[") && l.business_name.includes("] - ")) {
+          return l.business_name;
+        }
+        return `[${l.business_name}] - ${l.contact_person || l.phone || "Unknown"}`;
+      }
     }
     return "Unknown/Legacy Distributor";
   };
@@ -194,7 +199,12 @@ export default function MappingsPage() {
         if (parts.length === 3) return `[${parts[1]}] - ${parts[2]}`;
       }
       const l = leads.find(l => l.lead_id === map.retailer_lead_id);
-      if (l) return `[${l.business_name}] - ${l.contact_person || l.phone || "Unknown"}`;
+      if (l) {
+        if (l.business_name.startsWith("[") && l.business_name.includes("] - ")) {
+          return l.business_name;
+        }
+        return `[${l.business_name}] - ${l.contact_person || l.phone || "Unknown"}`;
+      }
     }
     return "Unknown/Legacy Retailer";
   };
