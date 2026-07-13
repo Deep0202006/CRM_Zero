@@ -617,6 +617,9 @@ export async function pullDownSync() {
   }
 
   console.log("Pulling latest data from Supabase...");
+  if (typeof window !== "undefined") {
+    localStorage.setItem("last_pull_sync", Date.now().toString());
+  }
 
   try {
     const tables = [
@@ -720,7 +723,7 @@ export async function pullDownSync() {
 
 
 // ─────────────────────────────────────────────────────────────────────────────
-// AUTO SYNC — online event + 60s periodic (Part 6)
+// AUTO SYNC & REALTIME SUBSCRIPTIONS
 // ─────────────────────────────────────────────────────────────────────────────
 
 if (typeof window !== "undefined") {
@@ -730,12 +733,79 @@ if (typeof window !== "undefined") {
     pullDownSync().catch(console.error);
   });
 
-  // Part 6.2 — catch flaky connections that never fully drop
-  setInterval(() => {
-    if (navigator.onLine) {
-      processSyncQueue().catch(console.error);
-      pullDownSync().catch(console.error);
+  // Trigger sync when tab becomes active again to ensure fresh data
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && navigator.onLine) {
+       console.log("Tab focused. Checking sync throttle...");
+       processSyncQueue().catch(console.error);
+       
+       const lastSyncStr = localStorage.getItem("last_pull_sync");
+       const lastSync = lastSyncStr ? parseInt(lastSyncStr, 10) : 0;
+       
+       // Throttle pullDownSync to once every 5 minutes (300000 ms)
+       if (Date.now() - lastSync > 300000) {
+         console.log("Throttle passed. Triggering full pullDownSync...");
+         pullDownSync().catch(console.error);
+       } else {
+         console.log("pullDownSync throttled to prevent usage limit exceedance. Realtime WebSocket will handle active updates.");
+       }
     }
-  }, 60_000);
+  });
+
+  // Initialize Supabase Realtime for instant offline-first syncing
+  if (isSupabaseConfigured) {
+    const validTables = [
+      "users", "capabilities", "user_capabilities", "leads",
+      "client_queries", "mappings", "mapping_requests", "task_templates",
+      "tasks", "task_status_history", "internal_tickets", "attendance", "call_logs",
+      "kpi_snapshots", "lead_registration_checklist", 
+      "lead_installation_details", "lead_payment_details"
+    ];
+
+    supabase.channel('schema-db-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public' },
+        async (payload) => {
+          try {
+            const tableName = payload.table;
+            if (!validTables.includes(tableName)) return;
+
+            const table = (db as any)[tableName];
+            if (!table) return;
+
+            const pk = TABLE_PK[tableName] ?? "id";
+
+            if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+              const record = payload.new;
+              
+              // Skip if we have a pending offline mutation for this item (our local version is newer)
+              const pendingMutation = await db.sync_queue
+                .where("table_name").equals(tableName)
+                .and(item => item.data[pk] === record[pk])
+                .first();
+                
+              if (!pendingMutation) {
+                await db.transaction('rw', table, async () => {
+                  await table.put(record);
+                });
+              }
+            } else if (payload.eventType === 'DELETE') {
+              const oldRecord = payload.old;
+              if (oldRecord && oldRecord[pk]) {
+                await db.transaction('rw', table, async () => {
+                  await table.delete(oldRecord[pk]);
+                });
+              }
+            }
+          } catch (err) {
+            console.error(`Error processing realtime event for ${payload.table}:`, err);
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log("Supabase Realtime status:", status);
+      });
+  }
 }
 
