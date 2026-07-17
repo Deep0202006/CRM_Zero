@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { UploadCloud, CheckCircle2, AlertCircle, Loader2, Users, MapPin } from "lucide-react";
-import { db, LocalUser } from "@/lib/db";
+import { db, LocalUser, pullDownSync } from "@/lib/db";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -17,7 +17,7 @@ interface UploadResponse {
 }
 
 export function TaskAllocationWorkspace() {
-  const { currentUser } = useAuth();
+  const { currentUser, allUsers } = useAuth();
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadData, setUploadData] = useState<UploadResponse | null>(null);
@@ -27,22 +27,10 @@ export function TaskAllocationWorkspace() {
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   useEffect(() => {
-    const loadAgents = async () => {
-      try {
-        const { data, error } = await supabase.from("users").select("*").eq("is_active", 1);
-        if (error) throw error;
-        if (data) {
-          setAgents(data);
-          await db.users.bulkPut(data); // keep local cache updated
-        }
-      } catch (err) {
-        console.error("Failed to load agents from Supabase, falling back to local DB", err);
-        const allUsers = await db.users.filter(u => u.is_active === 1).toArray();
-        setAgents(allUsers);
-      }
-    };
-    loadAgents();
-  }, []);
+    if (allUsers && allUsers.length > 0) {
+      setAgents(allUsers.filter(u => u.is_active === 1));
+    }
+  }, [allUsers]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -140,6 +128,11 @@ export function TaskAllocationWorkspace() {
       } else {
         setMessage({ type: "success", text: `Successfully allocated ${totalAllocated} tasks across ${citiesToAllocate.length} cities!` });
         setCityAgentMap({});
+      }
+      
+      // Keep local DB up to date so admin can see any tasks assigned to themselves
+      if (totalAllocated > 0) {
+        await pullDownSync();
       }
     } catch (err: any) {
       setMessage({ type: "error", text: err.message || "An error occurred during allocation" });

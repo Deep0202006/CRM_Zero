@@ -11,8 +11,8 @@ import {
 } from "@/lib/taskEngine";
 import { CONVERTED_STAGES } from "@/lib/pipelineRules";
 import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
-import { db, transactionalMutation } from "@/lib/db";
-import { CheckCircle2, Clock, AlertCircle, ListTodo, PhoneCall, Trophy, CheckSquare, Target, Download, Trash2, MapPin } from "lucide-react";
+import { db, transactionalMutation, pullDownSync } from "@/lib/db";
+import { CheckCircle2, Clock, AlertCircle, ListTodo, PhoneCall, Trophy, CheckSquare, Target, Download, Trash2, MapPin, RefreshCw } from "lucide-react";
 import { exportPipelineToExcel } from "@/lib/pipelineExport";
 
 const PRIORITY_DOT: Record<string, string> = {
@@ -32,6 +32,7 @@ export default function MyDayPage() {
   
   const [tasks, setTasks] = useState<LocalTask[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [markingId, setMarkingId] = useState<string | null>(null);
   const [stats, setStats] = useState({ pendingToday: 0, scheduledLater: 0 });
   const [weeklyDigest, setWeeklyDigest] = useState<any>(null);
@@ -164,6 +165,16 @@ export default function MyDayPage() {
     setMarkingId(null);
   };
 
+  const handleSyncData = async () => {
+    setIsSyncing(true);
+    try {
+      await pullDownSync();
+      await loadTasksAndKpis();
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const handleCompleteTarget = async (targetId: string) => {
     if (!currentUser || markingId) return;
     setMarkingId(targetId);
@@ -227,6 +238,14 @@ export default function MyDayPage() {
             <div className="flex items-center gap-2 mb-1">
               <ListTodo size={20} className="text-brand-primary" />
               <h1 className="text-2xl font-black text-slate-900">My Day</h1>
+              <button 
+                onClick={handleSyncData} 
+                disabled={isSyncing}
+                className={`ml-2 p-1.5 rounded-lg text-slate-400 hover:text-brand-primary hover:bg-brand-50 transition-colors ${isSyncing ? 'animate-spin text-brand-primary' : ''}`}
+                title="Sync latest tasks"
+              >
+                <RefreshCw size={16} />
+              </button>
             </div>
             <p className="text-xs text-slate-400 font-bold tracking-wider uppercase">{today}</p>
             {hasOnboarding && (
