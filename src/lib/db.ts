@@ -215,6 +215,27 @@ export interface LocalKpiSnapshot {
   created_at: string;
 }
 
+export interface LocalTaskUploadBatch {
+  id: string;
+  uploaded_by: string;
+  filename: string;
+  file_hash: string;
+  created_at: string;
+}
+
+export interface LocalAllocatedTarget {
+  target_id: string;
+  batch_id?: string | null;
+  assigned_to_user_id: string;
+  target_legal_name: string;
+  target_username: string;
+  target_phone_number: string;
+  city: string;
+  is_completed: boolean;
+  completed_at?: string | null;
+  created_at: string;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // INTERFACES — Sync queue (Part 6 hardening)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -258,6 +279,10 @@ class CRMDatabase extends Dexie {
   lead_registration_checklist!: Table<LocalRegistrationChecklist, string>;
   lead_installation_details!: Table<LocalInstallationDetails, string>;
   lead_payment_details!: Table<LocalPaymentDetails, string>;
+
+  // Task allocation (Excel uploads)
+  task_upload_batches!: Table<LocalTaskUploadBatch, string>;
+  allocated_targets!: Table<LocalAllocatedTarget, string>;
 
   constructor() {
     super("CRMDatabase");
@@ -427,6 +452,30 @@ class CRMDatabase extends Dexie {
       lead_installation_details: "installation_id, lead_id",
       lead_payment_details: "payment_id, lead_id",
     });
+
+    // Version 9 — Excel-based bulk task allocation
+    this.version(9).stores({
+      users: "user_id, email, is_active, manager_id",
+      capabilities: "code",
+      user_capabilities: "id, user_id, capability_code, [user_id+capability_code]",
+      leads: "lead_id, business_name, segment_type, status, assigned_to, stage_entered_at, lead_source, area, renewal_date",
+      client_queries: "query_id, client_username, problem_status, assigned_to, created_at",
+      mappings: "mapping_id, distributor_lead_id, retailer_lead_id, [distributor_lead_id+retailer_lead_id], mapped_by",
+      mapping_requests: "request_id, distributor_lead_id, retailer_lead_id, mapped_by, status, created_at",
+      internal_tickets: "ticket_id, raised_by, status, assigned_to",
+      attendance: "attendance_id, user_id, date, [user_id+date]",
+      call_logs: "log_id, user_id, lead_id, timestamp",
+      sync_queue: "++id, idempotency_key, table_name, action, timestamp, retry_count",
+      task_templates: "template_id, applies_to_capability, is_active",
+      tasks: "task_id, assigned_to, due_date, status, [assigned_to+due_date], template_id",
+      task_status_history: "id, task_id, changed_at",
+      kpi_snapshots: "snapshot_id, user_id, date, [user_id+date]",
+      lead_registration_checklist: "checklist_id, lead_id",
+      lead_installation_details: "installation_id, lead_id",
+      lead_payment_details: "payment_id, lead_id",
+      task_upload_batches: "id, uploaded_by, file_hash",
+      allocated_targets: "target_id, batch_id, assigned_to_user_id, city, is_completed",
+    });
   }
 }
 
@@ -488,6 +537,8 @@ const TABLE_PK: Record<string, string> = {
   lead_payment_details: "payment_id",
   capabilities: "code",
   user_capabilities: "id",
+  task_upload_batches: "id",
+  allocated_targets: "target_id",
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -635,6 +686,8 @@ export async function pullDownSync() {
       "attendance",
       "call_logs",
       "kpi_daily_snapshot",
+      "task_upload_batches",
+      "allocated_targets",
     ];
 
     for (const tableName of tables) {
@@ -759,7 +812,8 @@ if (typeof window !== "undefined") {
       "client_queries", "mappings", "mapping_requests", "task_templates",
       "tasks", "task_status_history", "internal_tickets", "attendance", "call_logs",
       "kpi_snapshots", "lead_registration_checklist", 
-      "lead_installation_details", "lead_payment_details"
+      "lead_installation_details", "lead_payment_details",
+      "task_upload_batches", "allocated_targets"
     ];
 
     supabase.channel('schema-db-changes')

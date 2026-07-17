@@ -12,7 +12,7 @@ import {
 import { CONVERTED_STAGES } from "@/lib/pipelineRules";
 import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
 import { db, transactionalMutation } from "@/lib/db";
-import { CheckCircle2, Clock, AlertCircle, ListTodo, PhoneCall, Trophy, CheckSquare, Target, Download, Trash2 } from "lucide-react";
+import { CheckCircle2, Clock, AlertCircle, ListTodo, PhoneCall, Trophy, CheckSquare, Target, Download, Trash2, MapPin } from "lucide-react";
 import { exportPipelineToExcel } from "@/lib/pipelineExport";
 
 const PRIORITY_DOT: Record<string, string> = {
@@ -35,6 +35,7 @@ export default function MyDayPage() {
   const [markingId, setMarkingId] = useState<string | null>(null);
   const [stats, setStats] = useState({ pendingToday: 0, scheduledLater: 0 });
   const [weeklyDigest, setWeeklyDigest] = useState<any>(null);
+  const [allocatedTargets, setAllocatedTargets] = useState<any[]>([]);
 
   // Scoped KPIs
   const [callsToday, setCallsToday] = useState(0);
@@ -74,6 +75,10 @@ export default function MyDayPage() {
         setQueriesResolvedToday(allQueries.filter(q => q.problem_status === "Resolved" && q.resolved_at?.startsWith(todayStr)).length);
         setOpenQueries(allQueries.filter(q => q.problem_status !== "Resolved").length);
       }
+
+      // Load allocated targets
+      const allTargets = await db.allocated_targets.where("assigned_to_user_id").equals(currentUser.user_id).toArray();
+      setAllocatedTargets(allTargets.filter(t => !t.is_completed));
     } catch (err) {
       console.error("Failed to load KPIs", err);
     }
@@ -156,6 +161,25 @@ export default function MyDayPage() {
     setMarkingId(task.task_id);
     await transactionalMutation("tasks", "DELETE", { task_id: task.task_id });
     setTasks((prev) => prev.filter((t) => t.task_id !== task.task_id));
+    setMarkingId(null);
+  };
+
+  const handleCompleteTarget = async (targetId: string) => {
+    if (!currentUser || markingId) return;
+    setMarkingId(targetId);
+    
+    await db.allocated_targets.update(targetId, { is_completed: true, completed_at: new Date().toISOString() });
+    
+    await db.sync_queue.add({
+      table_name: "allocated_targets",
+      action: "UPDATE",
+      data: { target_id: targetId, is_completed: true, completed_at: new Date().toISOString() },
+      timestamp: new Date().toISOString(),
+      idempotency_key: `complete-target-${targetId}-${Date.now()}`,
+      retry_count: 0
+    });
+    
+    setAllocatedTargets(prev => prev.filter(t => t.target_id !== targetId));
     setMarkingId(null);
   };
 
@@ -367,6 +391,41 @@ export default function MyDayPage() {
                   isAdmin={isAdmin}
                   accent="border-l-amber-400"
                 />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Allocated Targets */}
+        {allocatedTargets.length > 0 && (
+          <section>
+            <h2 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+              <MapPin size={12} className="text-indigo-400" /> Field Targets ({allocatedTargets.length})
+            </h2>
+            <div className="space-y-2">
+              {allocatedTargets.map((target) => (
+                <div key={target.target_id} className="flex items-start gap-3 px-4 py-4 rounded-2xl bg-white border border-slate-100 shadow-sm border-l-4 border-l-indigo-400 transition-all hover:shadow-md">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-black text-sm text-slate-900 leading-snug">{target.target_legal_name}</p>
+                    <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
+                      @{target.target_username} • {target.target_phone_number}
+                    </p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full border bg-indigo-50 text-indigo-600 border-indigo-200">
+                        {target.city}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2 shrink-0">
+                    <button
+                      onClick={() => handleCompleteTarget(target.target_id)}
+                      disabled={!!markingId}
+                      className="px-3 py-1.5 text-[11px] font-black rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition-all shadow-sm shadow-indigo-600/20 disabled:opacity-50 cursor-pointer"
+                    >
+                      {markingId === target.target_id ? "..." : "Done ✓"}
+                    </button>
+                  </div>
+                </div>
               ))}
             </div>
           </section>

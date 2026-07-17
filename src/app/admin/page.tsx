@@ -5,19 +5,21 @@ import { useAuth } from "@/context/AuthContext";
 import { db, LocalUser, LocalUserCapability, LocalTaskTemplate } from "@/lib/db";
 import {
   ShieldCheck, User, Users, CheckSquare, Sparkles, Activity, AlertCircle,
-  ListTodo, UserCheck, Clock as ClockIcon, Edit2, Save, ToggleLeft, ToggleRight, Download, UserPlus, Key
+  ListTodo, UserCheck, Clock as ClockIcon, Edit2, Save, ToggleLeft, ToggleRight, Download, UserPlus, Key, UploadCloud
 } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { exportPipelineToExcel } from "@/lib/pipelineExport";
 import { exportClientQueriesToExcel } from "@/lib/clientQueriesExport";
 import { exportMasterSales, exportMasterSupport, exportMasterMappings } from "@/lib/excelExport";
 import { CreateUserPanel } from "@/components/admin/CreateUserPanel";
+import { TaskAllocationWorkspace } from "@/components/TaskAllocationWorkspace";
 
-type AdminTab = "capabilities" | "managers" | "templates" | "attendance" | "create_user" | "exports";
+type AdminTab = "capabilities" | "managers" | "templates" | "attendance" | "create_user" | "task_allocation" | "exports";
 
 const TAB_META: { id: AdminTab; label: string; icon: React.ElementType }[] = [
   { id: "capabilities", label: "Capability Matrix", icon: ShieldCheck },
   { id: "managers", label: "Manager Assignment", icon: UserCheck },
+  { id: "task_allocation", label: "Task Allocation", icon: UploadCloud },
   { id: "templates", label: "Task Templates", icon: ListTodo },
   { id: "attendance", label: "Attendance Settings", icon: ClockIcon },
   { id: "create_user", label: "Create User", icon: UserPlus },
@@ -603,6 +605,11 @@ export default function AdminPage() {
             <strong>Production note:</strong> These settings are stored in <code>public.attendance_shift_config</code> on Supabase and read by the nightly KPI function. Run the SQL from the guidebook Part 4.2 to activate this in your database.
           </div>
         </div>
+      )}
+
+      {/* ── TAB: Task Allocation ── */}
+      {activeTab === "task_allocation" && (
+        <TaskAllocationWorkspace />
       )}
 
       {/* ── TAB: Create User ── */}

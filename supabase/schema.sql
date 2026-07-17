@@ -129,6 +129,29 @@ CREATE TABLE IF NOT EXISTS call_logs (
   next_followup_date TIMESTAMP WITH TIME ZONE
 );
 
+-- 11. Task Upload Batches Table
+CREATE TABLE IF NOT EXISTS task_upload_batches (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  uploaded_by UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  filename TEXT NOT NULL,
+  file_hash TEXT NOT NULL UNIQUE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 12. Allocated Targets Table
+CREATE TABLE IF NOT EXISTS allocated_targets (
+  target_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  batch_id UUID REFERENCES task_upload_batches(id) ON DELETE CASCADE,
+  assigned_to_user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  target_legal_name TEXT NOT NULL,
+  target_username TEXT NOT NULL,
+  target_phone_number TEXT NOT NULL,
+  city TEXT NOT NULL,
+  is_completed BOOLEAN NOT NULL DEFAULT false,
+  completed_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
 -- Indices for performance
 CREATE INDEX IF NOT EXISTS idx_leads_segment ON leads(segment_type);
 CREATE INDEX IF NOT EXISTS idx_leads_status ON leads(status);
@@ -139,6 +162,8 @@ CREATE INDEX IF NOT EXISTS idx_user_caps_user ON user_capabilities(user_id);
 CREATE INDEX IF NOT EXISTS idx_attendance_user_date ON attendance(user_id, date);
 CREATE INDEX IF NOT EXISTS idx_mappings_dist_ret ON mappings(distributor_lead_id, retailer_lead_id);
 CREATE INDEX IF NOT EXISTS idx_mapping_reqs_assigned ON mapping_requests(assigned_to_id);
+CREATE INDEX IF NOT EXISTS idx_alloc_targets_user ON allocated_targets(assigned_to_user_id);
+CREATE INDEX IF NOT EXISTS idx_alloc_targets_city ON allocated_targets(city);
 
 -- SEED DATA FOR CAPABILITIES
 INSERT INTO capabilities (code, label) VALUES
@@ -219,6 +244,8 @@ ALTER TABLE mapping_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE internal_tickets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE attendance ENABLE ROW LEVEL SECURITY;
 ALTER TABLE call_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE task_upload_batches ENABLE ROW LEVEL SECURITY;
+ALTER TABLE allocated_targets ENABLE ROW LEVEL SECURITY;
 
 -- 1. Users policies
 CREATE POLICY "Users are viewable by authenticated users" 
@@ -315,6 +342,17 @@ CREATE POLICY "Call logs access insert"
     user_id = auth.uid() AND EXISTS (SELECT 1 FROM leads WHERE lead_id = call_logs.lead_id AND has_segment_access(segment_type))
   );
 
+-- 10. Task Upload Batches policies
+CREATE POLICY "Admin can access task batches"
+  ON task_upload_batches FOR ALL USING (has_capability('admin'));
+
+-- 11. Allocated Targets policies
+CREATE POLICY "Admins can access all allocated targets"
+  ON allocated_targets FOR ALL USING (has_capability('admin'));
+CREATE POLICY "Agents can view and update their own assigned targets"
+  ON allocated_targets FOR SELECT USING (assigned_to_user_id = auth.uid());
+CREATE POLICY "Agents can update their own assigned targets"
+  ON allocated_targets FOR UPDATE USING (assigned_to_user_id = auth.uid()) WITH CHECK (assigned_to_user_id = auth.uid());
 
 -- AUTOMATION & TRIGGERS
 
