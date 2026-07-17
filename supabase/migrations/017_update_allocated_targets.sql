@@ -7,14 +7,14 @@ BEGIN
     FROM information_schema.columns
     WHERE table_name='allocated_targets' and column_name='target_legal_name')
   THEN
-      ALTER TABLE "public"."allocated_targets" RENAME COLUMN "target_legal_name" TO "target_name";
+      EXECUTE 'ALTER TABLE "public"."allocated_targets" RENAME COLUMN "target_legal_name" TO "target_name"';
   END IF;
 
   IF EXISTS(SELECT *
     FROM information_schema.columns
     WHERE table_name='allocated_targets' and column_name='target_phone_number')
   THEN
-      ALTER TABLE "public"."allocated_targets" RENAME COLUMN "target_phone_number" TO "target_mobile";
+      EXECUTE 'ALTER TABLE "public"."allocated_targets" RENAME COLUMN "target_phone_number" TO "target_mobile"';
   END IF;
 END $$;
 
