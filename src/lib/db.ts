@@ -225,15 +225,29 @@ export interface LocalTaskUploadBatch {
 
 export interface LocalAllocatedTarget {
   target_id: string;
-  batch_id?: string | null;
+  batch_id: string;
   assigned_to_user_id: string;
-  target_legal_name: string;
   target_username: string;
-  target_phone_number: string;
+  target_name: string;
+  target_address?: string;
+  target_area?: string;
+  target_state?: string;
+  target_mobile: string;
+  target_email?: string;
   city: string;
-  is_completed: boolean;
-  completed_at?: string | null;
+  pspa_code?: string;
+  third_party_code?: string;
+  dlic1?: string;
+  dlic2?: string;
+  dlic3?: string;
+  dlic4?: string;
+  food_license?: string;
+  is_completed: boolean | string | number;
+  completed_at: string | null;
   created_at: string;
+  // For sync tracking
+  sync_status?: "synced" | "pending" | "error";
+  last_synced_at?: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -453,8 +467,8 @@ class CRMDatabase extends Dexie {
       lead_payment_details: "payment_id, lead_id",
     });
 
-    // Version 9 — Excel-based bulk task allocation
-    this.version(9).stores({
+    // Version 10 — Excel-based bulk task allocation with compound index
+    this.version(10).stores({
       users: "user_id, email, is_active, manager_id",
       capabilities: "code",
       user_capabilities: "id, user_id, capability_code, [user_id+capability_code]",
@@ -474,7 +488,7 @@ class CRMDatabase extends Dexie {
       lead_installation_details: "installation_id, lead_id",
       lead_payment_details: "payment_id, lead_id",
       task_upload_batches: "id, uploaded_by, file_hash",
-      allocated_targets: "target_id, batch_id, assigned_to_user_id, city, is_completed",
+      allocated_targets: "target_id, batch_id, assigned_to_user_id, city, is_completed, [assigned_to_user_id+is_completed+city]",
     });
   }
 }

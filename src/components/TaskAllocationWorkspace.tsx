@@ -137,7 +137,7 @@ export function TaskAllocationWorkspace() {
             <span className="text-sm font-medium text-slate-700">
               {file ? file.name : "Click to upload Excel/CSV file"}
             </span>
-            <span className="text-xs text-slate-500 mt-1">Expected columns: Name, Username, Phone, City</span>
+            <span className="text-xs text-slate-500 mt-1">Expected columns: Username, Name, Address, Area, City, State, Mobile, Email, PSPACode, Third-Party Code, Dlic1-4, FoodLicense</span>
           </label>
 
           {file && !uploadData && (

@@ -69,10 +69,21 @@ export async function POST(req: NextRequest) {
     const targetsToInsert = cityRows.map((row: any) => ({
       batch_id: batchId,
       assigned_to_user_id,
-      target_legal_name: row.target_legal_name,
       target_username: row.target_username,
-      target_phone_number: row.target_phone_number,
+      target_name: row.target_name,
+      target_address: row.target_address,
+      target_area: row.target_area,
+      target_state: row.target_state,
+      target_mobile: row.target_mobile,
+      target_email: row.target_email,
       city: row.city,
+      pspa_code: row.pspa_code,
+      third_party_code: row.third_party_code,
+      dlic1: row.dlic1,
+      dlic2: row.dlic2,
+      dlic3: row.dlic3,
+      dlic4: row.dlic4,
+      food_license: row.food_license,
       is_completed: false
     }));
 

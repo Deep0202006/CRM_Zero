@@ -406,14 +406,23 @@ export default function MyDayPage() {
               {allocatedTargets.map((target) => (
                 <div key={target.target_id} className="flex items-start gap-3 px-4 py-4 rounded-2xl bg-white border border-slate-100 shadow-sm border-l-4 border-l-indigo-400 transition-all hover:shadow-md">
                   <div className="flex-1 min-w-0">
-                    <p className="font-black text-sm text-slate-900 leading-snug">{target.target_legal_name}</p>
-                    <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
-                      @{target.target_username} • {target.target_phone_number}
+                    <p className="font-black text-sm text-slate-900 leading-snug">
+                      {target.target_username} - {target.target_name} - {target.target_mobile}
                     </p>
+                    {target.target_address && (
+                      <p className="text-xs text-slate-500 mt-1 line-clamp-1">
+                        {target.target_address} {target.target_area ? `, ${target.target_area}` : ''}
+                      </p>
+                    )}
                     <div className="flex items-center gap-2 mt-2">
                       <span className="text-[10px] font-black px-2 py-0.5 rounded-full border bg-indigo-50 text-indigo-600 border-indigo-200">
                         {target.city}
                       </span>
+                      {target.food_license && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-amber-50 text-amber-600 border-amber-200">
+                          FSSAI: {target.food_license}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="flex flex-col gap-2 shrink-0">
@@ -422,7 +431,7 @@ export default function MyDayPage() {
                       disabled={!!markingId}
                       className="px-3 py-1.5 text-[11px] font-black rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition-all shadow-sm shadow-indigo-600/20 disabled:opacity-50 cursor-pointer"
                     >
-                      {markingId === target.target_id ? "..." : "Done ✓"}
+                      {markingId === target.target_id ? "..." : "Called / Done"}
                     </button>
                   </div>
                 </div>

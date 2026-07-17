@@ -29,23 +29,34 @@ export async function POST(req: NextRequest) {
 
     // Normalize keys to standard format
     const normalizedData = rawData.map((row) => {
-      // Very basic normalization to find the right keys
+      // Helper to find the best match for a key (case-insensitive)
       const keys = Object.keys(row);
       const getVal = (possibleKeys: string[]) => {
-        const key = keys.find(k => possibleKeys.some(pk => k.toLowerCase().includes(pk)));
+        const key = keys.find(k => possibleKeys.some(pk => k.toLowerCase().includes(pk.toLowerCase())));
         return key ? String(row[key]) : "";
       };
 
       return {
-        target_legal_name: getVal(["name", "legal name", "business"]),
-        target_username: getVal(["username", "user", "id"]),
-        target_phone_number: getVal(["phone", "mobile", "contact"]),
-        city: getVal(["city", "location", "area"]),
+        target_username: getVal(["Username", "User ID", "ID"]),
+        target_name: getVal(["Name", "Retailer Name", "Distributor Name"]),
+        target_address: getVal(["Address"]),
+        target_area: getVal(["Area", "Region"]),
+        city: getVal(["City", "Location"]),
+        target_state: getVal(["State"]),
+        target_mobile: getVal(["Mobile", "Phone", "Contact"]),
+        target_email: getVal(["Email", "Mail"]),
+        pspa_code: getVal(["PSPACode", "PSPA Code"]),
+        third_party_code: getVal(["Third-Party Code", "Third Party", "TPC"]),
+        dlic1: getVal(["Dlic1", "Dlic 1"]),
+        dlic2: getVal(["Dlic2", "Dlic 2"]),
+        dlic3: getVal(["Dlic3", "Dlic 3"]),
+        dlic4: getVal(["Dlic4", "Dlic 4"]),
+        food_license: getVal(["FoodLicense", "Food License", "FSSAI"]),
       };
     });
 
     // Filter out rows without a city or name
-    const validData = normalizedData.filter(row => row.city && row.target_legal_name);
+    const validData = normalizedData.filter(row => row.city && row.target_name);
 
     // Extract unique cities
     const uniqueCities = Array.from(new Set(validData.map((row) => row.city))).sort();
