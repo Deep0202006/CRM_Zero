@@ -28,13 +28,19 @@ ALTER TABLE task_upload_batches ENABLE ROW LEVEL SECURITY;
 ALTER TABLE allocated_targets ENABLE ROW LEVEL SECURITY;
 
 -- 10. Task Upload Batches policies
+DROP POLICY IF EXISTS "Admin and assigners can access task batches" ON task_upload_batches;
 CREATE POLICY "Admin and assigners can access task batches"
   ON task_upload_batches FOR ALL USING (has_capability('admin') OR has_capability('task_assigner'));
 
 -- 11. Allocated Targets policies
+DROP POLICY IF EXISTS "Admins and assigners can access all allocated targets" ON allocated_targets;
 CREATE POLICY "Admins and assigners can access all allocated targets"
   ON allocated_targets FOR ALL USING (has_capability('admin') OR has_capability('task_assigner'));
+
+DROP POLICY IF EXISTS "Agents can view and update their own assigned targets" ON allocated_targets;
 CREATE POLICY "Agents can view and update their own assigned targets"
   ON allocated_targets FOR SELECT USING (assigned_to_user_id = auth.uid());
+
+DROP POLICY IF EXISTS "Agents can update their own assigned targets" ON allocated_targets;
 CREATE POLICY "Agents can update their own assigned targets"
   ON allocated_targets FOR UPDATE USING (assigned_to_user_id = auth.uid()) WITH CHECK (assigned_to_user_id = auth.uid());

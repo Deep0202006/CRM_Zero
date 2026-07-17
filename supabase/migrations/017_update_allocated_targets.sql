@@ -1,8 +1,22 @@
 -- 017_update_allocated_targets.sql
 
--- 1. Rename existing columns to match the new strict naming convention
-ALTER TABLE allocated_targets RENAME COLUMN target_legal_name TO target_name;
-ALTER TABLE allocated_targets RENAME COLUMN target_phone_number TO target_mobile;
+-- 1. Rename existing columns to match the new strict naming convention (safe rename)
+DO $$
+BEGIN
+  IF EXISTS(SELECT *
+    FROM information_schema.columns
+    WHERE table_name='allocated_targets' and column_name='target_legal_name')
+  THEN
+      ALTER TABLE "public"."allocated_targets" RENAME COLUMN "target_legal_name" TO "target_name";
+  END IF;
+
+  IF EXISTS(SELECT *
+    FROM information_schema.columns
+    WHERE table_name='allocated_targets' and column_name='target_phone_number')
+  THEN
+      ALTER TABLE "public"."allocated_targets" RENAME COLUMN "target_phone_number" TO "target_mobile";
+  END IF;
+END $$;
 
 -- 2. Add new columns for Excel mapping
 ALTER TABLE allocated_targets 
