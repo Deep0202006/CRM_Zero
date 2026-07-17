@@ -77,6 +77,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             pullDownSync().then(async () => {
               const updatedCaps = await db.user_capabilities.where("user_id").equals(matchedUser.user_id).toArray();
               setCapabilities(updatedCaps.map(c => c.capability_code));
+              const updatedUsers = await db.users.toArray();
+              setAllUsers(updatedUsers);
             }).catch(console.error);
           } else {
             localStorage.removeItem("authenticated_user_id");

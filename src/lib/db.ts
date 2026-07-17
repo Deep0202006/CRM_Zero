@@ -705,11 +705,32 @@ export async function pullDownSync() {
     ];
 
     for (const tableName of tables) {
-      const { data, error } = await supabase.from(tableName).select("*");
-      if (error) {
-        console.warn(`Failed to pull table ${tableName}:`, error);
+      let allData: any[] = [];
+      let from = 0;
+      const limit = 1000;
+      let fetchError = null;
+
+      while (true) {
+        const { data, error } = await supabase.from(tableName).select("*").range(from, from + limit - 1);
+        if (error) {
+          fetchError = error;
+          break;
+        }
+        if (data && data.length > 0) {
+          allData = allData.concat(data);
+          from += limit;
+          if (data.length < limit) break;
+        } else {
+          break;
+        }
+      }
+
+      if (fetchError && allData.length === 0) {
+        console.warn(`Failed to pull table ${tableName}:`, fetchError);
         continue;
       }
+      
+      const data = allData;
       
       if (data && data.length > 0) {
         const table = (db as any)[tableName];

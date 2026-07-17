@@ -17,7 +17,7 @@ const PRIORITY_COLORS: Record<Priority, string> = {
 };
 
 export default function AssignTaskPage() {
-  const { currentUser, capabilities, isTaskAssigner } = useAuth();
+  const { currentUser, capabilities, isTaskAssigner, allUsers } = useAuth();
   const [users, setUsers] = useState<LocalUser[]>([]);
   const [mode, setMode] = useState<"manual" | "bulk">("manual");
   
@@ -32,8 +32,10 @@ export default function AssignTaskPage() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    db.users.toArray().then((u) => setUsers(u.filter((x) => String(x.is_active) === "1" || String(x.is_active) === "true")));
-  }, []);
+    if (allUsers && allUsers.length > 0) {
+      setUsers(allUsers.filter((x) => String(x.is_active) === "1" || String(x.is_active) === "true"));
+    }
+  }, [allUsers]);
 
   if (!isTaskAssigner) {
     return (
