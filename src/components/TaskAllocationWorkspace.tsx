@@ -27,13 +27,18 @@ export function TaskAllocationWorkspace() {
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   useEffect(() => {
-    // Load agents from DB
     const loadAgents = async () => {
       try {
+        const { data, error } = await supabase.from("users").select("*").eq("is_active", 1);
+        if (error) throw error;
+        if (data) {
+          setAgents(data);
+          await db.users.bulkPut(data); // keep local cache updated
+        }
+      } catch (err) {
+        console.error("Failed to load agents from Supabase, falling back to local DB", err);
         const allUsers = await db.users.filter(u => u.is_active === 1).toArray();
         setAgents(allUsers);
-      } catch (err) {
-        console.error("Failed to load agents", err);
       }
     };
     loadAgents();
