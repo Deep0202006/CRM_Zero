@@ -22,7 +22,7 @@ export function TaskAllocationWorkspace() {
   const [uploading, setUploading] = useState(false);
   const [uploadData, setUploadData] = useState<UploadResponse | null>(null);
   const [agents, setAgents] = useState<LocalUser[]>([]);
-  const [cityAgentMap, setCityAgentMap] = useState<Record<string, string>>({});
+  const [cityAgentMap, setCityAgentMap] = useState<Record<string, string[]>>({});
   const [allocating, setAllocating] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
@@ -82,15 +82,18 @@ export function TaskAllocationWorkspace() {
     }
   };
 
-  const handleAgentSelect = (city: string, agentId: string) => {
+  const handleAgentToggle = (city: string, agentId: string) => {
     setCityAgentMap(prev => {
-      const next = { ...prev };
-      if (!agentId) {
-        delete next[city];
-      } else {
-        next[city] = agentId;
+      const currentAgents = prev[city] || [];
+      const newAgents = currentAgents.includes(agentId) 
+        ? currentAgents.filter(id => id !== agentId)
+        : [...currentAgents, agentId];
+      
+      if (newAgents.length === 0) {
+        const { [city]: _, ...rest } = prev;
+        return rest;
       }
-      return next;
+      return { ...prev, [city]: newAgents };
     });
   };
 
@@ -107,7 +110,7 @@ export function TaskAllocationWorkspace() {
       let totalAllocated = 0;
       let errors = [];
 
-      for (const [city, assigned_to_user_id] of citiesToAllocate) {
+      for (const [city, assigned_to_user_ids] of citiesToAllocate) {
         const res = await fetch("/api/task-allocate", {
           method: "POST",
           headers: { 
@@ -116,7 +119,7 @@ export function TaskAllocationWorkspace() {
           },
           body: JSON.stringify({
             city,
-            assigned_to_user_id,
+            assigned_to_user_ids,
             rows: uploadData.rows,
             filename: uploadData.filename,
             hash: uploadData.hash,
@@ -208,17 +211,25 @@ export function TaskAllocationWorkspace() {
                       <span className="text-sm font-bold text-slate-800">{city}</span>
                       <span className="text-xs font-medium text-slate-500">{cityCount} target{cityCount !== 1 ? 's' : ''}</span>
                     </div>
-                    <div className="w-full sm:w-64 shrink-0">
-                      <select
-                        value={cityAgentMap[city] || ""}
-                        onChange={(e) => handleAgentSelect(city, e.target.value)}
-                        className="w-full h-9 px-3 bg-white border border-slate-200 rounded-md text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      >
-                        <option value="">Do not assign</option>
-                        {agents.map(agent => (
-                          <option key={agent.user_id} value={agent.user_id}>{agent.name}</option>
-                        ))}
-                      </select>
+                    <div className="w-full shrink-0">
+                      <div className="flex flex-wrap gap-2">
+                        {agents.map(agent => {
+                          const isSelected = cityAgentMap[city]?.includes(agent.user_id);
+                          return (
+                            <button
+                              key={agent.user_id}
+                              onClick={() => handleAgentToggle(city, agent.user_id)}
+                              className={`px-3 py-1.5 text-xs font-semibold rounded-full border transition-colors ${
+                                isSelected 
+                                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' 
+                                  : 'bg-white text-slate-700 border-slate-300 hover:border-indigo-400 hover:bg-indigo-50'
+                              }`}
+                            >
+                              {agent.name}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
                 );

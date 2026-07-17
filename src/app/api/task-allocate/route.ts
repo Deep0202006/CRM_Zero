@@ -24,9 +24,9 @@ export async function POST(req: NextRequest) {
     if (!hasAccess) return NextResponse.json({ error: "Task assigner access required" }, { status: 403 });
 
     const body = await req.json();
-    const { city, assigned_to_user_id, rows, filename, hash, admin_id } = body;
+    const { city, assigned_to_user_ids, rows, filename, hash, admin_id } = body;
 
-    if (!city || !assigned_to_user_id || !rows || rows.length === 0) {
+    if (!city || !assigned_to_user_ids || !Array.isArray(assigned_to_user_ids) || assigned_to_user_ids.length === 0 || !rows || rows.length === 0) {
       return NextResponse.json({ error: "Missing required allocation parameters" }, { status: 400 });
     }
 
@@ -65,27 +65,32 @@ export async function POST(req: NextRequest) {
       batchId = newBatch.id;
     }
 
-    // 2. Map payload for allocated_targets
-    const targetsToInsert = cityRows.map((row: any) => ({
-      batch_id: batchId,
-      assigned_to_user_id,
-      target_username: row.target_username,
-      target_name: row.target_name,
-      target_address: row.target_address,
-      target_area: row.target_area,
-      target_state: row.target_state,
-      target_mobile: row.target_mobile,
-      target_email: row.target_email,
-      city: row.city,
-      pspa_code: row.pspa_code,
-      third_party_code: row.third_party_code,
-      dlic1: row.dlic1,
-      dlic2: row.dlic2,
-      dlic3: row.dlic3,
-      dlic4: row.dlic4,
-      food_license: row.food_license,
-      is_completed: false
-    }));
+    // 2. Map payload for allocated_targets with Round-Robin assignment
+    const targetsToInsert = cityRows.map((row: any, index: number) => {
+      // Distribute targets equally across all selected agents for this city
+      const assigned_to_user_id = assigned_to_user_ids[index % assigned_to_user_ids.length];
+
+      return {
+        batch_id: batchId,
+        assigned_to_user_id,
+        target_username: row.target_username,
+        target_name: row.target_name,
+        target_address: row.target_address,
+        target_area: row.target_area,
+        target_state: row.target_state,
+        target_mobile: row.target_mobile,
+        target_email: row.target_email,
+        city: row.city,
+        pspa_code: row.pspa_code,
+        third_party_code: row.third_party_code,
+        dlic1: row.dlic1,
+        dlic2: row.dlic2,
+        dlic3: row.dlic3,
+        dlic4: row.dlic4,
+        food_license: row.food_license,
+        is_completed: false
+      };
+    });
 
     // 3. Perform bulk insert (Supabase processes this as a single atomic transaction)
     const { error: insertError } = await supabaseAdmin
