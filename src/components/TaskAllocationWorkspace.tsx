@@ -28,7 +28,10 @@ export function TaskAllocationWorkspace() {
 
   useEffect(() => {
     if (allUsers && allUsers.length > 0) {
-      setAgents(allUsers.filter(u => u.is_active === 1));
+      setAgents(allUsers.filter(u => {
+        const active = (u as any).is_active;
+        return active === 1 || active === true || active === "1" || active === "true";
+      }));
     }
   }, [allUsers]);
 
