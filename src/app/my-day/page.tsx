@@ -28,6 +28,7 @@ export default function MyDayPage() {
   const [allocatedTargets, setAllocatedTargets] = useState<LocalAllocatedTarget[]>([]);
   const [targetErrors, setTargetErrors] = useState<Record<string, string>>({});
   const [targetNotice, setTargetNotice] = useState<string | null>(null);
+  const [targetLoadError, setTargetLoadError] = useState<string | null>(null);
 
   // Scoped KPIs
   const [callsToday, setCallsToday] = useState(0);
@@ -39,7 +40,8 @@ export default function MyDayPage() {
   const refreshAllocatedTargets = useCallback(async () => {
     if (!currentUser || !isSupabaseConfigured || !navigator.onLine) return;
     const { data, error } = await supabase.from("allocated_targets").select("target_id,batch_id,assigned_to_user_id,target_username,target_name,target_address,target_area,target_state,target_mobile,target_email,city,pspa_code,third_party_code,dlic1,dlic2,dlic3,dlic4,food_license,is_completed,completed_at,created_at").eq("assigned_to_user_id", currentUser.user_id).eq("is_completed", false).order("created_at", { ascending: true });
-    if (error || !data) return;
+    if (error) { setTargetLoadError("Unable to refresh field targets. Please try again."); console.error("Allocated target refresh failed", error); return; }
+    if (!data) return;
     await db.allocated_targets.bulkPut(data as LocalAllocatedTarget[]);
     const remoteIds = new Set(data.map((target) => target.target_id));
     const local = await db.allocated_targets.where("assigned_to_user_id").equals(currentUser.user_id).toArray();
@@ -431,13 +433,14 @@ export default function MyDayPage() {
         )}
 
         {/* Allocated Targets */}
-        {allocatedTargets.length > 0 && (
+        {(allocatedTargets.length > 0 || targetLoadError || targetNotice) && (
           <section>
             <h2 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
               <MapPin size={12} className="text-indigo-400" /> Field Targets ({allocatedTargets.length})
             </h2>
             <div className="space-y-2">
               {targetNotice && <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700">{targetNotice}</p>}
+              {targetLoadError && <div className="rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-700">{targetLoadError}<button onClick={() => refreshAllocatedTargets()} className="ml-2 font-semibold underline">Retry</button></div>}
               {allocatedTargets.map((target) => (
                 <div key={target.target_id} className="flex items-start gap-3 px-4 py-4 rounded-2xl bg-white border border-slate-100 shadow-sm border-l-4 border-l-indigo-400 transition-all hover:shadow-md">
                   <div className="flex-1 min-w-0">
