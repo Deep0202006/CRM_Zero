@@ -12,7 +12,7 @@ import {
 } from "@/lib/taskEngine";
 import { CONVERTED_STAGES } from "@/lib/pipelineRules";
 import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
-import { db, transactionalMutation, pullDownSync, type LocalAllocatedTarget, type LocalUser } from "@/lib/db";
+import { db, transactionalMutation, type LocalAllocatedTarget, type LocalUser } from "@/lib/db";
 import { CheckCircle2, Clock, AlertCircle, ListTodo, PhoneCall, Trophy, CheckSquare, Target, Download, Trash2, MapPin, RefreshCw } from "lucide-react";
 import { exportPipelineToExcel } from "@/lib/pipelineExport";
 
@@ -28,9 +28,6 @@ export default function MyDayPage() {
   const [allocatedTargets, setAllocatedTargets] = useState<LocalAllocatedTarget[]>([]);
   const [targetErrors, setTargetErrors] = useState<Record<string, string>>({});
   const [targetNotice, setTargetNotice] = useState<string | null>(null);
-
-  void targetErrors;
-  void targetNotice;
 
   // Scoped KPIs
   const [callsToday, setCallsToday] = useState(0);
@@ -56,6 +53,11 @@ export default function MyDayPage() {
   }, [currentUser]);
 
   useEffect(() => { refreshAllocatedTargets(); }, [refreshAllocatedTargets]);
+  useEffect(() => {
+    const onVisibility = () => { if (document.visibilityState === "visible") refreshAllocatedTargets(); };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, [refreshAllocatedTargets]);
   const loadTasksAndKpis = useCallback(async () => {
     if (!currentUser) return;
     
@@ -179,7 +181,7 @@ export default function MyDayPage() {
   const handleSyncData = async () => {
     setIsSyncing(true);
     try {
-      await pullDownSync();
+      await refreshAllocatedTargets();
       await loadTasksAndKpis();
     } finally {
       setIsSyncing(false);
@@ -435,6 +437,7 @@ export default function MyDayPage() {
               <MapPin size={12} className="text-indigo-400" /> Field Targets ({allocatedTargets.length})
             </h2>
             <div className="space-y-2">
+              {targetNotice && <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700">{targetNotice}</p>}
               {allocatedTargets.map((target) => (
                 <div key={target.target_id} className="flex items-start gap-3 px-4 py-4 rounded-2xl bg-white border border-slate-100 shadow-sm border-l-4 border-l-indigo-400 transition-all hover:shadow-md">
                   <div className="flex-1 min-w-0">
@@ -465,6 +468,7 @@ export default function MyDayPage() {
                     >
                       {markingId === target.target_id ? "..." : "Called / Done"}
                     </button>
+                    {targetErrors[target.target_id] && <div className="text-[10px] text-rose-600"><span>{targetErrors[target.target_id]}</span><button onClick={() => handleCompleteTarget(target.target_id)} className="ml-1 underline">Retry</button></div>}
                   </div>
                 </div>
               ))}
