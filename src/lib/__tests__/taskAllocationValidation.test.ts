@@ -1,0 +1,3 @@
+import { cityTaskAllocationRequestSchema, mapAllocationError } from "@/lib/taskAllocationApi";
+const row={rowNumber:1,target_username:"A",target_name:"N",target_address:"",target_area:"",city:"city",target_state:"",target_mobile:"01",target_email:"",pspa_code:"",third_party_code:"",dlic1:"",dlic2:"",dlic3:"",dlic4:"",food_license:""};
+describe("allocation validation",()=>{it("rejects invalid assignees and maps errors",()=>{expect(cityTaskAllocationRequestSchema.safeParse({filename:"a.xlsx",fileHash:"a".repeat(64),rows:[row],cityAssignments:{city:"bad"}}).success).toBe(false);expect(mapAllocationError("23505").status).toBe(409);expect(mapAllocationError("42501").status).toBe(403);expect(mapAllocationError("22023").status).toBe(422);});});
