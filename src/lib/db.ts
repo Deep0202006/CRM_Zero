@@ -615,6 +615,8 @@ export async function queueOfflineMutation(
  * Part 6 — hardened sync: per-item isolation + retry backoff.
  * Items that fail 5+ times get dead-lettered (amber in UI) instead of blocking the queue.
  */
+export function omitPrimaryKeyFromUpdate(data: Record<string, unknown>, primaryKey: string): Record<string, unknown> { const updateData = { ...data }; delete updateData[primaryKey]; return updateData; }
+
 export async function processSyncQueue() {
   if (!navigator.onLine) return;
   const items = await db.sync_queue.orderBy("id").toArray();
@@ -638,7 +640,9 @@ export async function processSyncQueue() {
           const pk = TABLE_PK[item.table_name] ?? "id";
           const pkValue = item.data[pk];
           if (pkValue) {
-            const { error: err } = await client.update(item.data).eq(pk, pkValue);
+            const updateData = omitPrimaryKeyFromUpdate(item.data as Record<string, unknown>, pk);
+            if (Object.keys(updateData).length === 0) throw new Error(`No update fields provided for ${item.table_name}`);
+            const { error: err } = await client.update(updateData).eq(pk, pkValue);
             error = err;
           }
         } else if (item.action === "DELETE") {
@@ -897,4 +901,3 @@ if (typeof window !== "undefined") {
       });
   }
 }
-

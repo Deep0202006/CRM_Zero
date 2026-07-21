@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { liveQuery } from "dexie";
 import { useAuth } from "@/context/AuthContext";
 import {
   getOrGenerateTodayTasks,
@@ -38,6 +39,23 @@ export default function MyDayPage() {
   const [openQueries, setOpenQueries] = useState(0);
   const [mappedToday, setMappedToday] = useState(0);
 
+  const refreshAllocatedTargets = useCallback(async () => {
+    if (!currentUser || !isSupabaseConfigured || !navigator.onLine) return;
+    const { data, error } = await supabase.from("allocated_targets").select("target_id,batch_id,assigned_to_user_id,target_username,target_name,target_address,target_area,target_state,target_mobile,target_email,city,pspa_code,third_party_code,dlic1,dlic2,dlic3,dlic4,food_license,is_completed,completed_at,created_at").eq("assigned_to_user_id", currentUser.user_id).eq("is_completed", false).order("created_at", { ascending: true });
+    if (error || !data) return;
+    await db.allocated_targets.bulkPut(data as LocalAllocatedTarget[]);
+    const remoteIds = new Set(data.map((target) => target.target_id));
+    const local = await db.allocated_targets.where("assigned_to_user_id").equals(currentUser.user_id).toArray();
+    await db.allocated_targets.bulkDelete(local.filter((target) => !Boolean(target.is_completed) && target.sync_status !== "pending" && !remoteIds.has(target.target_id)).map((target) => target.target_id));
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    const subscription = liveQuery(async () => (await db.allocated_targets.where("assigned_to_user_id").equals(currentUser.user_id).toArray()).filter((target) => !Boolean(target.is_completed)).sort((a, b) => a.created_at.localeCompare(b.created_at))).subscribe({ next: setAllocatedTargets, error: (error) => console.error("Allocated target live query failed", error) });
+    return () => subscription.unsubscribe();
+  }, [currentUser]);
+
+  useEffect(() => { refreshAllocatedTargets(); }, [refreshAllocatedTargets]);
   const loadTasksAndKpis = useCallback(async () => {
     if (!currentUser) return;
     
@@ -177,7 +195,7 @@ export default function MyDayPage() {
       if (!navigator.onLine || !isSupabaseConfigured) {
         await db.transaction("rw", db.allocated_targets, db.sync_queue, async () => {
           await db.allocated_targets.update(targetId, { is_completed: true, completed_at: completedAt, sync_status: "pending" });
-          await db.sync_queue.add({ idempotency_key: `complete-target-${targetId}`, table_name: "allocated_targets", action: "UPDATE", data: { target_id: targetId, assigned_to_user_id: currentUser.user_id, is_completed: true, completed_at: completedAt }, timestamp: completedAt, retry_count: 0 });
+          await db.sync_queue.add({ idempotency_key: `complete-target-${targetId}`, table_name: "allocated_targets", action: "UPDATE", data: { target_id: targetId, is_completed: true, completed_at: completedAt }, timestamp: completedAt, retry_count: 0 });
         });
         setAllocatedTargets((current) => current.filter((target) => target.target_id !== targetId)); setTargetNotice("Saved offline. Completion is pending synchronization."); return;
       }
