@@ -259,7 +259,7 @@ export interface SyncQueueItem {
   idempotency_key: string;
   table_name: string;
   action: "INSERT" | "UPDATE" | "DELETE";
-  data: any;
+  data: object;
   timestamp: string;
   retry_count?: number;  // Part 6 — per-item retry tracking
   last_error?: string;   // Part 6 — surfaces dead-letter failures in UI
@@ -559,21 +559,27 @@ const TABLE_PK: Record<string, string> = {
 // OFFLINE QUEUE HELPERS
 // ─────────────────────────────────────────────────────────────────────────────
 
+type DynamicRow = Record<string, unknown>;
+type DynamicTable = Table<DynamicRow, unknown>;
+const dynamicTables = db as unknown as Record<string, DynamicTable>;
+const toDynamicRow = (value: object): DynamicRow => Object.fromEntries(Object.entries(value));
+const getDynamicField = (value: object, key: string): unknown => toDynamicRow(value)[key];
+
 export async function transactionalMutation(
   tableName: string,
   action: "INSERT" | "UPDATE" | "DELETE",
-  data: any
+  data: object
 ) {
-  const table = (db as any)[tableName];
+  const table = dynamicTables[tableName];
   await db.transaction('rw', [table, db.sync_queue], async () => {
     if (action === "INSERT") {
-      await table.add(data);
+      await table.add(toDynamicRow(data));
     } else if (action === "UPDATE") {
       const pk = TABLE_PK[tableName] ?? "id";
-      await table.update(data[pk], data);
+      await table.update(getDynamicField(data, pk), toDynamicRow(data));
     } else if (action === "DELETE") {
       const pk = TABLE_PK[tableName] ?? "id";
-      await table.delete(data[pk]);
+      await table.delete(getDynamicField(data, pk));
     }
 
     const item: SyncQueueItem = {
@@ -595,7 +601,7 @@ export async function transactionalMutation(
 export async function queueOfflineMutation(
   tableName: string,
   action: "INSERT" | "UPDATE" | "DELETE",
-  data: any
+  data: object
 ) {
   const item: SyncQueueItem = {
     idempotency_key: crypto.randomUUID(),
@@ -631,23 +637,23 @@ export async function processSyncQueue() {
     try {
       if (isSupabaseConfigured) {
         const client = supabase.from(item.table_name);
-        let error: any = null;
+        let error: { message: string } | null = null;
 
         if (item.action === "INSERT") {
           const { error: err } = await client.insert(item.data);
           error = err;
         } else if (item.action === "UPDATE") {
           const pk = TABLE_PK[item.table_name] ?? "id";
-          const pkValue = item.data[pk];
+          const pkValue = getDynamicField(item.data, pk);
           if (pkValue) {
-            const updateData = omitPrimaryKeyFromUpdate(item.data as Record<string, unknown>, pk);
+            const updateData = omitPrimaryKeyFromUpdate(toDynamicRow(item.data), pk);
             if (Object.keys(updateData).length === 0) throw new Error(`No update fields provided for ${item.table_name}`);
             const { error: err } = await client.update(updateData).eq(pk, pkValue);
             error = err;
           }
         } else if (item.action === "DELETE") {
           const pk = TABLE_PK[item.table_name] ?? "id";
-          const pkValue = item.data[pk];
+          const pkValue = getDynamicField(item.data, pk);
           if (pkValue) {
             const { error: err } = await client.delete().eq(pk, pkValue);
             error = err;
@@ -709,7 +715,7 @@ export async function pullDownSync() {
     ];
 
     for (const tableName of tables) {
-      let allData: any[] = [];
+      let allData: DynamicRow[] = [];
       let from = 0;
       const limit = 1000;
       let fetchError = null;
@@ -737,13 +743,13 @@ export async function pullDownSync() {
       const data = allData;
       
       if (data && data.length > 0) {
-        const table = (db as any)[tableName];
+        const table = dynamicTables[tableName];
         const pk = TABLE_PK[tableName] ?? "id";
         
         // Find local items
         const localItems = await table.toArray();
-        const localIds = new Set(localItems.map((item: any) => item[pk]));
-        const remoteIds = new Set(data.map((d: any) => d[pk]));
+        const localIds = new Set(localItems.map((item: DynamicRow) => item[pk]));
+        const remoteIds = new Set(data.map((d: DynamicRow) => d[pk]));
 
         // Get IDs in local that are NOT in remote
         const idsToDelete = [...localIds].filter(id => !remoteIds.has(id));
@@ -752,7 +758,7 @@ export async function pullDownSync() {
         const pendingInserts = await db.sync_queue
           .filter(item => item.table_name === tableName && item.action === "INSERT")
           .toArray();
-        const pendingInsertIds = new Set(pendingInserts.map(item => item.data[pk]));
+        const pendingInsertIds = new Set(pendingInserts.map(item => getDynamicField(item.data, pk)));
 
         const safeIdsToDelete = idsToDelete.filter(id => !pendingInsertIds.has(id));
 
@@ -760,9 +766,9 @@ export async function pullDownSync() {
         const pendingMutations = await db.sync_queue
           .filter(item => item.table_name === tableName && (item.action === "UPDATE" || item.action === "DELETE"))
           .toArray();
-        const pendingMutationIds = new Set(pendingMutations.map(item => item.data[pk]));
+        const pendingMutationIds = new Set(pendingMutations.map(item => getDynamicField(item.data, pk)));
 
-        const safeDataToPut = data.filter((d: any) => !pendingMutationIds.has(d[pk]));
+        const safeDataToPut = data.filter((d: DynamicRow) => !pendingMutationIds.has(d[pk]));
 
         await db.transaction('rw', table, async () => {
           if (safeIdsToDelete.length > 0) {
@@ -775,7 +781,7 @@ export async function pullDownSync() {
       } else if (data && data.length === 0) {
         // HOTFIX RECOVERY: Supabase is empty, DO NOT DELETE local data!
         // Instead, we act as a master node and PUSH our local data back up to Supabase to restore it.
-        const table = (db as any)[tableName];
+        const table = dynamicTables[tableName];
         const localItems = await table.toArray();
         
         if (localItems.length > 0) {
@@ -864,7 +870,7 @@ if (typeof window !== "undefined") {
             const tableName = payload.table;
             if (!validTables.includes(tableName)) return;
 
-            const table = (db as any)[tableName];
+            const table = dynamicTables[tableName];
             if (!table) return;
 
             const pk = TABLE_PK[tableName] ?? "id";
@@ -875,7 +881,7 @@ if (typeof window !== "undefined") {
               // Skip if we have a pending offline mutation for this item (our local version is newer)
               const pendingMutation = await db.sync_queue
                 .where("table_name").equals(tableName)
-                .and(item => item.data[pk] === record[pk])
+                .and(item => getDynamicField(item.data, pk) === record[pk])
                 .first();
                 
               if (!pendingMutation) {
