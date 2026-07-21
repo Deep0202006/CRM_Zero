@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { liveQuery } from "dexie";
 import { useAuth } from "@/context/AuthContext";
 import {
   getOrGenerateTodayTasks,
@@ -11,32 +12,22 @@ import {
 } from "@/lib/taskEngine";
 import { CONVERTED_STAGES } from "@/lib/pipelineRules";
 import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
-import { db, transactionalMutation, pullDownSync } from "@/lib/db";
+import { db, transactionalMutation, type LocalAllocatedTarget, type LocalUser } from "@/lib/db";
 import { CheckCircle2, Clock, AlertCircle, ListTodo, PhoneCall, Trophy, CheckSquare, Target, Download, Trash2, MapPin, RefreshCw } from "lucide-react";
 import { exportPipelineToExcel } from "@/lib/pipelineExport";
 
-const PRIORITY_DOT: Record<string, string> = {
-  High: "bg-rose-500",
-  Medium: "bg-amber-400",
-  Low: "bg-emerald-500",
-};
-
-const PRIORITY_BADGE: Record<string, string> = {
-  High: "bg-rose-50 text-rose-600 border-rose-200",
-  Medium: "bg-amber-50 text-amber-700 border-amber-200",
-  Low: "bg-emerald-50 text-emerald-600 border-emerald-200",
-};
-
 export default function MyDayPage() {
-  const { currentUser, capabilities, hasOnboarding, hasSupport, isFieldStaff, isOfficeStaff, isAdmin } = useAuth();
+  const { currentUser, capabilities, hasOnboarding, hasSupport, isFieldStaff, isAdmin } = useAuth();
   
   const [tasks, setTasks] = useState<LocalTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [markingId, setMarkingId] = useState<string | null>(null);
   const [stats, setStats] = useState({ pendingToday: 0, scheduledLater: 0 });
-  const [weeklyDigest, setWeeklyDigest] = useState<any>(null);
-  const [allocatedTargets, setAllocatedTargets] = useState<any[]>([]);
+  const [weeklyDigest, setWeeklyDigest] = useState<WeeklyDigest | null>(null);
+  const [allocatedTargets, setAllocatedTargets] = useState<LocalAllocatedTarget[]>([]);
+  const [targetErrors, setTargetErrors] = useState<Record<string, string>>({});
+  const [targetNotice, setTargetNotice] = useState<string | null>(null);
 
   // Scoped KPIs
   const [callsToday, setCallsToday] = useState(0);
@@ -45,6 +36,28 @@ export default function MyDayPage() {
   const [openQueries, setOpenQueries] = useState(0);
   const [mappedToday, setMappedToday] = useState(0);
 
+  const refreshAllocatedTargets = useCallback(async () => {
+    if (!currentUser || !isSupabaseConfigured || !navigator.onLine) return;
+    const { data, error } = await supabase.from("allocated_targets").select("target_id,batch_id,assigned_to_user_id,target_username,target_name,target_address,target_area,target_state,target_mobile,target_email,city,pspa_code,third_party_code,dlic1,dlic2,dlic3,dlic4,food_license,is_completed,completed_at,created_at").eq("assigned_to_user_id", currentUser.user_id).eq("is_completed", false).order("created_at", { ascending: true });
+    if (error || !data) return;
+    await db.allocated_targets.bulkPut(data as LocalAllocatedTarget[]);
+    const remoteIds = new Set(data.map((target) => target.target_id));
+    const local = await db.allocated_targets.where("assigned_to_user_id").equals(currentUser.user_id).toArray();
+    await db.allocated_targets.bulkDelete(local.filter((target) => !Boolean(target.is_completed) && target.sync_status !== "pending" && !remoteIds.has(target.target_id)).map((target) => target.target_id));
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    const subscription = liveQuery(async () => (await db.allocated_targets.where("assigned_to_user_id").equals(currentUser.user_id).toArray()).filter((target) => !Boolean(target.is_completed)).sort((a, b) => a.created_at.localeCompare(b.created_at))).subscribe({ next: setAllocatedTargets, error: (error) => console.error("Allocated target live query failed", error) });
+    return () => subscription.unsubscribe();
+  }, [currentUser]);
+
+  useEffect(() => { refreshAllocatedTargets(); }, [refreshAllocatedTargets]);
+  useEffect(() => {
+    const onVisibility = () => { if (document.visibilityState === "visible") refreshAllocatedTargets(); };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, [refreshAllocatedTargets]);
   const loadTasksAndKpis = useCallback(async () => {
     if (!currentUser) return;
     
@@ -67,7 +80,7 @@ export default function MyDayPage() {
         
         // Leads converted (moved to Registration or beyond)
         const allLeads = await db.leads.where("assigned_to").equals(currentUser.user_id).toArray();
-        setLeadsConverted(allLeads.filter(l => CONVERTED_STAGES.includes(l.status as any)).length);
+        setLeadsConverted(allLeads.filter(l => CONVERTED_STAGES.includes(l.status as typeof CONVERTED_STAGES[number])).length);
       }
       
       if (hasSupport) {
@@ -120,7 +133,7 @@ export default function MyDayPage() {
         });
       }
     }
-  }, [currentUser]);
+  }, [currentUser, isAdmin]);
 
   const handleComplete = async (task: LocalTask) => {
     if (!currentUser || markingId) return;
@@ -168,7 +181,7 @@ export default function MyDayPage() {
   const handleSyncData = async () => {
     setIsSyncing(true);
     try {
-      await pullDownSync();
+      await refreshAllocatedTargets();
       await loadTasksAndKpis();
     } finally {
       setIsSyncing(false);
@@ -177,23 +190,25 @@ export default function MyDayPage() {
 
   const handleCompleteTarget = async (targetId: string) => {
     if (!currentUser || markingId) return;
+    const completedAt = new Date().toISOString();
     setMarkingId(targetId);
-    
-    await db.allocated_targets.update(targetId, { is_completed: true, completed_at: new Date().toISOString() });
-    
-    await db.sync_queue.add({
-      table_name: "allocated_targets",
-      action: "UPDATE",
-      data: { target_id: targetId, is_completed: true, completed_at: new Date().toISOString() },
-      timestamp: new Date().toISOString(),
-      idempotency_key: `complete-target-${targetId}-${Date.now()}`,
-      retry_count: 0
-    });
-    
-    setAllocatedTargets(prev => prev.filter(t => t.target_id !== targetId));
-    setMarkingId(null);
+    setTargetErrors((current) => { const next = { ...current }; delete next[targetId]; return next; });
+    try {
+      if (!navigator.onLine || !isSupabaseConfigured) {
+        await db.transaction("rw", db.allocated_targets, db.sync_queue, async () => {
+          await db.allocated_targets.update(targetId, { is_completed: true, completed_at: completedAt, sync_status: "pending" });
+          await db.sync_queue.add({ idempotency_key: `complete-target-${targetId}`, table_name: "allocated_targets", action: "UPDATE", data: { target_id: targetId, is_completed: true, completed_at: completedAt }, timestamp: completedAt, retry_count: 0 });
+        });
+        setAllocatedTargets((current) => current.filter((target) => target.target_id !== targetId)); setTargetNotice("Saved offline. Completion is pending synchronization."); return;
+      }
+      const { data, error } = await supabase.from("allocated_targets").update({ is_completed: true, completed_at: completedAt }).eq("target_id", targetId).eq("assigned_to_user_id", currentUser.user_id).eq("is_completed", false).select("target_id").maybeSingle();
+      if (error) throw new Error(error.message);
+      if (!data) throw new Error("This target was already completed or is no longer assigned to you.");
+      await db.allocated_targets.update(targetId, { is_completed: true, completed_at: completedAt, sync_status: "synced", last_synced_at: completedAt });
+      setAllocatedTargets((current) => current.filter((target) => target.target_id !== targetId));
+    } catch (error) { setTargetErrors((current) => ({ ...current, [targetId]: error instanceof Error ? error.message : "Unable to complete this target." })); }
+    finally { setMarkingId(null); }
   };
-
   const pending = tasks.filter((t) => t.status === "Pending");
   const inProgress = tasks.filter((t) => t.status === "In Progress");
   const done = tasks.filter((t) => t.status === "Completed");
@@ -222,7 +237,7 @@ export default function MyDayPage() {
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Team Task Avg</h3>
                 {weeklyDigest.data.task_performance?.length > 0 ? (
                   <p className="text-2xl font-black text-brand-primary">
-                    {Math.round(weeklyDigest.data.task_performance.reduce((acc: number, p: any) => acc + (p.completed_count/p.total_count), 0) / weeklyDigest.data.task_performance.length * 100)}%
+                    {Math.round(weeklyDigest.data.task_performance.reduce((acc: number, p: WeeklyDigestTaskPerformance) => acc + (p.completed_count/p.total_count), 0) / weeklyDigest.data.task_performance.length * 100)}%
                   </p>
                 ) : (
                   <p className="text-2xl font-black text-slate-500">N/A</p>
@@ -422,6 +437,7 @@ export default function MyDayPage() {
               <MapPin size={12} className="text-indigo-400" /> Field Targets ({allocatedTargets.length})
             </h2>
             <div className="space-y-2">
+              {targetNotice && <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700">{targetNotice}</p>}
               {allocatedTargets.map((target) => (
                 <div key={target.target_id} className="flex items-start gap-3 px-4 py-4 rounded-2xl bg-white border border-slate-100 shadow-sm border-l-4 border-l-indigo-400 transition-all hover:shadow-md">
                   <div className="flex-1 min-w-0">
@@ -447,11 +463,12 @@ export default function MyDayPage() {
                   <div className="flex flex-col gap-2 shrink-0">
                     <button
                       onClick={() => handleCompleteTarget(target.target_id)}
-                      disabled={!!markingId}
+                      disabled={markingId === target.target_id}
                       className="px-3 py-1.5 text-[11px] font-black rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition-all shadow-sm shadow-indigo-600/20 disabled:opacity-50 cursor-pointer"
                     >
                       {markingId === target.target_id ? "..." : "Called / Done"}
                     </button>
+                    {targetErrors[target.target_id] && <div className="text-[10px] text-rose-600"><span>{targetErrors[target.target_id]}</span><button onClick={() => handleCompleteTarget(target.target_id)} className="ml-1 underline">Retry</button></div>}
                   </div>
                 </div>
               ))}
@@ -536,6 +553,9 @@ export default function MyDayPage() {
 // Task card sub-component
 // ─────────────────────────────────────────────────────────────────────────────
 
+interface WeeklyDigestTaskPerformance { assigned_to: string; completed_count: number; total_count: number; }
+interface WeeklyDigest { week_start: string; data: { stuck_leads: { id: string; name: string; status: string; days_in_stage: number; assigned_to: string }[]; task_performance: WeeklyDigestTaskPerformance[]; upcoming_renewals: { id: string; name: string; renewal_date: string }[]; }; }
+
 const PRIORITY_DOT_COLORS: Record<string, string> = {
   High: "bg-rose-500",
   Medium: "bg-amber-400",
@@ -563,7 +583,7 @@ function TaskCard({
   onStart?: (t: LocalTask) => void;
   onComplete: (t: LocalTask) => void;
   onDelete?: (t: LocalTask) => void;
-  currentUser: any;
+  currentUser: Pick<LocalUser, "user_id"> | null;
   isAdmin: boolean;
   accent: string;
 }) {
@@ -597,7 +617,7 @@ function TaskCard({
         {task.status === "Pending" && onStart && (
           <button
             onClick={() => onStart(task)}
-            disabled={!!markingId}
+            disabled={isActing}
             className="px-3 py-1.5 text-[11px] font-black rounded-xl border border-brand-primary/30 text-brand-primary hover:bg-brand-primary/5 transition-all disabled:opacity-50 cursor-pointer"
           >
             {isActing ? "..." : "Start"}
@@ -605,7 +625,7 @@ function TaskCard({
         )}
         <button
           onClick={() => onComplete(task)}
-          disabled={!!markingId}
+          disabled={isActing}
           className="px-3 py-1.5 text-[11px] font-black rounded-xl bg-brand-primary text-white hover:bg-brand-secondary transition-all shadow-sm shadow-brand-primary/20 disabled:opacity-50 cursor-pointer"
         >
           {isActing ? "..." : "Done ✓"}
@@ -613,7 +633,7 @@ function TaskCard({
         {onDelete && canDelete && (
           <button
             onClick={() => onDelete(task)}
-            disabled={!!markingId}
+            disabled={isActing}
             className="px-3 py-1.5 text-[11px] font-black rounded-xl border border-rose-200 text-rose-500 hover:bg-rose-50 hover:border-rose-300 transition-all disabled:opacity-50 cursor-pointer flex items-center justify-center"
             title="Delete Task"
           >

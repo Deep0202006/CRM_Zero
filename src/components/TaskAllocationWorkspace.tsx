@@ -1,250 +1,84 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { UploadCloud, CheckCircle2, AlertCircle, Loader2, Users, MapPin } from "lucide-react";
-import { db, LocalUser, pullDownSync } from "@/lib/db";
+import { useMemo, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabaseClient";
+import { getCityTaskCounts, normalizeCityKey, parseTaskAllocationTable, type CityAssignmentMap, type ParsedTaskAllocationFile } from "@/lib/taskAllocationExcel";
 
-interface UploadResponse {
-  success?: boolean;
-  filename?: string;
-  hash?: string;
-  cities?: string[];
-  rows?: any[];
-  totalParsed?: number;
-  error?: string;
-}
+const MAX_FILE_BYTES = 3 * 1024 * 1024;
+const isActive = (value: unknown) => String(value) === "1" || String(value) === "true";
 
 export function TaskAllocationWorkspace() {
-  const { currentUser, allUsers } = useAuth();
+  const { allUsers } = useAuth();
   const [file, setFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [uploadData, setUploadData] = useState<UploadResponse | null>(null);
-  const [agents, setAgents] = useState<LocalUser[]>([]);
-  const [cityAgentMap, setCityAgentMap] = useState<Record<string, string[]>>({});
-  const [allocating, setAllocating] = useState(false);
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [parsed, setParsed] = useState<ParsedTaskAllocationFile | null>(null);
+  const [fileHash, setFileHash] = useState("");
+  const [assignments, setAssignments] = useState<CityAssignmentMap>({});
+  const [selectedCities, setSelectedCities] = useState<string[]>([]);
+  const [selectedUser, setSelectedUser] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const users = useMemo(() => allUsers.filter((user) => isActive(user.is_active)), [allUsers]);
+  const cityCounts = useMemo(() => parsed ? getCityTaskCounts(parsed.rows) : {}, [parsed]);
+  const unmapped = useMemo(() => parsed?.cities.filter((city) => !assignments[normalizeCityKey(city)]) ?? [], [parsed, assignments]);
+  const totals = useMemo(() => Object.entries(assignments).reduce<Record<string, number>>((result, [city, userId]) => ({ ...result, [userId]: (result[userId] ?? 0) + (cityCounts[city] ?? 0) }), {}), [assignments, cityCounts]);
 
-  useEffect(() => {
-    if (allUsers && allUsers.length > 0) {
-      setAgents(allUsers.filter(u => {
-        const active = (u as any).is_active;
-        return active === 1 || active === true || active === "1" || active === "true";
-      }));
-    }
-  }, [allUsers]);
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
-      setUploadData(null);
-      setMessage(null);
-      setCityAgentMap({});
-    }
-  };
-
-  const handleUpload = async () => {
+  async function parseFile() {
     if (!file) return;
-    setUploading(true);
-    setMessage(null);
-    setCityAgentMap({});
-
-    const formData = new FormData();
-    formData.append("file", file);
-
+    if (file.size > MAX_FILE_BYTES || !/\.(xlsx|xls|csv)$/i.test(file.name)) { setMessage("Use an XLSX, XLS, or CSV file up to 3 MB."); return; }
+    setBusy(true);
     try {
-      const res = await fetch("/api/task-upload", {
-        method: "POST",
-        body: formData,
-      });
+      const XLSX = await import("xlsx");
+      const buffer = await file.arrayBuffer();
+      const digest = await crypto.subtle.digest("SHA-256", buffer);
+      const workbook = XLSX.read(buffer, { type: "array", raw: false });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const result = parseTaskAllocationTable(XLSX.utils.sheet_to_json<(string | number | boolean | null)[]>(sheet, { header: 1, defval: "", raw: false }));
+      if (!result.rows.length) throw new Error("No valid data rows found.");
+      setFileHash(Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join(""));
+      setParsed(result); setAssignments({}); setSelectedCities([]);
+      setMessage(`Parsed ${result.rows.length} valid tasks, ${result.rejectedRows.length} rejected rows, ${result.cities.length} cities.`);
+    } catch (error) { setMessage(error instanceof Error ? error.message : "Unable to parse file."); }
+    finally { setBusy(false); }
+  }
 
-      const data = await res.json();
-      if (res.ok) {
-        setUploadData(data);
-        setMessage({ type: "success", text: `Parsed ${data.totalParsed} targets across ${data.cities.length} cities.` });
-      } else {
-        setMessage({ type: "error", text: data.error || "Upload failed" });
-      }
-    } catch (err: any) {
-      setMessage({ type: "error", text: err.message || "An error occurred during upload" });
-    } finally {
-      setUploading(false);
-    }
-  };
+  function assignSelected() {
+    if (!selectedUser || !selectedCities.length) return;
+    setAssignments((current) => ({ ...current, ...Object.fromEntries(selectedCities.map((city) => [normalizeCityKey(city), selectedUser])) }));
+    setSelectedCities([]);
+  }
 
-  const handleAgentToggle = (city: string, agentId: string) => {
-    setCityAgentMap(prev => {
-      const currentAgents = prev[city] || [];
-      const newAgents = currentAgents.includes(agentId) 
-        ? currentAgents.filter(id => id !== agentId)
-        : [...currentAgents, agentId];
-      
-      if (newAgents.length === 0) {
-        const { [city]: _, ...rest } = prev;
-        return rest;
-      }
-      return { ...prev, [city]: newAgents };
-    });
-  };
-
-  const handleAllocate = async () => {
-    const citiesToAllocate = Object.entries(cityAgentMap);
-    if (citiesToAllocate.length === 0 || !uploadData) return;
-    
-    setAllocating(true);
-    setMessage(null);
-
+  async function allocate() {
+    if (!parsed || unmapped.length || !window.confirm(`Assign ${parsed.rows.length} tasks in one atomic batch?`)) return;
+    setBusy(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      
-      let totalAllocated = 0;
-      let errors = [];
+      const response = await fetch("/api/task-allocate", { method: "POST", headers: { "Content-Type": "application/json", Authorization: session ? `Bearer ${session.access_token}` : "" }, body: JSON.stringify({ filename: file?.name, fileHash, rows: parsed.rows, cityAssignments: assignments }) });
+      const result = await response.json() as { allocatedCount?: number; error?: string };
+      if (!response.ok) throw new Error(result.error ?? "Allocation failed.");
+      setMessage(`Allocated ${result.allocatedCount ?? parsed.rows.length} tasks successfully.`);
+      setFile(null); setParsed(null); setAssignments({}); setSelectedCities([]); setFileHash("");
+    } catch (error) { setMessage(error instanceof Error ? error.message : "Allocation failed."); }
+    finally { setBusy(false); }
+  }
 
-      for (const [city, assigned_to_user_ids] of citiesToAllocate) {
-        const res = await fetch("/api/task-allocate", {
-          method: "POST",
-          headers: { 
-            "Content-Type": "application/json",
-            "Authorization": session ? `Bearer ${session.access_token}` : ""
-          },
-          body: JSON.stringify({
-            city,
-            assigned_to_user_ids,
-            rows: uploadData.rows,
-            filename: uploadData.filename,
-            hash: uploadData.hash,
-            admin_id: currentUser?.user_id
-          }),
-        });
-
-        const data = await res.json();
-        if (res.ok) {
-          totalAllocated += data.allocatedCount;
-        } else {
-          errors.push(`Failed for ${city}: ${data.error}`);
-        }
-      }
-
-      if (errors.length > 0) {
-        setMessage({ type: "error", text: `Allocated ${totalAllocated} tasks, but had errors: ${errors.join(", ")}` });
-      } else {
-        setMessage({ type: "success", text: `Successfully allocated ${totalAllocated} tasks across ${citiesToAllocate.length} cities!` });
-        setCityAgentMap({});
-      }
-      
-      // Keep local DB up to date so admin can see any tasks assigned to themselves
-      if (totalAllocated > 0) {
-        await pullDownSync();
-      }
-    } catch (err: any) {
-      setMessage({ type: "error", text: err.message || "An error occurred during allocation" });
-    } finally {
-      setAllocating(false);
-    }
-  };
-
-  return (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-      <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-        <UploadCloud className="h-5 w-5 text-indigo-600" />
-        Excel Bulk Task Allocation
-      </h2>
-
-      <div className="space-y-6">
-        {/* Upload Zone */}
-        <div className="border-2 border-dashed border-slate-200 rounded-lg p-6 text-center hover:bg-slate-50 transition-colors">
-          <input
-            type="file"
-            accept=".xlsx, .xls, .csv"
-            onChange={handleFileChange}
-            className="hidden"
-            id="excel-upload"
-          />
-          <label htmlFor="excel-upload" className="cursor-pointer flex flex-col items-center justify-center">
-            <UploadCloud className="h-10 w-10 text-slate-400 mb-2" />
-            <span className="text-sm font-medium text-slate-700">
-              {file ? file.name : "Click to upload Excel/CSV file"}
-            </span>
-            <span className="text-xs text-slate-500 mt-1">Expected columns: Username, Name, Address, Area, City, State, Mobile, Email, PSPACode, Third-Party Code, Dlic1-4, FoodLicense</span>
-          </label>
-
-          {file && !uploadData && (
-            <button
-              onClick={handleUpload}
-              disabled={uploading}
-              className="mt-4 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 inline-flex items-center gap-2"
-            >
-              {uploading && <Loader2 className="h-4 w-4 animate-spin" />}
-              {uploading ? "Parsing File..." : "Parse Spreadsheet"}
-            </button>
-          )}
-        </div>
-
-        {/* Message Banner */}
-        {message && (
-          <div className={`p-4 rounded-lg flex items-center gap-3 text-sm font-medium ${
-            message.type === "success" ? "bg-emerald-50 text-emerald-800 border border-emerald-200" : "bg-rose-50 text-rose-800 border border-rose-200"
-          }`}>
-            {message.type === "success" ? <CheckCircle2 className="h-5 w-5" /> : <AlertCircle className="h-5 w-5" />}
-            {message.text}
-          </div>
-        )}
-
-        {/* City-wise Allocation Controls */}
-        {uploadData && uploadData.success && uploadData.cities && (
-          <div className="pt-4 border-t border-slate-100">
-            <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
-              <MapPin className="h-4 w-4 text-slate-400" /> Map Cities to Agents
-            </h3>
-            
-            <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
-              {uploadData.cities.map(city => {
-                const cityCount = uploadData.rows?.filter((r: any) => r.city === city).length || 0;
-                return (
-                  <div key={city} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-lg gap-3">
-                    <div className="flex flex-col">
-                      <span className="text-sm font-bold text-slate-800">{city}</span>
-                      <span className="text-xs font-medium text-slate-500">{cityCount} target{cityCount !== 1 ? 's' : ''}</span>
-                    </div>
-                    <div className="w-full shrink-0">
-                      <div className="flex flex-wrap gap-2">
-                        {agents.map(agent => {
-                          const isSelected = cityAgentMap[city]?.includes(agent.user_id);
-                          return (
-                            <button
-                              key={agent.user_id}
-                              onClick={() => handleAgentToggle(city, agent.user_id)}
-                              className={`px-3 py-1.5 text-xs font-semibold rounded-full border transition-colors ${
-                                isSelected 
-                                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' 
-                                  : 'bg-white text-slate-700 border-slate-300 hover:border-indigo-400 hover:bg-indigo-50'
-                              }`}
-                            >
-                              {agent.name}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            
-            <div className="flex justify-end mt-6">
-              <button
-                onClick={handleAllocate}
-                disabled={allocating || Object.keys(cityAgentMap).length === 0}
-                className="px-6 py-2.5 bg-emerald-600 text-white text-sm font-bold rounded-lg hover:bg-emerald-700 disabled:opacity-50 inline-flex items-center gap-2 shadow-sm"
-              >
-                {allocating && <Loader2 className="h-4 w-4 animate-spin" />}
-                {allocating ? "Allocating Tasks..." : `Allocate ${Object.keys(cityAgentMap).length} Cities`}
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
+  return <section className="space-y-5 rounded-xl border bg-white p-4 sm:p-6">
+    <h2 className="text-lg font-bold">Excel Bulk Task Allocation</h2>
+    <label className="block text-sm font-semibold">Spreadsheet file
+      <input aria-label="Spreadsheet file" className="mt-1 block w-full" type="file" accept=".xlsx,.xls,.csv" onChange={(event) => { setFile(event.target.files?.[0] ?? null); setParsed(null); }} />
+    </label>
+    {file && <p className="text-xs text-slate-600">{file.name} · {(file.size / 1024).toFixed(1)} KB</p>}
+    <button type="button" onClick={parseFile} disabled={!file || busy} className="rounded bg-indigo-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Working…" : "Parse Spreadsheet"}</button>
+    {message && <p className="rounded bg-slate-50 p-2 text-sm">{message}</p>}
+    {parsed && <>
+      <p className="text-sm">{parsed.rows.length} valid · {parsed.rejectedRows.length} rejected · {parsed.cities.length} cities</p>
+      <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr><th>Row</th><th>Username</th><th>Name</th><th>City</th><th>Mobile</th></tr></thead><tbody>{parsed.rows.slice(0, 10).map((row) => <tr key={row.rowNumber}><td>{row.rowNumber}</td><td>{row.target_username}</td><td>{row.target_name}</td><td>{row.city}</td><td>{row.target_mobile}</td></tr>)}</tbody></table></div>
+      {parsed.rejectedRows.map((row) => <p key={row.rowNumber} className="text-xs text-rose-600">Row {row.rowNumber}: {row.reason}</p>)}
+      <div className="flex flex-wrap gap-2"><select aria-label="Active user" value={selectedUser} onChange={(event) => setSelectedUser(event.target.value)}><option value="">Select active user</option>{users.map((user) => <option key={user.user_id} value={user.user_id}>{user.name}</option>)}</select><button type="button" onClick={() => setSelectedCities(parsed.cities)} >Select All Cities</button><button type="button" onClick={assignSelected} disabled={!selectedUser || !selectedCities.length}>Assign Selected Cities</button><button type="button" onClick={() => setSelectedCities([])}>Clear Selected Cities</button><button type="button" onClick={() => setAssignments({})}>Clear All Mappings</button></div>
+      <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr><th>City</th><th>Tasks</th><th>Assigned user</th></tr></thead><tbody>{parsed.cities.map((city) => { const key = normalizeCityKey(city); return <tr key={city} className={!assignments[key] ? "bg-amber-50" : ""}><td><label><input type="checkbox" checked={selectedCities.includes(city)} onChange={() => setSelectedCities((current) => current.includes(city) ? current.filter((item) => item !== city) : [...current, city])} /> {city}</label></td><td>{cityCounts[key]}</td><td><select aria-label={`Assignee for ${city}`} value={assignments[key] ?? ""} onChange={(event) => setAssignments((current) => ({ ...current, [key]: event.target.value }))}><option value="">Unmapped</option>{users.map((user) => <option key={user.user_id} value={user.user_id}>{user.name}</option>)}</select></td></tr>; })}</tbody></table></div>
+      {unmapped.length > 0 && <p className="text-sm font-semibold text-amber-700">Unmapped cities: {unmapped.join(", ")}</p>}
+      <div className="text-xs">{Object.entries(totals).map(([id, count]) => <p key={id}>{users.find((user) => user.user_id === id)?.name ?? id}: {count} tasks</p>)}</div>
+      <button type="button" onClick={allocate} disabled={busy || !Object.keys(assignments).length || unmapped.length > 0} className="rounded bg-emerald-600 px-4 py-2 font-semibold text-white disabled:opacity-50">Assign All Mapped Tasks</button>
+    </>}
+  </section>;
 }
