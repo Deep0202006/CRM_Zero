@@ -48,7 +48,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const timer = window.setTimeout(() => setShowIntro(false), reducedMotion ? 240 : 1720);
+    const timer = window.setTimeout(() => setShowIntro(false), reducedMotion ? 240 : 1200);
     return () => window.clearTimeout(timer);
   }, []);
 
@@ -130,7 +130,7 @@ export default function LoginPage() {
       )}
 
       <section className="grid min-h-[100svh] lg:grid-cols-[1.12fr_0.88fr]">
-        <div className="relative flex min-h-[58svh] overflow-y-auto overflow-x-hidden bg-[var(--surface-sidebar)] text-white lg:min-h-[100svh]">
+        <div className="relative hidden lg:flex min-h-[58svh] overflow-y-auto overflow-x-hidden bg-[var(--surface-sidebar)] text-white lg:min-h-[100svh]">
           <div className="login-grid-pattern absolute inset-0 opacity-70 pointer-events-none" />
           <div className="absolute -left-24 top-12 h-72 w-72 rounded-full bg-[var(--brand-500)]/20 blur-[90px] pointer-events-none" />
           <div className="absolute -bottom-28 right-0 h-96 w-96 rounded-full bg-[var(--chart-2)]/15 blur-[110px] pointer-events-none" />
@@ -220,7 +220,7 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <div ref={formRef} id="login-form" className="relative flex items-center justify-center bg-[var(--surface-canvas)] px-5 py-12 sm:px-10 lg:min-h-[100svh] lg:px-12 xl:px-20">
+        <div ref={formRef} id="login-form" className="relative flex items-center justify-center bg-[var(--surface-canvas)] px-4 py-8 sm:px-10 lg:min-h-[100svh] lg:px-12 xl:px-20">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_10%,var(--surface-brand-haze-medium),transparent_24rem)]" />
           <div className="relative z-10 w-full max-w-[430px]">
             <div className="mb-8">
