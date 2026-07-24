@@ -1,0 +1,11 @@
+phase: 1
+status: "Baseline diagnosis complete. Ready for Phase 2."
+defects_identified: 5
+files_to_modify:
+  - "supabase/migrations/021_field_visits_hardening.sql"
+  - "src/lib/db.ts"
+  - "src/lib/sync.ts"
+  - "src/app/visits/new/page.tsx"
+  - "src/app/visits/page.tsx"
+  - "src/components/visits/SelfieCapture.tsx"
+  - "src/app/admin/visits/page.tsx"

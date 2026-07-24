@@ -152,7 +152,7 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <div className="grid items-center gap-10 xl:grid-cols-[minmax(0,1fr)_360px]">
+            <div className="flex flex-col gap-10">
               <div className="max-w-2xl">
                 <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.045] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--brand-300)]">
                   <Sparkles size={13} /> Operational intelligence
@@ -175,7 +175,7 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              <div className="relative hidden xl:block" aria-hidden="true">
+              <div className="relative hidden sm:block max-w-[360px] mt-4" aria-hidden="true">
                 <div className="animate-float relative overflow-hidden rounded-[24px] border border-white/10 bg-[var(--login-panel)]/85 p-4 shadow-[var(--shadow-login-card)] backdrop-blur-xl">
                   <div className="mb-4 flex items-center justify-between">
                     <div>

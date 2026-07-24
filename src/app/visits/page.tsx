@@ -80,18 +80,42 @@ export default function FieldVisitsPage() {
         <div className="workspace-split">
           <QueueList
             title="Recent field visits"
-            items={visits.map((visit) => ({
-              id: visit.visit_id,
-              primaryNode: (
-                <div>
-                  <p className="text-[13px] font-semibold leading-snug text-[var(--text-primary)]">{getLeadDisplay(visit.lead_id)}</p>
-                  {visit.visit_notes && <p className="mt-2 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-2.5 text-[12px] leading-5 text-[var(--text-secondary)]">{visit.visit_notes}</p>}
-                </div>
-              ),
-              statusText: visit.visit_outcome,
-              statusVariant: "brand",
-              timestamp: new Date(visit.created_at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }),
-            }))}
+            items={visits.map((visit) => {
+              const statusVariant = 
+                visit.sync_status === "synced" ? "success" : 
+                visit.sync_status === "sync_failed" ? "danger" : 
+                "warning";
+                
+              const statusText = 
+                visit.sync_status === "synced" ? "Synced" :
+                visit.sync_status === "sync_failed" ? "Sync Failed" :
+                "Pending Sync";
+
+              return {
+                id: visit.visit_id,
+                primaryNode: (
+                  <div>
+                    <p className="text-[13px] font-semibold leading-snug text-[var(--text-primary)]">
+                      {getLeadDisplay(visit.lead_id)}
+                      {visit.segment_type && <span className="ml-2 text-xs font-normal text-[var(--text-secondary)]">({visit.segment_type})</span>}
+                    </p>
+                    <div className="flex gap-2 text-xs text-[var(--text-secondary)] mt-1">
+                      <span className="font-medium bg-[var(--surface-secondary)] px-2 py-0.5 rounded border border-[var(--border-subtle)]">{visit.visit_outcome}</span>
+                      {visit.person_met && <span>Met: {visit.person_met}</span>}
+                    </div>
+                    {visit.visit_notes && <p className="mt-2 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-2.5 text-[12px] leading-5 text-[var(--text-secondary)]">{visit.visit_notes}</p>}
+                    {visit.check_in_photo_url && (
+                       <a href={visit.check_in_photo_url} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs text-brand-600 hover:underline">
+                         View Photo
+                       </a>
+                    )}
+                  </div>
+                ),
+                statusText: statusText,
+                statusVariant: statusVariant,
+                timestamp: new Date(visit.created_at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }),
+              };
+            })}
             emptyMessage={loading ? "Loading visits…" : "No visits have been recorded yet."}
             onRefresh={loadData}
           />

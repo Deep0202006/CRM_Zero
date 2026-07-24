@@ -45,7 +45,7 @@ export function getNextPipelineStage(currentStage: PipelineStage): PipelineStage
 }
 
 export function getPreviousPipelineStage(currentStage: PipelineStage): PipelineStage | null {
-  const transitions = ALLOWED_TRANSITIONS.filter(t => t.to === currentStage && t.allowedBy === "agent");
+
   // For standard linear reverse logic
   if (currentStage === "Interested") return "Contacted";
   if (currentStage === "Registration") return "Interested";

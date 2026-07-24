@@ -46,6 +46,10 @@ export default function AdminVisitsPage() {
     loadData();
   }, [isAdmin]);
 
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterOutcome, setFilterOutcome] = useState("ALL");
+  const [filterAgent, setFilterAgent] = useState("ALL");
+
   const getLeadDisplay = (lead_id: string) => {
     if (lead_id.startsWith("EXCEL::")) {
       const parts = lead_id.split("::");
@@ -76,6 +80,21 @@ export default function AdminVisitsPage() {
   const todayKey = getCurrentISTDate();
   const visitsToday = visits.filter((v) => v.visit_date === todayKey).length;
   const uniqueUsers = new Set(visits.map(v => v.user_id)).size;
+  const activeAgents = Array.from(uniqueUsers ? new Set(visits.map(v => v.user_id)) : []).map(id => ({ id, name: getAgentDisplay(id) }));
+
+  const filteredVisits = visits.filter((v) => {
+    if (filterOutcome !== "ALL" && v.visit_outcome !== filterOutcome) return false;
+    if (filterAgent !== "ALL" && v.user_id !== filterAgent) return false;
+    if (searchTerm) {
+      const q = searchTerm.toLowerCase();
+      const leadName = getLeadDisplay(v.lead_id).toLowerCase();
+      const agentName = getAgentDisplay(v.user_id).toLowerCase();
+      if (!leadName.includes(q) && !agentName.includes(q) && !(v.visit_notes || "").toLowerCase().includes(q)) {
+        return false;
+      }
+    }
+    return true;
+  });
 
   return (
     <div className="app-page">
@@ -97,20 +116,51 @@ export default function AdminVisitsPage() {
         <MetricCard label="Active Field Reps" value={uniqueUsers} icon={<User size={17} />} tone="brand" note="Reps with at least one visit logged" />
       </div>
 
+      <div className="mb-6 flex flex-wrap gap-4 items-center">
+         <input 
+           type="text" 
+           placeholder="Search business, agent, or notes..." 
+           className="field-control max-w-sm" 
+           value={searchTerm} 
+           onChange={(e) => setSearchTerm(e.target.value)} 
+         />
+         <select className="field-control max-w-xs" value={filterOutcome} onChange={(e) => setFilterOutcome(e.target.value)}>
+           <option value="ALL">All Outcomes</option>
+           <option value="Successful Pitch">Successful Pitch</option>
+           <option value="Follow-up Required">Follow-up Required</option>
+           <option value="Not Interested">Not Interested</option>
+           <option value="Store Closed">Store Closed</option>
+           <option value="Other">Other</option>
+         </select>
+         <select className="field-control max-w-xs" value={filterAgent} onChange={(e) => setFilterAgent(e.target.value)}>
+           <option value="ALL">All Agents</option>
+           {activeAgents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+         </select>
+      </div>
+
       <div className="workspace-split">
         <QueueList
           title="Field Visit History"
-          items={visits.map((visit) => ({
+          items={filteredVisits.map((visit) => ({
             id: visit.visit_id,
             primaryNode: (
               <div>
-                <p className="text-[13px] font-semibold leading-snug text-[var(--text-primary)]">{getLeadDisplay(visit.lead_id)}</p>
+                <p className="text-[13px] font-semibold leading-snug text-[var(--text-primary)]">
+                  {getLeadDisplay(visit.lead_id)}
+                  {visit.segment_type && <span className="ml-2 text-xs font-normal text-[var(--text-secondary)]">({visit.segment_type})</span>}
+                </p>
                 <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--text-muted)]">
                   Rep · <span className="normal-case tracking-normal text-[var(--text-secondary)]">{getAgentDisplay(visit.user_id)}</span>
                 </p>
+                <div className="flex gap-2 text-xs text-[var(--text-secondary)] mt-2">
+                  <span className="font-medium bg-[var(--surface-secondary)] px-2 py-0.5 rounded border border-[var(--border-subtle)]">{visit.visit_outcome}</span>
+                  {visit.person_met && <span>Met: {visit.person_met}</span>}
+                </div>
                 <div className="mt-2 text-[11px] text-[var(--text-secondary)] flex gap-4">
                   <span>Coordinates: {visit.check_in_lat ? `${visit.check_in_lat.toFixed(5)}, ${visit.check_in_lng?.toFixed(5)}` : "None"}</span>
-                  {visit.check_in_photo_url && <span className="text-[var(--brand-600)]">Has Photo Proof</span>}
+                  {visit.check_in_photo_url && (
+                    <PhotoViewerLink rawUrl={visit.check_in_photo_url} />
+                  )}
                 </div>
                 {visit.visit_notes && <p className="mt-2 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-2.5 text-[12px] leading-5 text-[var(--text-secondary)]">{visit.visit_notes}</p>}
               </div>
@@ -124,5 +174,39 @@ export default function AdminVisitsPage() {
         />
       </div>
     </div>
+  );
+}
+
+function PhotoViewerLink({ rawUrl }: { rawUrl: string }) {
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+  
+  useEffect(() => {
+    async function load() {
+      // Extract file path from publicUrl format
+      // https://[ref].supabase.co/storage/v1/object/public/visits-evidence/uuid/file.jpg -> uuid/file.jpg
+      const match = rawUrl.match(/visits-evidence\/(.+)$/);
+      const filePath = match ? match[1] : rawUrl;
+      
+      const { supabase } = await import('@/lib/supabaseClient');
+      const { data } = await supabase.storage.from("visits-evidence").createSignedUrl(filePath, 3600);
+      if (data?.signedUrl) {
+        setSignedUrl(data.signedUrl);
+      } else {
+        setSignedUrl(rawUrl); // fallback
+      }
+    }
+    load();
+  }, [rawUrl]);
+
+  return (
+    <a 
+      href={signedUrl || "#"} 
+      target={signedUrl ? "_blank" : undefined} 
+      rel="noreferrer" 
+      className={`text-brand-600 hover:underline ${!signedUrl ? "opacity-50 cursor-not-allowed" : ""}`}
+      onClick={(e) => { if (!signedUrl) e.preventDefault(); }}
+    >
+      View Photo
+    </a>
   );
 }

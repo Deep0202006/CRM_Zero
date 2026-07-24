@@ -1,24 +1,27 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { db, transactionalMutation, LocalLead } from "@/lib/db";
 import { getCurrentISTDate } from "@/lib/dateTime";
 import { SearchableSelect, SearchableOption } from "@/components/SearchableSelect";
-import { MapPin, Navigation, Camera, CheckCircle2, AlertCircle, ArrowLeft } from "lucide-react";
+import { MapPin, Navigation, CheckCircle2, AlertCircle, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import Link from "next/link";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { CheckInGate } from "@/components/CheckInGate";
-import excelUsers from "@/lib/excel_users.json";
+import SelfieCapture from "@/components/visits/SelfieCapture";
 
 export default function NewVisitPage() {
-  const { currentUser } = useAuth();
+  const { currentUser, capabilities } = useAuth();
   
   const [leadsMap, setLeadsMap] = useState<Map<string, LocalLead>>(new Map());
   const [selectedLeadId, setSelectedLeadId] = useState("");
+  const [personMet, setPersonMet] = useState("");
   const [outcome, setOutcome] = useState("");
   const [notes, setNotes] = useState("");
+  const [followUpDate, setFollowUpDate] = useState("");
+  const [photoBlob, setPhotoBlob] = useState<Blob | null>(null);
   
   const [locationError, setLocationError] = useState<string | null>(null);
   const [lat, setLat] = useState<number | null>(null);
@@ -29,13 +32,6 @@ export default function NewVisitPage() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
 
-  // Photo
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [streamActive, setStreamActive] = useState(false);
-  const [capturedImage, setCapturedImage] = useState<string | null>(null);
-  const [showCamera, setShowCamera] = useState(false);
-
   const outcomes = [
     "Successful Pitch",
     "Follow-up Required",
@@ -44,23 +40,30 @@ export default function NewVisitPage() {
     "Other"
   ];
 
-  const loadData = async () => {
+  const loadData = React.useCallback(async () => {
     try {
       const allLeads = await db.leads.toArray();
       const lMap = new Map<string, LocalLead>();
-      allLeads.forEach(l => lMap.set(l.lead_id, l));
+      
+      // Filter leads based on user capabilities
+      const canAccessRetail = capabilities.includes("field_ret") || capabilities.includes("admin");
+      const canAccessDistributor = capabilities.includes("field_dist") || capabilities.includes("admin");
+
+      allLeads.forEach(l => {
+        if (l.segment_type === "Retailer" && canAccessRetail) {
+          lMap.set(l.lead_id, l);
+        } else if (l.segment_type === "Distributor" && canAccessDistributor) {
+          lMap.set(l.lead_id, l);
+        }
+      });
+      
       setLeadsMap(lMap);
     } catch (err) {
       console.error("Failed to load leads:", err);
     }
-  };
+  }, [capabilities]);
 
-  useEffect(() => {
-    loadData();
-    requestLocation();
-  }, []);
-
-  const requestLocation = () => {
+  const requestLocation = React.useCallback(() => {
     if (!navigator.geolocation) {
       setLocationError("Geolocation is not supported by your browser.");
       return;
@@ -74,72 +77,39 @@ export default function NewVisitPage() {
         setLocating(false);
       },
       (err) => {
-        setLocationError("Failed to get location. Please ensure location services are enabled.");
+        console.warn("Location error:", err);
+        setLocationError("Could not fetch location. Please ensure location services are enabled.");
         setLocating(false);
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
-  };
-
-  const leadOptions: SearchableOption[] = React.useMemo(() => {
-    const excelOptions: SearchableOption[] = (excelUsers as Array<{ username: string; name?: string }>).map((eu) => ({
-      value: `EXCEL::${eu.username}::${eu.name || eu.username}`,
-      label: `${eu.name || eu.username} (@${eu.username})`,
-      searchText: eu.username + " " + (eu.name || "")
-    }));
-    return excelOptions.sort((a, b) => a.label.localeCompare(b.label));
   }, []);
 
-  const initCamera = async () => {
-    setShowCamera(true);
-    setError("");
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment", width: { ideal: 640 }, height: { ideal: 480 } },
-        audio: false,
+  useEffect(() => {
+    if (capabilities) {
+      loadData();
+    }
+    requestLocation();
+  }, [capabilities, loadData, requestLocation]);
+
+  const leadOptions: SearchableOption[] = React.useMemo(() => {
+    const options: SearchableOption[] = [];
+    leadsMap.forEach((lead) => {
+      options.push({
+        value: lead.lead_id,
+        label: `${lead.business_name} (${lead.segment_type})`,
+        searchText: `${lead.business_name} ${lead.contact_person} ${lead.segment_type}`
       });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-        setStreamActive(true);
-      }
-    } catch (err) {
-      setError("Camera access denied. Please allow camera permissions.");
-      setShowCamera(false);
-    }
-  };
-
-  const capturePhoto = () => {
-    if (!videoRef.current || !canvasRef.current) return;
-    const ctx = canvasRef.current.getContext("2d");
-    if (!ctx) return;
-    canvasRef.current.width = videoRef.current.videoWidth || 640;
-    canvasRef.current.height = videoRef.current.videoHeight || 480;
-    ctx.drawImage(videoRef.current, 0, 0);
-    setCapturedImage(canvasRef.current.toDataURL("image/jpeg", 0.7));
-    
-    // Stop stream
-    if (videoRef.current.srcObject) {
-      (videoRef.current.srcObject as MediaStream).getTracks().forEach(t => t.stop());
-      setStreamActive(false);
-    }
-    setShowCamera(false);
-  };
-
-  const cancelCamera = () => {
-    if (videoRef.current?.srcObject) {
-      (videoRef.current.srcObject as MediaStream).getTracks().forEach(t => t.stop());
-      setStreamActive(false);
-    }
-    setShowCamera(false);
-  };
+    });
+    return options.sort((a, b) => a.label.localeCompare(b.label));
+  }, [leadsMap]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser) return;
     
-    if (!selectedLeadId || !outcome) {
-      setError("Please fill out required fields.");
+    if (!selectedLeadId || !outcome || !personMet || !photoBlob) {
+      setError("Please fill out required fields including selfie.");
       return;
     }
     
@@ -156,19 +126,37 @@ export default function NewVisitPage() {
       const visitId = crypto.randomUUID();
       const now = new Date().toISOString();
       const visit_date = getCurrentISTDate();
-      const check_in_time = now; // Store full ISO string for exact time
+      
+      const targetLead = leadsMap.get(selectedLeadId);
+      const segmentType = targetLead?.segment_type || "Unknown";
+
+      // 1. We must verify attendance exists for today (the server will also enforce this via RLS)
+      // Since we don't have attendance_id easily available without query, the DB sync queue handles it, 
+      // but let's just query db.attendance first to store it.
+      const today = getCurrentISTDate();
+      const attendanceRec = await db.attendance.where({ user_id: currentUser.user_id, date: today }).first();
+      
+      if (!attendanceRec && !capabilities.includes("admin")) {
+         throw new Error("You must check in for attendance today before logging visits.");
+      }
 
       const visitRecord = {
         visit_id: visitId,
         lead_id: selectedLeadId,
         user_id: currentUser.user_id,
         visit_date,
-        check_in_time,
+        check_in_time: now,
         check_in_lat: lat,
         check_in_lng: lng,
-        check_in_photo_url: capturedImage,
+        check_in_photo_url: null, // set later by sync
         visit_outcome: outcome,
         visit_notes: notes.trim() || null,
+        person_met: personMet.trim() || null,
+        segment_type: segmentType,
+        follow_up_date: followUpDate || null,
+        attendance_id: attendanceRec?.attendance_id || null,
+        sync_status: "pending_sync" as const,
+        local_photo_blob: photoBlob,
         created_at: now,
         updated_at: now
       };
@@ -233,7 +221,12 @@ export default function NewVisitPage() {
 
             <div>
               <label className="field-label">Target Lead or Client <span className="text-[var(--status-danger)]">*</span></label>
-              <SearchableSelect options={leadOptions} value={selectedLeadId} onChange={setSelectedLeadId} placeholder="Search by name or username" required />
+              <SearchableSelect options={leadOptions} value={selectedLeadId} onChange={setSelectedLeadId} placeholder="Search business name" required />
+            </div>
+
+            <div>
+              <label htmlFor="person-met" className="field-label">Person Met <span className="text-[var(--status-danger)]">*</span></label>
+              <input type="text" id="person-met" value={personMet} onChange={(e) => setPersonMet(e.target.value)} className="field-control" placeholder="Name of owner/manager" required />
             </div>
 
             <div>
@@ -244,46 +237,28 @@ export default function NewVisitPage() {
               </select>
             </div>
 
-            <div>
-              <label className="field-label">Storefront Photo <span className="text-[var(--text-muted)] font-normal">(Optional)</span></label>
-              
-              {showCamera ? (
-                <div className="mt-2 rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] overflow-hidden">
-                  <div className="relative aspect-[4/3] bg-black">
-                    <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
-                  </div>
-                  <canvas ref={canvasRef} className="hidden" />
-                  <div className="flex justify-between p-3 bg-[var(--surface-secondary)] border-t border-[var(--border-subtle)]">
-                    <Button type="button" variant="outline" onClick={cancelCamera}>Cancel</Button>
-                    <Button type="button" onClick={capturePhoto} icon={<Camera size={15} />} disabled={!streamActive}>Capture</Button>
-                  </div>
-                </div>
-              ) : capturedImage ? (
-                <div className="mt-2 rounded-[var(--radius-lg)] border border-[var(--border-subtle)] overflow-hidden relative group">
-                  <img src={capturedImage} alt="Storefront" className="w-full aspect-[4/3] object-cover" />
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <Button type="button" onClick={() => setCapturedImage(null)} variant="outline" className="bg-white/10 text-white border-white/20 hover:bg-white/20">Retake Photo</Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="mt-2">
-                  <Button type="button" variant="outline" onClick={initCamera} icon={<Camera size={15} />} className="w-full">
-                    Open Camera
-                  </Button>
-                </div>
-              )}
-            </div>
+            {outcome === "Follow-up Required" && (
+               <div>
+                 <label htmlFor="follow-up" className="field-label">Follow-up Date <span className="text-[var(--status-danger)]">*</span></label>
+                 <input type="date" id="follow-up" value={followUpDate} onChange={(e) => setFollowUpDate(e.target.value)} min={getCurrentISTDate()} className="field-control" required />
+               </div>
+            )}
 
             <div>
               <label htmlFor="visit-notes" className="field-label">Visit Notes <span className="font-normal text-[var(--text-muted)]">(optional)</span></label>
               <textarea id="visit-notes" value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Observations, stock levels, or follow-up details" rows={4} className="field-control resize-y" />
             </div>
 
+            <div>
+              <label className="field-label">Storefront Selfie <span className="text-[var(--status-danger)]">*</span></label>
+              <SelfieCapture onCapture={setPhotoBlob} />
+            </div>
+
             {error && <div className="alert-panel alert-panel--danger" role="alert"><AlertCircle size={16} className="mt-0.5 shrink-0" /><span>{error}</span></div>}
-            {success && <div className="alert-panel alert-panel--success" role="status"><CheckCircle2 size={16} className="mt-0.5 shrink-0" /><span>Visit recorded successfully.</span></div>}
+            {success && <div className="alert-panel alert-panel--success" role="status"><CheckCircle2 size={16} className="mt-0.5 shrink-0" /><span>Visit saved locally. Syncing in background...</span></div>}
 
             <div className="flex justify-end border-t border-[var(--border-subtle)] pt-5">
-              <Button type="submit" isLoading={submitting} icon={<CheckCircle2 size={15} />} disabled={!selectedLeadId || !outcome || !lat || !lng}>Save Visit</Button>
+              <Button type="submit" isLoading={submitting} icon={<CheckCircle2 size={15} />} disabled={!selectedLeadId || !outcome || !personMet || !photoBlob || !lat || !lng}>Save Visit</Button>
             </div>
           </form>
         </section>

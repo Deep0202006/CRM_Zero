@@ -1,6 +1,6 @@
 import { db, transactionalMutation } from "./db";
 import { supabase, isSupabaseConfigured } from "./supabaseClient";
-import { PIPELINE_STAGES, PipelineStage, isValidStageTransition, getNextPipelineStage } from "./pipelineStages";
+import { PipelineStage, isValidStageTransition } from "./pipelineStages";
 
 /**
  * Executes a pipeline stage transition.

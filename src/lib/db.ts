@@ -162,6 +162,12 @@ export interface LocalFieldVisit {
   check_in_photo_url: string | null;
   visit_outcome: string;
   visit_notes: string | null;
+  attendance_id?: string | null;
+  person_met?: string | null;
+  segment_type?: string | null;
+  follow_up_date?: string | null;
+  sync_status?: 'pending_sync' | 'synced' | 'sync_failed';
+  local_photo_blob?: Blob | null; // For local storage before upload
   created_at: string;
   updated_at: string;
 }
@@ -530,6 +536,30 @@ class CRMDatabase extends Dexie {
       allocated_targets: "target_id, batch_id, assigned_to_user_id, city, is_completed, [assigned_to_user_id+is_completed+city]",
       field_visits: "visit_id, lead_id, user_id, visit_date, [user_id+visit_date]",
     });
+    // Version 12 — Add sync_status to field_visits index
+    this.version(12).stores({
+      users: "user_id, email, is_active, manager_id",
+      capabilities: "code",
+      user_capabilities: "id, user_id, capability_code, [user_id+capability_code]",
+      leads: "lead_id, business_name, segment_type, status, assigned_to, stage_entered_at, lead_source, area, renewal_date",
+      client_queries: "query_id, client_username, problem_status, assigned_to, created_at",
+      mappings: "mapping_id, distributor_lead_id, retailer_lead_id, [distributor_lead_id+retailer_lead_id], mapped_by",
+      mapping_requests: "request_id, distributor_lead_id, retailer_lead_id, mapped_by, status, created_at",
+      internal_tickets: "ticket_id, raised_by, status, assigned_to",
+      attendance: "attendance_id, user_id, date, [user_id+date]",
+      call_logs: "log_id, user_id, lead_id, timestamp",
+      sync_queue: "++id, idempotency_key, table_name, action, timestamp, retry_count",
+      task_templates: "template_id, applies_to_capability, is_active",
+      tasks: "task_id, assigned_to, due_date, status, [assigned_to+due_date], template_id",
+      task_status_history: "id, task_id, changed_at",
+      kpi_snapshots: "snapshot_id, user_id, date, [user_id+date]",
+      lead_registration_checklist: "checklist_id, lead_id",
+      lead_installation_details: "installation_id, lead_id",
+      lead_payment_details: "payment_id, lead_id",
+      task_upload_batches: "id, uploaded_by, file_hash",
+      allocated_targets: "target_id, batch_id, assigned_to_user_id, city, is_completed, [assigned_to_user_id+is_completed+city]",
+      field_visits: "visit_id, lead_id, user_id, visit_date, sync_status, [user_id+visit_date]",
+    });
   }
 }
 
@@ -690,7 +720,29 @@ export async function processSyncQueue() {
         const client = supabase.from(remoteTableName);
         let error: { message: string } | null = null;
 
-        if (item.action === "INSERT") {
+        // Custom preprocessing for field_visits to upload the selfie
+        if (item.table_name === "field_visits" && (item.action === "INSERT" || item.action === "UPDATE")) {
+          const visitData = item.data as Partial<LocalFieldVisit>;
+          if (visitData.local_photo_blob) {
+            const file = new File([visitData.local_photo_blob], 'selfie.jpg', { type: 'image/jpeg' });
+            const filePath = `${visitData.user_id}/${visitData.visit_date}/${visitData.visit_id}.jpg`;
+            const { error: uploadError } = await supabase.storage.from('visits-evidence').upload(filePath, file, { upsert: true });
+            
+            if (uploadError) {
+              error = uploadError;
+            } else {
+              // Get public URL or just store the path
+              const { data: publicUrlData } = supabase.storage.from('visits-evidence').getPublicUrl(filePath);
+              visitData.check_in_photo_url = publicUrlData.publicUrl;
+              delete visitData.local_photo_blob;
+              item.data = visitData; // Update queue item data
+            }
+          }
+        }
+
+        if (error) {
+           // Skip insert/update if upload failed
+        } else if (item.action === "INSERT") {
           const { error: err } = await client.insert(item.data);
           error = err;
         } else if (item.action === "UPDATE") {
@@ -747,6 +799,18 @@ export async function processSyncQueue() {
 
       // Success — delete from queue
       if (item.id) await db.sync_queue.delete(item.id);
+      
+      // If it was a field visit, update the local record's sync_status
+      if (item.table_name === "field_visits") {
+        const pkValue = getDynamicField(item.data, "visit_id");
+        if (pkValue) {
+          try {
+            await db.field_visits.update(pkValue as string, { sync_status: "synced" } as Partial<LocalFieldVisit>);
+          } catch (e) {
+             console.warn("Failed to update local field_visit sync_status:", e);
+          }
+        }
+      }
     } catch (err) {
       const retryCount = (item.retry_count ?? 0) + 1;
       console.warn(`Sync item ${item.id} failed (attempt ${retryCount}):`, err);
@@ -754,6 +818,17 @@ export async function processSyncQueue() {
         retry_count: retryCount,
         last_error: String(err),
       });
+      
+      if (item.table_name === "field_visits") {
+        const pkValue = getDynamicField(item.data, "visit_id");
+        if (pkValue && retryCount >= 5) {
+          try {
+            await db.field_visits.update(pkValue as string, { sync_status: "sync_failed" } as Partial<LocalFieldVisit>);
+          } catch (e) {
+             console.warn("Failed to update local field_visit sync_status to failed:", e);
+          }
+        }
+      }
       // continue — do NOT block the queue for subsequent items
     }
   }
