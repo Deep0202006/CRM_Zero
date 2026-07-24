@@ -220,17 +220,17 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <div ref={formRef} id="login-form" className="relative flex items-center justify-center bg-[var(--surface-canvas)] px-4 py-8 sm:px-10 lg:min-h-[100svh] lg:px-12 xl:px-20">
+        <div ref={formRef} id="login-form" className="relative flex items-start lg:items-center justify-center bg-[var(--surface-canvas)] px-3 pt-2 pb-6 sm:px-10 lg:min-h-[100svh] lg:px-12 xl:px-20">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_10%,var(--surface-brand-haze-medium),transparent_24rem)]" />
           <div className="relative z-10 w-full max-w-[430px]">
-            <div className="mb-8">
+            <div className="mb-4 lg:mb-8 mt-2 lg:mt-0">
               <p className="section-kicker text-[var(--brand-600)]">Private team access</p>
-              <h2 className="mt-3 text-[32px] font-semibold tracking-[-0.045em] text-[var(--text-primary)] sm:text-[38px]">Welcome back.</h2>
-              <p className="mt-3 text-[13px] leading-6 text-[var(--text-muted)]">Sign in to continue to your role-specific ZeroData operations workspace.</p>
+              <h2 className="mt-1 lg:mt-3 text-[26px] lg:text-[32px] font-semibold tracking-[-0.045em] text-[var(--text-primary)] sm:text-[38px]">Welcome back.</h2>
+              <p className="mt-1 lg:mt-3 text-[12px] lg:text-[13px] leading-5 lg:leading-6 text-[var(--text-muted)]">Sign in to continue to your role-specific ZeroData operations workspace.</p>
             </div>
 
-            <div className="rounded-[var(--radius-xl)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-5 shadow-[var(--shadow-popover)] sm:p-7">
-              <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+            <div className="rounded-[var(--radius-xl)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-4 sm:p-7 shadow-[var(--shadow-popover)]">
+              <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5" noValidate>
                 {errorMsg && (
                   <div role="alert" className="flex items-start gap-3 rounded-[var(--radius-md)] border border-[var(--status-danger)]/20 bg-[var(--status-danger-soft)] p-3.5 text-[12px] leading-5 text-[var(--status-danger)]">
                     <ShieldAlert size={17} className="mt-0.5 shrink-0" />
@@ -278,8 +278,8 @@ export default function LoginPage() {
               </form>
 
               {process.env.NEXT_PUBLIC_SHOW_PRESETS === "true" && (
-                <div className="mt-6 border-t border-[var(--border-subtle)] pt-5">
-                  <div className="mb-3 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]"><Sparkles size={13} className="text-[var(--brand-600)]" /> Reviewer presets</div>
+                <div className="mt-4 sm:mt-6 border-t border-[var(--border-subtle)] pt-4 sm:pt-5">
+                  <div className="mb-2 sm:mb-3 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]"><Sparkles size={13} className="text-[var(--brand-600)]" /> Reviewer presets</div>
                   <div className="grid gap-2 sm:grid-cols-2">
                     {presets.map((preset) => (
                       <button
