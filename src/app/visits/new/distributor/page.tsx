@@ -1,18 +1,18 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { db, transactionalMutation, LocalLead } from "@/lib/db";
 import { getCurrentISTDate } from "@/lib/dateTime";
 import { SearchableSelect, SearchableOption } from "@/components/SearchableSelect";
-import { MapPin, Navigation, CheckCircle2, AlertCircle, ArrowLeft } from "lucide-react";
+import { MapPin, CheckCircle2, AlertCircle, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import Link from "next/link";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { CheckInGate } from "@/components/CheckInGate";
-import SelfieCapture from "@/components/visits/SelfieCapture";
+import VisitEvidence from "@/components/visits/VisitEvidence";
 
-export default function NewVisitPage() {
+export default function NewDistributorVisitPage() {
   const { currentUser, capabilities } = useAuth();
   
   const [leadsMap, setLeadsMap] = useState<Map<string, LocalLead>>(new Map());
@@ -21,38 +21,35 @@ export default function NewVisitPage() {
   const [outcome, setOutcome] = useState("");
   const [notes, setNotes] = useState("");
   const [followUpDate, setFollowUpDate] = useState("");
-  const [photoBlob, setPhotoBlob] = useState<Blob | null>(null);
   
-  const [locationError, setLocationError] = useState<string | null>(null);
-  const [lat, setLat] = useState<number | null>(null);
-  const [lng, setLng] = useState<number | null>(null);
-  const [locating, setLocating] = useState(false);
+  const [evidence, setEvidence] = useState<{ lat: number | null; lng: number | null; photoBlob: Blob | null }>({ lat: null, lng: null, photoBlob: null });
   
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
 
   const outcomes = [
-    "Successful Pitch",
-    "Follow-up Required",
+    "New Installation",
+    "Payment Collection",
+    "Salesman Training",
+    "General Discussion",
     "Not Interested",
-    "Store Closed",
-    "Other"
+    "Price Issue",
+    "Owner Not Available",
+    "Follow-up Required",
+    "Billing Software issue"
   ];
 
-  const loadData = React.useCallback(async () => {
+  const loadData = useCallback(async () => {
     try {
       const allLeads = await db.leads.toArray();
       const lMap = new Map<string, LocalLead>();
       
-      // Filter leads based on user capabilities
-      const canAccessRetail = capabilities.includes("field_ret") || capabilities.includes("admin");
       const canAccessDistributor = capabilities.includes("field_dist") || capabilities.includes("admin");
+      if (!canAccessDistributor) return;
 
       allLeads.forEach(l => {
-        if (l.segment_type === "Retailer" && canAccessRetail) {
-          lMap.set(l.lead_id, l);
-        } else if (l.segment_type === "Distributor" && canAccessDistributor) {
+        if (l.segment_type === "Distributor") {
           lMap.set(l.lead_id, l);
         }
       });
@@ -63,42 +60,19 @@ export default function NewVisitPage() {
     }
   }, [capabilities]);
 
-  const requestLocation = React.useCallback(() => {
-    if (!navigator.geolocation) {
-      setLocationError("Geolocation is not supported by your browser.");
-      return;
-    }
-    setLocating(true);
-    setLocationError(null);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setLat(position.coords.latitude);
-        setLng(position.coords.longitude);
-        setLocating(false);
-      },
-      (err) => {
-        console.warn("Location error:", err);
-        setLocationError("Could not fetch location. Please ensure location services are enabled.");
-        setLocating(false);
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-    );
-  }, []);
-
   useEffect(() => {
     if (capabilities) {
       loadData();
     }
-    requestLocation();
-  }, [capabilities, loadData, requestLocation]);
+  }, [capabilities, loadData]);
 
   const leadOptions: SearchableOption[] = React.useMemo(() => {
     const options: SearchableOption[] = [];
     leadsMap.forEach((lead) => {
       options.push({
         value: lead.lead_id,
-        label: `${lead.business_name} (${lead.segment_type})`,
-        searchText: `${lead.business_name} ${lead.contact_person} ${lead.segment_type}`
+        label: `${lead.business_name}`,
+        searchText: `${lead.business_name} ${lead.contact_person}`
       });
     });
     return options.sort((a, b) => a.label.localeCompare(b.label));
@@ -108,12 +82,12 @@ export default function NewVisitPage() {
     e.preventDefault();
     if (!currentUser) return;
     
-    if (!selectedLeadId || !outcome || !personMet || !photoBlob) {
+    if (!selectedLeadId || !outcome || !personMet || !evidence.photoBlob) {
       setError("Please fill out required fields including selfie.");
       return;
     }
     
-    if (!lat || !lng) {
+    if (!evidence.lat || !evidence.lng) {
       setError("Location is required for field visits.");
       return;
     }
@@ -127,12 +101,6 @@ export default function NewVisitPage() {
       const now = new Date().toISOString();
       const visit_date = getCurrentISTDate();
       
-      const targetLead = leadsMap.get(selectedLeadId);
-      const segmentType = targetLead?.segment_type || "Unknown";
-
-      // 1. We must verify attendance exists for today (the server will also enforce this via RLS)
-      // Since we don't have attendance_id easily available without query, the DB sync queue handles it, 
-      // but let's just query db.attendance first to store it.
       const today = getCurrentISTDate();
       const attendanceRec = await db.attendance.where({ user_id: currentUser.user_id, date: today }).first();
       
@@ -146,17 +114,17 @@ export default function NewVisitPage() {
         user_id: currentUser.user_id,
         visit_date,
         check_in_time: now,
-        check_in_lat: lat,
-        check_in_lng: lng,
-        check_in_photo_url: null, // set later by sync
+        check_in_lat: evidence.lat,
+        check_in_lng: evidence.lng,
+        check_in_photo_url: null,
         visit_outcome: outcome,
         visit_notes: notes.trim() || null,
         person_met: personMet.trim() || null,
-        segment_type: segmentType,
+        segment_type: "Distributor",
         follow_up_date: followUpDate || null,
         attendance_id: attendanceRec?.attendance_id || null,
         sync_status: "pending_sync" as const,
-        local_photo_blob: photoBlob,
+        local_photo_blob: evidence.photoBlob,
         created_at: now,
         updated_at: now
       };
@@ -174,14 +142,16 @@ export default function NewVisitPage() {
     }
   };
 
+  const isFormValid = selectedLeadId && outcome && personMet && evidence.photoBlob && evidence.lat && evidence.lng;
+
   return (
     <CheckInGate>
       <div className="app-page max-w-2xl mx-auto">
         <PageHeader
-          eyebrow="Field Operations"
+          eyebrow="Distributor Operations"
           icon={<MapPin size={18} />}
-          title="Log Field Visit"
-          description="Record a visit to a store or distributor."
+          title="Log Distributor Visit"
+          description="Record a field visit to a distributor."
           actions={
             <Link href="/visits">
               <Button size="sm" variant="outline" icon={<ArrowLeft size={14} />}>
@@ -194,34 +164,11 @@ export default function NewVisitPage() {
         <section className="surface-panel overflow-hidden">
           <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-6">
             
-            {/* Location Section */}
-            <div className="rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--surface-secondary)] p-4">
-              <div className="flex items-start gap-3">
-                <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ${lat && lng ? 'bg-[var(--status-success-soft)] text-[var(--status-success)]' : 'bg-[var(--status-warning-soft)] text-[var(--status-warning)]'}`}>
-                  <Navigation size={16} />
-                </span>
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-[13px] font-semibold text-[var(--text-primary)]">Location Capture</h3>
-                  {locating ? (
-                    <p className="mt-1 text-[12px] text-[var(--text-secondary)] animate-pulse">Acquiring GPS coordinates...</p>
-                  ) : locationError ? (
-                    <div className="mt-2 text-[12px] text-[var(--status-danger)]">
-                      <p>{locationError}</p>
-                      <Button type="button" size="sm" variant="outline" className="mt-2" onClick={requestLocation}>Retry</Button>
-                    </div>
-                  ) : lat && lng ? (
-                    <div className="mt-1 text-[12px] text-[var(--text-secondary)]">
-                      <p>Coordinates captured successfully.</p>
-                      <p className="text-[10px] text-[var(--text-muted)] font-mono mt-0.5">{lat.toFixed(6)}, {lng.toFixed(6)}</p>
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-            </div>
+            <VisitEvidence onEvidenceChange={setEvidence} />
 
-            <div>
-              <label className="field-label">Target Lead or Client <span className="text-[var(--status-danger)]">*</span></label>
-              <SearchableSelect options={leadOptions} value={selectedLeadId} onChange={setSelectedLeadId} placeholder="Search business name" required />
+            <div className="border-t border-[var(--border-subtle)] pt-6 mt-6">
+              <label className="field-label">Distributor Name <span className="text-[var(--status-danger)]">*</span></label>
+              <SearchableSelect options={leadOptions} value={selectedLeadId} onChange={setSelectedLeadId} placeholder="Search distributor business name" required />
             </div>
 
             <div>
@@ -249,16 +196,11 @@ export default function NewVisitPage() {
               <textarea id="visit-notes" value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Observations, stock levels, or follow-up details" rows={4} className="field-control resize-y" />
             </div>
 
-            <div>
-              <label className="field-label">Storefront Selfie <span className="text-[var(--status-danger)]">*</span></label>
-              <SelfieCapture onCapture={setPhotoBlob} />
-            </div>
-
             {error && <div className="alert-panel alert-panel--danger" role="alert"><AlertCircle size={16} className="mt-0.5 shrink-0" /><span>{error}</span></div>}
-            {success && <div className="alert-panel alert-panel--success" role="status"><CheckCircle2 size={16} className="mt-0.5 shrink-0" /><span>Visit saved locally. Syncing in background...</span></div>}
+            {success && <div className="alert-panel alert-panel--success" role="status"><CheckCircle2 size={16} className="mt-0.5 shrink-0" /><span>Distributor visit saved locally. Syncing in background...</span></div>}
 
             <div className="flex justify-end border-t border-[var(--border-subtle)] pt-5">
-              <Button type="submit" isLoading={submitting} icon={<CheckCircle2 size={15} />} disabled={!selectedLeadId || !outcome || !personMet || !photoBlob || !lat || !lng}>Save Visit</Button>
+              <Button type="submit" isLoading={submitting} icon={<CheckCircle2 size={15} />} disabled={!isFormValid}>Save Visit</Button>
             </div>
           </form>
         </section>
