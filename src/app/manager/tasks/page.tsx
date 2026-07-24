@@ -7,17 +7,15 @@ import { UserPlus, Send, Users, CalendarDays, AlertCircle, ListPlus, UploadCloud
 import type { LocalUser } from "@/lib/db";
 import { SearchableSelect } from "@/components/SearchableSelect";
 import { TaskAllocationWorkspace } from "@/components/TaskAllocationWorkspace";
+import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Chip } from "@/components/ui/Chip";
 
 type Priority = "High" | "Medium" | "Low";
 
-const PRIORITY_COLORS: Record<Priority, string> = {
-  High: "text-rose-600 bg-rose-50 border-rose-200",
-  Medium: "text-amber-700 bg-amber-50 border-amber-200",
-  Low: "text-emerald-600 bg-emerald-50 border-emerald-200",
-};
-
 export default function AssignTaskPage() {
-  const { currentUser, capabilities, isTaskAssigner, allUsers } = useAuth();
+  const { currentUser, isTaskAssigner, allUsers } = useAuth();
   const [users, setUsers] = useState<LocalUser[]>([]);
   const [mode, setMode] = useState<"manual" | "bulk">("manual");
   
@@ -39,10 +37,13 @@ export default function AssignTaskPage() {
 
   if (!isTaskAssigner) {
     return (
-      <div className="flex flex-col items-center justify-center py-24 gap-4 text-slate-400">
-        <AlertCircle size={40} />
-        <p className="font-bold text-sm">You don't have access to this page.</p>
-      </div>
+      <Card className="max-w-md mx-auto mt-16 text-center space-y-4 p-8">
+        <AlertCircle size={40} className="mx-auto text-[var(--status-danger)]" />
+        <h3 className="text-base font-black text-[var(--text-primary)]">Access Restricted</h3>
+        <p className="text-xs text-[var(--text-muted)] font-semibold">
+          You don't have access to task assignment.
+        </p>
+      </Card>
     );
   }
 
@@ -80,98 +81,87 @@ export default function AssignTaskPage() {
   };
 
   return (
-      <div className="w-full space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <UserPlus size={20} className="text-brand-primary" />
-              <h1 className="text-2xl font-black text-slate-900">Assign Tasks</h1>
-            </div>
-            <p className="text-xs text-slate-400 font-semibold mt-1">
-              Push manual tasks or allocate targets in bulk via Excel.
-            </p>
+    <div className="w-full max-w-4xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <UserPlus size={20} className="text-[var(--brand-500)]" />
+            <h1 className="text-2xl font-black text-[var(--text-primary)]">Assign Tasks</h1>
           </div>
-          
-          <div className="flex bg-slate-100 p-1 rounded-xl w-fit">
-            <button
-              onClick={() => setMode("manual")}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-black transition-all ${
-                mode === "manual" ? "bg-white text-brand-primary shadow-sm" : "text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              <ListPlus size={14} /> Manual Task
-            </button>
-            <button
-              onClick={() => setMode("bulk")}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-black transition-all ${
-                mode === "bulk" ? "bg-white text-brand-primary shadow-sm" : "text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              <UploadCloud size={14} /> Bulk Excel
-            </button>
-          </div>
+          <p className="text-xs text-[var(--text-muted)] font-semibold mt-1">
+            Push manual tasks or allocate targets in bulk via Excel.
+          </p>
         </div>
+        
+        <div className="flex p-1 bg-[var(--surface-secondary)] rounded-[var(--radius-md)] w-fit gap-1.5">
+          <button
+            onClick={() => setMode("manual")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-sm)] text-xs font-bold transition-all cursor-pointer ${
+              mode === "manual" ? "bg-[var(--surface-primary)] text-[var(--brand-500)] shadow-xs" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+            }`}
+          >
+            <ListPlus size={14} /> Manual Task
+          </button>
+          <button
+            onClick={() => setMode("bulk")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-sm)] text-xs font-bold transition-all cursor-pointer ${
+              mode === "bulk" ? "bg-[var(--surface-primary)] text-[var(--brand-500)] shadow-xs" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+            }`}
+          >
+            <UploadCloud size={14} /> Bulk Excel
+          </button>
+        </div>
+      </div>
 
-        {mode === "manual" ? (
-          <div className="space-y-6">
-            {successMsg && (
-              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-700 text-sm font-bold">
-                ✓ {successMsg}
-              </div>
-            )}
+      {mode === "manual" ? (
+        <div className="space-y-6">
+          {successMsg && (
+            <div className="p-4 bg-[var(--status-success-soft)] border border-[var(--status-success)]/20 text-[var(--status-success)] rounded-[var(--radius-lg)] text-xs font-bold">
+              ✓ {successMsg}
+            </div>
+          )}
 
-            <form
-              onSubmit={handleSubmit}
-              className="bg-white border border-slate-100 rounded-3xl shadow-sm p-6 space-y-5"
-            >
-              {/* Team Member */}
+          <Card className="p-6 space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
-                  <Users size={10} className="inline mr-1" />Team Member
+                <label className="block text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
+                  <Users size={12} className="inline mr-1" /> Team Member
                 </label>
                 <SearchableSelect
                   required
-                  placeholder="Select team member…"
+                  placeholder="Select team member..."
                   value={form.assignedTo}
                   onChange={(val) => setForm({ ...form, assignedTo: val })}
                   options={users.map((u) => ({ value: u.user_id, label: u.name }))}
                 />
               </div>
 
-              {/* Title */}
-              <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
-                  Task Title
-                </label>
-                <input
-                  required
-                  placeholder="e.g. Follow up with Metro Grocery Store"
-                  value={form.title}
-                  onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-900 placeholder-slate-300 focus:outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/10 transition-all"
-                />
-              </div>
+              <Input
+                label="Task Title"
+                required
+                placeholder="e.g. Follow up with Metro Store"
+                value={form.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
+              />
 
-              {/* Description */}
               <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
-                  Description <span className="text-slate-300 normal-case">(optional)</span>
+                <label className="block text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
+                  Description <span className="normal-case text-[var(--text-disabled)]">(optional)</span>
                 </label>
                 <textarea
-                  rows={2}
-                  placeholder="Additional context…"
+                  rows={3}
+                  placeholder="Additional operational context..."
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-900 placeholder-slate-300 focus:outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/10 transition-all resize-none"
+                  className="w-full px-3 py-2 bg-[var(--surface-secondary)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] text-xs font-semibold text-[var(--text-primary)] focus:outline-none focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-100)] transition-all resize-none"
                 />
               </div>
 
-              {/* Priority + Due Date */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
-                    Priority
+                  <label className="block text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
+                    Priority Level
                   </label>
                   <div className="flex gap-2">
                     {(["High", "Medium", "Low"] as Priority[]).map((p) => (
@@ -179,10 +169,10 @@ export default function AssignTaskPage() {
                         key={p}
                         type="button"
                         onClick={() => setForm({ ...form, priority: p })}
-                        className={`flex-1 py-2 rounded-xl text-[11px] font-black border transition-all ${
+                        className={`flex-1 py-2 rounded-[var(--radius-sm)] text-xs font-bold border transition-all cursor-pointer ${
                           form.priority === p
-                            ? PRIORITY_COLORS[p]
-                            : "text-slate-400 border-slate-200 bg-slate-50 hover:border-slate-300"
+                            ? "bg-[var(--brand-50)] text-[var(--brand-500)] border-[var(--brand-500)]/30"
+                            : "bg-[var(--surface-primary)] text-[var(--text-muted)] border-[var(--border-subtle)] hover:border-[var(--border-default)]"
                         }`}
                       >
                         {p}
@@ -191,31 +181,32 @@ export default function AssignTaskPage() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
-                    <CalendarDays size={10} className="inline mr-1" />Due Date
+                  <label className="block text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
+                    <CalendarDays size={12} className="inline mr-1" /> Target Due Date
                   </label>
                   <input
                     type="date"
                     value={form.dueDate}
                     onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-900 focus:outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/10 transition-all"
+                    className="w-full px-3 py-2 bg-[var(--surface-secondary)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] text-xs font-bold text-[var(--text-primary)] focus:outline-none focus:border-[var(--brand-500)]"
                   />
                 </div>
               </div>
 
-              <button
+              <Button
                 type="submit"
-                disabled={submitting}
-                className="w-full flex items-center justify-center gap-2 py-3.5 bg-brand-primary hover:bg-brand-secondary text-white font-black rounded-2xl text-xs tracking-wider uppercase transition-all shadow-md shadow-brand-primary/10 disabled:opacity-50 cursor-pointer"
+                isLoading={submitting}
+                className="w-full h-11"
+                icon={<Send size={16} />}
               >
-                <Send size={14} />
-                {submitting ? "Assigning…" : "Assign Task"}
-              </button>
+                Assign Task Now
+              </Button>
             </form>
-          </div>
-        ) : (
-          <TaskAllocationWorkspace />
-        )}
-      </div>
+          </Card>
+        </div>
+      ) : (
+        <TaskAllocationWorkspace />
+      )}
+    </div>
   );
 }

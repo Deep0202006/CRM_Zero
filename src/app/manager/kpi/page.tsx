@@ -26,6 +26,9 @@ import {
   Layers
 } from "lucide-react";
 import FunnelTab from "./FunnelTab";
+import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { Chip } from "@/components/ui/Chip";
 
 interface KpiRow {
   user_id: string;
@@ -39,7 +42,6 @@ interface KpiRow {
   calls_made: number;
 }
 
-// Offline mock — aggregated from local Dexie data when Supabase is not configured
 async function buildLocalKpiRows(date: string): Promise<KpiRow[]> {
   const users = await db.users.toArray();
   const tasks = await db.tasks.where("due_date").equals(date).toArray();
@@ -67,27 +69,19 @@ async function buildLocalKpiRows(date: string): Promise<KpiRow[]> {
       tasks_completed: completed,
       attendance_status: att ? (att.clock_in ? "Present" : "Absent") : "Absent",
       leads_converted: converted,
-      tickets_resolved: 0, // Mock for queries
+      tickets_resolved: 0,
       calls_made: callsMade,
     };
   });
 }
 
 function AttBadge({ status }: { status: string }) {
-  const styles: Record<string, string> = {
-    Present: "bg-emerald-50 text-emerald-600 border-emerald-200",
-    Late: "bg-amber-50 text-amber-700 border-amber-200",
-    Absent: "bg-rose-50 text-rose-600 border-rose-200",
-  };
-  return (
-    <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${styles[status] ?? "bg-slate-50 text-slate-500 border-slate-200"}`}>
-      {status}
-    </span>
-  );
+  const variant = status === "Present" ? "success" : status === "Late" ? "warning" : "danger";
+  return <Chip variant={variant} size="sm">{status}</Chip>;
 }
 
 export default function ManagerKpiPage() {
-  const { currentUser, capabilities, isAdmin, hasOnboarding, hasSupport } = useAuth();
+  const { currentUser, isAdmin, hasOnboarding, hasSupport } = useAuth();
   const [rows, setRows] = useState<KpiRow[]>([]);
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [loading, setLoading] = useState(true);
@@ -124,7 +118,6 @@ export default function ManagerKpiPage() {
         finalMapped.sort((a, b) => b.completion_rate - a.completion_rate);
         setRows(finalMapped);
       } else {
-        // Offline-demo mode — build from local IndexedDB
         const local = await buildLocalKpiRows(date);
         let finalLocal = local;
         if (!isAdmin && currentUser) {
@@ -140,8 +133,6 @@ export default function ManagerKpiPage() {
   const showOnboardingCols = isAdmin || hasOnboarding;
   const showSupportCols = isAdmin || hasSupport;
 
-
-
   const flagged = rows.filter(
     (r) => r.completion_rate < 50 || r.attendance_status !== "Present"
   );
@@ -151,202 +142,148 @@ export default function ManagerKpiPage() {
       : Math.round(rows.reduce((s, r) => s + (r.completion_rate || 0), 0) / rows.length) || 0;
 
   return (
-      <div className="space-y-6 w-full">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
-          <div className="flex items-center gap-2">
-            <BarChart3 size={20} className="text-brand-primary" />
-            <h1 className="text-2xl font-black text-slate-900">Team KPI Dashboard</h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <Calendar size={14} className="text-slate-400" />
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold text-slate-900 focus:outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/10 transition-all"
-            />
-          </div>
+    <div className="space-y-6 w-full max-w-6xl mx-auto">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
+        <div className="flex items-center gap-2">
+          <BarChart3 size={20} className="text-[var(--brand-500)]" />
+          <h1 className="text-2xl font-black text-[var(--text-primary)]">Team KPI Dashboard</h1>
         </div>
-
-        {/* Tab Switcher */}
-        <div className="flex bg-slate-100 p-1 rounded-xl w-fit">
-          <button
-            onClick={() => setActiveTab("Team")}
-            className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${
-              activeTab === "Team"
-                ? "bg-white text-slate-900 shadow-sm"
-                : "text-slate-500 hover:text-slate-700"
-            }`}
-          >
-            <Users size={16} /> Team Performance
-          </button>
-          <button
-            onClick={() => setActiveTab("Funnel")}
-            className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${
-              activeTab === "Funnel"
-                ? "bg-white text-slate-900 shadow-sm"
-                : "text-slate-500 hover:text-slate-700"
-            }`}
-          >
-            <Layers size={16} /> Pipeline Funnel
-          </button>
+        <div className="flex items-center gap-2">
+          <Calendar size={14} className="text-[var(--text-muted)]" />
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="px-3 py-1.5 bg-[var(--surface-secondary)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] text-xs font-bold text-[var(--text-primary)] focus:outline-none focus:border-[var(--brand-500)]"
+          />
         </div>
+      </div>
 
-        {activeTab === "Team" ? (
-          <>
-            {/* Summary cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full">
-          {[
-            { label: "Team Size", value: rows.length, icon: Users, color: "text-brand-primary" },
-            { label: "Avg Completion", value: `${avgCompletion}%`, icon: TrendingUp, color: "text-emerald-500" },
-            { label: "Needs Attention", value: flagged.length, icon: AlertTriangle, color: "text-amber-500" },
-            {
-              label: "Full Attendance",
-              value: rows.filter((r) => r.attendance_status === "Present").length,
-              icon: CheckCircle2,
-              color: "text-emerald-500",
-            },
-          ].map((card) => (
-            <div key={card.label} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-              <card.icon size={18} className={card.color + " mb-2"} />
-              <p className="text-2xl font-black text-slate-900">{card.value}</p>
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">{card.label}</p>
-            </div>
-          ))}
-        </div>
+      {/* Tab Switcher */}
+      <div className="flex p-1 bg-[var(--surface-secondary)] rounded-[var(--radius-md)] w-fit gap-1.5">
+        <button
+          onClick={() => setActiveTab("Team")}
+          className={`flex items-center gap-2 px-4 py-1.5 rounded-[var(--radius-sm)] text-xs font-bold transition-all cursor-pointer ${
+            activeTab === "Team"
+              ? "bg-[var(--surface-primary)] text-[var(--brand-500)] shadow-xs"
+              : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+          }`}
+        >
+          <Users size={14} /> Team Performance
+        </button>
+        <button
+          onClick={() => setActiveTab("Funnel")}
+          className={`flex items-center gap-2 px-4 py-1.5 rounded-[var(--radius-sm)] text-xs font-bold transition-all cursor-pointer ${
+            activeTab === "Funnel"
+              ? "bg-[var(--surface-primary)] text-[var(--brand-500)] shadow-xs"
+              : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+          }`}
+        >
+          <Layers size={14} /> Pipeline Funnel
+        </button>
+      </div>
 
-        {loading && (
-          <div className="text-center py-16 text-slate-400 text-sm font-semibold animate-pulse">
-            Loading KPI data…
+      {activeTab === "Team" ? (
+        <>
+          {/* Summary Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full">
+            <Card className="p-4 flex flex-col justify-between">
+              <span className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">Active Staff</span>
+              <span className="text-2xl font-black text-[var(--text-primary)] mt-1">{rows.length}</span>
+            </Card>
+            <Card className="p-4 flex flex-col justify-between">
+              <span className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">Avg Completion</span>
+              <span className="text-2xl font-black text-[var(--brand-500)] mt-1">{avgCompletion}%</span>
+            </Card>
+            <Card className="p-4 flex flex-col justify-between border-[var(--status-warning)]/20 bg-[var(--status-warning-soft)]/30">
+              <span className="text-[10px] font-black text-[var(--status-warning)] uppercase tracking-widest">Flagged Staff</span>
+              <span className="text-2xl font-black text-[var(--status-warning)] mt-1">{flagged.length}</span>
+            </Card>
+            <Card className="p-4 flex flex-col justify-between border-[var(--status-success)]/20 bg-[var(--status-success-soft)]/30">
+              <span className="text-[10px] font-black text-[var(--status-success)] uppercase tracking-widest">Present Today</span>
+              <span className="text-2xl font-black text-[var(--status-success)] mt-1">
+                {rows.filter((r) => r.attendance_status === "Present").length}
+              </span>
+            </Card>
           </div>
-        )}
 
-        {/* Bar chart */}
-        {!loading && rows.length > 0 && (
-          <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 min-w-0 overflow-hidden">
-            <h2 className="text-sm font-black text-slate-700 mb-4">Task Completion Rate (%)</h2>
-            <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={rows} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="name" tick={{ fontSize: 11, fontWeight: 700 }} />
-                <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} />
-                <Tooltip
-                  formatter={(v) => [`${v}%`, "Completion"]}
-                  contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 12 }}
-                />
-                <Bar dataKey="completion_rate" radius={[6, 6, 0, 0]}>
-                  {rows.map((r, i) => (
-                    <Cell
-                      key={i}
-                      fill={
-                        r.completion_rate >= 75
-                          ? "#22c55e"
-                          : r.completion_rate >= 50
-                          ? "#6366f1"
-                          : "#f43f5e"
-                      }
+          {/* Chart Section */}
+          {rows.length > 0 && (
+            <Card className="p-6 space-y-4">
+              <h2 className="text-xs font-black text-[var(--text-primary)] uppercase tracking-wider">
+                Task Completion Rate (%)
+              </h2>
+              <div className="h-64 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={rows} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e8eaee" vertical={false} />
+                    <XAxis dataKey="name" stroke="#7b8490" fontSize={11} tickLine={false} />
+                    <YAxis stroke="#7b8490" fontSize={11} domain={[0, 100]} tickLine={false} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "#ffffff",
+                        borderColor: "#dce0e5",
+                        borderRadius: "8px",
+                        fontSize: "12px",
+                      }}
                     />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        )}
+                    <Bar dataKey="completion_rate" radius={[4, 4, 0, 0]}>
+                      {rows.map((entry, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={entry.completion_rate >= 80 ? "#18794e" : entry.completion_rate >= 50 ? "#5b5bd6" : "#c73535"}
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+          )}
 
-        {/* Needs Attention panel */}
-        {!loading && flagged.length > 0 && (
-          <div className="bg-rose-50 border border-rose-200 rounded-2xl p-5">
-            <h3 className="text-sm font-black text-rose-700 mb-3 flex items-center gap-2">
-              <AlertTriangle size={16} /> Needs Attention
-            </h3>
-            <div className="space-y-2">
-              {flagged.map((r) => (
-                <div
-                  key={r.user_id}
-                  className="flex items-center justify-between text-sm text-rose-700 bg-white rounded-xl border border-rose-100 px-4 py-2.5"
-                >
-                  <span className="font-bold">{r.name}</span>
-                  <div className="flex items-center gap-2">
-                    <span className="font-black text-rose-500">{r.completion_rate}%</span>
-                    <AttBadge status={r.attendance_status} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Full leaderboard table */}
-        {!loading && rows.length > 0 && (
-          <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-100">
-              <h2 className="text-sm font-black text-slate-700">Full Leaderboard</h2>
-            </div>
+          {/* Team KPI Table */}
+          <Card className="overflow-hidden p-0 border border-[var(--border-subtle)]">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-slate-50 text-left">
-                    {["#", "Name", "Completion", "Tasks", "Attendance", 
-                      ...(showOnboardingCols ? ["Calls", "Leads Conv."] : []),
-                      ...(showSupportCols ? ["Tickets"] : [])
-                    ].map((h) => (
-                      <th key={h} className="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-wider">
-                        {h}
-                      </th>
-                    ))}
+                  <tr className="bg-[var(--surface-secondary)] border-b border-[var(--border-subtle)] text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">
+                    <th className="p-4 pl-6">Team Member</th>
+                    <th className="p-4">Attendance</th>
+                    <th className="p-4">Completion %</th>
+                    <th className="p-4">Assigned / Done</th>
+                    {showOnboardingCols && <th className="p-4">Converted</th>}
+                    {showSupportCols && <th className="p-4">Calls Made</th>}
                   </tr>
                 </thead>
-                <tbody>
-                  {rows.map((r, i) => (
-                    <tr key={r.user_id} className="border-t border-slate-50 hover:bg-slate-50/50 transition-colors">
-                      <td className="px-4 py-3 text-xs font-black text-slate-300">#{i + 1}</td>
-                      <td className="px-4 py-3 font-black text-slate-900">{r.name}</td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={`font-black text-sm ${
-                            r.completion_rate >= 75
-                              ? "text-emerald-600"
-                              : r.completion_rate >= 50
-                              ? "text-brand-primary"
-                              : "text-rose-500"
-                          }`}
-                        >
-                          {r.completion_rate}%
-                        </span>
+                <tbody className="text-xs divide-y divide-[var(--border-subtle)]">
+                  {rows.map((row) => (
+                    <tr key={row.user_id} className="hover:bg-[var(--surface-hover)] transition-colors">
+                      <td className="p-4 pl-6 font-bold text-[var(--text-primary)]">{row.name}</td>
+                      <td className="p-4"><AttBadge status={row.attendance_status} /></td>
+                      <td className="p-4 font-mono font-black text-[var(--brand-500)]">{row.completion_rate}%</td>
+                      <td className="p-4 font-mono font-semibold text-[var(--text-secondary)]">
+                        {row.tasks_completed} / {row.tasks_assigned}
                       </td>
-                      <td className="px-4 py-3 text-slate-700 font-semibold">
-                        {r.tasks_completed}/{r.tasks_assigned}
-                      </td>
-                      <td className="px-4 py-3">
-                        <AttBadge status={r.attendance_status} />
-                      </td>
-                      {showOnboardingCols && (
-                        <>
-                          <td className="px-4 py-3 font-semibold text-slate-700">{r.calls_made}</td>
-                          <td className="px-4 py-3 font-semibold text-slate-700">{r.leads_converted}</td>
-                        </>
-                      )}
-                      {showSupportCols && (
-                        <td className="px-4 py-3 font-semibold text-slate-700">{r.tickets_resolved}</td>
-                      )}
+                      {showOnboardingCols && <td className="p-4 font-bold text-[var(--text-primary)]">{row.leads_converted}</td>}
+                      {showSupportCols && <td className="p-4 font-bold text-[var(--text-primary)]">{row.calls_made}</td>}
                     </tr>
                   ))}
+                  {rows.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="p-8 text-center text-xs text-[var(--text-muted)] font-semibold">
+                        No KPI snapshots found for {date}.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
-          </div>
-        )}
-
-        {!isSupabaseConfigured && (
-          <p className="text-center text-[10px] text-slate-400 font-bold">
-            KPI data sourced from local IndexedDB (offline demo mode). Connect Supabase for live nightly snapshots.
-          </p>
-        )}
+          </Card>
         </>
-        ) : (
-          <FunnelTab />
-        )}
-      </div>
+      ) : (
+        <FunnelTab />
+      )}
+    </div>
   );
 }

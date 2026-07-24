@@ -5,7 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { db, LocalUser, LocalUserCapability, LocalTaskTemplate } from "@/lib/db";
 import {
   ShieldCheck, User, Users, CheckSquare, Sparkles, Activity, AlertCircle,
-  ListTodo, UserCheck, Clock as ClockIcon, Edit2, Save, ToggleLeft, ToggleRight, Download, UserPlus, Key, UploadCloud
+  ListTodo, UserCheck, Clock as ClockIcon, Edit2, Save, ToggleLeft, ToggleRight, Download, UserPlus, Key, UploadCloud, CheckCircle2, RefreshCw
 } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { exportPipelineToExcel } from "@/lib/pipelineExport";
@@ -13,6 +13,10 @@ import { exportClientQueriesToExcel } from "@/lib/clientQueriesExport";
 import { exportMasterSales, exportMasterSupport, exportMasterMappings } from "@/lib/excelExport";
 import { CreateUserPanel } from "@/components/admin/CreateUserPanel";
 import { TaskAllocationWorkspace } from "@/components/TaskAllocationWorkspace";
+import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Chip } from "@/components/ui/Chip";
 
 type AdminTab = "capabilities" | "managers" | "templates" | "attendance" | "create_user" | "task_allocation" | "exports";
 
@@ -31,17 +35,14 @@ export default function AdminPage() {
 
   const [activeTab, setActiveTab] = useState<AdminTab>("capabilities");
 
-  // Capability matrix state
   const [usersList, setUsersList] = useState<LocalUser[]>([]);
   const [userCapsMap, setUserCapsMap] = useState<Record<string, string[]>>({});
   const [highlightRowId, setHighlightRowId] = useState<string | null>(null);
 
-  // Task templates state
   const [templates, setTemplates] = useState<LocalTaskTemplate[]>([]);
   const [editingTemplate, setEditingTemplate] = useState<string | null>(null);
   const [templateEdits, setTemplateEdits] = useState<Partial<LocalTaskTemplate>>({});
 
-  // Attendance settings state
   const [shiftStart, setShiftStart] = useState("10:00");
   const [graceMinutes, setGraceMinutes] = useState(15);
   const [shiftSaved, setShiftSaved] = useState(false);
@@ -49,13 +50,11 @@ export default function AdminPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  // Password reset state
   const [resettingPasswordFor, setResettingPasswordFor] = useState<string | null>(null);
   const [resetPasswordInput, setResetPasswordInput] = useState<string>("");
   const [newPasswordResult, setNewPasswordResult] = useState<string | null>(null);
   const [isResetting, setIsResetting] = useState(false);
 
-  // Edit User state
   const [editingUser, setEditingUser] = useState<LocalUser | null>(null);
   const [editUserForm, setEditUserForm] = useState({ name: "", email: "", is_active: false });
   const [isUpdatingUser, setIsUpdatingUser] = useState(false);
@@ -96,8 +95,6 @@ export default function AdminPage() {
   useEffect(() => {
     loadAdminData();
   }, []);
-
-  // ─── Capability Matrix ────────────────────────────────────────────────────
 
   const handleToggleCapability = async (targetUserId: string, capCode: string, hasCap: boolean) => {
     setErrorMsg(null);
@@ -183,13 +180,11 @@ export default function AdminPage() {
       });
       
       const data = await res.json();
-      // Handle the nested error object if it's from Zod (data.error.formErrors) or generic error string
       const errDetail = typeof data.error === 'object' && data.error.formErrors 
         ? data.error.formErrors.join(", ") 
         : data.error;
       if (!res.ok) throw new Error(errDetail || "Failed to update user");
 
-      // Update local db
       await db.users.update(editingUser.user_id, {
         name: editUserForm.name,
         email: editUserForm.email,
@@ -207,8 +202,6 @@ export default function AdminPage() {
     }
   };
 
-  // ─── Manager Assignment ───────────────────────────────────────────────────
-
   const handleSetManager = async (userId: string, managerId: string | null) => {
     try {
       const { error } = await supabase.from('users').update({ manager_id: managerId || null }).eq('user_id', userId);
@@ -222,8 +215,6 @@ export default function AdminPage() {
       setErrorMsg(err.message || "Failed to update manager assignment.");
     }
   };
-
-  // ─── Task Templates ───────────────────────────────────────────────────────
 
   const handleSaveTemplate = async (templateId: string) => {
     try {
@@ -254,122 +245,124 @@ export default function AdminPage() {
     }
   };
 
-  // ─── Attendance Settings ──────────────────────────────────────────────────
-
   const handleSaveShift = () => {
-    // Persisted locally in component state — in production would write to attendance_shift_config
     setShiftSaved(true);
     setTimeout(() => setShiftSaved(false), 2000);
   };
 
   if (!isAdmin) {
     return (
-      <div className="max-w-md mx-auto mt-16 p-8 bg-white rounded-3xl border border-slate-100 shadow-sm text-center space-y-4">
-        <AlertCircle className="mx-auto text-status-error" size={40} />
-        <h3 className="text-lg font-black text-slate-900">Access Restricted</h3>
-        <p className="text-xs text-slate-500 font-bold uppercase leading-normal">
-          Requires Administrator security capability to view Oracle Control panel.
+      <Card className="max-w-md mx-auto mt-16 text-center space-y-4 p-8">
+        <AlertCircle size={40} className="mx-auto text-[var(--status-danger)]" />
+        <h3 className="text-base font-black text-[var(--text-primary)]">Access Restricted</h3>
+        <p className="text-xs text-[var(--text-muted)] font-semibold">
+          Requires Administrator capabilities to view Admin Control console.
         </p>
-      </div>
+      </Card>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full max-w-6xl mx-auto">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-black text-slate-900">Admin Control Panel</h2>
-          <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Oracle User Capability Matrix</p>
+          <h1 className="text-2xl font-black text-[var(--text-primary)]">Admin Control Panel</h1>
+          <p className="text-xs text-[var(--text-muted)] font-bold uppercase tracking-wider">
+            User Capabilities & System Configuration
+          </p>
         </div>
         <div className="flex gap-2">
-          <button
+          <Button
+            size="sm"
             onClick={() => {
               if (currentUser) exportPipelineToExcel(currentUser.user_id, true);
             }}
-            className="flex items-center gap-1.5 px-3 py-2 bg-brand-primary text-white rounded-xl text-xs font-black cursor-pointer hover:bg-brand-secondary transition-all"
+            icon={<Download size={14} />}
           >
-            <Download size={14} /> Pipeline
-          </button>
-          <button
+            Pipeline
+          </Button>
+          <Button
+            size="sm"
             onClick={() => {
               if (currentUser) exportClientQueriesToExcel(currentUser.user_id, true);
             }}
-            className="flex items-center gap-1.5 px-3 py-2 bg-brand-primary text-white rounded-xl text-xs font-black cursor-pointer hover:bg-brand-secondary transition-all"
+            icon={<Download size={14} />}
           >
-            <Download size={14} /> Queries
-          </button>
+            Queries
+          </Button>
         </div>
       </div>
 
-      {/* Feedback messages */}
       {successMsg && (
-        <div className="p-4 bg-status-success/10 border border-status-success/20 text-status-success rounded-2xl text-xs font-bold">
-          {successMsg}
+        <div className="p-4 bg-[var(--status-success-soft)] border border-[var(--status-success)]/20 text-[var(--status-success)] rounded-[var(--radius-lg)] text-xs font-bold">
+          ✓ {successMsg}
         </div>
       )}
       {errorMsg && (
-        <div className="p-4 bg-status-error/10 border border-status-error/20 text-status-error rounded-2xl text-xs font-bold flex items-center gap-2">
+        <div className="p-4 bg-[var(--status-danger-soft)] border border-[var(--status-danger)]/20 text-[var(--status-danger)] rounded-[var(--radius-lg)] text-xs font-bold flex items-center gap-2">
           <AlertCircle size={16} /> {errorMsg}
         </div>
       )}
 
       {/* Tab bar */}
-      <div className="flex gap-1 bg-slate-100 p-1 rounded-2xl w-full overflow-x-auto">
+      <div className="flex gap-1.5 p-1 bg-[var(--surface-secondary)] rounded-[var(--radius-md)] overflow-x-auto scrollbar-hide">
         {TAB_META.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-[11px] font-black whitespace-nowrap transition-all cursor-pointer ${
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-[var(--radius-sm)] text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
               activeTab === tab.id
-                ? "bg-white text-brand-primary shadow-sm"
-                : "text-slate-500 hover:text-slate-700"
+                ? "bg-[var(--surface-primary)] text-[var(--brand-500)] shadow-xs"
+                : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
             }`}
           >
-            <tab.icon size={13} />
+            <tab.icon size={14} />
             {tab.label}
           </button>
         ))}
       </div>
 
-      {/* ── TAB: Capability Matrix ── */}
+      {/* Capability Matrix Tab */}
       {activeTab === "capabilities" && (
-        <div className="bg-white rounded-3xl border border-slate-100 p-6 md:p-8 shadow-sm space-y-6">
-          <div className="flex justify-between items-center pb-4 border-b border-slate-100">
-            <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
-              <Users size={18} className="text-brand-primary" /> Active Team Directory
-            </h3>
-            <span className="text-[10px] bg-slate-100 text-slate-500 px-2.5 py-0.5 rounded-full font-bold uppercase">
-              {usersList.length} User entries
-            </span>
+        <Card className="space-y-4 p-6">
+          <div className="flex justify-between items-center border-b border-[var(--border-subtle)] pb-3">
+            <h2 className="text-sm font-black text-[var(--text-primary)] flex items-center gap-2">
+              <Users size={16} className="text-[var(--brand-500)]" /> Active Team Directory
+            </h2>
+            <Chip variant="brand" size="sm">
+              {usersList.length} User Entries
+            </Chip>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-3">
             {usersList.map((user) => {
               const userCaps = userCapsMap[user.user_id] || [];
               const isHighlighted = highlightRowId === user.user_id;
               return (
                 <div
                   key={user.user_id}
-                  className={`p-5 rounded-2xl bg-slate-50/50 border transition-all duration-300 ${
+                  className={`p-4 rounded-[var(--radius-md)] border transition-all ${
                     isHighlighted
-                      ? "border-status-success ring-4 ring-status-success/5 bg-emerald-50/10 shadow-[0_8px_24px_rgba(16,185,129,0.06)]"
-                      : "border-slate-100 hover:border-slate-200"
+                      ? "border-[var(--status-success)] bg-[var(--status-success-soft)]"
+                      : "bg-[var(--surface-secondary)] border-[var(--border-subtle)] hover:border-[var(--border-default)]"
                   }`}
                 >
                   <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                     <div className="flex items-center space-x-3 min-w-[200px]">
-                      <div className={`h-8 w-8 rounded-full flex items-center justify-center font-bold text-xs ${isHighlighted ? "bg-status-success text-white" : "bg-slate-200 text-slate-600"}`}>
+                      <div className="h-8 w-8 rounded-full bg-[var(--brand-500)] text-white flex items-center justify-center text-xs font-black shrink-0">
                         {user.name.substring(0, 2).toUpperCase()}
                       </div>
-                      <div>
-                        <h4 className="text-xs font-black text-slate-900">{user.name}</h4>
-                        <p className="text-[10px] text-slate-400 font-semibold">{user.email}</p>
+                      <div className="min-w-0">
+                        <h3 className="text-xs font-black text-[var(--text-primary)] truncate">{user.name}</h3>
+                        <p className="text-[10px] text-[var(--text-muted)] font-semibold truncate">{user.email}</p>
                       </div>
                     </div>
                     
                     <div className="flex gap-2">
-                      <button
+                      <Button
+                        size="sm"
+                        variant="secondary"
                         onClick={() => {
                           setEditingUser(user);
                           setEditUserForm({
@@ -378,38 +371,38 @@ export default function AdminPage() {
                             is_active: String(user.is_active) === "1" || String(user.is_active) === "true",
                           });
                         }}
-                        className="text-[10px] font-bold text-slate-600 bg-white border border-slate-200 px-2 py-1 rounded-lg hover:bg-slate-50 transition-all uppercase tracking-wider flex-1 text-center"
                       >
-                        Edit Details
-                      </button>
-                      <button
+                        Edit User
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
                         onClick={() => {
                           setResetPasswordInput("");
                           setResettingPasswordFor(user.user_id);
                         }}
-                        className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-1 rounded-lg hover:bg-amber-100 transition-all uppercase tracking-wider flex-1 text-center"
                       >
                         Reset PW
-                      </button>
+                      </Button>
                     </div>
                     
-                    <div className="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-2">
                       {ALL_CAPABILITIES.map((cap) => {
                         const hasCap = userCaps.includes(cap.code);
                         return (
                           <label
                             key={cap.code}
-                            className={`flex items-center space-x-2 p-2 rounded-xl border text-[10px] font-bold uppercase cursor-pointer select-none transition-all ${
+                            className={`flex items-center gap-1.5 p-1.5 rounded-[var(--radius-sm)] border text-[10px] font-bold cursor-pointer transition-all ${
                               hasCap
-                                ? "bg-brand-primary/5 border-brand-primary/20 text-brand-primary hover:bg-brand-primary/10"
-                                : "bg-white border-slate-200 hover:bg-slate-50 text-slate-500"
+                                ? "bg-[var(--brand-50)] text-[var(--brand-500)] border-[var(--brand-500)]/30"
+                                : "bg-[var(--surface-primary)] text-[var(--text-muted)] border-[var(--border-subtle)]"
                             }`}
                           >
                             <input
                               type="checkbox"
                               checked={hasCap}
                               onChange={() => handleToggleCapability(user.user_id, cap.code, hasCap)}
-                              className="rounded border-slate-300 text-brand-primary focus:ring-brand-primary focus:ring-opacity-20 focus:ring-offset-0 cursor-pointer h-3.5 w-3.5"
+                              className="rounded border-[var(--border-default)] text-[var(--brand-500)] focus:ring-[var(--brand-500)]"
                             />
                             <span className="truncate">{cap.label}</span>
                           </label>
@@ -421,421 +414,130 @@ export default function AdminPage() {
               );
             })}
           </div>
-        </div>
+        </Card>
       )}
 
-      {/* ── TAB: Manager Assignment ── */}
-      {activeTab === "managers" && (
-        <div className="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm space-y-4">
-          <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
-            <UserCheck size={18} className="text-brand-primary" /> Manager Assignment
-          </h3>
-          <p className="text-xs text-slate-400 font-semibold">
-            Set each team member's direct manager. Used for KPI rollup visibility.
-          </p>
-          <div className="space-y-3">
-            {usersList.map((user) => (
-              <div key={user.user_id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                <div>
-                  <p className="text-sm font-black text-slate-900">{user.name}</p>
-                  <p className="text-[10px] text-slate-400 font-semibold">{user.email}</p>
-                </div>
-                <select
-                  value={user.manager_id ?? ""}
-                  onChange={(e) => handleSetManager(user.user_id, e.target.value || null)}
-                  className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-900 focus:outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/10 transition-all"
-                >
-                  <option value="">— No manager —</option>
-                  {usersList
-                    .filter((u) => u.user_id !== user.user_id)
-                    .map((u) => (
-                      <option key={u.user_id} value={u.user_id}>
-                        {u.name}
-                      </option>
-                    ))}
-                </select>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Task Allocation Workspace Tab */}
+      {activeTab === "task_allocation" && <TaskAllocationWorkspace />}
 
-      {/* ── TAB: Task Templates ── */}
-      {activeTab === "templates" && (
-        <div className="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm space-y-4">
-          <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
-            <ListTodo size={18} className="text-brand-primary" /> Task Templates ({templates.length})
-          </h3>
-          <p className="text-xs text-slate-400 font-semibold">
-            Edit the daily task templates generated for each role.
-          </p>
-          <div className="space-y-3">
-            {templates.map((tpl) => {
-              const isEditing = editingTemplate === tpl.template_id;
-              return (
-                <div
-                  key={tpl.template_id}
-                  className={`p-4 rounded-2xl border transition-all ${tpl.is_active ? "bg-slate-50 border-slate-100" : "bg-slate-100/50 border-slate-200 opacity-60"}`}
-                >
-                  <div className="flex flex-col sm:flex-row sm:items-start gap-3">
-                    {/* Toggle active */}
-                    <button
-                      onClick={() => handleToggleTemplate(tpl)}
-                      title={tpl.is_active ? "Deactivate" : "Activate"}
-                      className="shrink-0 mt-0.5 cursor-pointer"
-                    >
-                      {tpl.is_active ? (
-                        <ToggleRight size={20} className="text-brand-primary" />
-                      ) : (
-                        <ToggleLeft size={20} className="text-slate-400" />
-                      )}
-                    </button>
+      {/* Create User Tab */}
+      {activeTab === "create_user" && <CreateUserPanel />}
 
-                    <div className="flex-1 min-w-0">
-                      {isEditing ? (
-                        <div className="space-y-2">
-                          <input
-                            value={templateEdits.title ?? tpl.title}
-                            onChange={(e) => setTemplateEdits((p) => ({ ...p, title: e.target.value }))}
-                            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold text-slate-900 focus:outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/10"
-                          />
-                          <select
-                            value={templateEdits.default_priority ?? tpl.default_priority}
-                            onChange={(e) => setTemplateEdits((p) => ({ ...p, default_priority: e.target.value as "High" | "Medium" | "Low" }))}
-                            className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-900 focus:outline-none focus:border-brand-primary"
-                          >
-                            <option value="High">High</option>
-                            <option value="Medium">Medium</option>
-                            <option value="Low">Low</option>
-                          </select>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => handleSaveTemplate(tpl.template_id)}
-                              className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-primary text-white rounded-xl text-xs font-black cursor-pointer hover:bg-brand-secondary transition-all"
-                            >
-                              <Save size={12} /> Save
-                            </button>
-                            <button
-                              onClick={() => { setEditingTemplate(null); setTemplateEdits({}); }}
-                              className="px-3 py-1.5 bg-slate-100 text-slate-600 rounded-xl text-xs font-black cursor-pointer hover:bg-slate-200 transition-all"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div>
-                          <p className="text-sm font-black text-slate-900">{tpl.title}</p>
-                          <p className="text-[10px] text-slate-400 font-bold mt-0.5 uppercase tracking-wider">
-                            {tpl.applies_to_capability} · {tpl.default_priority} priority
-                          </p>
-                        </div>
-                      )}
-                    </div>
-
-                    {!isEditing && (
-                      <button
-                        onClick={() => {
-                          setEditingTemplate(tpl.template_id);
-                          setTemplateEdits({ title: tpl.title, default_priority: tpl.default_priority });
-                        }}
-                        className="shrink-0 p-2 rounded-xl hover:bg-brand-primary/5 text-slate-400 hover:text-brand-primary transition-all cursor-pointer"
-                      >
-                        <Edit2 size={14} />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* ── TAB: Attendance Settings ── */}
-      {activeTab === "attendance" && (
-        <div className="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm space-y-6 max-w-md">
-          <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
-            <ClockIcon size={18} className="text-brand-primary" /> Attendance Settings
-          </h3>
-          <p className="text-xs text-slate-400 font-semibold">
-            Configure the shift start time. Staff who clock in after this window are marked Late in their KPI.
-          </p>
-
-          <div className="space-y-5">
-            <div>
-              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
-                Shift Start Time
-              </label>
-              <input
-                type="time"
-                value={shiftStart}
-                onChange={(e) => setShiftStart(e.target.value)}
-                className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-900 focus:outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/10 transition-all"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
-                Grace Period (minutes)
-              </label>
-              <input
-                type="number"
-                min={0}
-                max={60}
-                value={graceMinutes}
-                onChange={(e) => setGraceMinutes(Number(e.target.value))}
-                className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-900 focus:outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/10 transition-all w-32"
-              />
-              <p className="text-[10px] text-slate-400 mt-1.5 font-semibold">
-                Staff are marked Late after <strong className="text-slate-700">{shiftStart}</strong> + {graceMinutes} min
-              </p>
-            </div>
-
-            <button
-              onClick={handleSaveShift}
-              className="flex items-center gap-2 px-5 py-3 bg-brand-primary hover:bg-brand-secondary text-white font-black rounded-xl text-xs tracking-wider uppercase transition-all shadow-sm shadow-brand-primary/10 cursor-pointer"
-            >
-              <Save size={14} />
-              {shiftSaved ? "Saved ✓" : "Save Settings"}
-            </button>
-          </div>
-
-          <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-700 font-semibold">
-            <strong>Production note:</strong> These settings are stored in <code>public.attendance_shift_config</code> on Supabase and read by the nightly KPI function. Run the SQL from the guidebook Part 4.2 to activate this in your database.
-          </div>
-        </div>
-      )}
-
-      {/* ── TAB: Task Allocation ── */}
-      {activeTab === "task_allocation" && (
-        <TaskAllocationWorkspace />
-      )}
-
-      {/* ── TAB: Create User ── */}
-      {activeTab === "create_user" && (
-        <div className="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm space-y-6 max-w-2xl">
-          <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
-            <UserPlus size={18} className="text-brand-primary" /> Create New User
-          </h3>
-          <p className="text-xs text-slate-400 font-semibold">
-            Provision new team member accounts with appropriate capability clearances. A secure temporary password will be generated automatically.
-          </p>
-          <CreateUserPanel />
-        </div>
-      )}
-
-      {/* ── MASTER EXPORTS TAB ── */}
+      {/* Master Exports Tab */}
       {activeTab === "exports" && (
-        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-6">
-          <div>
-            <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
-              <Download size={18} className="text-brand-primary" /> Master System Exports
-            </h3>
-            <p className="text-xs font-semibold text-slate-500 mt-1">Download complete data dumps across the entire CRM platform.</p>
+        <Card className="space-y-4 p-6">
+          <h2 className="text-sm font-black text-[var(--text-primary)] border-b border-[var(--border-subtle)] pb-3">
+            Master Data Exports
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Button
+              variant="outline"
+              onClick={() => exportMasterSales()}
+              icon={<Download size={14} />}
+              className="h-11"
+            >
+              Export Sales Pipeline
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => exportMasterSupport()}
+              icon={<Download size={14} />}
+              className="h-11"
+            >
+              Export Support Logs
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => exportMasterMappings()}
+              icon={<Download size={14} />}
+              className="h-11"
+            >
+              Export Mappings Data
+            </Button>
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="p-5 border border-slate-200 rounded-2xl bg-slate-50 space-y-3 flex flex-col justify-between">
-              <div>
-                <h4 className="text-sm font-black text-slate-900">Sales Pipeline</h4>
-                <p className="text-[11px] text-slate-500 font-medium mt-1">All leads, segments, and current stage data.</p>
-              </div>
-              <button
-                onClick={() => exportMasterSales()}
-                className="w-full py-2.5 bg-brand-primary text-white font-black rounded-xl text-xs hover:bg-brand-secondary transition-all cursor-pointer"
-              >
-                Download Sales Data
-              </button>
-            </div>
-
-            <div className="p-5 border border-slate-200 rounded-2xl bg-slate-50 space-y-3 flex flex-col justify-between">
-              <div>
-                <h4 className="text-sm font-black text-slate-900">Support Operations</h4>
-                <p className="text-[11px] text-slate-500 font-medium mt-1">All client queries, resolutions, and notes.</p>
-              </div>
-              <button
-                onClick={() => exportMasterSupport()}
-                className="w-full py-2.5 bg-brand-primary text-white font-black rounded-xl text-xs hover:bg-brand-secondary transition-all cursor-pointer"
-              >
-                Download Support Data
-              </button>
-            </div>
-
-            <div className="p-5 border border-slate-200 rounded-2xl bg-slate-50 space-y-3 flex flex-col justify-between">
-              <div>
-                <h4 className="text-sm font-black text-slate-900">Distributor-Retailer Mappings</h4>
-                <p className="text-[11px] text-slate-500 font-medium mt-1">All link requests, statuses, and agent trackers.</p>
-              </div>
-              <button
-                onClick={() => exportMasterMappings()}
-                className="w-full py-2.5 bg-brand-primary text-white font-black rounded-xl text-xs hover:bg-brand-secondary transition-all cursor-pointer"
-              >
-                Download Mapping Data
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Audit notice */}
-      <div className="bg-slate-50 border border-slate-200/50 p-6 rounded-3xl text-xs space-y-2">
-        <h4 className="font-black text-slate-900 uppercase tracking-widest text-[10px] flex items-center gap-1.5">
-          <Activity size={12} className="text-brand-secondary animate-pulse" />
-          Audit Ledger Notice
-        </h4>
-        <p className="text-slate-500 font-semibold leading-relaxed">
-          Toggling corporate capabilities writes database sync logs locally. Operational clearances take effect instantly upon save, restricting module views and Supabase query policies dynamically.
-        </p>
-      </div>
-
-      {/* Password Reset Modal */}
-      {resettingPasswordFor && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl w-full max-w-md shadow-xl p-6">
-            <h3 className="text-lg font-black text-slate-900 mb-2 flex items-center gap-2">
-              <Key size={18} className="text-amber-500" /> Reset Password
-            </h3>
-            
-            {!newPasswordResult ? (
-              <>
-                <p className="text-xs font-semibold text-slate-500 mb-4 leading-relaxed">
-                  Are you sure you want to reset the password for <strong className="text-slate-900">{usersList.find(u => u.user_id === resettingPasswordFor)?.name}</strong>? They will be given a temporary password and must change it upon their next login.
-                </p>
-
-                <div className="mb-6">
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Set Password <span className="text-slate-400 font-normal">(Optional)</span></label>
-                  <input 
-                    type="text" 
-                    placeholder="Leave empty to auto-generate" 
-                    value={resetPasswordInput} 
-                    onChange={(e) => setResetPasswordInput(e.target.value)} 
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/50 text-sm" 
-                  />
-                </div>
-                
-                {errorMsg && (
-                  <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-xs font-bold flex items-start gap-2">
-                    <AlertCircle size={16} className="shrink-0 mt-0.5" />
-                    <span>{errorMsg}</span>
-                  </div>
-                )}
-                
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => { setResettingPasswordFor(null); setErrorMsg(null); setResetPasswordInput(""); }}
-                    className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-slate-200 cursor-pointer transition-all"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={() => handleResetPassword(resettingPasswordFor)}
-                    disabled={isResetting}
-                    className="flex-1 py-3 bg-amber-500 text-white rounded-xl text-xs font-black uppercase tracking-wider hover:bg-amber-600 cursor-pointer shadow-md shadow-amber-500/20 disabled:opacity-50 transition-all"
-                  >
-                    {isResetting ? "Resetting..." : "Confirm Reset"}
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl mb-6">
-                  <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-2">
-                    Password Reset Successful
-                  </p>
-                  <p className="text-xs text-slate-600 font-semibold mb-2">
-                    Temporary Password for <strong className="text-slate-900">{usersList.find(u => u.user_id === resettingPasswordFor)?.name}</strong>:
-                  </p>
-                  <div className="bg-white border border-emerald-100 p-3 rounded-xl flex justify-center">
-                    <code className="text-sm font-black text-slate-900 select-all font-mono tracking-widest">
-                      {newPasswordResult}
-                    </code>
-                  </div>
-                  <p className="text-[10px] text-emerald-600/70 font-semibold mt-3 text-center">
-                    Please securely share this password with the user.
-                  </p>
-                </div>
-                
-                <button
-                  onClick={() => { setResettingPasswordFor(null); setNewPasswordResult(null); }}
-                  className="w-full py-3 bg-slate-100 text-slate-600 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-slate-200 cursor-pointer transition-all"
-                >
-                  Close
-                </button>
-              </>
-            )}
-          </div>
-        </div>
+        </Card>
       )}
 
       {/* Edit User Modal */}
       {editingUser && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl w-full max-w-md shadow-xl p-6">
-            <h3 className="text-lg font-black text-slate-900 mb-4 flex items-center gap-2">
-              <Edit2 size={18} className="text-brand-primary" /> Edit User Details
-            </h3>
-            
-            <form onSubmit={handleUpdateUser} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Name</label>
-                <input 
-                  required
-                  type="text" 
-                  value={editUserForm.name} 
-                  onChange={(e) => setEditUserForm(p => ({...p, name: e.target.value}))} 
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary/50 text-sm" 
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-[var(--z-modal)] flex items-center justify-center p-4">
+          <Card className="w-full max-w-sm p-6 space-y-4">
+            <h3 className="text-base font-black text-[var(--text-primary)]">Edit User Details</h3>
+            <form onSubmit={handleUpdateUser} className="space-y-3">
+              <Input
+                label="Full Name"
+                value={editUserForm.name}
+                onChange={(e) => setEditUserForm({ ...editUserForm, name: e.target.value })}
+                required
+              />
+              <Input
+                label="Email Address"
+                type="email"
+                value={editUserForm.email}
+                onChange={(e) => setEditUserForm({ ...editUserForm, email: e.target.value })}
+                required
+              />
+              <label className="flex items-center gap-2 text-xs font-bold text-[var(--text-primary)] pt-1">
+                <input
+                  type="checkbox"
+                  checked={editUserForm.is_active}
+                  onChange={(e) => setEditUserForm({ ...editUserForm, is_active: e.target.checked })}
+                  className="rounded border-[var(--border-default)] text-[var(--brand-500)]"
                 />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Email / Username</label>
-                <input 
-                  required
-                  type="email" 
-                  value={editUserForm.email} 
-                  onChange={(e) => setEditUserForm(p => ({...p, email: e.target.value}))} 
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary/50 text-sm" 
-                />
-              </div>
-
-              <div className="pt-2">
-                <label className="flex items-center space-x-2 cursor-pointer p-3 border border-slate-200 rounded-xl hover:bg-slate-50 transition-all">
-                  <input 
-                    type="checkbox" 
-                    checked={editUserForm.is_active} 
-                    onChange={(e) => setEditUserForm(p => ({...p, is_active: e.target.checked}))} 
-                    className="rounded text-brand-primary w-4 h-4" 
-                  />
-                  <span className="text-sm font-bold text-slate-700">Account is Active</span>
-                </label>
-              </div>
-
-              {errorMsg && (
-                <div className="p-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-xs font-bold flex items-start gap-2">
-                  <AlertCircle size={16} className="shrink-0 mt-0.5" />
-                  <span>{errorMsg}</span>
-                </div>
-              )}
-              
-              <div className="flex gap-2 pt-4">
-                <button
-                  type="button"
-                  onClick={() => { setEditingUser(null); setErrorMsg(null); }}
-                  className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-slate-200 cursor-pointer transition-all"
-                >
+                <span>Account Active</span>
+              </label>
+              <div className="flex gap-2 pt-2">
+                <Button variant="secondary" className="flex-1" type="button" onClick={() => setEditingUser(null)}>
                   Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isUpdatingUser}
-                  className="flex-1 py-3 bg-brand-primary text-white rounded-xl text-xs font-black uppercase tracking-wider hover:bg-brand-secondary cursor-pointer shadow-md shadow-brand-primary/20 disabled:opacity-50 transition-all"
-                >
-                  {isUpdatingUser ? "Saving..." : "Save Changes"}
-                </button>
+                </Button>
+                <Button type="submit" isLoading={isUpdatingUser} className="flex-1">
+                  Save Changes
+                </Button>
               </div>
             </form>
-          </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Password Reset Modal */}
+      {resettingPasswordFor && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-[var(--z-modal)] flex items-center justify-center p-4">
+          <Card className="w-full max-w-sm p-6 space-y-4">
+            <h3 className="text-base font-black text-[var(--text-primary)]">Reset Password</h3>
+            {newPasswordResult ? (
+              <div className="space-y-3">
+                <p className="text-xs text-[var(--text-muted)]">Temporary password set successfully:</p>
+                <div className="p-3 bg-[var(--surface-secondary)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] font-mono text-center font-black text-sm text-[var(--brand-500)]">
+                  {newPasswordResult}
+                </div>
+                <Button size="sm" className="w-full" onClick={() => setResettingPasswordFor(null)}>
+                  Done
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <Input
+                  label="New Password (Optional)"
+                  type="password"
+                  placeholder="Leave empty for auto-generated password"
+                  value={resetPasswordInput}
+                  onChange={(e) => setResetPasswordInput(e.target.value)}
+                />
+                <div className="flex gap-2 pt-2">
+                  <Button variant="secondary" className="flex-1" onClick={() => setResettingPasswordFor(null)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    isLoading={isResetting}
+                    className="flex-1"
+                    onClick={() => handleResetPassword(resettingPasswordFor)}
+                  >
+                    Reset Password
+                  </Button>
+                </div>
+              </div>
+            )}
+          </Card>
         </div>
       )}
     </div>
