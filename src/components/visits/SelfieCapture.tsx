@@ -94,17 +94,36 @@ export default function SelfieCapture({ onCapture, existingPhotoUrl }: SelfieCap
     if (videoRef.current && stream) {
       const video = videoRef.current;
       const canvas = document.createElement("canvas");
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
+      
+      const MAX_WIDTH = 800;
+      const MAX_HEIGHT = 800;
+      let width = video.videoWidth;
+      let height = video.videoHeight;
+
+      if (width > height) {
+        if (width > MAX_WIDTH) {
+          height *= MAX_WIDTH / width;
+          width = MAX_WIDTH;
+        }
+      } else {
+        if (height > MAX_HEIGHT) {
+          width *= MAX_HEIGHT / height;
+          height = MAX_HEIGHT;
+        }
+      }
+
+      canvas.width = width;
+      canvas.height = height;
       const ctx = canvas.getContext("2d");
-      ctx?.drawImage(video, 0, 0, canvas.width, canvas.height);
+      ctx?.drawImage(video, 0, 0, width, height);
 
       canvas.toBlob((blob) => {
         if (blob) {
-          processAndSetImage(blob);
+          setPreviewUrl(URL.createObjectURL(blob));
+          onCapture(blob);
           stopCamera();
         }
-      }, "image/jpeg", 1.0); // Pass uncompressed to processAndSetImage for resizing
+      }, "image/jpeg", 0.7);
     }
   };
 

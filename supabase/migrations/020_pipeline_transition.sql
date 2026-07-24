@@ -1,9 +1,12 @@
 -- supabase/migrations/020_pipeline_transition.sql
 -- RPC for atomic pipeline stage transitions
 
+-- Drop the old version if it existed with UUID
+DROP FUNCTION IF EXISTS transition_lead_stage(UUID, TEXT, TEXT, TEXT);
+
 -- Ensures we only transition if the current stage allows it, preventing race conditions.
 CREATE OR REPLACE FUNCTION transition_lead_stage(
-  p_lead_id UUID,
+  p_lead_id TEXT,
   p_expected_current_stage TEXT,
   p_new_stage TEXT,
   p_actor TEXT
@@ -21,7 +24,7 @@ BEGIN
   -- 1. Check if the lead exists and get current status
   SELECT status, assigned_to INTO v_current_stage, v_lead_owner
   FROM public.leads
-  WHERE id = p_lead_id
+  WHERE lead_id = p_lead_id
   FOR UPDATE; -- Lock the row
 
   IF NOT FOUND THEN
@@ -46,7 +49,7 @@ BEGIN
   SET 
     status = p_new_stage,
     updated_at = v_now
-  WHERE id = p_lead_id;
+  WHERE lead_id = p_lead_id;
 
   RETURN jsonb_build_object('success', true, 'new_stage', p_new_stage, 'updated_at', v_now);
 END;
