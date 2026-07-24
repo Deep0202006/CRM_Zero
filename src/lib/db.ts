@@ -699,8 +699,36 @@ export async function processSyncQueue() {
           if (pkValue) {
             const updateData = omitPrimaryKeyFromUpdate(toDynamicRow(item.data), pk);
             if (Object.keys(updateData).length === 0) throw new Error(`No update fields provided for ${item.table_name}`);
-            const { error: err } = await client.update(updateData).eq(pk, pkValue);
-            error = err;
+            
+            // Special handling for offline pipeline stage transitions
+            if (item.table_name === "leads" && updateData.status !== undefined) {
+              const { data: rpcData, error: rpcError } = await supabase.rpc("transition_lead_stage", {
+                p_lead_id: pkValue as string,
+                p_expected_current_stage: null, // We don't have expected in the queue currently, so we force update. Alternatively, we could just rely on the standard update for offline queue if we don't care about concurrency when returning online, but RPC is safer.
+                p_new_stage: updateData.status as string,
+                p_actor: "agent"
+              });
+              
+              if (rpcError) {
+                error = rpcError;
+              } else if (rpcData && !rpcData.success) {
+                // If it fails concurrency (which it shouldn't if expected=null), we ignore or fail
+                console.warn(`Lead ${pkValue} offline transition failed:`, rpcData.error);
+                // We'll throw so it can be retried or dead-lettered
+                throw new Error(rpcData.error);
+              }
+              
+              // If there are other fields to update besides status, we still need to run the standard update for them
+              const otherUpdateData = { ...updateData };
+              delete otherUpdateData.status;
+              if (Object.keys(otherUpdateData).length > 0 && !error) {
+                const { error: err } = await client.update(otherUpdateData).eq(pk, pkValue);
+                error = err;
+              }
+            } else {
+              const { error: err } = await client.update(updateData).eq(pk, pkValue);
+              error = err;
+            }
           }
         } else if (item.action === "DELETE") {
           const pk = TABLE_PK[item.table_name] ?? "id";

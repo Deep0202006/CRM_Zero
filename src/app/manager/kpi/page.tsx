@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
-import { CONVERTED_STAGES, PipelineStage } from "@/lib/pipelineRules";
+import { CONVERTED_STAGES, PipelineStage } from "@/lib/pipelineStages";
 import { db } from "@/lib/db";
 import {
   BarChart,

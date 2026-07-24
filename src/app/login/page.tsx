@@ -157,9 +157,9 @@ export default function LoginPage() {
                 <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.045] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--brand-300)]">
                   <Sparkles size={13} /> Operational intelligence
                 </span>
-                <h1 className="mt-6 text-[clamp(2.5rem,5.2vw,5.5rem)] font-semibold leading-[0.96] tracking-[-0.065em] text-white">
+                <h1 className="mt-6 text-[clamp(2.25rem,8.5vw,5.5rem)] font-semibold leading-[1.1] sm:leading-[0.96] tracking-[-0.04em] sm:tracking-[-0.065em] text-white">
                   Every client move,
-                  <span className="block text-[var(--brand-300)]">clearly connected.</span>
+                  <span className="block text-[var(--brand-300)] mt-1 sm:mt-0">clearly connected.</span>
                 </h1>
                 <p className="mt-6 max-w-xl text-[14px] leading-7 text-[var(--login-copy)] sm:text-[16px]">
                   One focused workspace for sales onboarding, field execution, mappings, support, calls, attendance, and team performance.

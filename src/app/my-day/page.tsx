@@ -10,7 +10,7 @@ import {
   getMyDayStats,
   type LocalTask,
 } from "@/lib/taskEngine";
-import { CONVERTED_STAGES } from "@/lib/pipelineRules";
+import { CONVERTED_STAGES } from "@/lib/pipelineStages";
 import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
 import { db, transactionalMutation, type LocalAllocatedTarget, type LocalUser } from "@/lib/db";
 import { CheckCircle2, Clock, AlertCircle, ListTodo, PhoneCall, Trophy, CheckSquare, Target, Download, Trash2, MapPin, RefreshCw } from "lucide-react";

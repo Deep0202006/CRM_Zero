@@ -34,10 +34,11 @@ export interface RecordInspectorData {
 interface RecordInspectorProps {
   record: RecordInspectorData | null;
   onClose: () => void;
-  onAction?: (actionName: string, record: RecordInspectorData) => void;
+  primaryAction?: { label: string; onClick: (record: RecordInspectorData) => void; icon?: React.ReactNode };
+  onAction?: (actionName: string, record: RecordInspectorData) => void; // legacy
 }
 
-export function RecordInspector({ record, onClose, onAction }: RecordInspectorProps) {
+export function RecordInspector({ record, onClose, primaryAction, onAction }: RecordInspectorProps) {
   const [tab, setTab] = useState<"overview" | "properties">("overview");
   const recordId = record?.id;
   const panelRef = useRef<HTMLElement>(null);
@@ -261,9 +262,13 @@ export function RecordInspector({ record, onClose, onAction }: RecordInspectorPr
         <footer className="border-t border-[var(--border-subtle)] bg-[var(--surface-secondary)] p-4">
           <div className="flex gap-2">
             <Button variant="outline" onClick={onClose} className="flex-1">Close</Button>
-            {onAction && (
+            {primaryAction ? (
+              <Button onClick={() => primaryAction.onClick(record)} className="flex-1" icon={primaryAction.icon}>
+                {primaryAction.label}
+              </Button>
+            ) : onAction ? (
               <Button onClick={() => onAction("complete", record)} className="flex-1" icon={<CheckCircle2 size={15} />}>Continue workflow</Button>
-            )}
+            ) : null}
           </div>
         </footer>
       </aside>

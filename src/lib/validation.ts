@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { PIPELINE_STAGES, PipelineStage as LeadStatus, isTransitionAllowed } from "./pipelineRules";
+import { PIPELINE_STAGES, PipelineStage as LeadStatus, isTransitionAllowed } from "./pipelineStages";
 
 export { PIPELINE_STAGES };
 export type { LeadStatus };

@@ -4,10 +4,13 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { db, transactionalMutation, LocalLead, LocalCallLog } from "@/lib/db";
 import { validateLeadStatusTransition, LeadStatus } from "@/lib/validation";
+import { PipelineStage, getNextPipelineStage } from "@/lib/pipelineStages";
+import { transitionLead } from "@/lib/leadStageService";
 import {
   Plus,
   AlertCircle,
   CheckCircle2,
+  ChevronRight,
   Layers,
   Search,
 } from "lucide-react";
@@ -154,7 +157,13 @@ export default function OnboardingPage() {
       const updateData: { status: string; onboarded_at?: string } = { status: targetStatus };
       if (targetStatus === "Installation") updateData.onboarded_at = now;
 
-      await transactionalMutation("leads", "UPDATE", { lead_id: lead.lead_id, ...updateData });
+      // First run the transition service which handles atomicity and concurrency
+      await transitionLead(lead.lead_id, targetStatus as PipelineStage, lead.status as PipelineStage);
+      
+      // If there are additional fields to update (like onboarded_at), queue them
+      if (targetStatus === "Installation") {
+        await transactionalMutation("leads", "UPDATE", { lead_id: lead.lead_id, onboarded_at: now });
+      }
 
       await loadLeads();
       if (selectedLead?.lead_id === lead.lead_id) {
@@ -365,7 +374,21 @@ export default function OnboardingPage() {
                         </div>
                         <div className="mt-3 flex items-center justify-between gap-2 border-t border-[var(--border-subtle)] pt-2.5">
                           <span className="truncate text-[10px] font-medium text-[var(--text-muted)]">{lead.area || "Area not set"}</span>
-                          <span className="text-[10px] font-semibold text-[var(--brand-600)]">Inspect →</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-semibold text-[var(--text-muted)] group-hover:text-[var(--brand-600)]">Inspect</span>
+                            {getNextPipelineStage(lead.status as PipelineStage) && (
+                              <button 
+                                type="button" 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRequestTransition(lead, getNextPipelineStage(lead.status as PipelineStage)!);
+                                }}
+                                className="rounded-[var(--radius-sm)] bg-[var(--brand-50)] px-2 py-1 text-[10px] font-bold text-[var(--brand-700)] transition hover:bg-[var(--brand-100)]"
+                              >
+                                Move forward
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </button>
                     );
@@ -384,9 +407,15 @@ export default function OnboardingPage() {
       <RecordInspector
         record={inspectorData}
         onClose={handleCloseLead}
-        onAction={() => {
-          if (selectedLead && selectedLead.status === "New") handleRequestTransition(selectedLead, "Contacted");
-        }}
+        primaryAction={
+          selectedLead && getNextPipelineStage(selectedLead.status as PipelineStage)
+            ? {
+                label: `Move to ${getNextPipelineStage(selectedLead.status as PipelineStage)}`,
+                icon: <ChevronRight size={15} />,
+                onClick: () => handleRequestTransition(selectedLead, getNextPipelineStage(selectedLead.status as PipelineStage)!),
+              }
+            : undefined
+        }
       />
 
       <Modal
