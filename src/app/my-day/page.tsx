@@ -139,8 +139,39 @@ export default function MyDayPage() {
 
   const handleComplete = async (task: LocalTask) => {
     if (!currentUser || markingId) return;
-    setMarkingId(task.task_id);
+    
+    if (task.source === "manual" && task.related_lead_id) {
+      const outcome = window.prompt("Enter call outcome (required for follow-ups):", "Follow-up completed");
+      if (!outcome || outcome.trim() === "") return;
+      
+      setMarkingId(task.task_id);
+      const logId = crypto.randomUUID();
+      const newLog = {
+        log_id: logId,
+        user_id: currentUser.user_id,
+        lead_id: task.related_lead_id,
+        timestamp: new Date().toISOString(),
+        outcome: outcome.trim(),
+        notes: `Task completed: ${task.title}`
+      };
+      
+      await db.transaction('rw', [db.call_logs, db.sync_queue], async () => {
+        await db.call_logs.add(newLog);
+        await db.sync_queue.add({
+          table_name: "call_logs",
+          action: "INSERT",
+          data: newLog,
+          timestamp: newLog.timestamp,
+          idempotency_key: `call-log-${logId}`,
+          retry_count: 0
+        });
+      });
+    } else {
+      setMarkingId(task.task_id);
+    }
+
     await updateTaskStatus(task, "Completed", currentUser.user_id);
+    
     setTasks((prev) =>
       sortTasks(
         prev.map((t) =>
@@ -148,22 +179,11 @@ export default function MyDayPage() {
         )
       )
     );
+    await getMyDayStats(currentUser.user_id).then(setStats);
     setMarkingId(null);
   };
 
-  const handleStart = async (task: LocalTask) => {
-    if (!currentUser || markingId) return;
-    setMarkingId(task.task_id);
-    await updateTaskStatus(task, "In Progress", currentUser.user_id);
-    setTasks((prev) =>
-      sortTasks(
-        prev.map((t) =>
-          t.task_id === task.task_id ? { ...t, status: "In Progress" as const, started_at: new Date().toISOString() } : t
-        )
-      )
-    );
-    setMarkingId(null);
-  };
+
 
   const handleDelete = async (task: LocalTask) => {
     if (!currentUser || markingId) return;
@@ -491,7 +511,6 @@ export default function MyDayPage() {
                   key={task.task_id}
                   task={task}
                   markingId={markingId}
-                  onStart={handleStart}
                   onComplete={handleComplete}
                   onDelete={handleDelete}
                   currentUser={currentUser}
@@ -574,7 +593,6 @@ const PRIORITY_BADGE_STYLES: Record<string, string> = {
 function TaskCard({
   task,
   markingId,
-  onStart,
   onComplete,
   onDelete,
   currentUser,
@@ -583,7 +601,6 @@ function TaskCard({
 }: {
   task: LocalTask;
   markingId: string | null;
-  onStart?: (t: LocalTask) => void;
   onComplete: (t: LocalTask) => void;
   onDelete?: (t: LocalTask) => void;
   currentUser: Pick<LocalUser, "user_id"> | null;
@@ -617,15 +634,7 @@ function TaskCard({
       </div>
 
       <div className="flex flex-col gap-2 shrink-0">
-        {task.status === "Pending" && onStart && (
-          <button
-            onClick={() => onStart(task)}
-            disabled={isActing}
-            className="px-3 py-1.5 text-[11px] font-black rounded-xl border border-brand-primary/30 text-brand-primary hover:bg-brand-primary/5 transition-all disabled:opacity-50 cursor-pointer"
-          >
-            {isActing ? "..." : "Start"}
-          </button>
-        )}
+
         <button
           onClick={() => onComplete(task)}
           disabled={isActing}
