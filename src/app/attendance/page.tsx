@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/Button";
 import Link from "next/link";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { getCurrentISTDate } from "@/lib/dateTime";
 
 export default function AttendancePage() {
   const { currentUser, isFieldStaff, isOfficeStaff, isAdmin } = useAuth();
@@ -29,7 +30,7 @@ export default function AttendancePage() {
   const [streamActive, setStreamActive] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
 
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = getCurrentISTDate();
 
   const loadTodayRecord = async () => {
     if (!currentUser) return;

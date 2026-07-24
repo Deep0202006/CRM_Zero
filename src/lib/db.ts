@@ -151,6 +151,21 @@ export interface LocalPaymentDetails {
   paid_at: string;
 }
 
+export interface LocalFieldVisit {
+  visit_id: string;
+  lead_id: string;
+  user_id: string;
+  visit_date: string;
+  check_in_time: string;
+  check_in_lat: number | null;
+  check_in_lng: number | null;
+  check_in_photo_url: string | null;
+  visit_outcome: string;
+  visit_notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // INTERFACES — Task & KPI addendum (Part 1)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -293,6 +308,7 @@ class CRMDatabase extends Dexie {
   lead_registration_checklist!: Table<LocalRegistrationChecklist, string>;
   lead_installation_details!: Table<LocalInstallationDetails, string>;
   lead_payment_details!: Table<LocalPaymentDetails, string>;
+  field_visits!: Table<LocalFieldVisit, string>;
 
   // Task allocation (Excel uploads)
   task_upload_batches!: Table<LocalTaskUploadBatch, string>;
@@ -490,6 +506,30 @@ class CRMDatabase extends Dexie {
       task_upload_batches: "id, uploaded_by, file_hash",
       allocated_targets: "target_id, batch_id, assigned_to_user_id, city, is_completed, [assigned_to_user_id+is_completed+city]",
     });
+    // Version 11 — Add field visits
+    this.version(11).stores({
+      users: "user_id, email, is_active, manager_id",
+      capabilities: "code",
+      user_capabilities: "id, user_id, capability_code, [user_id+capability_code]",
+      leads: "lead_id, business_name, segment_type, status, assigned_to, stage_entered_at, lead_source, area, renewal_date",
+      client_queries: "query_id, client_username, problem_status, assigned_to, created_at",
+      mappings: "mapping_id, distributor_lead_id, retailer_lead_id, [distributor_lead_id+retailer_lead_id], mapped_by",
+      mapping_requests: "request_id, distributor_lead_id, retailer_lead_id, mapped_by, status, created_at",
+      internal_tickets: "ticket_id, raised_by, status, assigned_to",
+      attendance: "attendance_id, user_id, date, [user_id+date]",
+      call_logs: "log_id, user_id, lead_id, timestamp",
+      sync_queue: "++id, idempotency_key, table_name, action, timestamp, retry_count",
+      task_templates: "template_id, applies_to_capability, is_active",
+      tasks: "task_id, assigned_to, due_date, status, [assigned_to+due_date], template_id",
+      task_status_history: "id, task_id, changed_at",
+      kpi_snapshots: "snapshot_id, user_id, date, [user_id+date]",
+      lead_registration_checklist: "checklist_id, lead_id",
+      lead_installation_details: "installation_id, lead_id",
+      lead_payment_details: "payment_id, lead_id",
+      task_upload_batches: "id, uploaded_by, file_hash",
+      allocated_targets: "target_id, batch_id, assigned_to_user_id, city, is_completed, [assigned_to_user_id+is_completed+city]",
+      field_visits: "visit_id, lead_id, user_id, visit_date, [user_id+visit_date]",
+    });
   }
 }
 
@@ -530,6 +570,15 @@ export function filterSyncStream<T extends { segment_type?: LeadSegment; lead_id
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// TABLE MAPPINGS — Remote (Supabase) to Local (Dexie)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const REMOTE_TO_LOCAL_TABLE: Record<string, string> = {
+  kpi_daily_snapshot: "kpi_snapshots",
+  field_visits: "field_visits",
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 // PRIMARY KEY LOOKUP — used by processSyncQueue UPDATE/DELETE
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -549,6 +598,7 @@ const TABLE_PK: Record<string, string> = {
   lead_registration_checklist: "checklist_id",
   lead_installation_details: "installation_id",
   lead_payment_details: "payment_id",
+  field_visits: "visit_id",
   capabilities: "code",
   user_capabilities: "id",
   task_upload_batches: "id",
@@ -636,7 +686,8 @@ export async function processSyncQueue() {
 
     try {
       if (isSupabaseConfigured) {
-        const client = supabase.from(item.table_name);
+        const remoteTableName = Object.keys(REMOTE_TO_LOCAL_TABLE).find(k => REMOTE_TO_LOCAL_TABLE[k] === item.table_name) || item.table_name;
+        const client = supabase.from(remoteTableName);
         let error: { message: string } | null = null;
 
         if (item.action === "INSERT") {
@@ -712,16 +763,18 @@ export async function pullDownSync() {
       "kpi_daily_snapshot",
       "task_upload_batches",
       "allocated_targets",
+      "field_visits",
     ];
 
-    for (const tableName of tables) {
+    for (const remoteTableName of tables) {
+      const localTableName = REMOTE_TO_LOCAL_TABLE[remoteTableName] || remoteTableName;
       let allData: DynamicRow[] = [];
       let from = 0;
       const limit = 1000;
       let fetchError = null;
 
       while (true) {
-        const { data, error } = await supabase.from(tableName).select("*").range(from, from + limit - 1);
+        const { data, error } = await supabase.from(remoteTableName).select("*").range(from, from + limit - 1);
         if (error) {
           fetchError = error;
           break;
@@ -736,15 +789,15 @@ export async function pullDownSync() {
       }
 
       if (fetchError && allData.length === 0) {
-        console.warn(`Failed to pull table ${tableName}:`, fetchError);
+        console.warn(`Failed to pull table ${remoteTableName}:`, fetchError);
         continue;
       }
       
       const data = allData;
       
       if (data && data.length > 0) {
-        const table = dynamicTables[tableName];
-        const pk = TABLE_PK[tableName] ?? "id";
+        const table = dynamicTables[localTableName];
+        const pk = TABLE_PK[localTableName] ?? "id";
         
         // Find local items
         const localItems = await table.toArray();
@@ -756,7 +809,7 @@ export async function pullDownSync() {
 
         // Check if these IDs are waiting to be inserted in the sync_queue
         const pendingInserts = await db.sync_queue
-          .filter(item => item.table_name === tableName && item.action === "INSERT")
+          .filter(item => item.table_name === localTableName && item.action === "INSERT")
           .toArray();
         const pendingInsertIds = new Set(pendingInserts.map(item => getDynamicField(item.data, pk)));
 
@@ -764,7 +817,7 @@ export async function pullDownSync() {
 
         // Check if items have pending updates or deletes in the sync_queue
         const pendingMutations = await db.sync_queue
-          .filter(item => item.table_name === tableName && (item.action === "UPDATE" || item.action === "DELETE"))
+          .filter(item => item.table_name === localTableName && (item.action === "UPDATE" || item.action === "DELETE"))
           .toArray();
         const pendingMutationIds = new Set(pendingMutations.map(item => getDynamicField(item.data, pk)));
 

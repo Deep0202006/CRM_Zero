@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { db, transactionalMutation, LocalUser, pullDownSync } from "@/lib/db";
 import { supabase } from "@/lib/supabaseClient";
+import { getCurrentISTDate } from "@/lib/dateTime";
 
 interface AuthContextType {
   currentUser: LocalUser | null;
@@ -228,7 +229,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const logOfficeAttendance = async () => {
       if (!currentUser || !isOfficeStaff) return;
       try {
-        const todayStr = new Date().toISOString().slice(0, 10);
+        const todayStr = getCurrentISTDate();
         const records = await db.attendance.where("user_id").equals(currentUser.user_id).toArray();
         const hasToday = records.some(r => r.date === todayStr);
         if (!hasToday) {

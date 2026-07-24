@@ -41,10 +41,12 @@ export function SearchableSelect({
   const descriptionId = description ? `${inputId}-description` : undefined;
   const errorId = error ? `${inputId}-error` : undefined;
 
-  useEffect(() => {
+  const [prevValueForDisplay, setPrevValueForDisplay] = useState<{value: string, options: typeof options}>({ value: "", options: [] });
+  if (prevValueForDisplay.value !== value || prevValueForDisplay.options !== options) {
+    setPrevValueForDisplay({ value, options });
     const matchedOption = options.find((option) => option.value === value);
     setDisplayValue(matchedOption ? matchedOption.label : value);
-  }, [value, options]);
+  }
 
   useEffect(() => {
     function handlePointerDown(event: MouseEvent) {

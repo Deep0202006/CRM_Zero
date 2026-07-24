@@ -16,6 +16,7 @@ import {
   Link2,
   ListTodo,
   LogOut,
+  MapPin,
   Menu,
   Moon,
   PhoneCall,
@@ -54,6 +55,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     isAdmin,
     isFieldStaff,
     isOfficeStaff,
+    hasField,
     hasOnboarding,
     hasSupport,
     isTaskAssigner,
@@ -110,11 +112,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     };
   }, [pathname]);
 
-  useEffect(() => {
-    setMobileOpen(false);
-    setProfileOpen(false);
-    setSyncOpen(false);
-  }, [pathname]);
+  const [prevPathname, setPrevPathname] = useState(pathname);
+  if (prevPathname !== pathname) {
+    setPrevPathname(pathname);
+    if (mobileOpen) setMobileOpen(false);
+    if (profileOpen) setProfileOpen(false);
+    if (syncOpen) setSyncOpen(false);
+  }
 
   useEffect(() => {
     if (!mobileOpen) return;
@@ -165,12 +169,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     document.body.style.overflow = "hidden";
     document.addEventListener("keydown", handleKeyDown);
 
+    const menuButton = mobileMenuButtonRef.current;
+
     return () => {
       window.cancelAnimationFrame(focusFirstControl);
       document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", handleKeyDown);
       if (previousFocus?.isConnected) previousFocus.focus();
-      else mobileMenuButtonRef.current?.focus();
+      else menuButton?.focus();
     };
   }, [mobileOpen]);
 
@@ -230,6 +236,15 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           description: "Record call outcomes and follow-ups",
           group: "Workspace",
           keywords: ["phone", "followup", "calls"],
+        },
+        {
+          icon: <MapPin size={17} />,
+          label: "Field Visits",
+          path: "/visits",
+          description: "Log shop visits and view history",
+          group: "Workspace",
+          visible: hasField,
+          keywords: ["visit", "location", "field", "shop"],
         },
         {
           icon: <LayoutDashboard size={17} />,
@@ -299,6 +314,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           description: "Allocate tasks and field targets",
           group: "Management",
           visible: isTaskAssigner,
+        },
+        {
+          icon: <MapPin size={17} />,
+          label: "Visits Overview",
+          path: "/admin/visits",
+          description: "Monitor field visit compliance",
+          group: "Management",
+          visible: isAdmin,
         },
         {
           icon: <ShieldCheck size={17} />,

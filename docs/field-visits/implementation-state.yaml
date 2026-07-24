@@ -1,0 +1,11 @@
+phase: 1
+status: in_progress
+tasks:
+  - id: write_audit_docs
+    status: completed
+  - id: fix_modal_focus
+    status: pending
+  - id: fix_date_time
+    status: pending
+  - id: fix_kpi_sync_alias
+    status: pending

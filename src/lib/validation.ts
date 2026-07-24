@@ -8,6 +8,9 @@ export type { LeadStatus };
 export const SEGMENT_TYPES = ["Distributor", "Retailer"] as const;
 export type LeadSegment = typeof SEGMENT_TYPES[number];
 
+// Lead Source constants
+export const LEAD_SOURCES = ["Referral", "Cold Call", "Inbound Inquiry", "Social Media", "Field Visit", "Other"] as const;
+
 /**
  * Validates if a transition from currentStatus to nextStatus is allowed in the linear pipeline
  */
@@ -36,6 +39,8 @@ export const leadSchema = z.object({
   phone: z.string().min(10, "Phone number must be at least 10 digits"),
   segment_type: z.enum(SEGMENT_TYPES),
   status: z.enum(PIPELINE_STAGES).default("New"),
+  lead_source: z.enum(LEAD_SOURCES).optional().nullable(),
+  lead_source_other: z.string().optional().nullable(),
   loss_reason: z.string().optional().nullable(),
   assigned_to: uuidSchema.optional().nullable(),
   created_at: z.string().optional(),

@@ -53,9 +53,11 @@ export function RecordInspector({ record, onClose, onAction }: RecordInspectorPr
     onCloseRef.current = onClose;
   }, [onClose]);
 
-  useEffect(() => {
+  const [prevRecordId, setPrevRecordId] = useState(recordId);
+  if (prevRecordId !== recordId) {
+    setPrevRecordId(recordId);
     setTab("overview");
-  }, [recordId]);
+  }
 
   useEffect(() => {
     if (!recordId) return;
@@ -111,13 +113,14 @@ export function RecordInspector({ record, onClose, onAction }: RecordInspectorPr
     };
   }, [recordId]);
 
+  const recordTitle = record?.title;
   const initials = useMemo(() => {
-    if (!record?.title) return "ZD";
-    const parts = record.title.trim().split(/\s+/);
+    if (!recordTitle) return "ZD";
+    const parts = recordTitle.trim().split(/\s+/);
     return parts.length > 1
       ? `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
       : parts[0].slice(0, 2).toUpperCase();
-  }, [record?.title]);
+  }, [recordTitle]);
 
   if (!record) return null;
 
