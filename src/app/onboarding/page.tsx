@@ -123,14 +123,7 @@ export default function OnboardingPage() {
       return;
     }
     setErrorMsg(null);
-    const gateKey = `${lead.status}→${targetStatus}` as GateKey;
-    const config = STAGE_GATES[gateKey];
-    if (config) {
-      setGateNote("");
-      setGateModal({ lead, targetStatus, config });
-    } else {
-      executeTransition(lead, targetStatus, null);
-    }
+    executeTransition(lead, targetStatus, null);
   };
 
   const executeTransition = async (lead: LocalLead, targetStatus: LeadStatus, note: string | null) => {

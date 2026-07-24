@@ -29,12 +29,13 @@ export async function transitionLead(leadId: string, newStage: PipelineStage, ex
       p_actor: "agent"
     });
 
-    if (error) {
-      throw new Error(`Transition failed: ${error.message}`);
-    }
-
-    if (data && !data.success) {
-      throw new Error(`Concurrency error: ${data.error}`);
+    if (error || (data && !data.success)) {
+      console.warn(`Transition RPC failed: ${error?.message || data?.error}. Falling back to sync queue.`);
+      await transactionalMutation("leads", "UPDATE", {
+        lead_id: leadId,
+        status: newStage,
+      });
+      return;
     }
 
     // RPC succeeded, update local Dexie immediately (bypass queue since server is already updated)
