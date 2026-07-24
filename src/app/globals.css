@@ -1,69 +1,49 @@
 @import "tailwindcss";
-
-:root {
-  --background: 240 10% 98%;
-  --foreground: 224 71.4% 4.1%;
-  
-  --card: 0 0% 100%;
-  --card-foreground: 224 71.4% 4.1%;
-  
-  --popover: 0 0% 100%;
-  --popover-foreground: 224 71.4% 4.1%;
-  
-  --primary: 221.2 83.2% 53.3%;
-  --primary-foreground: 210 40% 98%;
-  
-  --secondary: 210 40% 96.1%;
-  --secondary-foreground: 222.2 47.4% 11.2%;
-  
-  --muted: 210 40% 96.1%;
-  --muted-foreground: 215.4 16.3% 46.9%;
-  
-  --accent: 210 40% 96.1%;
-  --accent-foreground: 222.2 47.4% 11.2%;
-  
-  --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 210 40% 98%;
-  
-  --border: 214.3 31.8% 91.4%;
-  --input: 214.3 31.8% 91.4%;
-  --ring: 221.2 83.2% 53.3%;
-  
-  --radius: 1rem;
-}
+@import "../design-system/tokens.css";
 
 @theme {
-  --color-canvas: #F8FAFC;
-  --color-panel: #FFFFFF;
-  --color-brand-primary: #2563EB;
-  --color-brand-secondary: #4F46E5;
-  --color-status-success: #10B981;
-  --color-status-pending: #F59E0B;
-  --color-status-error: #EF4444;
-  --color-slate-900: #0F172A;
-  --color-slate-600: #475569;
+  --color-canvas: var(--surface-canvas);
+  --color-panel: var(--surface-primary);
+  --color-brand-primary: var(--brand-500);
+  --color-brand-secondary: var(--brand-600);
+  --color-status-success: var(--status-success);
+  --color-status-pending: var(--status-pending);
+  --color-status-error: var(--status-danger);
+  --color-slate-900: var(--text-primary);
+  --color-slate-600: var(--text-secondary);
   
-  --color-background: var(--color-canvas);
-  --color-foreground: var(--color-slate-900);
+  --color-background: var(--surface-canvas);
+  --color-foreground: var(--text-primary);
 }
 
 @layer base {
+  *, ::before, ::after {
+    border-color: var(--border-subtle);
+  }
+  
   html, body {
-    background-color: var(--color-canvas);
-    color: var(--color-slate-600);
+    background-color: var(--surface-canvas);
+    color: var(--text-primary);
     font-family: 'Outfit', 'Inter', system-ui, sans-serif;
     overflow-x: hidden;
     max-width: 100%;
     -webkit-font-smoothing: antialiased;
+    transition: background-color var(--motion-standard) var(--ease-standard), color var(--motion-standard) var(--ease-standard);
+  }
+
+  *:focus-visible {
+    outline: var(--border-width-focus) solid var(--brand-500);
+    outline-offset: 2px;
   }
 }
 
 /* Glassmorphism panel styles */
 .glass-panel {
-  background: rgba(255, 255, 255, 0.75);
+  background: var(--surface-primary);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.4);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-raised);
 }
 
 /* Custom Scrollbar */
@@ -77,12 +57,12 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.4);
-  border-radius: 9999px;
+  background: var(--border-default);
+  border-radius: var(--radius-round);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.6);
+  background: var(--border-strong);
 }
 
 /* Biometric Scan Animation */
@@ -103,6 +83,6 @@
   h1, h2, h3, h4 {
     font-weight: 900;
     letter-spacing: -0.025em;
-    color: var(--color-slate-900);
+    color: var(--text-primary);
   }
 }

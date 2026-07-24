@@ -4,10 +4,13 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { db, transactionalMutation, LocalCallLog, LocalUser, LocalLead } from "@/lib/db";
 import { SearchableSelect, SearchableOption } from "@/components/SearchableSelect";
-import { PhoneCall, CheckCircle2, AlertCircle, Download, Clock } from "lucide-react";
+import { PhoneCall, CheckCircle2, AlertCircle, Download } from "lucide-react";
 import excelUsers from "@/lib/excel_users.json";
 import { exportCallLogs } from "@/lib/excelExport";
-import { QueueList, QueueItem } from "@/components/QueueList";
+import { QueueList } from "@/components/QueueList";
+import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 
 export default function CallLogsPage() {
   const { currentUser, isAdmin } = useAuth();
@@ -35,11 +38,11 @@ export default function CallLogsPage() {
     "Other"
   ];
 
-  const leadOptions = React.useMemo(() => {
+  const leadOptions: SearchableOption[] = React.useMemo(() => {
     const excelOptions: SearchableOption[] = excelUsers.map((eu: any) => ({
       value: `EXCEL::${eu.username}::${eu.name || eu.username}`,
-      label: `[${eu.username}] - ${eu.name || "Unknown"}`,
-      searchText: eu.username + " " + eu.name
+      label: `${eu.name || eu.username} (@${eu.username})`,
+      searchText: eu.username + " " + (eu.name || "")
     }));
     return excelOptions.sort((a, b) => a.label.localeCompare(b.label));
   }, []);
@@ -47,7 +50,6 @@ export default function CallLogsPage() {
   const loadData = async () => {
     try {
       const fetchedLogs = await db.call_logs.toArray();
-      // Sort by descending timestamp
       fetchedLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
       
       const allUsers = await db.users.toArray();
@@ -99,7 +101,7 @@ export default function CallLogsPage() {
       const log: LocalCallLog = {
         log_id: crypto.randomUUID(),
         user_id: currentUser.user_id,
-        lead_id: selectedLeadId, // This is now in format EXCEL::username::name
+        lead_id: selectedLeadId,
         timestamp: new Date().toISOString(),
         outcome: outcome,
         notes: notes.trim() || null,
@@ -110,7 +112,7 @@ export default function CallLogsPage() {
 
       if (nextFollowupDate) {
         const leadNameMatch = selectedLeadId.split("::");
-        const leadDisplay = leadNameMatch.length === 3 ? `[${leadNameMatch[1]}] - ${leadNameMatch[2]}` : selectedLeadId;
+        const leadDisplay = leadNameMatch.length === 3 ? `${leadNameMatch[2]} (@${leadNameMatch[1]})` : selectedLeadId;
         
         const followupTask = {
           task_id: crypto.randomUUID(),
@@ -135,7 +137,6 @@ export default function CallLogsPage() {
 
       setSuccess(true);
       
-      // Reset form
       setSelectedLeadId("");
       setOutcome("");
       setNotes("");
@@ -153,19 +154,18 @@ export default function CallLogsPage() {
 
   const showFollowup = outcome === "No response (followup)" || outcome === "Requested more info";
 
+  // Format identity standard: "{Name} (@{Username}) - {Phone}"
   const getLeadDisplay = (lead_id: string) => {
     if (lead_id.startsWith("EXCEL::")) {
       const parts = lead_id.split("::");
       if (parts.length === 3) {
-        return `[${parts[1]}] - ${parts[2]}`;
+        return `${parts[2]} (@${parts[1]})`;
       }
     }
     const lead = leadsMap.get(lead_id);
     if (lead) {
-      if (lead.business_name.startsWith("[") && lead.business_name.includes("] - ")) {
-        return lead.business_name;
-      }
-      return `[${lead.business_name}] - ${lead.contact_person || lead.phone || "Unknown"}`;
+      if (lead.business_name.includes("(@")) return lead.business_name;
+      return `${lead.business_name} - ${lead.phone || "N/A"}`;
     }
     return lead_id;
   };
@@ -178,59 +178,58 @@ export default function CallLogsPage() {
   };
 
   return (
-    <main className="flex-1 p-6 lg:p-10 pt-20 w-full max-w-7xl mx-auto space-y-6">
-      <div className="flex sm:flex-row flex-col sm:items-center justify-between gap-4 mb-4">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shadow-sm">
-            <PhoneCall size={24} />
-          </div>
+    <div className="space-y-6 w-full max-w-6xl mx-auto">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <PhoneCall size={24} className="text-[var(--brand-500)]" />
           <div>
-            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Call Logs</h1>
-            <p className="text-slate-500 mt-1">Record manual calls made to distributors and retailers.</p>
+            <h1 className="text-2xl font-black text-[var(--text-primary)]">Call Logs</h1>
+            <p className="text-xs text-[var(--text-muted)] font-bold uppercase tracking-wider">
+              Record manual calls made to distributors and retailers
+            </p>
           </div>
         </div>
         
         {currentUser && (
-          <button
+          <Button
+            size="sm"
             onClick={() => exportCallLogs(currentUser.user_id, isAdmin)}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-semibold rounded-xl transition-colors border border-emerald-200 shadow-sm"
+            icon={<Download size={14} />}
           >
-            <Download size={18} />
-            <span>Download Excel</span>
-          </button>
+            Export Call Logs
+          </Button>
         )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        <div className="lg:col-span-2 bg-white rounded-3xl p-6 border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] h-fit">
-          <h3 className="text-base font-black text-slate-900 flex items-center gap-2 mb-6">
-            <PhoneCall size={16} className="text-brand-primary" />
-            Log Call
-          </h3>
-          <form onSubmit={handleLogCall} className="space-y-6">
-            {/* Lead Selection */}
+        <Card className="lg:col-span-2 space-y-4">
+          <h2 className="text-sm font-black text-[var(--text-primary)] flex items-center gap-2 border-b border-[var(--border-subtle)] pb-3">
+            <PhoneCall size={16} className="text-[var(--brand-500)]" />
+            Log Call Outcome
+          </h2>
+
+          <form onSubmit={handleLogCall} className="space-y-4">
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
+              <label className="block text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
                 Select Lead
               </label>
               <SearchableSelect
                 options={leadOptions}
                 value={selectedLeadId}
                 onChange={setSelectedLeadId}
-                placeholder="Search by name, contact, or phone..."
+                placeholder="Search by name or username..."
                 required
               />
             </div>
 
-            {/* Call Outcome / Response */}
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
+              <label className="block text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
                 Call Response / Outcome
               </label>
               <select
                 value={outcome}
                 onChange={(e) => setOutcome(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-900 focus-within:border-brand-primary focus-within:ring-2 focus-within:ring-brand-primary/10 transition-all outline-none appearance-none"
+                className="w-full bg-[var(--surface-primary)] border border-[var(--border-default)] rounded-[var(--radius-md)] p-2.5 text-xs font-semibold text-[var(--text-primary)] focus:outline-none focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-500)]/20 transition-all"
                 required
               >
                 <option value="" disabled>Select an outcome...</option>
@@ -240,88 +239,79 @@ export default function CallLogsPage() {
               </select>
             </div>
 
-            {/* Notes */}
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
-                Additional Notes <span className="text-slate-400 font-normal">(Optional)</span>
+              <label className="block text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
+                Additional Notes <span className="text-[var(--text-muted)] font-normal">(Optional)</span>
               </label>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Any important details discussed..."
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-900 focus-within:border-brand-primary focus-within:ring-2 focus-within:ring-brand-primary/10 transition-all outline-none min-h-[100px] resize-y"
+                rows={3}
+                className="w-full bg-[var(--surface-primary)] border border-[var(--border-default)] rounded-[var(--radius-md)] p-3 text-xs font-medium text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-500)]/20 transition-all resize-none"
               />
             </div>
 
-            {/* Next Followup (Conditional) */}
             {showFollowup && (
-              <div className="animate-in fade-in slide-in-from-top-4 duration-300">
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  Next Follow-up Date <span className="text-slate-400 font-normal">(Optional)</span>
-                </label>
-                <input
-                  type="date"
-                  value={nextFollowup}
-                  onChange={(e) => setNextFollowup(e.target.value)}
-                  className="w-full sm:w-64 bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-brand-primary transition-all"
-                />
-              </div>
+              <Input
+                label="Next Follow-up Date (Optional)"
+                type="date"
+                value={nextFollowup}
+                onChange={(e) => setNextFollowup(e.target.value)}
+              />
             )}
 
             {error && (
-              <div className="p-4 bg-rose-50 text-rose-700 rounded-xl flex items-start gap-3 border border-rose-100">
-                <AlertCircle size={18} className="mt-0.5" />
-                <p className="text-sm font-medium">{error}</p>
+              <div className="p-3 bg-[var(--status-danger-soft)] text-[var(--status-danger)] rounded-[var(--radius-md)] flex items-start gap-2 border border-[var(--status-danger)]/20 text-xs font-semibold">
+                <AlertCircle size={16} className="mt-0.5 shrink-0" />
+                <p>{error}</p>
               </div>
             )}
 
             {success && (
-              <div className="p-4 bg-emerald-50 text-emerald-700 rounded-xl flex items-center gap-3 border border-emerald-100">
-                <CheckCircle2 size={18} />
-                <p className="text-sm font-medium">Call logged successfully!</p>
+              <div className="p-3 bg-[var(--status-success-soft)] text-[var(--status-success)] rounded-[var(--radius-md)] flex items-center gap-2 border border-[var(--status-success)]/20 text-xs font-semibold">
+                <CheckCircle2 size={16} className="shrink-0" />
+                <p>Call logged successfully!</p>
               </div>
             )}
 
-            <div className="pt-4 flex justify-end">
-              <button
-                type="submit"
-                disabled={submitting}
-                className="bg-brand-primary text-white font-bold px-8 py-3 rounded-xl shadow-[0_4px_14px_0_rgba(10,51,217,0.39)] hover:shadow-[0_6px_20px_rgba(10,51,217,0.23)] hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:pointer-events-none w-full"
-              >
-                {submitting ? "Logging..." : "Log Call"}
-              </button>
-            </div>
+            <Button
+              type="submit"
+              isLoading={submitting}
+              className="w-full h-11"
+            >
+              Log Call
+            </Button>
           </form>
-        </div>
+        </Card>
 
-        {/* Queue Template Section */}
         <QueueList
           title="Call History"
           items={logs.map(log => ({
             id: log.log_id,
             primaryNode: (
               <div>
-                <p className="text-sm font-bold text-slate-900 mt-0.5 leading-snug">
+                <p className="text-xs font-bold text-[var(--text-primary)] leading-snug">
                   {getLeadDisplay(log.lead_id)}
                 </p>
-                <p className="text-[10px] font-semibold text-slate-500 mt-1 uppercase tracking-wider">
-                  Agent: <span className="text-slate-700">{getAgentDisplay(log.user_id)}</span>
+                <p className="text-[10px] font-semibold text-[var(--text-muted)] mt-0.5 uppercase tracking-wider">
+                  Agent: <span className="text-[var(--text-secondary)]">{getAgentDisplay(log.user_id)}</span>
                 </p>
                 {log.notes && (
-                  <p className="text-xs text-slate-500 mt-2 bg-slate-100 p-2 rounded-lg italic">
+                  <p className="text-xs text-[var(--text-secondary)] mt-1.5 bg-[var(--surface-secondary)] p-2 rounded-[var(--radius-sm)] italic">
                     {log.notes}
                   </p>
                 )}
               </div>
             ),
             statusText: log.outcome,
-            statusColorClasses: "bg-indigo-50 text-indigo-600 border-indigo-200",
+            statusVariant: "brand",
             timestamp: new Date(log.timestamp).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }),
           }))}
           emptyMessage="No calls logged yet."
           onRefresh={loadData}
         />
       </div>
-    </main>
+    </div>
   );
 }

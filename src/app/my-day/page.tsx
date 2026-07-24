@@ -15,6 +15,14 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
 import { db, transactionalMutation, type LocalAllocatedTarget, type LocalUser } from "@/lib/db";
 import { CheckCircle2, Clock, AlertCircle, ListTodo, PhoneCall, Trophy, CheckSquare, Target, Download, Trash2, MapPin, RefreshCw } from "lucide-react";
 import { exportPipelineToExcel } from "@/lib/pipelineExport";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Chip } from "@/components/ui/Chip";
+import { SkeletonCard } from "@/components/ui/Skeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
+
+interface WeeklyDigestTaskPerformance { assigned_to: string; completed_count: number; total_count: number; }
+interface WeeklyDigest { week_start: string; data: { stuck_leads: { id: string; name: string; status: string; days_in_stage: number; assigned_to: string }[]; task_performance: WeeklyDigestTaskPerformance[]; upcoming_renewals: { id: string; name: string; renewal_date: string }[]; }; }
 
 export default function MyDayPage() {
   const { currentUser, capabilities, hasOnboarding, hasSupport, isFieldStaff, isAdmin } = useAuth();
@@ -60,6 +68,7 @@ export default function MyDayPage() {
     document.addEventListener("visibilitychange", onVisibility);
     return () => document.removeEventListener("visibilitychange", onVisibility);
   }, [refreshAllocatedTargets]);
+
   const loadTasksAndKpis = useCallback(async () => {
     if (!currentUser) return;
     
@@ -71,28 +80,23 @@ export default function MyDayPage() {
     const todayStr = new Date().toISOString().slice(0, 10);
     
     try {
-      // Mapped Tasks (for all users)
       const allMappings = await db.mapping_requests.toArray();
       setMappedToday(allMappings.filter(m => m.mapped_by === currentUser.user_id && m.status === 'Completed' && m.completed_at?.startsWith(todayStr)).length);
 
       if (hasOnboarding) {
-        // Calls today (excluding automatic stage movement notes which contain "→")
         const allCalls = await db.call_logs.where("user_id").equals(currentUser.user_id).toArray();
         setCallsToday(allCalls.filter(c => c.timestamp.startsWith(todayStr) && !c.outcome.includes("→")).length);
         
-        // Leads converted (moved to Registration or beyond)
         const allLeads = await db.leads.where("assigned_to").equals(currentUser.user_id).toArray();
         setLeadsConverted(allLeads.filter(l => CONVERTED_STAGES.includes(l.status as typeof CONVERTED_STAGES[number])).length);
       }
       
       if (hasSupport) {
-        // Support queries
         const allQueries = await db.client_queries.where("assigned_to").equals(currentUser.user_id).toArray();
         setQueriesResolvedToday(allQueries.filter(q => q.problem_status === "Resolved" && q.resolved_at?.startsWith(todayStr)).length);
         setOpenQueries(allQueries.filter(q => q.problem_status !== "Resolved").length);
       }
 
-      // Load allocated targets
       const allTargets = await db.allocated_targets.where("assigned_to_user_id").equals(currentUser.user_id).toArray();
       setAllocatedTargets(allTargets.filter(t => !t.is_completed));
     } catch (err) {
@@ -124,7 +128,6 @@ export default function MyDayPage() {
             if (data && data.length > 0) setWeeklyDigest(data[0]);
           });
       } else {
-        // Mock digest when running local-only
         setWeeklyDigest({
           week_start: new Date().toISOString().slice(0, 10),
           data: {
@@ -183,8 +186,6 @@ export default function MyDayPage() {
     setMarkingId(null);
   };
 
-
-
   const handleDelete = async (task: LocalTask) => {
     if (!currentUser || markingId) return;
     if (!isAdmin && currentUser.user_id !== task.assigned_by) {
@@ -231,6 +232,7 @@ export default function MyDayPage() {
     } catch (error) { setTargetErrors((current) => ({ ...current, [targetId]: error instanceof Error ? error.message : "Unable to complete this target." })); }
     finally { setMarkingId(null); }
   };
+
   const pending = tasks.filter((t) => t.status === "Pending");
   const inProgress = tasks.filter((t) => t.status === "In Progress");
   const done = tasks.filter((t) => t.status === "Completed");
@@ -242,355 +244,347 @@ export default function MyDayPage() {
   const today = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
 
   return (
-      <div className="space-y-6 w-full">
-        {weeklyDigest && (
-          <div className="bg-slate-900 text-white rounded-2xl p-5 shadow-lg border border-slate-800">
-            <h2 className="text-lg font-black mb-3">Weekly Digest (Week of {weeklyDigest.week_start})</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-slate-800 rounded-xl p-3">
-                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Stuck Leads ({">"}14 days)</h3>
-                <p className="text-2xl font-black">{weeklyDigest.data.stuck_leads?.length || 0}</p>
-              </div>
-              <div className="bg-slate-800 rounded-xl p-3">
-                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Upcoming Renewals</h3>
-                <p className="text-2xl font-black">{weeklyDigest.data.upcoming_renewals?.length || 0}</p>
-              </div>
-              <div className="bg-slate-800 rounded-xl p-3">
-                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Team Task Avg</h3>
-                {weeklyDigest.data.task_performance?.length > 0 ? (
-                  <p className="text-2xl font-black text-brand-primary">
-                    {Math.round(weeklyDigest.data.task_performance.reduce((acc: number, p: WeeklyDigestTaskPerformance) => acc + (p.completed_count/p.total_count), 0) / weeklyDigest.data.task_performance.length * 100)}%
-                  </p>
-                ) : (
-                  <p className="text-2xl font-black text-slate-500">N/A</p>
-                )}
-              </div>
+    <div className="space-y-6 w-full max-w-6xl mx-auto">
+      {weeklyDigest && (
+        <Card variant="elevated" className="bg-slate-900 text-white border-slate-800">
+          <h2 className="text-base font-black mb-3">Weekly Digest (Week of {weeklyDigest.week_start})</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-slate-800/80 rounded-[var(--radius-md)] p-3">
+              <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Stuck Leads ({">"}14 days)</h3>
+              <p className="text-xl font-black">{weeklyDigest.data.stuck_leads?.length || 0}</p>
+            </div>
+            <div className="bg-slate-800/80 rounded-[var(--radius-md)] p-3">
+              <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Upcoming Renewals</h3>
+              <p className="text-xl font-black">{weeklyDigest.data.upcoming_renewals?.length || 0}</p>
+            </div>
+            <div className="bg-slate-800/80 rounded-[var(--radius-md)] p-3">
+              <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Team Task Avg</h3>
+              {weeklyDigest.data.task_performance?.length > 0 ? (
+                <p className="text-xl font-black text-[var(--brand-500)]">
+                  {Math.round(weeklyDigest.data.task_performance.reduce((acc: number, p: WeeklyDigestTaskPerformance) => acc + (p.completed_count/p.total_count), 0) / weeklyDigest.data.task_performance.length * 100)}%
+                </p>
+              ) : (
+                <p className="text-xl font-black text-slate-500">N/A</p>
+              )}
             </div>
           </div>
-        )}
+        </Card>
+      )}
 
-        {/* Header & Main Progress */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* Header & Main Progress */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <ListTodo size={24} className="text-[var(--brand-500)]" />
+            <h1 className="text-2xl font-black text-[var(--text-primary)]">My Day</h1>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleSyncData}
+              disabled={isSyncing}
+              icon={<RefreshCw size={14} className={isSyncing ? "animate-spin text-[var(--brand-500)]" : ""} />}
+              className="ml-1 px-2"
+              title="Sync latest tasks"
+            />
+          </div>
+          <p className="text-xs text-[var(--text-muted)] font-bold tracking-wider uppercase">{today}</p>
+          {hasOnboarding && (
+            <Button
+              size="sm"
+              onClick={() => {
+                if (currentUser) exportPipelineToExcel(currentUser.user_id, false);
+              }}
+              icon={<Download size={14} />}
+              className="mt-2"
+            >
+              Export Pipeline
+            </Button>
+          )}
+        </div>
+        
+        <Card className="flex items-center gap-4 py-3 px-5 border-[var(--border-subtle)]">
+          <div className="relative h-12 w-12 shrink-0">
+            <svg className="h-12 w-12 -rotate-90" viewBox="0 0 36 36">
+              <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--surface-secondary)" strokeWidth="3" />
+              <circle
+                cx="18" cy="18" r="15.9" fill="none" stroke="var(--brand-500)" strokeWidth="3"
+                strokeDasharray={`${progressPct} ${100 - progressPct}`} strokeLinecap="round"
+              />
+            </svg>
+            <span className="absolute inset-0 flex items-center justify-center text-[11px] font-black text-[var(--brand-500)]">
+              {progressPct}%
+            </span>
+          </div>
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              <ListTodo size={20} className="text-brand-primary" />
-              <h1 className="text-2xl font-black text-slate-900">My Day</h1>
-              <button 
-                onClick={handleSyncData} 
-                disabled={isSyncing}
-                className={`ml-2 p-1.5 rounded-lg text-slate-400 hover:text-brand-primary hover:bg-brand-50 transition-colors ${isSyncing ? 'animate-spin text-brand-primary' : ''}`}
-                title="Sync latest tasks"
-              >
-                <RefreshCw size={16} />
-              </button>
-            </div>
-            <p className="text-xs text-slate-400 font-bold tracking-wider uppercase">{today}</p>
-            {hasOnboarding && (
-              <button
-                onClick={() => {
-                  if (currentUser) exportPipelineToExcel(currentUser.user_id, false);
-                }}
-                className="mt-2 flex items-center gap-1.5 px-3 py-1.5 bg-brand-primary text-white rounded-xl text-xs font-black cursor-pointer hover:bg-brand-secondary transition-all"
-              >
-                <Download size={14} /> Pipeline
-              </button>
-            )}
+            <p className="text-base font-black text-[var(--text-primary)]">{done.length}/{tasks.length}</p>
+            <p className="text-[10px] text-[var(--text-muted)] font-bold uppercase tracking-wider">Tasks completed</p>
           </div>
+        </Card>
+      </div>
+
+      {/* ─── Role-Scoped KPIs ─────────────────────────────────────────── */}
+      {!loading && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <Card className="p-4 flex flex-col justify-between">
+            <CheckSquare size={18} className="text-[var(--status-success)] mb-2" />
+            <div>
+              <p className="text-2xl font-black text-[var(--text-primary)]">{done.length}</p>
+              <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Tasks Done</p>
+            </div>
+          </Card>
+
+          <Card className="p-4 flex flex-col justify-between">
+            <Target size={18} className="text-[var(--brand-500)] mb-2" />
+            <div>
+              <p className="text-2xl font-black text-[var(--text-primary)]">{mappedToday}</p>
+              <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Mapped Today</p>
+            </div>
+          </Card>
           
-          <div className="flex items-center gap-3 bg-white rounded-2xl border border-slate-100 shadow-sm px-4 py-3">
-            <div className="relative h-12 w-12">
-              <svg className="h-12 w-12 -rotate-90" viewBox="0 0 36 36">
-                <circle cx="18" cy="18" r="15.9" fill="none" stroke="#f1f5f9" strokeWidth="3" />
-                <circle
-                  cx="18" cy="18" r="15.9" fill="none" stroke="#6366f1" strokeWidth="3"
-                  strokeDasharray={`${progressPct} ${100 - progressPct}`} strokeLinecap="round"
-                />
-              </svg>
-              <span className="absolute inset-0 flex items-center justify-center text-[11px] font-black text-brand-primary">
-                {progressPct}%
-              </span>
-            </div>
-            <div>
-              <p className="text-sm font-black text-slate-900">{done.length}/{tasks.length}</p>
-              <p className="text-[10px] text-slate-400 font-bold">Tasks done</p>
-            </div>
-          </div>
-        </div>
-
-        {/* ─── Role-Scoped KPIs ─────────────────────────────────────────── */}
-        {!loading && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {/* Common: Tasks Completed */}
-            <div className="bg-white rounded-2xl border border-slate-100 p-4 flex flex-col justify-between">
-              <CheckSquare size={16} className="text-emerald-500 mb-2" />
-              <div>
-                <p className="text-2xl font-black text-slate-900">{done.length}</p>
-                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Tasks Done</p>
-              </div>
-            </div>
-
-            {/* Common: Mapped Tasks */}
-            <div className="bg-white rounded-2xl border border-slate-100 p-4 flex flex-col justify-between">
-              <Target size={16} className="text-brand-primary mb-2" />
-              <div>
-                <p className="text-2xl font-black text-slate-900">{mappedToday}</p>
-                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Mapped Today</p>
-              </div>
-            </div>
-            
-            {/* Onboarding KPIs */}
-            {hasOnboarding && (
-              <>
-                <div className="bg-white rounded-2xl border border-slate-100 p-4 flex flex-col justify-between">
-                  <PhoneCall size={16} className="text-brand-primary mb-2" />
-                  <div>
-                    <p className="text-2xl font-black text-slate-900">{callsToday}</p>
-                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Calls Today</p>
-                  </div>
-                </div>
-                <div className="bg-white rounded-2xl border border-slate-100 p-4 flex flex-col justify-between">
-                  <Trophy size={16} className="text-amber-500 mb-2" />
-                  <div>
-                    <p className="text-2xl font-black text-slate-900">{leadsConverted}</p>
-                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Converted</p>
-                  </div>
-                </div>
-              </>
-            )}
-            
-            {/* Support KPIs */}
-            {hasSupport && (
-              <>
-                <div className="bg-white rounded-2xl border border-slate-100 p-4 flex flex-col justify-between">
-                  <CheckCircle2 size={16} className="text-brand-secondary mb-2" />
-                  <div>
-                    <p className="text-2xl font-black text-slate-900">{queriesResolvedToday}</p>
-                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Resolved Today</p>
-                  </div>
-                </div>
-                <div className="bg-white rounded-2xl border border-slate-100 p-4 flex flex-col justify-between">
-                  <AlertCircle size={16} className="text-rose-500 mb-2" />
-                  <div>
-                    <p className="text-2xl font-black text-slate-900">{openQueries}</p>
-                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Open Queries</p>
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* Field KPIs */}
-            {isFieldStaff && !hasOnboarding && !hasSupport && (
-              <div className="bg-white rounded-2xl border border-slate-100 p-4 flex flex-col justify-between">
-                <Target size={16} className="text-indigo-500 mb-2" />
+          {hasOnboarding && (
+            <>
+              <Card className="p-4 flex flex-col justify-between">
+                <PhoneCall size={18} className="text-[var(--brand-500)] mb-2" />
                 <div>
-                  <p className="text-2xl font-black text-slate-900">{progressPct}%</p>
-                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">On-Time Rate</p>
+                  <p className="text-2xl font-black text-[var(--text-primary)]">{callsToday}</p>
+                  <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Calls Today</p>
                 </div>
+              </Card>
+              <Card className="p-4 flex flex-col justify-between">
+                <Trophy size={18} className="text-[var(--status-warning)] mb-2" />
+                <div>
+                  <p className="text-2xl font-black text-[var(--text-primary)]">{leadsConverted}</p>
+                  <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Converted</p>
+                </div>
+              </Card>
+            </>
+          )}
+          
+          {hasSupport && (
+            <>
+              <Card className="p-4 flex flex-col justify-between">
+                <CheckCircle2 size={18} className="text-[var(--status-info)] mb-2" />
+                <div>
+                  <p className="text-2xl font-black text-[var(--text-primary)]">{queriesResolvedToday}</p>
+                  <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Resolved Today</p>
+                </div>
+              </Card>
+              <Card className="p-4 flex flex-col justify-between">
+                <AlertCircle size={18} className="text-[var(--status-danger)] mb-2" />
+                <div>
+                  <p className="text-2xl font-black text-[var(--text-primary)]">{openQueries}</p>
+                  <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Open Queries</p>
+                </div>
+              </Card>
+            </>
+          )}
+
+          {isFieldStaff && !hasOnboarding && !hasSupport && (
+            <Card className="p-4 flex flex-col justify-between">
+              <Target size={18} className="text-[var(--brand-500)] mb-2" />
+              <div>
+                <p className="text-2xl font-black text-[var(--text-primary)]">{progressPct}%</p>
+                <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">On-Time Rate</p>
               </div>
-            )}
-          </div>
-        )}
+            </Card>
+          )}
+        </div>
+      )}
 
-        {/* ─── Follow-up Alerts ────────────────────────────────────────── */}
-        {!loading && followUpsToday.length > 0 && (
-          <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 flex items-start gap-3 shadow-sm mb-4 animate-in fade-in slide-in-from-top-4">
-            <AlertCircle size={20} className="text-rose-500 shrink-0 mt-0.5" />
-            <div>
-              <h3 className="text-sm font-black text-rose-700">Action Required: Scheduled Follow-ups</h3>
-              <p className="text-xs text-rose-600 font-semibold mt-1">
-                You have {followUpsToday.length} follow-up{followUpsToday.length > 1 ? "s" : ""} scheduled for today. Check your Pending tasks below.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* ─── Task Lists ──────────────────────────────────────────────── */}
-        <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
-          <div style={{ flex: 1, padding: 12, borderRadius: 10, background: "#fef2f2", textAlign: "center" }}>
-            <div style={{ fontSize: 22, fontWeight: 700, color: "#991b1b" }}>{stats.pendingToday}</div>
-            <div style={{ fontSize: 12, color: "#888" }}>Tasks pending</div>
-          </div>
-          <div style={{ flex: 1, padding: 12, borderRadius: 10, background: "#eff6ff", textAlign: "center" }}>
-            <div style={{ fontSize: 22, fontWeight: 700, color: "#1e40af" }}>{stats.scheduledLater}</div>
-            <div style={{ fontSize: 12, color: "#888" }}>Follow-ups scheduled later</div>
+      {/* ─── Follow-up Alerts ────────────────────────────────────────── */}
+      {!loading && followUpsToday.length > 0 && (
+        <div className="bg-[var(--status-danger-soft)] border border-[var(--status-danger)]/20 rounded-[var(--radius-lg)] p-4 flex items-start gap-3 shadow-xs">
+          <AlertCircle size={20} className="text-[var(--status-danger)] shrink-0 mt-0.5" />
+          <div>
+            <h3 className="text-sm font-black text-[var(--status-danger)]">Action Required: Scheduled Follow-ups</h3>
+            <p className="text-xs text-[var(--text-secondary)] font-semibold mt-1">
+              You have {followUpsToday.length} follow-up{followUpsToday.length > 1 ? "s" : ""} scheduled for today.
+            </p>
           </div>
         </div>
-        {loading && (
-          <div className="text-center py-16 text-slate-400 text-sm font-semibold animate-pulse">
-            Loading your tasks and performance data...
+      )}
+
+      {/* ─── Task Stats Summary ──────────────────────────────────────── */}
+      <div className="grid grid-cols-2 gap-3">
+        <Card className="p-3 text-center bg-rose-50/50 border-rose-100">
+          <div className="text-xl font-black text-rose-800">{stats.pendingToday}</div>
+          <div className="text-[11px] font-bold text-rose-600">Tasks Pending</div>
+        </Card>
+        <Card className="p-3 text-center bg-blue-50/50 border-blue-100">
+          <div className="text-xl font-black text-blue-800">{stats.scheduledLater}</div>
+          <div className="text-[11px] font-bold text-blue-600">Scheduled Later</div>
+        </Card>
+      </div>
+
+      {loading && (
+        <div className="space-y-3">
+          <SkeletonCard />
+          <SkeletonCard />
+        </div>
+      )}
+
+      {!loading && tasks.length === 0 && allocatedTargets.length === 0 && (
+        <EmptyState
+          title="No tasks scheduled for today"
+          description="Enjoy the quiet or ask your team manager to assign new field targets."
+          icon={<CheckCircle2 size={36} className="text-[var(--status-success)]" />}
+        />
+      )}
+
+      {/* In Progress Tasks */}
+      {inProgress.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="text-xs font-black text-[var(--text-muted)] uppercase tracking-widest flex items-center gap-1.5">
+            <Clock size={14} className="text-[var(--status-warning)]" /> In Progress
+          </h2>
+          <div className="space-y-2">
+            {inProgress.map((task) => (
+              <TaskCardItem
+                key={task.task_id}
+                task={task}
+                markingId={markingId}
+                onComplete={handleComplete}
+                onDelete={handleDelete}
+                currentUser={currentUser}
+                isAdmin={isAdmin}
+                accent="border-l-[var(--status-warning)]"
+              />
+            ))}
           </div>
-        )}
+        </section>
+      )}
 
-        {!loading && tasks.length === 0 && (
-          <div className="text-center py-16 bg-white rounded-3xl border border-slate-100">
-            <CheckCircle2 size={40} className="mx-auto text-emerald-400 mb-3" />
-            <p className="font-black text-slate-700">No tasks for today.</p>
-            <p className="text-xs text-slate-400 mt-1">Enjoy the quiet — or ask your manager to assign something.</p>
-          </div>
-        )}
-
-        {/* In Progress */}
-        {inProgress.length > 0 && (
-          <section>
-            <h2 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
-              <Clock size={12} className="text-amber-500" /> In Progress
-            </h2>
-            <div className="space-y-2">
-              {inProgress.map((task) => (
-                <TaskCard
-                  key={task.task_id}
-                  task={task}
-                  markingId={markingId}
-                  onComplete={handleComplete}
-                  onDelete={handleDelete}
-                  currentUser={currentUser}
-                  isAdmin={isAdmin}
-                  accent="border-l-amber-400"
-                />
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Allocated Targets */}
-        {(allocatedTargets.length > 0 || targetLoadError || targetNotice) && (
-          <section>
-            <h2 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
-              <MapPin size={12} className="text-indigo-400" /> Field Targets ({allocatedTargets.length})
-            </h2>
-            <div className="space-y-2">
-              {targetNotice && <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700">{targetNotice}</p>}
-              {targetLoadError && <div className="rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-700">{targetLoadError}<button onClick={() => refreshAllocatedTargets()} className="ml-2 font-semibold underline">Retry</button></div>}
-              {allocatedTargets.map((target) => (
-                <div key={target.target_id} className="flex items-start gap-3 px-4 py-4 rounded-2xl bg-white border border-slate-100 shadow-sm border-l-4 border-l-indigo-400 transition-all hover:shadow-md">
-                  <div className="flex-1 min-w-0">
-                    <p className="font-black text-sm text-slate-900 leading-snug">
-                      {target.target_username} - {target.target_name} - {target.target_mobile}
+      {/* Allocated Field Targets */}
+      {(allocatedTargets.length > 0 || targetLoadError || targetNotice) && (
+        <section className="space-y-3">
+          <h2 className="text-xs font-black text-[var(--text-muted)] uppercase tracking-widest flex items-center gap-1.5">
+            <MapPin size={14} className="text-[var(--brand-500)]" /> Field Targets ({allocatedTargets.length})
+          </h2>
+          <div className="space-y-2">
+            {targetNotice && <p className="rounded-[var(--radius-md)] bg-[var(--status-warning-soft)] p-3 text-xs font-semibold text-[var(--status-warning)]">{targetNotice}</p>}
+            {targetLoadError && <div className="rounded-[var(--radius-md)] bg-[var(--status-danger-soft)] p-3 text-xs text-[var(--status-danger)]">{targetLoadError}<button onClick={() => refreshAllocatedTargets()} className="ml-2 font-semibold underline">Retry</button></div>}
+            {allocatedTargets.map((target) => (
+              <Card key={target.target_id} className="flex items-start justify-between gap-3 p-4 border-l-4 border-l-[var(--brand-500)]">
+                <div className="flex-1 min-w-0">
+                  {/* Identity Standard: {Name} (@{Username}) - {Phone} */}
+                  <p className="font-black text-sm text-[var(--text-primary)] leading-snug">
+                    {target.target_name} (@{target.target_username}) - {target.target_mobile}
+                  </p>
+                  {target.target_address && (
+                    <p className="text-xs text-[var(--text-muted)] mt-1 line-clamp-1">
+                      {target.target_address} {target.target_area ? `, ${target.target_area}` : ''}
                     </p>
-                    {target.target_address && (
-                      <p className="text-xs text-slate-500 mt-1 line-clamp-1">
-                        {target.target_address} {target.target_area ? `, ${target.target_area}` : ''}
-                      </p>
+                  )}
+                  <div className="flex items-center gap-2 mt-2">
+                    <Chip variant="brand" size="sm">
+                      {target.city}
+                    </Chip>
+                    {target.food_license && (
+                      <Chip variant="warning" size="sm">
+                        FSSAI: {target.food_license}
+                      </Chip>
                     )}
-                    <div className="flex items-center gap-2 mt-2">
-                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full border bg-indigo-50 text-indigo-600 border-indigo-200">
-                        {target.city}
-                      </span>
-                      {target.food_license && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-amber-50 text-amber-600 border-amber-200">
-                          FSSAI: {target.food_license}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-2 shrink-0">
-                    <button
-                      onClick={() => handleCompleteTarget(target.target_id)}
-                      disabled={markingId === target.target_id}
-                      className="px-3 py-1.5 text-[11px] font-black rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition-all shadow-sm shadow-indigo-600/20 disabled:opacity-50 cursor-pointer"
-                    >
-                      {markingId === target.target_id ? "..." : "Called / Done"}
-                    </button>
-                    {targetErrors[target.target_id] && <div className="text-[10px] text-rose-600"><span>{targetErrors[target.target_id]}</span><button onClick={() => handleCompleteTarget(target.target_id)} className="ml-1 underline">Retry</button></div>}
                   </div>
                 </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Pending */}
-        {pending.length > 0 && (
-          <section>
-            <h2 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
-              <AlertCircle size={12} className="text-rose-400" /> Pending ({pending.length})
-            </h2>
-            <div className="space-y-2">
-              {pending.map((task) => (
-                <TaskCard
-                  key={task.task_id}
-                  task={task}
-                  markingId={markingId}
-                  onComplete={handleComplete}
-                  onDelete={handleDelete}
-                  currentUser={currentUser}
-                  isAdmin={isAdmin}
-                  accent="border-l-brand-primary"
-                />
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Completed */}
-        {done.length > 0 && (
-          <section>
-            <h2 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
-              <CheckCircle2 size={12} className="text-emerald-500" /> Completed
-            </h2>
-            <div className="space-y-2">
-              {done.map((task) => (
-                <div
-                  key={task.task_id}
-                  className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-slate-50 border border-slate-100 opacity-60"
-                >
-                  <CheckCircle2 size={16} className="text-emerald-500 shrink-0" />
-                  <span className="text-sm text-slate-500 font-semibold line-through">{task.title}</span>
-                  {task.completed_at && (
-                    <span className="ml-auto text-[10px] text-slate-400 font-mono shrink-0">
-                      {new Date(task.completed_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                    </span>
+                <div className="flex flex-col gap-2 shrink-0">
+                  {/* Mandatory Single Action Button: "Done" */}
+                  <Button
+                    size="sm"
+                    onClick={() => handleCompleteTarget(target.target_id)}
+                    isLoading={markingId === target.target_id}
+                  >
+                    Done ✓
+                  </Button>
+                  {targetErrors[target.target_id] && (
+                    <div className="text-[10px] text-[var(--status-danger)]">
+                      <span>{targetErrors[target.target_id]}</span>
+                      <button onClick={() => handleCompleteTarget(target.target_id)} className="ml-1 underline">Retry</button>
+                    </div>
                   )}
                 </div>
-              ))}
-            </div>
-          </section>
-        )}
+              </Card>
+            ))}
+          </div>
+        </section>
+      )}
 
-        {/* Missed */}
-        {missed.length > 0 && (
-          <section>
-            <h2 className="text-[11px] font-black text-rose-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
-              <AlertCircle size={12} /> Missed
-            </h2>
-            <div className="space-y-2">
-              {missed.map((task) => (
-                <div
-                  key={task.task_id}
-                  className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-rose-50 border border-rose-100"
-                >
-                  <AlertCircle size={16} className="text-rose-400 shrink-0" />
-                  <span className="text-sm text-rose-600 font-semibold">{task.title}</span>
-                  <span className="ml-auto text-[10px] text-rose-400 font-bold shrink-0">Missed</span>
+      {/* Pending Tasks */}
+      {pending.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="text-xs font-black text-[var(--text-muted)] uppercase tracking-widest flex items-center gap-1.5">
+            <AlertCircle size={14} className="text-[var(--status-danger)]" /> Pending ({pending.length})
+          </h2>
+          <div className="space-y-2">
+            {pending.map((task) => (
+              <TaskCardItem
+                key={task.task_id}
+                task={task}
+                markingId={markingId}
+                onComplete={handleComplete}
+                onDelete={handleDelete}
+                currentUser={currentUser}
+                isAdmin={isAdmin}
+                accent="border-l-[var(--brand-500)]"
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Completed Tasks */}
+      {done.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="text-xs font-black text-[var(--text-muted)] uppercase tracking-widest flex items-center gap-1.5">
+            <CheckCircle2 size={14} className="text-[var(--status-success)]" /> Completed ({done.length})
+          </h2>
+          <div className="space-y-2">
+            {done.map((task) => (
+              <Card
+                key={task.task_id}
+                className="flex items-center justify-between gap-3 p-3 bg-[var(--surface-secondary)] opacity-70"
+              >
+                <div className="flex items-center gap-3">
+                  <CheckCircle2 size={16} className="text-[var(--status-success)] shrink-0" />
+                  <span className="text-xs text-[var(--text-secondary)] font-semibold line-through">{task.title}</span>
                 </div>
-              ))}
-            </div>
-          </section>
-        )}
-      </div>
+                {task.completed_at && (
+                  <span className="text-[10px] text-[var(--text-muted)] font-mono shrink-0">
+                    {new Date(task.completed_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                )}
+              </Card>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Missed Tasks */}
+      {missed.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="text-xs font-black text-[var(--status-danger)] uppercase tracking-widest flex items-center gap-1.5">
+            <AlertCircle size={14} /> Missed ({missed.length})
+          </h2>
+          <div className="space-y-2">
+            {missed.map((task) => (
+              <Card
+                key={task.task_id}
+                className="flex items-center justify-between gap-3 p-3 bg-[var(--status-danger-soft)] border-[var(--status-danger)]/20"
+              >
+                <div className="flex items-center gap-3">
+                  <AlertCircle size={16} className="text-[var(--status-danger)] shrink-0" />
+                  <span className="text-xs text-[var(--status-danger)] font-semibold">{task.title}</span>
+                </div>
+                <Chip variant="danger" size="sm">Missed</Chip>
+              </Card>
+            ))}
+          </div>
+        </section>
+      )}
+    </div>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Task card sub-component
-// ─────────────────────────────────────────────────────────────────────────────
-
-interface WeeklyDigestTaskPerformance { assigned_to: string; completed_count: number; total_count: number; }
-interface WeeklyDigest { week_start: string; data: { stuck_leads: { id: string; name: string; status: string; days_in_stage: number; assigned_to: string }[]; task_performance: WeeklyDigestTaskPerformance[]; upcoming_renewals: { id: string; name: string; renewal_date: string }[]; }; }
-
-const PRIORITY_DOT_COLORS: Record<string, string> = {
-  High: "bg-rose-500",
-  Medium: "bg-amber-400",
-  Low: "bg-emerald-500",
-};
-
-const PRIORITY_BADGE_STYLES: Record<string, string> = {
-  High: "bg-rose-50 text-rose-600 border-rose-200",
-  Medium: "bg-amber-50 text-amber-700 border-amber-200",
-  Low: "bg-emerald-50 text-emerald-600 border-emerald-200",
-};
-
-function TaskCard({
+function TaskCardItem({
   task,
   markingId,
   onComplete,
@@ -610,49 +604,49 @@ function TaskCard({
   const isActing = markingId === task.task_id;
   const canDelete = isAdmin || currentUser?.user_id === task.assigned_by;
 
-  return (
-    <div
-      className={`flex items-start gap-3 px-4 py-4 rounded-2xl bg-white border border-slate-100 shadow-sm border-l-4 ${accent} transition-all hover:shadow-md`}
-    >
-      <span className={`mt-1.5 h-2.5 w-2.5 rounded-full shrink-0 ${PRIORITY_DOT_COLORS[task.priority]}`} />
+  const priorityChipVariant =
+    task.priority === "High" ? "danger" : task.priority === "Medium" ? "warning" : "success";
 
+  return (
+    <Card className={`flex items-start gap-3 p-4 border-l-4 ${accent}`}>
       <div className="flex-1 min-w-0">
-        <p className="font-black text-sm text-slate-900 leading-snug">{task.title}</p>
+        <p className="font-black text-sm text-[var(--text-primary)] leading-snug">{task.title}</p>
         {task.description && (
-          <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">{task.description}</p>
+          <p className="text-xs text-[var(--text-muted)] mt-1 leading-relaxed">{task.description}</p>
         )}
         <div className="flex items-center gap-2 mt-2">
-          <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${PRIORITY_BADGE_STYLES[task.priority]}`}>
+          <Chip variant={priorityChipVariant} size="sm" dot>
             {task.priority}
-          </span>
+          </Chip>
           {task.source === "manual" && (
-            <span className="text-[10px] font-bold text-brand-primary/70 px-2 py-0.5 rounded-full border border-brand-primary/20 bg-brand-primary/5">
+            <Chip variant="brand" size="sm">
               Manual
-            </span>
+            </Chip>
           )}
         </div>
       </div>
 
-      <div className="flex flex-col gap-2 shrink-0">
-
-        <button
+      <div className="flex items-center gap-2 shrink-0">
+        {/* Single Completion Action: "Done" */}
+        <Button
+          size="sm"
           onClick={() => onComplete(task)}
-          disabled={isActing}
-          className="px-3 py-1.5 text-[11px] font-black rounded-xl bg-brand-primary text-white hover:bg-brand-secondary transition-all shadow-sm shadow-brand-primary/20 disabled:opacity-50 cursor-pointer"
+          isLoading={isActing}
         >
-          {isActing ? "..." : "Done ✓"}
-        </button>
+          Done ✓
+        </Button>
         {onDelete && canDelete && (
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => onDelete(task)}
             disabled={isActing}
-            className="px-3 py-1.5 text-[11px] font-black rounded-xl border border-rose-200 text-rose-500 hover:bg-rose-50 hover:border-rose-300 transition-all disabled:opacity-50 cursor-pointer flex items-center justify-center"
+            className="text-[var(--status-danger)] hover:bg-[var(--status-danger-soft)] px-2"
             title="Delete Task"
-          >
-            <Trash2 size={12} />
-          </button>
+            icon={<Trash2 size={14} />}
+          />
         )}
       </div>
-    </div>
+    </Card>
   );
 }

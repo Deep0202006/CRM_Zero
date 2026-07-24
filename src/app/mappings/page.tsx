@@ -3,9 +3,12 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { db, transactionalMutation, LocalLead, LocalMappingRequest } from "@/lib/db";
-import { AlertCircle, CheckCircle2, Clock, Link2, RefreshCw, Download, ArrowRightLeft } from "lucide-react";
+import { AlertCircle, CheckCircle2, Link2, Download, ArrowRightLeft } from "lucide-react";
 import { SearchableSelect, SearchableOption } from "@/components/SearchableSelect";
 import { QueueList } from "@/components/QueueList";
+import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { Chip } from "@/components/ui/Chip";
 import excelUsers from "@/lib/excel_users.json";
 
 export default function MappingsPage() {
@@ -24,16 +27,18 @@ export default function MappingsPage() {
 
   const excelOptions: SearchableOption[] = React.useMemo(() => excelUsers.map((eu: any) => ({
     value: `EXCEL::${eu.username}::${eu.name || eu.username}`,
-    label: `[${eu.username}] - ${eu.name || "Unknown"}`,
-    searchText: eu.username + " " + eu.name
+    label: `${eu.name || eu.username} (@${eu.username})`,
+    searchText: eu.username + " " + (eu.name || "")
   })), []);
 
   const distributorOptions = React.useMemo(() => {
-    const dbOptions: SearchableOption[] = leads.filter(l => l.segment_type === "Distributor").map(l => ({ value: l.lead_id, label: l.business_name }));
+    const dbOptions: SearchableOption[] = leads.filter(l => l.segment_type === "Distributor").map(l => ({
+      value: l.lead_id,
+      label: l.contact_person ? `${l.business_name} - ${l.phone}` : l.business_name
+    }));
     const map = new Map<string, SearchableOption>();
     dbOptions.forEach(opt => map.set(opt.label.toLowerCase(), opt));
     excelOptions.forEach(opt => {
-      // Don't duplicate if business name matches exactly
       const rawName = opt.value.split("::")[2]?.toLowerCase();
       if (!map.has(rawName)) map.set(rawName, opt);
     });
@@ -41,7 +46,10 @@ export default function MappingsPage() {
   }, [leads, excelOptions]);
 
   const retailerOptions = React.useMemo(() => {
-    const dbOptions: SearchableOption[] = leads.filter(l => l.segment_type === "Retailer").map(l => ({ value: l.lead_id, label: l.business_name }));
+    const dbOptions: SearchableOption[] = leads.filter(l => l.segment_type === "Retailer").map(l => ({
+      value: l.lead_id,
+      label: l.contact_person ? `${l.business_name} - ${l.phone}` : l.business_name
+    }));
     const map = new Map<string, SearchableOption>();
     dbOptions.forEach(opt => map.set(opt.label.toLowerCase(), opt));
     excelOptions.forEach(opt => {
@@ -56,7 +64,6 @@ export default function MappingsPage() {
       const allLeads = await db.leads.toArray();
       setLeads(allLeads);
       const allMaps = await db.mapping_requests.toArray();
-      // Fallback JS-side sort in case Dexie index on created_at fails on un-migrated local DBs
       allMaps.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
       setMappings(allMaps);
     } catch (err) {
@@ -71,7 +78,6 @@ export default function MappingsPage() {
   const resolveLeadId = async (input: string, segmentType: "Distributor" | "Retailer"): Promise<string> => {
     if (!input.trim()) throw new Error("Empty input");
     
-    // If it's already an existing UUID
     const existing = leads.find(l => l.lead_id === input);
     if (existing) return existing.lead_id;
 
@@ -80,14 +86,12 @@ export default function MappingsPage() {
       const parts = input.split("::");
       const uName = parts[1];
       const fullName = parts[2] || uName;
-      bName = `[${uName}] - ${fullName}`;
+      bName = `${fullName} (@${uName})`;
     }
 
-    // Attempt name match
     const nameMatch = leads.find(l => l.business_name.toLowerCase() === bName.trim().toLowerCase() && l.segment_type === segmentType);
     if (nameMatch) return nameMatch.lead_id;
 
-    // Create new lead dynamically
     const newLeadId = crypto.randomUUID();
     const newLead: LocalLead = {
       lead_id: newLeadId,
@@ -129,7 +133,6 @@ export default function MappingsPage() {
 
       const newMaps: LocalMappingRequest[] = [];
       const timestamp = new Date().toISOString();
-      const idempotencyBase = crypto.randomUUID();
 
       for (let i = 0; i < sNames.length; i++) {
         const sName = sNames[i];
@@ -175,47 +178,28 @@ export default function MappingsPage() {
     }
   };
 
-  const getDistributorName = (map: LocalMappingRequest) => {
-    if (map.distributor_lead_id) {
-      if (map.distributor_lead_id.startsWith("EXCEL::")) {
-        const parts = map.distributor_lead_id.split("::");
-        if (parts.length === 3) return `[${parts[1]}] - ${parts[2]}`;
-      }
-      const l = leads.find(l => l.lead_id === map.distributor_lead_id);
-      if (l) {
-        if (l.business_name.startsWith("[") && l.business_name.includes("] - ")) {
-          return l.business_name;
-        }
-        return `[${l.business_name}] - ${l.contact_person || l.phone || "Unknown"}`;
-      }
+  // Identity vector standard: Format "{Name} (@{Username}) - {Phone}"
+  const formatIdentity = (leadId: string, fallbackRole: string) => {
+    if (!leadId) return `Unknown ${fallbackRole}`;
+    if (leadId.startsWith("EXCEL::")) {
+      const parts = leadId.split("::");
+      if (parts.length === 3) return `${parts[2]} (@${parts[1]})`;
     }
-    return "Unknown/Legacy Distributor";
-  };
-  
-  const getRetailerName = (map: LocalMappingRequest) => {
-    if (map.retailer_lead_id) {
-      if (map.retailer_lead_id.startsWith("EXCEL::")) {
-        const parts = map.retailer_lead_id.split("::");
-        if (parts.length === 3) return `[${parts[1]}] - ${parts[2]}`;
-      }
-      const l = leads.find(l => l.lead_id === map.retailer_lead_id);
-      if (l) {
-        if (l.business_name.startsWith("[") && l.business_name.includes("] - ")) {
-          return l.business_name;
-        }
-        return `[${l.business_name}] - ${l.contact_person || l.phone || "Unknown"}`;
-      }
+    const l = leads.find(item => item.lead_id === leadId);
+    if (l) {
+      if (l.business_name.includes("(@")) return l.business_name;
+      return `${l.business_name} - ${l.phone || "N/A"}`;
     }
-    return "Unknown/Legacy Retailer";
+    return `Unknown ${fallbackRole}`;
   };
 
   if (!hasSupport) {
     return (
-      <div className="max-w-md mx-auto mt-16 p-8 bg-white rounded-3xl border border-slate-100 shadow-sm text-center space-y-4">
-        <AlertCircle size={40} className="mx-auto text-status-error" />
-        <h3 className="text-lg font-black text-slate-900">Access Restricted</h3>
-        <p className="text-xs text-slate-500 font-semibold">You don't have a Support capability assigned.</p>
-      </div>
+      <Card className="max-w-md mx-auto mt-16 text-center space-y-4 p-8">
+        <AlertCircle size={40} className="mx-auto text-[var(--status-danger)]" />
+        <h3 className="text-base font-black text-[var(--text-primary)]">Access Restricted</h3>
+        <p className="text-xs text-[var(--text-muted)] font-semibold">You don't have Support capabilities assigned.</p>
+      </Card>
     );
   }
 
@@ -223,67 +207,76 @@ export default function MappingsPage() {
   const secondaryLabel = activeSegment === "Distributor" ? "Retailer" : "Distributor";
 
   return (
-    <div className="space-y-6 w-full">
+    <div className="space-y-6 w-full max-w-6xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2">
-          <Link2 size={20} className="text-brand-primary" />
+          <Link2 size={24} className="text-[var(--brand-500)]" />
           <div>
-            <h2 className="text-2xl font-black text-slate-900">Distributor-Retailer Mappings</h2>
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+            <h1 className="text-2xl font-black text-[var(--text-primary)]">Distributor-Retailer Mappings</h1>
+            <p className="text-xs text-[var(--text-muted)] font-bold uppercase tracking-wider">
               Manage client linkages
             </p>
           </div>
         </div>
         
-        <button
+        <Button
+          size="sm"
           onClick={() => {
             import('@/lib/excelExport').then(m => m.exportMasterMappings());
           }}
-          className="flex items-center gap-1.5 px-3 py-2 bg-brand-primary text-white rounded-xl text-xs font-black cursor-pointer hover:bg-brand-secondary transition-all w-fit"
+          icon={<Download size={14} />}
         >
-          <Download size={14} /> Download Mapping Data
-        </button>
+          Download Mapping Data
+        </Button>
       </div>
 
-      {successMsg && <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-700 text-xs font-bold">✓ {successMsg}</div>}
-      {errorMsg   && <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl text-rose-600 text-xs font-bold flex gap-2 items-center"><AlertCircle size={14}/>{errorMsg}</div>}
+      {successMsg && <div className="p-4 bg-[var(--status-success-soft)] border border-[var(--status-success)]/20 rounded-[var(--radius-lg)] text-[var(--status-success)] text-xs font-bold">✓ {successMsg}</div>}
+      {errorMsg   && <div className="p-4 bg-[var(--status-danger-soft)] border border-[var(--status-danger)]/20 rounded-[var(--radius-lg)] text-[var(--status-danger)] text-xs font-bold flex gap-2 items-center"><AlertCircle size={14}/>{errorMsg}</div>}
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        <div className="lg:col-span-2 bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
-              <Link2 size={16} className="text-brand-primary" />
+        <Card className="lg:col-span-2 space-y-4">
+          <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
+            <h2 className="text-sm font-black text-[var(--text-primary)] flex items-center gap-2">
+              <Link2 size={16} className="text-[var(--brand-500)]" />
               Log Mapping Task
-            </h3>
+            </h2>
           </div>
           
           {/* Segment & Cardinality Toggles */}
-          <div className="space-y-3 pb-2 border-b border-slate-100">
-            <div className="flex gap-2 p-1 bg-slate-100 rounded-xl">
+          <div className="space-y-3 pb-2 border-b border-[var(--border-subtle)]">
+            <div className="flex gap-1.5 p-1 bg-[var(--surface-secondary)] rounded-[var(--radius-md)]">
               <button
                 onClick={() => setActiveSegment("Distributor")}
-                className={`flex-1 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${activeSegment === "Distributor" ? "bg-white text-brand-primary shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                className={`flex-1 py-1.5 rounded-[var(--radius-sm)] text-xs font-bold transition-all cursor-pointer ${
+                  activeSegment === "Distributor" ? "bg-[var(--surface-primary)] text-[var(--brand-500)] shadow-xs" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                }`}
               >
                 From Distributor
               </button>
               <button
                 onClick={() => setActiveSegment("Retailer")}
-                className={`flex-1 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${activeSegment === "Retailer" ? "bg-white text-brand-primary shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                className={`flex-1 py-1.5 rounded-[var(--radius-sm)] text-xs font-bold transition-all cursor-pointer ${
+                  activeSegment === "Retailer" ? "bg-[var(--surface-primary)] text-[var(--brand-500)] shadow-xs" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                }`}
               >
                 From Retailer
               </button>
             </div>
             
-            <div className="flex gap-2 p-1 bg-slate-100 rounded-xl">
+            <div className="flex gap-1.5 p-1 bg-[var(--surface-secondary)] rounded-[var(--radius-md)]">
               <button
                 onClick={() => setCardinality("1:1")}
-                className={`flex-1 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${cardinality === "1:1" ? "bg-white text-brand-primary shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                className={`flex-1 py-1.5 rounded-[var(--radius-sm)] text-xs font-bold transition-all cursor-pointer ${
+                  cardinality === "1:1" ? "bg-[var(--surface-primary)] text-[var(--brand-500)] shadow-xs" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                }`}
               >
                 One-to-One
               </button>
               <button
                 onClick={() => setCardinality("1:N")}
-                className={`flex-1 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${cardinality === "1:N" ? "bg-white text-brand-primary shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                className={`flex-1 py-1.5 rounded-[var(--radius-sm)] text-xs font-bold transition-all cursor-pointer ${
+                  cardinality === "1:N" ? "bg-[var(--surface-primary)] text-[var(--brand-500)] shadow-xs" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                }`}
               >
                 One-to-Many
               </button>
@@ -292,7 +285,7 @@ export default function MappingsPage() {
 
           <form onSubmit={handleLogMapping} className="space-y-4 pt-2">
             <div>
-              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
+              <label className="block text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
                 Primary {primaryLabel}
               </label>
               <SearchableSelect
@@ -305,11 +298,11 @@ export default function MappingsPage() {
             </div>
 
             <div className="flex justify-center -my-2 opacity-50">
-               <ArrowRightLeft size={16} className="text-slate-400 rotate-90" />
+               <ArrowRightLeft size={16} className="text-[var(--text-muted)] rotate-90" />
             </div>
 
             <div>
-              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
+              <label className="block text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
                 Secondary {secondaryLabel}{cardinality === "1:N" ? "s (Comma Separated)" : ""}
               </label>
               {cardinality === "1:1" ? (
@@ -326,42 +319,47 @@ export default function MappingsPage() {
                   onChange={e => setSecondaryNames(e.target.value)}
                   placeholder={`e.g. ${secondaryLabel} 1, ${secondaryLabel} 2, ${secondaryLabel} 3`}
                   rows={3}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-semibold text-slate-900 placeholder-slate-300 focus:outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/10 transition-all resize-none"
+                  className="w-full bg-[var(--surface-primary)] border border-[var(--border-default)] rounded-[var(--radius-md)] p-3 text-xs font-medium text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-500)]/20 transition-all resize-none"
                   required
                 />
               )}
             </div>
 
-            <button
+            <Button
               type="submit"
-              className="w-full py-3.5 bg-brand-primary hover:bg-brand-secondary text-white font-black rounded-2xl transition-all shadow-md shadow-brand-primary/10 text-xs tracking-wider uppercase cursor-pointer"
+              className="w-full h-11"
             >
               Log Mapping Task
-            </button>
+            </Button>
           </form>
-        </div>
+        </Card>
 
         <QueueList
           title="Mapping Queue"
           items={mappings.map(map => ({
             id: map.request_id,
             primaryNode: (
-              <p className="text-sm font-bold text-slate-900 mt-0.5 leading-snug">
-                {getRetailerName(map)} <span className="text-slate-400 font-normal mx-1">→</span> {getDistributorName(map)}
+              <p className="text-xs font-bold text-[var(--text-primary)] leading-snug">
+                {formatIdentity(map.retailer_lead_id, "Retailer")}
+                <span className="text-[var(--text-muted)] font-normal mx-1">→</span>
+                {formatIdentity(map.distributor_lead_id, "Distributor")}
               </p>
             ),
             statusText: map.status,
-            statusColorClasses: map.status === "Completed" ? "bg-emerald-50 text-emerald-600 border-emerald-200" : "bg-amber-50 text-amber-700 border-amber-200",
+            statusVariant: map.status === "Completed" ? "success" : "warning",
             timestamp: new Date(map.created_at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }),
             actions: map.status !== "Completed" ? (
-              <button
+              <Button
+                size="sm"
+                variant="success"
                 onClick={() => handleUpdateMappingStatus(map.request_id, "Completed")}
-                className="px-2.5 py-1 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-lg text-[10px] font-black hover:bg-emerald-100 transition-all cursor-pointer"
               >
                 Mark Complete ✓
-              </button>
+              </Button>
             ) : (
-              <span className="text-emerald-500 font-black flex items-center gap-1"><CheckCircle2 size={10}/> Done</span>
+              <Chip variant="success" size="sm">
+                <CheckCircle2 size={10}/> Done
+              </Chip>
             )
           }))}
           emptyMessage="No mappings recorded."

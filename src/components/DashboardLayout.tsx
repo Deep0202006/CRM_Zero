@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useAuth } from '@/context/AuthContext';
+import React, { useState, useEffect } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 import {
   LayoutDashboard,
   Clock,
@@ -18,13 +18,18 @@ import {
   TrendingUp,
   AlertTriangle,
   CalendarDays,
-  LineChart,
   Link2,
   PhoneCall,
-} from 'lucide-react';
-import { db } from '@/lib/db';
+  Search,
+  Bell,
+  Menu,
+  ChevronLeft,
+  ChevronRight,
+  User,
+} from "lucide-react";
+import { db } from "@/lib/db";
 
-const LOGO_CLASSES = "h-9 w-9 object-contain flex-shrink-0";
+const LOGO_CLASSES = "h-8 w-8 object-contain shrink-0";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -47,39 +52,48 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [isOnline, setIsOnline] = useState(true);
   const [syncQueueCount, setSyncQueueCount] = useState(0);
   const [failedSyncCount, setFailedSyncCount] = useState(0);
+  const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     setIsOnline(navigator.onLine);
-    const handleOnline  = () => setIsOnline(true);
+    const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
-    window.addEventListener("online",  handleOnline);
+    window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
 
     const interval = setInterval(async () => {
       try {
         const all = await db.sync_queue.toArray();
-        setSyncQueueCount(all.filter(i => (i.retry_count ?? 0) < 5).length);
-        setFailedSyncCount(all.filter(i => (i.retry_count ?? 0) >= 5).length);
-      } catch { /* ignore */ }
+        setSyncQueueCount(all.filter((i) => (i.retry_count ?? 0) < 5).length);
+        setFailedSyncCount(all.filter((i) => (i.retry_count ?? 0) >= 5).length);
+      } catch {
+        /* ignore */
+      }
     }, 1500);
 
     return () => {
-      window.removeEventListener("online",  handleOnline);
+      window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
       clearInterval(interval);
     };
   }, []);
 
-  if (pathname === '/login') return <>{children}</>;
+  if (pathname === "/login") return <>{children}</>;
 
-  // ─── Role label ──────────────────────────────────────────────────────────
   const getRoleLabel = () => {
     if (isAdmin) return "System Admin";
     if (capabilities.length > 0) {
       return capabilities
-        .map(c => c.replace("dist_", "Dist. ").replace("ret_", "Retailer ").replace("field_", "Field ").replace("tech_", "Tech ").replace(/_/g, " "))
+        .map((c) =>
+          c
+            .replace("dist_", "Dist. ")
+            .replace("ret_", "Retailer ")
+            .replace("field_", "Field ")
+            .replace("tech_", "Tech ")
+            .replace(/_/g, " ")
+        )
         .join(", ");
     }
     return "User Account";
@@ -88,167 +102,242 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const getInitials = () => {
     if (!currentUser?.name) return "US";
     const parts = currentUser.name.split(" ");
-    return parts.length > 1 ? (parts[0][0] + parts[1][0]).toUpperCase() : parts[0].substring(0, 2).toUpperCase();
+    return parts.length > 1
+      ? (parts[0][0] + parts[1][0]).toUpperCase()
+      : parts[0].substring(0, 2).toUpperCase();
   };
 
-  // ─── Navigation — strictly capability-gated ───────────────────────────
-  // visible: undefined = always show; true/false = conditional
   const navItems = [
-    // Everyone
-    { icon: ListTodo,       label: "My Day",           path: "/my-day" },
-    { icon: PhoneCall,      label: "Log Call",         path: "/call-logs" },
-    // Onboarding only
-    { icon: LayoutDashboard,label: "Pipeline",         path: "/onboarding",        visible: hasOnboarding },
-    // Support only
-    { icon: Headphones,     label: "Client Support",   path: "/support",           visible: hasSupport },
-    { icon: Link2,          label: "Mappings",         path: "/mappings",          visible: hasSupport },
-    // Not admin (admin doesn't clock in)
-    { icon: Clock,          label: "Attendance",       path: "/attendance",        visible: isFieldStaff || isOfficeStaff },
-    // Admin tools
-    { icon: ShieldCheck,    label: "Admin Control",    path: "/admin",             visible: isAdmin },
-    { icon: UserPlus,       label: "Assign Task",      path: "/manager/tasks",     visible: isTaskAssigner },
-    { icon: TrendingUp,     label: "Team KPIs",        path: "/manager/kpi",       visible: isAdmin },
-    { icon: CalendarDays,   label: "Team Attendance",  path: "/admin/attendance",  visible: isAdmin },
-    { icon: BarChart3,      label: "Insights",         path: "/",                  visible: isAdmin },
+    { icon: ListTodo, label: "My Day", path: "/my-day" },
+    { icon: PhoneCall, label: "Log Call", path: "/call-logs" },
+    { icon: LayoutDashboard, label: "Pipeline", path: "/onboarding", visible: hasOnboarding },
+    { icon: Headphones, label: "Client Support", path: "/support", visible: hasSupport },
+    { icon: Link2, label: "Mappings", path: "/mappings", visible: hasSupport },
+    { icon: Clock, label: "Attendance", path: "/attendance", visible: isFieldStaff || isOfficeStaff },
+    { icon: ShieldCheck, label: "Admin Control", path: "/admin", visible: isAdmin },
+    { icon: UserPlus, label: "Assign Task", path: "/manager/tasks", visible: isTaskAssigner },
+    { icon: TrendingUp, label: "Team KPIs", path: "/manager/kpi", visible: isAdmin },
+    { icon: CalendarDays, label: "Team Attendance", path: "/admin/attendance", visible: isAdmin },
+    { icon: BarChart3, label: "Insights", path: "/", visible: isAdmin },
   ];
 
-  const visibleItems = navItems.filter(item => item.visible !== false);
+  const visibleItems = navItems.filter((item) => item.visible !== false);
 
-  // ─── Sync status badge ────────────────────────────────────────────────
-  const SyncBadges = () => (
-    <>
-      {syncQueueCount > 0 && (
-        <span className="bg-brand-primary/10 text-brand-primary text-[9px] font-bold px-1.5 py-0.5 rounded-full animate-pulse">
-          {syncQueueCount}
-        </span>
-      )}
-      {failedSyncCount > 0 && (
-        <span title={`${failedSyncCount} failed after 5 retries`} className="bg-amber-100 text-amber-700 text-[9px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
-          <AlertTriangle size={8} />{failedSyncCount}
-        </span>
-      )}
-    </>
-  );
+  const getBreadcrumbs = () => {
+    if (pathname === "/") return "Insights";
+    const current = visibleItems.find((i) => i.path !== "/" && pathname.startsWith(i.path));
+    return current ? current.label : "CRM Zero";
+  };
 
   return (
-    <div className="flex min-h-screen bg-canvas text-slate-600 antialiased font-normal">
-
-      {/* ── Desktop Glass Sidebar ── */}
-      <aside className="hidden md:flex fixed left-6 top-6 bottom-6 w-64 flex-col rounded-3xl bg-white/75 backdrop-blur-xl border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.04)] z-50 p-6">
-        {/* Logo + sync */}
-        <div className="mb-8 px-2 flex items-center justify-between">
-          <div className="flex items-center gap-3 py-1">
+    <div className="flex h-dvh w-full bg-[var(--surface-canvas)] text-[var(--text-primary)] antialiased font-normal overflow-hidden">
+      {/* ── Desktop Sidebar ── */}
+      <aside
+        className={`hidden md:flex flex-col bg-[var(--surface-sidebar)] text-[var(--text-inverse)] transition-all duration-200 ease-in-out shrink-0 border-r border-slate-800 z-[var(--z-sidebar)] ${
+          collapsed ? "w-[72px]" : "w-[248px]"
+        }`}
+      >
+        {/* Sidebar Header */}
+        <div className="h-[56px] px-4 flex items-center justify-between border-b border-slate-800/80">
+          <div className="flex items-center gap-3 overflow-hidden">
             <img src="/logo-icon.png" alt="ZeroData" className={LOGO_CLASSES} />
-            <div className="flex flex-col leading-tight">
-              <span className="font-bold text-lg tracking-tight text-gray-900">
-                ZeroData
-              </span>
-              <span className="text-[10px] uppercase tracking-wider text-gray-400">
-                Your data is yours
-              </span>
-            </div>
+            {!collapsed && (
+              <div className="flex flex-col leading-tight whitespace-nowrap">
+                <span className="font-black text-sm tracking-tight text-white">ZeroData</span>
+                <span className="text-[9px] uppercase font-bold tracking-widest text-slate-400">
+                  CRM Zero
+                </span>
+              </div>
+            )}
           </div>
-          <div className="flex items-center gap-1.5">
-            {isOnline
-              ? <span title="Online"><Wifi size={14} className="text-status-success" /></span>
-              : <span title="Offline"><WifiOff size={14} className="text-status-error animate-pulse" /></span>}
-            <SyncBadges />
-          </div>
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+          </button>
         </div>
 
-        {/* Nav */}
-        <nav className="space-y-1 flex-1 overflow-y-auto pr-1">
-          {visibleItems.map(item => {
-            const active = pathname === item.path || (item.path !== "/" && pathname.startsWith(item.path));
+        {/* Navigation Items */}
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1 scrollbar-hide">
+          {visibleItems.map((item) => {
+            const active =
+              pathname === item.path || (item.path !== "/" && pathname.startsWith(item.path));
             return (
               <Link
                 key={item.label}
                 href={item.path}
-                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 ${
+                className={`flex items-center h-[36px] px-3 rounded-[var(--radius-md)] text-xs font-semibold transition-all duration-150 group ${
                   active
-                    ? "bg-brand-primary text-white shadow-lg shadow-brand-primary/20"
-                    : "text-slate-600 hover:bg-white/50 hover:text-brand-primary"
+                    ? "bg-[var(--brand-500)] text-white shadow-sm"
+                    : "text-slate-400 hover:text-white hover:bg-[var(--surface-sidebar-hover)]"
                 }`}
+                title={collapsed ? item.label : undefined}
               >
-                <item.icon size={18} />
-                <span className="font-bold text-xs tracking-tight">{item.label}</span>
+                <item.icon
+                  size={18}
+                  className={`shrink-0 ${active ? "text-white" : "group-hover:text-white"}`}
+                />
+                {!collapsed && <span className="ml-3 truncate">{item.label}</span>}
               </Link>
             );
           })}
         </nav>
 
-        {/* User footer */}
-        <div className="border-t border-slate-100 pt-4 mt-4">
-          <div className="flex items-center space-x-3 mb-4">
-            <div className="h-9 w-9 rounded-full bg-brand-secondary border-2 border-white shadow-sm flex items-center justify-center text-white text-xs font-black">
+        {/* User Footer */}
+        <div className="p-3 border-t border-slate-800/80 bg-slate-950/40">
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-8 rounded-full bg-[var(--brand-500)] flex items-center justify-center text-white text-xs font-black shrink-0">
               {getInitials()}
             </div>
-            <div className="flex-1 min-w-0 leading-tight">
-              <p className="text-xs font-black text-slate-900 truncate">{currentUser?.name || "Loading..."}</p>
-              <p className="text-[10px] text-slate-400 truncate">{getRoleLabel()}</p>
-            </div>
+            {!collapsed && (
+              <div className="flex-1 min-w-0 leading-tight">
+                <p className="text-xs font-black text-white truncate">
+                  {currentUser?.name || "Loading..."}
+                </p>
+                <p className="text-[10px] text-slate-400 truncate">{getRoleLabel()}</p>
+              </div>
+            )}
+            {!collapsed && (
+              <button
+                onClick={logout}
+                className="p-1.5 rounded-md text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
+                title="Sign Out"
+              >
+                <LogOut size={16} />
+              </button>
+            )}
           </div>
-          <button
-            onClick={logout}
-            className="w-full flex items-center justify-center space-x-2 py-2.5 bg-slate-50 hover:bg-rose-50 text-slate-500 hover:text-status-error border border-slate-200/60 rounded-xl transition-all duration-200 cursor-pointer text-xs font-bold"
-          >
-            <LogOut size={14} /><span>Sign Out</span>
-          </button>
         </div>
       </aside>
 
-      {/* ── Main Content ── */}
-      <main className="md:ml-[280px] flex-1 min-w-0 w-full p-6 md:p-8 pb-24 md:pb-8 max-w-full overflow-x-hidden">
-        {/* Mobile header */}
-        <header className="flex justify-between items-center mb-8 md:hidden">
-          <div className="flex items-center space-x-3">
-            <img src="/logo-icon.png" alt="ZeroData" className={LOGO_CLASSES} />
-            <div className="flex flex-col leading-tight">
-              <span className="font-bold text-lg tracking-tight text-gray-900">
-                ZeroData
-              </span>
-              <span className="text-[10px] uppercase tracking-wider text-gray-400 hidden sm:block">
-                Your data is yours
-              </span>
-            </div>
-            <div className="flex items-center gap-1 ml-1">
-              {!isOnline && <WifiOff size={12} className="text-status-error animate-pulse" />}
-              <SyncBadges />
+      {/* ── Main Layout Wrapper ── */}
+      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
+        {/* ── Top Utility Bar (56px) ── */}
+        <header className="h-[56px] bg-[var(--surface-primary)] border-b border-[var(--border-subtle)] px-4 flex items-center justify-between shrink-0 z-[var(--z-topbar)] shadow-xs">
+          {/* Left Controls */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setMobileOpen(!mobileOpen)}
+              className="md:hidden p-1.5 rounded-md text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] cursor-pointer"
+            >
+              <Menu size={20} />
+            </button>
+            <div className="flex items-center gap-2 text-xs font-bold text-[var(--text-secondary)]">
+              <span className="text-[var(--text-muted)]">Workspace</span>
+              <span>/</span>
+              <span className="text-[var(--text-primary)] font-black">{getBreadcrumbs()}</span>
             </div>
           </div>
+
+          {/* Right Controls */}
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-full bg-brand-secondary border-2 border-white shadow-sm flex items-center justify-center text-white font-black text-xs">
+            {/* Search Bar / Quick Command */}
+            <div className="hidden sm:flex items-center gap-2 bg-[var(--surface-secondary)] border border-[var(--border-subtle)] px-3 py-1.5 rounded-[var(--radius-md)] text-xs text-[var(--text-muted)] w-48 lg:w-64 cursor-pointer hover:border-[var(--border-default)] transition-all">
+              <Search size={14} />
+              <span className="flex-1 truncate">Search or press Cmd+K</span>
+              <kbd className="hidden lg:inline-block px-1.5 py-0.5 text-[9px] font-mono bg-[var(--surface-primary)] border border-[var(--border-default)] rounded text-[var(--text-muted)]">
+                ⌘K
+              </kbd>
+            </div>
+
+            {/* Network / Sync Status */}
+            <div className="flex items-center gap-2 px-2 py-1 bg-[var(--surface-secondary)] border border-[var(--border-subtle)] rounded-[var(--radius-round)] text-[10px] font-bold">
+              {isOnline ? (
+                <span className="flex items-center gap-1 text-[var(--status-success)]">
+                  <Wifi size={12} /> <span className="hidden sm:inline">Online</span>
+                </span>
+              ) : (
+                <span className="flex items-center gap-1 text-[var(--status-danger)] animate-pulse">
+                  <WifiOff size={12} /> <span>Offline</span>
+                </span>
+              )}
+              {syncQueueCount > 0 && (
+                <span className="bg-[var(--brand-50)] text-[var(--brand-500)] px-1.5 py-0.2 rounded-full text-[9px] font-black">
+                  {syncQueueCount}
+                </span>
+              )}
+              {failedSyncCount > 0 && (
+                <span className="bg-[var(--status-warning-soft)] text-[var(--status-warning)] px-1.5 py-0.2 rounded-full text-[9px] font-black flex items-center gap-0.5">
+                  <AlertTriangle size={8} /> {failedSyncCount}
+                </span>
+              )}
+            </div>
+
+            {/* Profile Avatar / Quick Actions */}
+            <div className="h-8 w-8 rounded-full bg-[var(--brand-50)] border border-[var(--brand-500)]/30 flex items-center justify-center text-[var(--brand-500)] font-black text-xs">
               {getInitials()}
             </div>
           </div>
         </header>
 
-        {children}
-      </main>
+        {/* ── Main Workspace Area ── */}
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 bg-[var(--surface-canvas)]">
+          <div className="max-w-7xl mx-auto space-y-6">{children}</div>
+        </main>
+      </div>
 
-      {/* ── Mobile Bottom Bar ── */}
-      <nav className="md:hidden fixed bottom-4 left-4 right-4 h-16 bg-white/80 backdrop-blur-xl border border-white/40 shadow-2xl rounded-2xl flex justify-around items-center z-50 px-2">
-        {visibleItems.slice(0, 5).map(item => {
-          const active = pathname === item.path || (item.path !== "/" && pathname.startsWith(item.path));
-          return (
-            <Link
-              key={item.label}
-              href={item.path}
-              className={`p-2.5 rounded-xl transition-all ${active ? "text-brand-primary bg-brand-primary/5" : "text-slate-400 hover:text-slate-600"}`}
-              title={item.label}
-            >
-              <item.icon size={22} />
-            </Link>
-          );
-        })}
-        <button
-          onClick={logout}
-          className="p-2.5 rounded-xl text-slate-400 hover:text-status-error"
-          title="Sign Out"
-        >
-          <LogOut size={22} />
-        </button>
-      </nav>
+      {/* ── Mobile Sidebar Drawer ── */}
+      {mobileOpen && (
+        <div className="fixed inset-0 z-[var(--z-drawer)] md:hidden">
+          <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-xs"
+            onClick={() => setMobileOpen(false)}
+          />
+          <aside className="fixed left-0 top-0 bottom-0 w-[240px] bg-[var(--surface-sidebar)] text-white p-4 flex flex-col justify-between shadow-2xl z-[var(--z-drawer)]">
+            <div className="space-y-6">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div className="flex items-center gap-2">
+                  <img src="/logo-icon.png" alt="ZeroData" className={LOGO_CLASSES} />
+                  <span className="font-black text-sm text-white">ZeroData</span>
+                </div>
+                <button
+                  onClick={() => setMobileOpen(false)}
+                  className="text-slate-400 hover:text-white"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <nav className="space-y-1">
+                {visibleItems.map((item) => {
+                  const active =
+                    pathname === item.path || (item.path !== "/" && pathname.startsWith(item.path));
+                  return (
+                    <Link
+                      key={item.label}
+                      href={item.path}
+                      onClick={() => setMobileOpen(false)}
+                      className={`flex items-center h-[38px] px-3 rounded-[var(--radius-md)] text-xs font-semibold ${
+                        active
+                          ? "bg-[var(--brand-500)] text-white"
+                          : "text-slate-400 hover:text-white hover:bg-slate-800"
+                      }`}
+                    >
+                      <item.icon size={18} className="mr-3" />
+                      <span>{item.label}</span>
+                    </Link>
+                  );
+                })}
+              </nav>
+            </div>
+
+            <div className="pt-4 border-t border-slate-800">
+              <button
+                onClick={() => {
+                  setMobileOpen(false);
+                  logout();
+                }}
+                className="w-full flex items-center justify-center gap-2 py-2 text-xs font-bold text-slate-400 hover:text-rose-400 bg-slate-900 rounded-[var(--radius-md)]"
+              >
+                <LogOut size={16} />
+                <span>Sign Out</span>
+              </button>
+            </div>
+          </aside>
+        </div>
+      )}
     </div>
   );
 }
