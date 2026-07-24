@@ -1,0 +1,31 @@
+ZERODATA CRM REDESIGN — STATIC VERIFICATION
+Date: 2026-07-24
+
+PASS  TypeScript AST parse: 56/56 source files
+PASS  Isolated TypeScript transpilation: 56/56 source files
+PASS  Local import resolution
+PASS  JSON parsing: package.json, package-lock.json, tsconfig.json, public/manifest.json
+PASS  CSS variable definition/use resolution
+PASS  Referenced public asset resolution
+PASS  Centralized colour policy scan
+PASS  Named Tailwind palette scan
+PASS  Native alert/confirm/prompt scan
+PASS  Unused-import heuristic
+PASS  Login reduced-motion and lightweight-animation policy
+PASS  PWA image dimensions and favicon format
+PASS  Redesigned frontend partial type harness
+
+PRE-EXISTING / UNCHANGED TYPE HARNESS NOTES
+- src/lib/db.ts has two implicit-any messages under the local Supabase stub harness.
+- src/lib/db.ts was not modified by the frontend redesign.
+
+RUNTIME COMMAND ATTEMPT
+- npm ci could not complete because the package gateway returned HTTP 503.
+- Therefore Next production build, ESLint, Jest and browser rendering were not claimed in this environment.
+
+REQUIRED ON TARGET MACHINE
+npm ci
+npm run lint
+npm test
+npm run build
+npm run dev

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
-import { CONVERTED_STAGES } from "@/lib/pipelineRules";
+import { CONVERTED_STAGES, PipelineStage } from "@/lib/pipelineRules";
 import { db } from "@/lib/db";
 import {
   BarChart,
@@ -22,13 +22,14 @@ import {
   CheckCircle2,
   Calendar,
   BarChart3,
-  AlertCircle,
   Layers
 } from "lucide-react";
 import FunnelTab from "./FunnelTab";
-import { Card } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { MetricCard } from "@/components/ui/MetricCard";
+import { Input } from "@/components/ui/Input";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 interface KpiRow {
   user_id: string;
@@ -57,7 +58,7 @@ async function buildLocalKpiRows(date: string): Promise<KpiRow[]> {
     const converted = leads.filter(
       (l) =>
         l.assigned_to === u.user_id &&
-        CONVERTED_STAGES.includes(l.status as any)
+        CONVERTED_STAGES.includes(l.status as PipelineStage)
     ).length;
     const callsMade = calls.filter((c) => c.user_id === u.user_id && c.timestamp.startsWith(date)).length;
 
@@ -100,17 +101,21 @@ export default function ManagerKpiPage() {
           )
           .eq("date", date);
 
-        const mapped: KpiRow[] = (data || []).map((r: any) => ({
-          user_id: r.user_id,
-          name: r.users.name,
-          completion_rate: Number(r.completion_rate) || 0,
-          tasks_assigned: r.tasks_assigned || 0,
-          tasks_completed: r.tasks_completed || 0,
-          attendance_status: r.attendance_status ?? "Absent",
-          leads_converted: r.leads_converted || 0,
-          tickets_resolved: r.tickets_resolved || 0,
-          calls_made: r.calls_made || 0,
-        }));
+        const mapped: KpiRow[] = (data || []).map((r: unknown) => {
+          const row = r as Record<string, unknown> & { users: { name: string } | { name: string }[] };
+          const userName = Array.isArray(row.users) ? row.users[0]?.name : row.users?.name;
+          return {
+            user_id: String(row.user_id),
+            name: userName || "",
+            completion_rate: Number(row.completion_rate) || 0,
+            tasks_assigned: Number(row.tasks_assigned) || 0,
+            tasks_completed: Number(row.tasks_completed) || 0,
+            attendance_status: row.attendance_status ? String(row.attendance_status) : "Absent",
+            leads_converted: Number(row.leads_converted) || 0,
+            tickets_resolved: Number(row.tickets_resolved) || 0,
+            calls_made: Number(row.calls_made) || 0,
+          };
+        });
         let finalMapped = mapped;
         if (!isAdmin && currentUser) {
           finalMapped = mapped.filter((r) => r.user_id === currentUser.user_id);
@@ -141,149 +146,95 @@ export default function ManagerKpiPage() {
       ? 0
       : Math.round(rows.reduce((s, r) => s + (r.completion_rate || 0), 0) / rows.length) || 0;
 
-  return (
-    <div className="space-y-6 w-full max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
-        <div className="flex items-center gap-2">
-          <BarChart3 size={20} className="text-[var(--brand-500)]" />
-          <h1 className="text-2xl font-black text-[var(--text-primary)]">Team KPI Dashboard</h1>
-        </div>
-        <div className="flex items-center gap-2">
-          <Calendar size={14} className="text-[var(--text-muted)]" />
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="px-3 py-1.5 bg-[var(--surface-secondary)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] text-xs font-bold text-[var(--text-primary)] focus:outline-none focus:border-[var(--brand-500)]"
-          />
-        </div>
-      </div>
+  const presentCount = rows.filter((row) => row.attendance_status === "Present").length;
 
-      {/* Tab Switcher */}
-      <div className="flex p-1 bg-[var(--surface-secondary)] rounded-[var(--radius-md)] w-fit gap-1.5">
-        <button
-          onClick={() => setActiveTab("Team")}
-          className={`flex items-center gap-2 px-4 py-1.5 rounded-[var(--radius-sm)] text-xs font-bold transition-all cursor-pointer ${
-            activeTab === "Team"
-              ? "bg-[var(--surface-primary)] text-[var(--brand-500)] shadow-xs"
-              : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-          }`}
-        >
-          <Users size={14} /> Team Performance
-        </button>
-        <button
-          onClick={() => setActiveTab("Funnel")}
-          className={`flex items-center gap-2 px-4 py-1.5 rounded-[var(--radius-sm)] text-xs font-bold transition-all cursor-pointer ${
-            activeTab === "Funnel"
-              ? "bg-[var(--surface-primary)] text-[var(--brand-500)] shadow-xs"
-              : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-          }`}
-        >
-          <Layers size={14} /> Pipeline Funnel
-        </button>
+  return (
+    <div className="app-page">
+      <PageHeader
+        eyebrow="Performance intelligence"
+        icon={<BarChart3 size={18} />}
+        title={isAdmin ? "Team performance" : "My performance"}
+        description="Compare execution, attendance, conversion, and pipeline health without losing the underlying operational detail."
+        actions={
+          <Input type="date" value={date} onChange={(event) => setDate(event.target.value)} leftIcon={<Calendar size={15} />} containerClassName="w-full sm:w-[190px]" aria-label="KPI date" />
+        }
+      />
+
+      <div className="segmented-control w-fit" aria-label="Performance report view">
+        <button type="button" aria-pressed={activeTab === "Team"} onClick={() => setActiveTab("Team")}><span className="flex items-center gap-2"><Users size={14} /> Team execution</span></button>
+        <button type="button" aria-pressed={activeTab === "Funnel"} onClick={() => setActiveTab("Funnel")}><span className="flex items-center gap-2"><Layers size={14} /> Pipeline funnel</span></button>
       </div>
 
       {activeTab === "Team" ? (
         <>
-          {/* Summary Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full">
-            <Card className="p-4 flex flex-col justify-between">
-              <span className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">Active Staff</span>
-              <span className="text-2xl font-black text-[var(--text-primary)] mt-1">{rows.length}</span>
-            </Card>
-            <Card className="p-4 flex flex-col justify-between">
-              <span className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">Avg Completion</span>
-              <span className="text-2xl font-black text-[var(--brand-500)] mt-1">{avgCompletion}%</span>
-            </Card>
-            <Card className="p-4 flex flex-col justify-between border-[var(--status-warning)]/20 bg-[var(--status-warning-soft)]/30">
-              <span className="text-[10px] font-black text-[var(--status-warning)] uppercase tracking-widest">Flagged Staff</span>
-              <span className="text-2xl font-black text-[var(--status-warning)] mt-1">{flagged.length}</span>
-            </Card>
-            <Card className="p-4 flex flex-col justify-between border-[var(--status-success)]/20 bg-[var(--status-success-soft)]/30">
-              <span className="text-[10px] font-black text-[var(--status-success)] uppercase tracking-widest">Present Today</span>
-              <span className="text-2xl font-black text-[var(--status-success)] mt-1">
-                {rows.filter((r) => r.attendance_status === "Present").length}
-              </span>
-            </Card>
+          <div className="metric-grid">
+            <MetricCard label="Active staff" value={rows.length} icon={<Users size={17} />} tone="neutral" note="People included in the selected snapshot" />
+            <MetricCard label="Average completion" value={`${avgCompletion}%`} icon={<TrendingUp size={17} />} tone="brand" note="Mean task completion across visible staff" />
+            <MetricCard label="Needs attention" value={flagged.length} icon={<AlertTriangle size={17} />} tone="warning" note="Low completion or missing attendance" />
+            <MetricCard label="Present" value={presentCount} icon={<CheckCircle2 size={17} />} tone="success" note={`Attendance recorded for ${date}`} />
           </div>
 
-          {/* Chart Section */}
-          {rows.length > 0 && (
-            <Card className="p-6 space-y-4">
-              <h2 className="text-xs font-black text-[var(--text-primary)] uppercase tracking-wider">
-                Task Completion Rate (%)
-              </h2>
-              <div className="h-64 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={rows} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e8eaee" vertical={false} />
-                    <XAxis dataKey="name" stroke="#7b8490" fontSize={11} tickLine={false} />
-                    <YAxis stroke="#7b8490" fontSize={11} domain={[0, 100]} tickLine={false} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "#ffffff",
-                        borderColor: "#dce0e5",
-                        borderRadius: "8px",
-                        fontSize: "12px",
-                      }}
-                    />
-                    <Bar dataKey="completion_rate" radius={[4, 4, 0, 0]}>
-                      {rows.map((entry, index) => (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={entry.completion_rate >= 80 ? "#18794e" : entry.completion_rate >= 50 ? "#5b5bd6" : "#c73535"}
-                        />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-          )}
+          {loading ? (
+            <section className="surface-panel grid min-h-[360px] place-items-center"><p className="text-[13px] font-medium text-[var(--text-muted)]">Loading KPI snapshot…</p></section>
+          ) : rows.length > 0 ? (
+            <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+              <section className="surface-panel overflow-hidden" aria-labelledby="completion-chart-title">
+                <div className="border-b border-[var(--border-subtle)] p-5"><p className="section-kicker">Execution distribution</p><h2 id="completion-chart-title" className="mt-1 section-title">Task completion rate</h2></div>
+                <div className="h-[320px] p-4 sm:p-5">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={rows} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
+                      <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
+                      <YAxis stroke="var(--text-muted)" fontSize={11} domain={[0, 100]} tickLine={false} axisLine={false} />
+                      <Tooltip cursor={{ fill: "var(--surface-hover)" }} contentStyle={{ backgroundColor: "var(--surface-elevated)", borderColor: "var(--border-default)", borderRadius: "10px", color: "var(--text-primary)", fontSize: "12px", boxShadow: "var(--shadow-popover)" }} />
+                      <Bar dataKey="completion_rate" radius={[5, 5, 0, 0]} maxBarSize={48}>
+                        {rows.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.completion_rate >= 80 ? "var(--status-success)" : entry.completion_rate >= 50 ? "var(--brand-500)" : "var(--status-danger)"} />)}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </section>
 
-          {/* Team KPI Table */}
-          <Card className="overflow-hidden p-0 border border-[var(--border-subtle)]">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-[var(--surface-secondary)] border-b border-[var(--border-subtle)] text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">
-                    <th className="p-4 pl-6">Team Member</th>
-                    <th className="p-4">Attendance</th>
-                    <th className="p-4">Completion %</th>
-                    <th className="p-4">Assigned / Done</th>
-                    {showOnboardingCols && <th className="p-4">Converted</th>}
-                    {showSupportCols && <th className="p-4">Calls Made</th>}
-                  </tr>
-                </thead>
-                <tbody className="text-xs divide-y divide-[var(--border-subtle)]">
-                  {rows.map((row) => (
-                    <tr key={row.user_id} className="hover:bg-[var(--surface-hover)] transition-colors">
-                      <td className="p-4 pl-6 font-bold text-[var(--text-primary)]">{row.name}</td>
-                      <td className="p-4"><AttBadge status={row.attendance_status} /></td>
-                      <td className="p-4 font-mono font-black text-[var(--brand-500)]">{row.completion_rate}%</td>
-                      <td className="p-4 font-mono font-semibold text-[var(--text-secondary)]">
-                        {row.tasks_completed} / {row.tasks_assigned}
-                      </td>
-                      {showOnboardingCols && <td className="p-4 font-bold text-[var(--text-primary)]">{row.leads_converted}</td>}
-                      {showSupportCols && <td className="p-4 font-bold text-[var(--text-primary)]">{row.calls_made}</td>}
-                    </tr>
-                  ))}
-                  {rows.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="p-8 text-center text-xs text-[var(--text-muted)] font-semibold">
-                        No KPI snapshots found for {date}.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+              <aside className="surface-panel overflow-hidden" aria-labelledby="attention-list-title">
+                <div className="border-b border-[var(--border-subtle)] bg-[var(--surface-secondary)] p-5"><p className="section-kicker">Management focus</p><h2 id="attention-list-title" className="mt-1 section-title">People needing attention</h2></div>
+                <div className="max-h-[320px] space-y-2 overflow-y-auto p-4">
+                  {flagged.length ? flagged.map((row) => (
+                    <div key={row.user_id} className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] p-3">
+                      <div className="flex items-center justify-between gap-3"><p className="truncate text-[12px] font-semibold text-[var(--text-primary)]">{row.name}</p><span className="text-[12px] font-semibold tabular-nums text-[var(--status-warning)]">{row.completion_rate}%</span></div>
+                      <div className="mt-2 flex flex-wrap gap-2"><AttBadge status={row.attendance_status} /><Chip variant={row.completion_rate < 50 ? "danger" : "neutral"} size="sm">{row.tasks_completed}/{row.tasks_assigned} tasks</Chip></div>
+                    </div>
+                  )) : <EmptyState compact icon={<CheckCircle2 size={20} />} title="No performance flags" description="Visible staff meet the current attendance and completion thresholds." />}
+                </div>
+              </aside>
             </div>
-          </Card>
+          ) : null}
+
+          <section className="data-table-shell" aria-labelledby="kpi-table-title">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-subtle)] px-5 py-4"><div><p className="section-kicker">Detailed scorecard</p><h2 id="kpi-table-title" className="mt-1 section-title">Team KPI register</h2></div><Chip variant="neutral" size="sm">{date}</Chip></div>
+            {rows.length === 0 && !loading ? (
+              <div className="p-5"><EmptyState icon={<BarChart3 size={21} />} title="No KPI snapshot" description={`No performance data is available for ${date}.`} /></div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-[760px]">
+                  <thead><tr><th>Team member</th><th>Attendance</th><th>Completion</th><th>Assigned / done</th>{showOnboardingCols && <th>Converted</th>}{showSupportCols && <th>Calls</th>}</tr></thead>
+                  <tbody>
+                    {rows.map((row) => (
+                      <tr key={row.user_id}>
+                        <td><p className="font-semibold text-[var(--text-primary)]">{row.name}</p></td>
+                        <td><AttBadge status={row.attendance_status} /></td>
+                        <td><div className="flex min-w-[140px] items-center gap-3"><div className="h-2 flex-1 overflow-hidden rounded-full bg-[var(--surface-tertiary)]"><div className={`h-full rounded-full ${row.completion_rate >= 80 ? "bg-[var(--status-success)]" : row.completion_rate >= 50 ? "bg-[var(--brand-500)]" : "bg-[var(--status-danger)]"}`} style={{ width: `${Math.min(row.completion_rate, 100)}%` }} /></div><span className="w-10 text-right font-semibold tabular-nums text-[var(--text-primary)]">{row.completion_rate}%</span></div></td>
+                        <td className="font-mono text-[12px]">{row.tasks_completed} / {row.tasks_assigned}</td>
+                        {showOnboardingCols && <td className="font-semibold tabular-nums text-[var(--text-primary)]">{row.leads_converted}</td>}
+                        {showSupportCols && <td className="font-semibold tabular-nums text-[var(--text-primary)]">{row.calls_made}</td>}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
         </>
-      ) : (
-        <FunnelTab />
-      )}
+      ) : <FunnelTab />}
     </div>
   );
 }

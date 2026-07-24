@@ -17,7 +17,9 @@ import {
   Funnel,
   LabelList,
 } from "recharts";
-import { Filter, Layers, Clock, Activity } from "lucide-react";
+import { Filter, Layers, Clock, Activity, Route, TrendingUp } from "lucide-react";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Chip } from "@/components/ui/Chip";
 
 interface FunnelSummary {
   segment_type: string;
@@ -124,23 +126,23 @@ export default function FunnelTab() {
     })();
   }, []);
 
-  // Prepare filtered data for rendering
+  // Stage colours are semantic CSS variables so light and dark themes remain consistent.
   const COLORS: Record<string, string> = {
-    "New": "#3b82f6",
-    "Contacted": "#8b5cf6",
-    "Interested": "#ec4899",
-    "Not Interested": "#64748b",
-    "Registration": "#f59e0b",
-    "Installation": "#10b981",
-    "Payment": "#059669",
-    "Renewal Due": "#f43f5e"
+    "New": "var(--chart-2)",
+    "Contacted": "var(--chart-3)",
+    "Interested": "var(--brand-500)",
+    "Not Interested": "var(--status-neutral)",
+    "Registration": "var(--chart-4)",
+    "Installation": "var(--status-success)",
+    "Payment": "var(--brand-700)",
+    "Renewal Due": "var(--status-danger)",
   };
 
   const currentFunnel = PIPELINE_STAGES.map(stage => {
     const leadsInStage = funnelData
       .filter(f => (activeSegment === "All" || f.segment_type === activeSegment) && f.status === stage)
       .reduce((sum, f) => sum + f.lead_count, 0);
-    return { name: stage, value: leadsInStage, fill: COLORS[stage] || "#94a3b8" };
+    return { name: stage, value: leadsInStage, fill: COLORS[stage] || "var(--chart-5)" };
   }).filter(s => s.value > 0);
 
   const currentSource = sourceData
@@ -162,7 +164,7 @@ export default function FunnelTab() {
 
   const currentTime = PIPELINE_STAGES.filter((s: string) => s !== "Payment" && s !== "Not Interested").map((stage: string) => {
     const stageData = timeData
-      .filter((t: any) => (activeSegment === "All" || t.segment_type === activeSegment) && t.status === stage);
+      .filter((t) => (activeSegment === "All" || t.segment_type === activeSegment) && t.status === stage);
     
     let avg = 0;
     if (stageData.length > 0) {
@@ -171,140 +173,91 @@ export default function FunnelTab() {
     return { status: stage, avg_days: Math.round(avg * 10) / 10 };
   }).filter(t => t.avg_days > 0);
 
+  const totalVisibleLeads = currentFunnel.reduce((sum, stage) => sum + stage.value, 0);
+  const convertedVisibleLeads = currentSource.reduce((sum, source) => sum + source.converted, 0);
+  const averageVisibleStageTime = currentTime.length ? Math.round((currentTime.reduce((sum, stage) => sum + stage.avg_days, 0) / currentTime.length) * 10) / 10 : 0;
+
   if (loading) {
-    return (
-      <div className="text-center py-16 text-slate-400 text-sm font-semibold animate-pulse">
-        Loading Funnel Data...
-      </div>
-    );
+    return <section className="surface-panel grid min-h-[360px] place-items-center"><p className="text-[13px] font-medium text-[var(--text-muted)]">Loading pipeline intelligence…</p></section>;
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-      {/* Segment Filter */}
-      <div className="flex items-center gap-2 mb-6">
-        <Filter size={16} className="text-slate-400" />
-        <span className="text-sm font-bold text-slate-700">Filter by Segment:</span>
-        {(["All", "Retailer", "Distributor"] as const).map(seg => (
-          <button
-            key={seg}
-            onClick={() => setActiveSegment(seg)}
-            className={`px-4 py-1.5 rounded-full text-xs font-black transition-colors ${
-              activeSegment === seg
-                ? "bg-brand-primary text-white"
-                : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200"
-            }`}
-          >
-            {seg}
-          </button>
-        ))}
+    <div className="page-stack">
+      <div className="surface-toolbar">
+        <div className="flex items-center gap-2 text-[12px] font-semibold text-[var(--text-secondary)]"><Filter size={15} /> Segment</div>
+        <div className="segmented-control" aria-label="Pipeline segment filter">
+          {(["All", "Retailer", "Distributor"] as const).map((segment) => (
+            <button key={segment} type="button" aria-pressed={activeSegment === segment} onClick={() => setActiveSegment(segment)}>{segment}</button>
+          ))}
+        </div>
+        <div className="flex-1" />
+        <Chip variant="neutral" size="sm">{totalVisibleLeads} active leads</Chip>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
-        {/* Pipeline Funnel Chart */}
-        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 overflow-hidden">
-          <div className="flex items-center gap-2 mb-6">
-            <Layers size={18} className="text-brand-primary" />
-            <h2 className="text-sm font-black text-slate-700">Pipeline Funnel Summary</h2>
-          </div>
-          {currentFunnel.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <FunnelChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-                <Tooltip 
-                  formatter={(value) => [`${value} Leads`, "Count"]}
-                  contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 12, fontWeight: 700 }}
-                />
-                <Funnel dataKey="value" data={currentFunnel} isAnimationActive>
-                  <LabelList position="center" fill="#fff" stroke="none" dataKey="name" fontSize={12} fontWeight={800} />
-                  <LabelList position="right" fill="#64748b" stroke="none" dataKey="value" formatter={(v: any) => `${v} leads`} fontSize={12} fontWeight={700} />
-                </Funnel>
-              </FunnelChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-[300px] flex items-center justify-center text-slate-400 font-bold text-sm">
-              No active leads in funnel.
-            </div>
-          )}
-        </div>
-
-        {/* Avg Time in Stage */}
-        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 overflow-hidden">
-          <div className="flex items-center gap-2 mb-6">
-            <Clock size={18} className="text-amber-500" />
-            <h2 className="text-sm font-black text-slate-700">Average Time in Stage (Days)</h2>
-          </div>
-          {currentTime.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={currentTime} margin={{ top: 20, right: 20, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                <XAxis dataKey="status" tick={{ fontSize: 11, fontWeight: 700 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fontWeight: 700 }} axisLine={false} tickLine={false} />
-                <Tooltip
-                  formatter={(v) => [`${v} days`, "Avg Time"]}
-                  cursor={{ fill: '#f8fafc' }}
-                  contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 12, fontWeight: 700 }}
-                />
-                <Bar dataKey="avg_days" radius={[6, 6, 0, 0]} maxBarSize={60}>
-                  {currentTime.map((entry: any, index: number) => (
-                    <Cell key={index} fill={COLORS[entry.status as keyof typeof COLORS] || "#f59e0b"} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-             <div className="h-[300px] flex items-center justify-center text-slate-400 font-bold text-sm">
-             No time data available.
-           </div>
-          )}
-        </div>
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="surface-panel p-5"><div className="flex items-start justify-between gap-4"><div><p className="section-kicker">Visible pipeline</p><p className="mt-2 text-3xl font-semibold tracking-[-0.04em] tabular-nums">{totalVisibleLeads}</p><p className="mt-1 text-[12px] text-[var(--text-muted)]">Leads across active funnel stages</p></div><span className="grid h-10 w-10 place-items-center rounded-[var(--radius-md)] bg-[var(--brand-50)] text-[var(--brand-700)]"><Route size={18} /></span></div></div>
+        <div className="surface-panel p-5"><div className="flex items-start justify-between gap-4"><div><p className="section-kicker">Converted</p><p className="mt-2 text-3xl font-semibold tracking-[-0.04em] tabular-nums">{convertedVisibleLeads}</p><p className="mt-1 text-[12px] text-[var(--text-muted)]">Leads reaching payment</p></div><span className="grid h-10 w-10 place-items-center rounded-[var(--radius-md)] bg-[var(--status-success-soft)] text-[var(--status-success)]"><TrendingUp size={18} /></span></div></div>
+        <div className="surface-panel p-5"><div className="flex items-start justify-between gap-4"><div><p className="section-kicker">Average stage time</p><p className="mt-2 text-3xl font-semibold tracking-[-0.04em] tabular-nums">{averageVisibleStageTime}<span className="ml-1 text-sm font-medium text-[var(--text-muted)]">days</span></p><p className="mt-1 text-[12px] text-[var(--text-muted)]">Across active non-terminal stages</p></div><span className="grid h-10 w-10 place-items-center rounded-[var(--radius-md)] bg-[var(--status-warning-soft)] text-[var(--status-warning)]"><Clock size={18} /></span></div></div>
       </div>
 
-      {/* Lead Source Performance */}
-      <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden mt-6">
-        <div className="px-6 py-5 border-b border-slate-100 flex items-center gap-2">
-          <Activity size={18} className="text-emerald-500" />
-          <h2 className="text-sm font-black text-slate-700">Lead Source Performance</h2>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-slate-50 text-left">
-                {["Lead Source", "Total Leads", "Converted to Payment", "Conversion Rate"].map((h) => (
-                  <th key={h} className="px-6 py-3 text-[10px] font-black text-slate-400 uppercase tracking-wider">
-                    {h}
-                  </th>
+      <div className="grid gap-5 xl:grid-cols-2">
+        <section className="surface-panel overflow-hidden" aria-labelledby="pipeline-funnel-title">
+          <div className="border-b border-[var(--border-subtle)] p-5"><p className="section-kicker">Stage distribution</p><h2 id="pipeline-funnel-title" className="mt-1 section-title">Pipeline funnel</h2></div>
+          <div className="h-[340px] p-4">
+            {currentFunnel.length ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <FunnelChart margin={{ top: 18, right: 70, bottom: 18, left: 20 }}>
+                  <Tooltip formatter={(value: unknown) => [`${value} leads`, "Count"]} contentStyle={{ backgroundColor: "var(--surface-elevated)", borderColor: "var(--border-default)", borderRadius: "10px", color: "var(--text-primary)", fontSize: "12px", boxShadow: "var(--shadow-popover)" }} />
+                  <Funnel dataKey="value" data={currentFunnel} isAnimationActive={false}>
+                    <LabelList position="center" fill="var(--brand-contrast)" stroke="none" dataKey="name" fontSize={11} fontWeight={700} />
+                    <LabelList position="right" fill="var(--text-muted)" stroke="none" dataKey="value" formatter={(value: unknown) => `${value} leads`} fontSize={11} fontWeight={600} />
+                  </Funnel>
+                </FunnelChart>
+              </ResponsiveContainer>
+            ) : <EmptyState compact icon={<Layers size={20} />} title="No active funnel data" description="No leads match the selected segment." />}
+          </div>
+        </section>
+
+        <section className="surface-panel overflow-hidden" aria-labelledby="stage-time-title">
+          <div className="border-b border-[var(--border-subtle)] p-5"><p className="section-kicker">Pipeline velocity</p><h2 id="stage-time-title" className="mt-1 section-title">Average days in stage</h2></div>
+          <div className="h-[340px] p-4">
+            {currentTime.length ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={currentTime} margin={{ top: 18, right: 12, left: -18, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
+                  <XAxis dataKey="status" tick={{ fontSize: 10, fontWeight: 600, fill: "var(--text-muted)" }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10, fontWeight: 600, fill: "var(--text-muted)" }} axisLine={false} tickLine={false} />
+                  <Tooltip formatter={(value: unknown) => [`${value} days`, "Average"]} cursor={{ fill: "var(--surface-hover)" }} contentStyle={{ backgroundColor: "var(--surface-elevated)", borderColor: "var(--border-default)", borderRadius: "10px", color: "var(--text-primary)", fontSize: "12px", boxShadow: "var(--shadow-popover)" }} />
+                  <Bar dataKey="avg_days" radius={[5, 5, 0, 0]} maxBarSize={52} isAnimationActive={false}>
+                    {currentTime.map((entry, index) => <Cell key={`${entry.status}-${index}`} fill={COLORS[entry.status] || "var(--chart-4)"} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : <EmptyState compact icon={<Clock size={20} />} title="No stage-time data" description="Stage velocity appears after leads spend time in active stages." />}
+          </div>
+        </section>
+      </div>
+
+      <section className="data-table-shell" aria-labelledby="source-performance-title">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-subtle)] px-5 py-4"><div><p className="section-kicker">Acquisition quality</p><h2 id="source-performance-title" className="mt-1 section-title">Lead-source performance</h2></div><span className="grid h-9 w-9 place-items-center rounded-[var(--radius-md)] bg-[var(--status-success-soft)] text-[var(--status-success)]"><Activity size={17} /></span></div>
+        {currentSource.length ? (
+          <div className="overflow-x-auto">
+            <table className="min-w-[680px]">
+              <thead><tr><th>Lead source</th><th>Total leads</th><th>Converted</th><th>Conversion rate</th></tr></thead>
+              <tbody>
+                {currentSource.map((source) => (
+                  <tr key={source.lead_source}>
+                    <td><p className="font-semibold text-[var(--text-primary)]">{source.lead_source}</p></td>
+                    <td className="font-semibold tabular-nums">{source.total_leads}</td>
+                    <td className="font-semibold tabular-nums text-[var(--status-success)]">{source.converted}</td>
+                    <td><div className="flex min-w-[170px] items-center gap-3"><span className="w-12 text-right font-semibold tabular-nums text-[var(--text-primary)]">{source.conversion_rate_pct}%</span><div className="h-2 flex-1 overflow-hidden rounded-full bg-[var(--surface-tertiary)]"><div className="h-full rounded-full bg-[var(--status-success)]" style={{ width: `${Math.min(source.conversion_rate_pct, 100)}%` }} /></div></div></td>
+                  </tr>
                 ))}
-              </tr>
-            </thead>
-            <tbody>
-              {currentSource.length > 0 ? currentSource.map((s, i) => (
-                <tr key={s.lead_source} className="border-t border-slate-50 hover:bg-slate-50/50 transition-colors">
-                  <td className="px-6 py-4 font-black text-slate-900">{s.lead_source}</td>
-                  <td className="px-6 py-4 font-bold text-slate-600">{s.total_leads}</td>
-                  <td className="px-6 py-4 font-bold text-emerald-600">{s.converted}</td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <span className="font-black text-slate-700 w-10">{s.conversion_rate_pct}%</span>
-                      <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden max-w-[100px]">
-                        <div 
-                          className="h-full bg-emerald-500 rounded-full" 
-                          style={{ width: `${Math.min(s.conversion_rate_pct, 100)}%` }} 
-                        />
-                      </div>
-                    </div>
-                  </td>
-                </tr>
-              )) : (
-                <tr>
-                  <td colSpan={4} className="px-6 py-8 text-center text-sm font-bold text-slate-400">
-                    No lead sources found.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+              </tbody>
+            </table>
+          </div>
+        ) : <div className="p-5"><EmptyState compact icon={<Activity size={20} />} title="No lead-source data" description="Source performance appears after lead records include acquisition sources." /></div>}
+      </section>
     </div>
   );
 }

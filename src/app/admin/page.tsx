@@ -2,10 +2,10 @@
 
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { db, LocalUser, LocalUserCapability, LocalTaskTemplate } from "@/lib/db";
+import { db, LocalUser, LocalTaskTemplate } from "@/lib/db";
 import {
-  ShieldCheck, User, Users, CheckSquare, Sparkles, Activity, AlertCircle,
-  ListTodo, UserCheck, Clock as ClockIcon, Edit2, Save, ToggleLeft, ToggleRight, Download, UserPlus, Key, UploadCloud, CheckCircle2, RefreshCw
+  ShieldCheck, Users, AlertCircle,
+  ListTodo, UserCheck, Clock as ClockIcon, Edit2, Save, ToggleLeft, ToggleRight, Download, UserPlus, Key, UploadCloud, CheckCircle2
 } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { exportPipelineToExcel } from "@/lib/pipelineExport";
@@ -13,14 +13,17 @@ import { exportClientQueriesToExcel } from "@/lib/clientQueriesExport";
 import { exportMasterSales, exportMasterSupport, exportMasterMappings } from "@/lib/excelExport";
 import { CreateUserPanel } from "@/components/admin/CreateUserPanel";
 import { TaskAllocationWorkspace } from "@/components/TaskAllocationWorkspace";
-import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Chip } from "@/components/ui/Chip";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { MetricCard } from "@/components/ui/MetricCard";
+import { Modal } from "@/components/ui/Modal";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 type AdminTab = "capabilities" | "managers" | "templates" | "attendance" | "create_user" | "task_allocation" | "exports";
 
-const TAB_META: { id: AdminTab; label: string; icon: React.ElementType }[] = [
+const TAB_META: { id: AdminTab; label: string; icon: React.ComponentType<{ size?: number }> }[] = [
   { id: "capabilities", label: "Capability Matrix", icon: ShieldCheck },
   { id: "managers", label: "Manager Assignment", icon: UserCheck },
   { id: "task_allocation", label: "Task Allocation", icon: UploadCloud },
@@ -122,8 +125,8 @@ export default function AdminPage() {
       await loadAdminData();
       setHighlightRowId(targetUserId);
       setTimeout(() => setHighlightRowId(null), 1200);
-    } catch (err: any) {
-      setErrorMsg(err.message || "Failed to update capabilities mapping in database.");
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : "Failed to update capabilities mapping in database.");
     }
   };
 
@@ -148,8 +151,8 @@ export default function AdminPage() {
       if (!res.ok) throw new Error(data.error || "Failed to reset password");
       
       setNewPasswordResult(data.tempPassword);
-    } catch (err: any) {
-      setErrorMsg(err.message || "Failed to reset password");
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : "Failed to reset password");
     } finally {
       setIsResetting(false);
     }
@@ -195,8 +198,8 @@ export default function AdminPage() {
       setSuccessMsg(`Updated user ${editUserForm.name} successfully.`);
       setEditingUser(null);
       setTimeout(() => setSuccessMsg(null), 3000);
-    } catch (err: any) {
-      setErrorMsg(err.message || "Failed to update user");
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : "Failed to update user");
     } finally {
       setIsUpdatingUser(false);
     }
@@ -211,8 +214,8 @@ export default function AdminPage() {
       await loadAdminData();
       setSuccessMsg("Manager assignment updated.");
       setTimeout(() => setSuccessMsg(null), 2000);
-    } catch (err: any) {
-      setErrorMsg(err.message || "Failed to update manager assignment.");
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : "Failed to update manager assignment.");
     }
   };
 
@@ -227,8 +230,8 @@ export default function AdminPage() {
       await loadAdminData();
       setSuccessMsg("Template saved.");
       setTimeout(() => setSuccessMsg(null), 2000);
-    } catch (err: any) {
-      setErrorMsg(err.message || "Failed to save template.");
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : "Failed to save template.");
     }
   };
 
@@ -240,8 +243,8 @@ export default function AdminPage() {
       
       await db.task_templates.update(tpl.template_id, { is_active: newActive });
       await loadAdminData();
-    } catch (err: any) {
-      setErrorMsg(err.message || "Failed to toggle template.");
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : "Failed to toggle template.");
     }
   };
 
@@ -252,294 +255,191 @@ export default function AdminPage() {
 
   if (!isAdmin) {
     return (
-      <Card className="max-w-md mx-auto mt-16 text-center space-y-4 p-8">
-        <AlertCircle size={40} className="mx-auto text-[var(--status-danger)]" />
-        <h3 className="text-base font-black text-[var(--text-primary)]">Access Restricted</h3>
-        <p className="text-xs text-[var(--text-muted)] font-semibold">
-          Requires Administrator capabilities to view Admin Control console.
-        </p>
-      </Card>
+      <section className="access-state" aria-labelledby="admin-access-title">
+        <span className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-[var(--radius-lg)] bg-[var(--status-danger-soft)] text-[var(--status-danger)]"><AlertCircle size={22} /></span>
+        <h1 id="admin-access-title" className="text-lg font-semibold">Administrator access required</h1>
+        <p className="mx-auto mt-2 max-w-sm text-[13px] leading-5 text-[var(--text-muted)]">User capabilities, credentials, system exports, and configuration are restricted administrative operations.</p>
+      </section>
     );
   }
 
+  const activeUsers = usersList.filter((user) => String(user.is_active) === "1" || String(user.is_active) === "true").length;
+  const assignedManagers = usersList.filter((user) => Boolean(user.manager_id)).length;
+  const activeTemplates = templates.filter((template) => template.is_active === 1).length;
+  const currentTab = TAB_META.find((tab) => tab.id === activeTab);
+
   return (
-    <div className="space-y-6 w-full max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-black text-[var(--text-primary)]">Admin Control Panel</h1>
-          <p className="text-xs text-[var(--text-muted)] font-bold uppercase tracking-wider">
-            User Capabilities & System Configuration
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            size="sm"
-            onClick={() => {
-              if (currentUser) exportPipelineToExcel(currentUser.user_id, true);
-            }}
-            icon={<Download size={14} />}
-          >
-            Pipeline
-          </Button>
-          <Button
-            size="sm"
-            onClick={() => {
-              if (currentUser) exportClientQueriesToExcel(currentUser.user_id, true);
-            }}
-            icon={<Download size={14} />}
-          >
-            Queries
-          </Button>
-        </div>
-      </div>
-
-      {successMsg && (
-        <div className="p-4 bg-[var(--status-success-soft)] border border-[var(--status-success)]/20 text-[var(--status-success)] rounded-[var(--radius-lg)] text-xs font-bold">
-          ✓ {successMsg}
-        </div>
-      )}
-      {errorMsg && (
-        <div className="p-4 bg-[var(--status-danger-soft)] border border-[var(--status-danger)]/20 text-[var(--status-danger)] rounded-[var(--radius-lg)] text-xs font-bold flex items-center gap-2">
-          <AlertCircle size={16} /> {errorMsg}
-        </div>
-      )}
-
-      {/* Tab bar */}
-      <div className="flex gap-1.5 p-1 bg-[var(--surface-secondary)] rounded-[var(--radius-md)] overflow-x-auto scrollbar-hide">
-        {TAB_META.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-[var(--radius-sm)] text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
-              activeTab === tab.id
-                ? "bg-[var(--surface-primary)] text-[var(--brand-500)] shadow-xs"
-                : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-            }`}
-          >
-            <tab.icon size={14} />
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Capability Matrix Tab */}
-      {activeTab === "capabilities" && (
-        <Card className="space-y-4 p-6">
-          <div className="flex justify-between items-center border-b border-[var(--border-subtle)] pb-3">
-            <h2 className="text-sm font-black text-[var(--text-primary)] flex items-center gap-2">
-              <Users size={16} className="text-[var(--brand-500)]" /> Active Team Directory
-            </h2>
-            <Chip variant="brand" size="sm">
-              {usersList.length} User Entries
-            </Chip>
+    <div className="app-page">
+      <PageHeader
+        eyebrow="System administration"
+        icon={<ShieldCheck size={18} />}
+        title="Admin control centre"
+        description="Manage people, access, task automation, attendance configuration, and governed data exports from one consistent workspace."
+        actions={
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => currentUser && exportPipelineToExcel(currentUser.user_id, true)} icon={<Download size={14} />}>Pipeline</Button>
+            <Button size="sm" variant="outline" onClick={() => currentUser && exportClientQueriesToExcel(currentUser.user_id, true)} icon={<Download size={14} />}>Queries</Button>
           </div>
+        }
+      />
 
-          <div className="space-y-3">
-            {usersList.map((user) => {
-              const userCaps = userCapsMap[user.user_id] || [];
-              const isHighlighted = highlightRowId === user.user_id;
+      <div className="metric-grid">
+        <MetricCard label="Active accounts" value={activeUsers} icon={<Users size={17} />} tone="brand" note={`${usersList.length} total user records`} />
+        <MetricCard label="Manager links" value={assignedManagers} icon={<UserCheck size={17} />} tone="info" note="People assigned to a reporting manager" />
+        <MetricCard label="Active templates" value={activeTemplates} icon={<ListTodo size={17} />} tone="success" note={`${templates.length} templates configured`} />
+        <MetricCard label="Capabilities" value={ALL_CAPABILITIES.length} icon={<ShieldCheck size={17} />} tone="neutral" note="Permission codes available for assignment" />
+      </div>
+
+      {successMsg && <div className="alert-panel alert-panel--success" role="status"><CheckCircle2 size={16} className="mt-0.5 shrink-0" /><span>{successMsg}</span></div>}
+      {errorMsg && <div className="alert-panel alert-panel--danger" role="alert"><AlertCircle size={16} className="mt-0.5 shrink-0" /><span>{errorMsg}</span></div>}
+
+      <div className="grid items-start gap-5 lg:grid-cols-[240px_minmax(0,1fr)]">
+        <aside className="surface-panel overflow-hidden lg:sticky lg:top-4" aria-label="Administration sections">
+          <div className="border-b border-[var(--border-subtle)] bg-[var(--surface-secondary)] p-4"><p className="section-kicker">Control areas</p><p className="mt-1 text-[12px] leading-5 text-[var(--text-muted)]">Changes here can affect team access and operational behaviour.</p></div>
+          <nav className="space-y-1 p-2">
+            {TAB_META.map((tab) => {
+              const active = activeTab === tab.id;
               return (
-                <div
-                  key={user.user_id}
-                  className={`p-4 rounded-[var(--radius-md)] border transition-all ${
-                    isHighlighted
-                      ? "border-[var(--status-success)] bg-[var(--status-success-soft)]"
-                      : "bg-[var(--surface-secondary)] border-[var(--border-subtle)] hover:border-[var(--border-default)]"
-                  }`}
-                >
-                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                    <div className="flex items-center space-x-3 min-w-[200px]">
-                      <div className="h-8 w-8 rounded-full bg-[var(--brand-500)] text-white flex items-center justify-center text-xs font-black shrink-0">
-                        {user.name.substring(0, 2).toUpperCase()}
-                      </div>
-                      <div className="min-w-0">
-                        <h3 className="text-xs font-black text-[var(--text-primary)] truncate">{user.name}</h3>
-                        <p className="text-[10px] text-[var(--text-muted)] font-semibold truncate">{user.email}</p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => {
-                          setEditingUser(user);
-                          setEditUserForm({
-                            name: user.name,
-                            email: user.email,
-                            is_active: String(user.is_active) === "1" || String(user.is_active) === "true",
-                          });
-                        }}
-                      >
-                        Edit User
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          setResetPasswordInput("");
-                          setResettingPasswordFor(user.user_id);
-                        }}
-                      >
-                        Reset PW
-                      </Button>
-                    </div>
-                    
-                    <div className="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-2">
-                      {ALL_CAPABILITIES.map((cap) => {
-                        const hasCap = userCaps.includes(cap.code);
-                        return (
-                          <label
-                            key={cap.code}
-                            className={`flex items-center gap-1.5 p-1.5 rounded-[var(--radius-sm)] border text-[10px] font-bold cursor-pointer transition-all ${
-                              hasCap
-                                ? "bg-[var(--brand-50)] text-[var(--brand-500)] border-[var(--brand-500)]/30"
-                                : "bg-[var(--surface-primary)] text-[var(--text-muted)] border-[var(--border-subtle)]"
-                            }`}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={hasCap}
-                              onChange={() => handleToggleCapability(user.user_id, cap.code, hasCap)}
-                              className="rounded border-[var(--border-default)] text-[var(--brand-500)] focus:ring-[var(--brand-500)]"
-                            />
-                            <span className="truncate">{cap.label}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
+                <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)} aria-current={active ? "page" : undefined} className={`flex min-h-10 w-full items-center gap-3 rounded-[var(--radius-md)] px-3 text-left text-[12px] font-semibold transition ${active ? "bg-[var(--brand-50)] text-[var(--brand-700)]" : "text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)]"}`}>
+                  <tab.icon size={16} /><span>{tab.label}</span>
+                </button>
               );
             })}
+          </nav>
+        </aside>
+
+        <main className="min-w-0 page-stack">
+          <div className="flex items-center gap-3 border-b border-[var(--border-subtle)] pb-4">
+            {currentTab && <span className="grid h-9 w-9 place-items-center rounded-[var(--radius-md)] bg-[var(--brand-50)] text-[var(--brand-700)]"><currentTab.icon size={17} /></span>}
+            <div><p className="section-kicker">Current section</p><h2 className="mt-0.5 text-lg font-semibold">{currentTab?.label}</h2></div>
           </div>
-        </Card>
-      )}
 
-      {/* Task Allocation Workspace Tab */}
-      {activeTab === "task_allocation" && <TaskAllocationWorkspace />}
-
-      {/* Create User Tab */}
-      {activeTab === "create_user" && <CreateUserPanel />}
-
-      {/* Master Exports Tab */}
-      {activeTab === "exports" && (
-        <Card className="space-y-4 p-6">
-          <h2 className="text-sm font-black text-[var(--text-primary)] border-b border-[var(--border-subtle)] pb-3">
-            Master Data Exports
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Button
-              variant="outline"
-              onClick={() => exportMasterSales()}
-              icon={<Download size={14} />}
-              className="h-11"
-            >
-              Export Sales Pipeline
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => exportMasterSupport()}
-              icon={<Download size={14} />}
-              className="h-11"
-            >
-              Export Support Logs
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => exportMasterMappings()}
-              icon={<Download size={14} />}
-              className="h-11"
-            >
-              Export Mappings Data
-            </Button>
-          </div>
-        </Card>
-      )}
-
-      {/* Edit User Modal */}
-      {editingUser && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-[var(--z-modal)] flex items-center justify-center p-4">
-          <Card className="w-full max-w-sm p-6 space-y-4">
-            <h3 className="text-base font-black text-[var(--text-primary)]">Edit User Details</h3>
-            <form onSubmit={handleUpdateUser} className="space-y-3">
-              <Input
-                label="Full Name"
-                value={editUserForm.name}
-                onChange={(e) => setEditUserForm({ ...editUserForm, name: e.target.value })}
-                required
-              />
-              <Input
-                label="Email Address"
-                type="email"
-                value={editUserForm.email}
-                onChange={(e) => setEditUserForm({ ...editUserForm, email: e.target.value })}
-                required
-              />
-              <label className="flex items-center gap-2 text-xs font-bold text-[var(--text-primary)] pt-1">
-                <input
-                  type="checkbox"
-                  checked={editUserForm.is_active}
-                  onChange={(e) => setEditUserForm({ ...editUserForm, is_active: e.target.checked })}
-                  className="rounded border-[var(--border-default)] text-[var(--brand-500)]"
-                />
-                <span>Account Active</span>
-              </label>
-              <div className="flex gap-2 pt-2">
-                <Button variant="secondary" className="flex-1" type="button" onClick={() => setEditingUser(null)}>
-                  Cancel
-                </Button>
-                <Button type="submit" isLoading={isUpdatingUser} className="flex-1">
-                  Save Changes
-                </Button>
+          {activeTab === "capabilities" && (
+            <section className="surface-panel overflow-hidden" aria-labelledby="capability-matrix-title">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-subtle)] bg-[var(--surface-secondary)] p-5">
+                <div><p className="section-kicker">Access matrix</p><h3 id="capability-matrix-title" className="mt-1 section-title">Team capabilities</h3></div>
+                <Chip variant="brand" size="sm">{usersList.length} users</Chip>
               </div>
-            </form>
-          </Card>
-        </div>
-      )}
+              <div className="space-y-3 p-4 sm:p-5">
+                {usersList.length ? usersList.map((user) => {
+                  const userCaps = userCapsMap[user.user_id] || [];
+                  const highlighted = highlightRowId === user.user_id;
+                  return (
+                    <article key={user.user_id} className={`rounded-[var(--radius-lg)] border p-4 transition ${highlighted ? "border-[var(--status-success)] bg-[var(--status-success-soft)]" : "border-[var(--border-subtle)] bg-[var(--surface-primary)] hover:border-[var(--border-default)]"}`}>
+                      <div className="flex flex-col gap-4 xl:flex-row xl:items-start">
+                        <div className="flex min-w-[220px] items-center gap-3">
+                          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[var(--radius-md)] bg-[var(--brand-100)] text-[11px] font-bold text-[var(--brand-800)]">{user.name.slice(0, 2).toUpperCase()}</span>
+                          <div className="min-w-0"><p className="truncate text-[13px] font-semibold text-[var(--text-primary)]">{user.name}</p><p className="mt-0.5 truncate text-[11px] text-[var(--text-muted)]">{user.email}</p></div>
+                        </div>
+                        <div className="grid flex-1 gap-2 sm:grid-cols-2 2xl:grid-cols-3">
+                          {ALL_CAPABILITIES.map((capability) => {
+                            const checked = userCaps.includes(capability.code);
+                            return (
+                              <label key={capability.code} className={`flex min-h-9 cursor-pointer items-center gap-2 rounded-[var(--radius-md)] border px-3 text-[11px] font-semibold transition ${checked ? "border-[var(--brand-200)] bg-[var(--brand-50)] text-[var(--brand-700)]" : "border-[var(--border-subtle)] bg-[var(--surface-secondary)] text-[var(--text-secondary)] hover:border-[var(--border-default)]"}`}>
+                                <input type="checkbox" checked={checked} onChange={() => handleToggleCapability(user.user_id, capability.code, checked)} className="h-4 w-4 rounded border-[var(--border-strong)] accent-[var(--brand-600)]" />
+                                <span>{capability.label}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                        <div className="flex shrink-0 gap-2">
+                          <Button size="sm" variant="secondary" onClick={() => { setEditingUser(user); setEditUserForm({ name: user.name, email: user.email, is_active: String(user.is_active) === "1" || String(user.is_active) === "true" }); }} icon={<Edit2 size={13} />}>Edit</Button>
+                          <Button size="sm" variant="outline" onClick={() => { setResetPasswordInput(""); setNewPasswordResult(null); setResettingPasswordFor(user.user_id); }} icon={<Key size={13} />}>Password</Button>
+                        </div>
+                      </div>
+                    </article>
+                  );
+                }) : <EmptyState icon={<Users size={21} />} title="No user accounts" description="Create the first account to begin assigning capabilities." />}
+              </div>
+            </section>
+          )}
 
-      {/* Password Reset Modal */}
-      {resettingPasswordFor && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-[var(--z-modal)] flex items-center justify-center p-4">
-          <Card className="w-full max-w-sm p-6 space-y-4">
-            <h3 className="text-base font-black text-[var(--text-primary)]">Reset Password</h3>
-            {newPasswordResult ? (
-              <div className="space-y-3">
-                <p className="text-xs text-[var(--text-muted)]">Temporary password set successfully:</p>
-                <div className="p-3 bg-[var(--surface-secondary)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] font-mono text-center font-black text-sm text-[var(--brand-500)]">
-                  {newPasswordResult}
-                </div>
-                <Button size="sm" className="w-full" onClick={() => setResettingPasswordFor(null)}>
-                  Done
-                </Button>
+          {activeTab === "managers" && (
+            <section className="data-table-shell" aria-labelledby="manager-assignment-title">
+              <div className="border-b border-[var(--border-subtle)] px-5 py-4"><p className="section-kicker">Reporting structure</p><h3 id="manager-assignment-title" className="mt-1 section-title">Manager assignments</h3><p className="mt-1 text-[12px] text-[var(--text-muted)]">Choose an active user as each team member’s reporting manager.</p></div>
+              {usersList.length ? (
+                <div className="overflow-x-auto"><table className="min-w-[680px]"><thead><tr><th>Team member</th><th>Account</th><th>Current manager</th></tr></thead><tbody>{usersList.map((user) => <tr key={user.user_id}><td><p className="font-semibold text-[var(--text-primary)]">{user.name}</p></td><td>{String(user.is_active) === "1" || String(user.is_active) === "true" ? <Chip variant="success" size="sm">Active</Chip> : <Chip variant="neutral" size="sm">Inactive</Chip>}</td><td><select aria-label={`Manager for ${user.name}`} value={user.manager_id || ""} onChange={(event) => handleSetManager(user.user_id, event.target.value || null)} className="field-control min-w-[220px]"><option value="">No manager</option>{usersList.filter((manager) => manager.user_id !== user.user_id && (String(manager.is_active) === "1" || String(manager.is_active) === "true")).map((manager) => <option key={manager.user_id} value={manager.user_id}>{manager.name}</option>)}</select></td></tr>)}</tbody></table></div>
+              ) : <div className="p-5"><EmptyState icon={<UserCheck size={21} />} title="No users to organise" description="Manager links can be added after user accounts are created." /></div>}
+            </section>
+          )}
+
+          {activeTab === "task_allocation" && <TaskAllocationWorkspace />}
+          {activeTab === "create_user" && <CreateUserPanel />}
+
+          {activeTab === "templates" && (
+            <section className="surface-panel overflow-hidden" aria-labelledby="template-settings-title">
+              <div className="flex items-center justify-between gap-3 border-b border-[var(--border-subtle)] bg-[var(--surface-secondary)] p-5"><div><p className="section-kicker">Automation library</p><h3 id="template-settings-title" className="mt-1 section-title">Task templates</h3></div><Chip variant="neutral" size="sm">{templates.length} templates</Chip></div>
+              <div className="space-y-3 p-4 sm:p-5">
+                {templates.length ? templates.map((template) => {
+                  const editing = editingTemplate === template.template_id;
+                  return (
+                    <article key={template.template_id} className="rounded-[var(--radius-lg)] border border-[var(--border-subtle)] p-4">
+                      {editing ? (
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <Input label="Template title" value={String(templateEdits.title ?? template.title)} onChange={(event) => setTemplateEdits({ ...templateEdits, title: event.target.value })} />
+                          <div><label className="field-label">Default priority</label><select className="field-control" value={String(templateEdits.default_priority ?? template.default_priority)} onChange={(event) => setTemplateEdits({ ...templateEdits, default_priority: event.target.value as LocalTaskTemplate["default_priority"] })}><option>High</option><option>Medium</option><option>Low</option></select></div>
+                          <div className="md:col-span-2"><label className="field-label">Description</label><textarea className="field-control resize-y" rows={3} value={String(templateEdits.description ?? template.description ?? "")} onChange={(event) => setTemplateEdits({ ...templateEdits, description: event.target.value })} /></div>
+                          <div className="md:col-span-2 flex justify-end gap-2"><Button variant="secondary" size="sm" onClick={() => { setEditingTemplate(null); setTemplateEdits({}); }}>Cancel</Button><Button size="sm" onClick={() => handleSaveTemplate(template.template_id)} icon={<Save size={13} />}>Save template</Button></div>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[var(--radius-md)] bg-[var(--brand-50)] text-[var(--brand-700)]"><ListTodo size={17} /></span>
+                          <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="font-semibold text-[var(--text-primary)]">{template.title}</p><Chip variant={template.is_active === 1 ? "success" : "neutral"} size="sm">{template.is_active === 1 ? "Active" : "Disabled"}</Chip><Chip variant="brand" size="sm">{template.default_priority}</Chip></div><p className="mt-1 text-[12px] leading-5 text-[var(--text-muted)]">{template.description || "No description"} · {template.recurrence} · {template.applies_to_capability}</p></div>
+                          <div className="flex gap-2"><Button variant="secondary" size="sm" onClick={() => { setEditingTemplate(template.template_id); setTemplateEdits({}); }} icon={<Edit2 size={13} />}>Edit</Button><Button variant="ghost" size="sm" onClick={() => handleToggleTemplate(template)} icon={template.is_active === 1 ? <ToggleRight size={15} /> : <ToggleLeft size={15} />}>{template.is_active === 1 ? "Disable" : "Enable"}</Button></div>
+                        </div>
+                      )}
+                    </article>
+                  );
+                }) : <EmptyState icon={<ListTodo size={21} />} title="No task templates" description="Templates appear here after they are added to the task engine." />}
               </div>
-            ) : (
-              <div className="space-y-3">
-                <Input
-                  label="New Password (Optional)"
-                  type="password"
-                  placeholder="Leave empty for auto-generated password"
-                  value={resetPasswordInput}
-                  onChange={(e) => setResetPasswordInput(e.target.value)}
-                />
-                <div className="flex gap-2 pt-2">
-                  <Button variant="secondary" className="flex-1" onClick={() => setResettingPasswordFor(null)}>
-                    Cancel
-                  </Button>
-                  <Button
-                    isLoading={isResetting}
-                    className="flex-1"
-                    onClick={() => handleResetPassword(resettingPasswordFor)}
-                  >
-                    Reset Password
-                  </Button>
-                </div>
+            </section>
+          )}
+
+          {activeTab === "attendance" && (
+            <section className="surface-panel overflow-hidden" aria-labelledby="attendance-settings-title">
+              <div className="border-b border-[var(--border-subtle)] bg-[var(--surface-secondary)] p-5"><p className="section-kicker">Policy defaults</p><h3 id="attendance-settings-title" className="mt-1 section-title">Attendance settings</h3><p className="mt-1 text-[12px] text-[var(--text-muted)]">These controls preserve the existing local settings behaviour in this frontend.</p></div>
+              <div className="max-w-2xl space-y-5 p-5 sm:p-6">
+                <div className="grid gap-5 sm:grid-cols-2"><Input label="Shift start" type="time" value={shiftStart} onChange={(event) => setShiftStart(event.target.value)} /><Input label="Grace period (minutes)" type="number" min={0} max={180} value={graceMinutes} onChange={(event) => setGraceMinutes(Number(event.target.value))} /></div>
+                {shiftSaved && <div className="alert-panel alert-panel--success" role="status"><CheckCircle2 size={16} /><span>Attendance settings saved for this session.</span></div>}
+                <div className="flex justify-end border-t border-[var(--border-subtle)] pt-5"><Button onClick={handleSaveShift} icon={<Save size={14} />}>Save settings</Button></div>
               </div>
-            )}
-          </Card>
-        </div>
-      )}
+            </section>
+          )}
+
+          {activeTab === "exports" && (
+            <section className="surface-panel overflow-hidden" aria-labelledby="master-export-title">
+              <div className="border-b border-[var(--border-subtle)] bg-[var(--surface-secondary)] p-5"><p className="section-kicker">Governed downloads</p><h3 id="master-export-title" className="mt-1 section-title">Master data exports</h3><p className="mt-1 text-[12px] text-[var(--text-muted)]">Generate operational spreadsheets using the existing export functions.</p></div>
+              <div className="grid gap-4 p-5 md:grid-cols-3">
+                {[
+                  ["Sales pipeline", "Leads, stages, ownership, and sales activity.", exportMasterSales],
+                  ["Support logs", "Client problems, status, and resolution history.", exportMasterSupport],
+                  ["Mapping data", "Distributor-retailer linkage requests and outcomes.", exportMasterMappings],
+                ].map(([title, copy, action]) => (
+                  <article key={String(title)} className="flex min-h-[190px] flex-col rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-5">
+                    <span className="grid h-10 w-10 place-items-center rounded-[var(--radius-md)] bg-[var(--brand-50)] text-[var(--brand-700)]"><Download size={17} /></span>
+                    <h4 className="mt-4 text-[14px] font-semibold">{String(title)}</h4><p className="mt-2 flex-1 text-[12px] leading-5 text-[var(--text-muted)]">{String(copy)}</p>
+                    <Button variant="outline" size="sm" onClick={() => (action as () => void)()} icon={<Download size={13} />}>Export file</Button>
+                  </article>
+                ))}
+              </div>
+            </section>
+          )}
+        </main>
+      </div>
+
+      <Modal open={Boolean(editingUser)} onClose={() => setEditingUser(null)} title="Edit user details" description={editingUser ? `Update the profile and account status for ${editingUser.name}.` : undefined} footer={<><Button variant="secondary" onClick={() => setEditingUser(null)}>Cancel</Button><Button type="submit" form="edit-user-form" isLoading={isUpdatingUser}>Save changes</Button></>}>
+        <form id="edit-user-form" onSubmit={handleUpdateUser} className="space-y-4">
+          <Input label="Full name" value={editUserForm.name} onChange={(event) => setEditUserForm({ ...editUserForm, name: event.target.value })} required />
+          <Input label="Email address" type="email" value={editUserForm.email} onChange={(event) => setEditUserForm({ ...editUserForm, email: event.target.value })} required />
+          <label className="flex min-h-11 items-center gap-3 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-secondary)] px-3 text-[12px] font-semibold text-[var(--text-primary)]"><input type="checkbox" checked={editUserForm.is_active} onChange={(event) => setEditUserForm({ ...editUserForm, is_active: event.target.checked })} className="h-4 w-4 rounded accent-[var(--brand-600)]" /> Account active</label>
+        </form>
+      </Modal>
+
+      <Modal open={Boolean(resettingPasswordFor)} onClose={() => { setResettingPasswordFor(null); setNewPasswordResult(null); }} title="Reset user password" description="Set a temporary credential and share it through an approved secure channel." footer={!newPasswordResult ? <><Button variant="secondary" onClick={() => setResettingPasswordFor(null)}>Cancel</Button><Button isLoading={isResetting} onClick={() => resettingPasswordFor && handleResetPassword(resettingPasswordFor)}>Reset password</Button></> : <Button onClick={() => { setResettingPasswordFor(null); setNewPasswordResult(null); }}>Done</Button>}>
+        {newPasswordResult ? (
+          <div className="space-y-4"><div className="alert-panel alert-panel--warning"><Key size={16} className="mt-0.5 shrink-0" /><span>This temporary password is shown once. Copy it before closing this dialog.</span></div><div className="rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--surface-secondary)] p-4 text-center font-mono text-[15px] font-semibold text-[var(--brand-700)]">{newPasswordResult}</div></div>
+        ) : <Input label="New password" type="password" placeholder="Leave empty to generate automatically" value={resetPasswordInput} onChange={(event) => setResetPasswordInput(event.target.value)} description="Use at least the minimum length required by the existing API." />}
+      </Modal>
     </div>
   );
 }

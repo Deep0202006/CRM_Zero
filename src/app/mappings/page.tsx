@@ -6,9 +6,10 @@ import { db, transactionalMutation, LocalLead, LocalMappingRequest } from "@/lib
 import { AlertCircle, CheckCircle2, Link2, Download, ArrowRightLeft } from "lucide-react";
 import { SearchableSelect, SearchableOption } from "@/components/SearchableSelect";
 import { QueueList } from "@/components/QueueList";
-import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { MetricCard } from "@/components/ui/MetricCard";
 import excelUsers from "@/lib/excel_users.json";
 
 export default function MappingsPage() {
@@ -25,7 +26,7 @@ export default function MappingsPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  const excelOptions: SearchableOption[] = React.useMemo(() => excelUsers.map((eu: any) => ({
+  const excelOptions: SearchableOption[] = React.useMemo(() => (excelUsers as Array<{ username: string; name?: string }>).map((eu) => ({
     value: `EXCEL::${eu.username}::${eu.name || eu.username}`,
     label: `${eu.name || eu.username} (@${eu.username})`,
     searchText: eu.username + " " + (eu.name || "")
@@ -169,7 +170,7 @@ export default function MappingsPage() {
 
   const handleUpdateMappingStatus = async (request_id: string, newStatus: string) => {
     try {
-      const updates: any = { status: newStatus };
+      const updates: { status: string; completed_at?: string } = { status: newStatus };
       if (newStatus === "Completed") updates.completed_at = new Date().toISOString();
       await transactionalMutation("mapping_requests", "UPDATE", { request_id, ...updates });
       await loadData();
@@ -195,174 +196,117 @@ export default function MappingsPage() {
 
   if (!hasSupport) {
     return (
-      <Card className="max-w-md mx-auto mt-16 text-center space-y-4 p-8">
-        <AlertCircle size={40} className="mx-auto text-[var(--status-danger)]" />
-        <h3 className="text-base font-black text-[var(--text-primary)]">Access Restricted</h3>
-        <p className="text-xs text-[var(--text-muted)] font-semibold">You don't have Support capabilities assigned.</p>
-      </Card>
+      <section className="access-state" aria-labelledby="mapping-access-title">
+        <span className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-[var(--radius-lg)] bg-[var(--status-danger-soft)] text-[var(--status-danger)]"><AlertCircle size={22} /></span>
+        <h1 id="mapping-access-title" className="text-lg font-semibold">Mapping access is restricted</h1>
+        <p className="mx-auto mt-2 max-w-sm text-[13px] leading-5 text-[var(--text-muted)]">Distributor-retailer linkage is available only to accounts with support capability.</p>
+      </section>
     );
   }
 
   const primaryLabel = activeSegment;
   const secondaryLabel = activeSegment === "Distributor" ? "Retailer" : "Distributor";
+  const pendingCount = mappings.filter((mapping) => mapping.status !== "Completed").length;
+  const completedCount = mappings.filter((mapping) => mapping.status === "Completed").length;
 
   return (
-    <div className="space-y-6 w-full max-w-6xl mx-auto">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
-          <Link2 size={24} className="text-[var(--brand-500)]" />
-          <div>
-            <h1 className="text-2xl font-black text-[var(--text-primary)]">Distributor-Retailer Mappings</h1>
-            <p className="text-xs text-[var(--text-muted)] font-bold uppercase tracking-wider">
-              Manage client linkages
-            </p>
-          </div>
-        </div>
-        
-        <Button
-          size="sm"
-          onClick={() => {
-            import('@/lib/excelExport').then(m => m.exportMasterMappings());
-          }}
-          icon={<Download size={14} />}
-        >
-          Download Mapping Data
-        </Button>
+    <div className="app-page">
+      <PageHeader
+        eyebrow="Relationship operations"
+        icon={<Link2 size={18} />}
+        title="Distributor-retailer mappings"
+        description="Create clear relationship requests, review the operational queue, and close mappings with an auditable status."
+        actions={
+          <Button size="sm" variant="outline" onClick={() => import("@/lib/excelExport").then((module) => module.exportMasterMappings())} icon={<Download size={14} />}>
+            Export mappings
+          </Button>
+        }
+      />
+
+      <div className="metric-grid">
+        <MetricCard label="Pending mappings" value={pendingCount} icon={<Link2 size={17} />} tone="warning" note="Relationships waiting to be completed" />
+        <MetricCard label="Completed" value={completedCount} icon={<CheckCircle2 size={17} />} tone="success" note="Verified distributor-retailer links" />
+        <MetricCard label="Distributor records" value={distributorOptions.length} icon={<ArrowRightLeft size={17} />} tone="brand" note="Available distributor identities" />
+        <MetricCard label="Retailer records" value={retailerOptions.length} icon={<ArrowRightLeft size={17} />} tone="neutral" note="Available retailer identities" />
       </div>
 
-      {successMsg && <div className="p-4 bg-[var(--status-success-soft)] border border-[var(--status-success)]/20 rounded-[var(--radius-lg)] text-[var(--status-success)] text-xs font-bold">✓ {successMsg}</div>}
-      {errorMsg   && <div className="p-4 bg-[var(--status-danger-soft)] border border-[var(--status-danger)]/20 rounded-[var(--radius-lg)] text-[var(--status-danger)] text-xs font-bold flex gap-2 items-center"><AlertCircle size={14}/>{errorMsg}</div>}
+      {successMsg && <div className="alert-panel alert-panel--success" role="status"><CheckCircle2 size={16} className="mt-0.5 shrink-0" /><span>{successMsg}</span></div>}
+      {errorMsg && <div className="alert-panel alert-panel--danger" role="alert"><AlertCircle size={16} className="mt-0.5 shrink-0" /><span>{errorMsg}</span></div>}
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        <Card className="lg:col-span-2 space-y-4">
-          <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
-            <h2 className="text-sm font-black text-[var(--text-primary)] flex items-center gap-2">
-              <Link2 size={16} className="text-[var(--brand-500)]" />
-              Log Mapping Task
-            </h2>
-          </div>
-          
-          {/* Segment & Cardinality Toggles */}
-          <div className="space-y-3 pb-2 border-b border-[var(--border-subtle)]">
-            <div className="flex gap-1.5 p-1 bg-[var(--surface-secondary)] rounded-[var(--radius-md)]">
-              <button
-                onClick={() => setActiveSegment("Distributor")}
-                className={`flex-1 py-1.5 rounded-[var(--radius-sm)] text-xs font-bold transition-all cursor-pointer ${
-                  activeSegment === "Distributor" ? "bg-[var(--surface-primary)] text-[var(--brand-500)] shadow-xs" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                }`}
-              >
-                From Distributor
-              </button>
-              <button
-                onClick={() => setActiveSegment("Retailer")}
-                className={`flex-1 py-1.5 rounded-[var(--radius-sm)] text-xs font-bold transition-all cursor-pointer ${
-                  activeSegment === "Retailer" ? "bg-[var(--surface-primary)] text-[var(--brand-500)] shadow-xs" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                }`}
-              >
-                From Retailer
-              </button>
-            </div>
-            
-            <div className="flex gap-1.5 p-1 bg-[var(--surface-secondary)] rounded-[var(--radius-md)]">
-              <button
-                onClick={() => setCardinality("1:1")}
-                className={`flex-1 py-1.5 rounded-[var(--radius-sm)] text-xs font-bold transition-all cursor-pointer ${
-                  cardinality === "1:1" ? "bg-[var(--surface-primary)] text-[var(--brand-500)] shadow-xs" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                }`}
-              >
-                One-to-One
-              </button>
-              <button
-                onClick={() => setCardinality("1:N")}
-                className={`flex-1 py-1.5 rounded-[var(--radius-sm)] text-xs font-bold transition-all cursor-pointer ${
-                  cardinality === "1:N" ? "bg-[var(--surface-primary)] text-[var(--brand-500)] shadow-xs" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                }`}
-              >
-                One-to-Many
-              </button>
-            </div>
+      <div className="workspace-split">
+        <section className="surface-panel overflow-hidden" aria-labelledby="mapping-builder-title">
+          <div className="border-b border-[var(--border-subtle)] bg-[var(--surface-secondary)] p-5">
+            <p className="section-kicker">Mapping builder</p>
+            <h2 id="mapping-builder-title" className="mt-1 section-title">Define the relationship</h2>
+            <p className="mt-1 text-[12px] leading-5 text-[var(--text-muted)]">Choose the direction and cardinality first; the labels and available records update automatically.</p>
           </div>
 
-          <form onSubmit={handleLogMapping} className="space-y-4 pt-2">
-            <div>
-              <label className="block text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
-                Primary {primaryLabel}
-              </label>
-              <SearchableSelect
-                options={activeSegment === "Distributor" ? distributorOptions : retailerOptions}
-                value={primaryName}
-                onChange={setPrimaryName}
-                placeholder={`Type ${primaryLabel.toLowerCase()} name...`}
-                required
-              />
-            </div>
-
-            <div className="flex justify-center -my-2 opacity-50">
-               <ArrowRightLeft size={16} className="text-[var(--text-muted)] rotate-90" />
+          <form onSubmit={handleLogMapping} className="space-y-5 p-5 sm:p-6">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <fieldset>
+                <legend className="field-label">Relationship starts from</legend>
+                <div className="segmented-control grid w-full grid-cols-2">
+                  <button type="button" aria-pressed={activeSegment === "Distributor"} onClick={() => setActiveSegment("Distributor")}>Distributor</button>
+                  <button type="button" aria-pressed={activeSegment === "Retailer"} onClick={() => setActiveSegment("Retailer")}>Retailer</button>
+                </div>
+              </fieldset>
+              <fieldset>
+                <legend className="field-label">Relationship type</legend>
+                <div className="segmented-control grid w-full grid-cols-2">
+                  <button type="button" aria-pressed={cardinality === "1:1"} onClick={() => setCardinality("1:1")}>One to one</button>
+                  <button type="button" aria-pressed={cardinality === "1:N"} onClick={() => setCardinality("1:N")}>One to many</button>
+                </div>
+              </fieldset>
             </div>
 
             <div>
-              <label className="block text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
-                Secondary {secondaryLabel}{cardinality === "1:N" ? "s (Comma Separated)" : ""}
-              </label>
+              <label className="field-label">Primary {primaryLabel}</label>
+              <SearchableSelect options={activeSegment === "Distributor" ? distributorOptions : retailerOptions} value={primaryName} onChange={setPrimaryName} placeholder={`Search ${primaryLabel.toLowerCase()} records`} required />
+            </div>
+
+            <div className="flex items-center gap-3" aria-hidden="true">
+              <span className="h-px flex-1 bg-[var(--border-subtle)]" />
+              <span className="grid h-8 w-8 place-items-center rounded-full border border-[var(--border-default)] bg-[var(--surface-secondary)] text-[var(--brand-600)]"><ArrowRightLeft size={14} className="rotate-90" /></span>
+              <span className="h-px flex-1 bg-[var(--border-subtle)]" />
+            </div>
+
+            <div>
+              <label className="field-label">{cardinality === "1:N" ? `Secondary ${secondaryLabel}s` : `Secondary ${secondaryLabel}`}</label>
               {cardinality === "1:1" ? (
-                <SearchableSelect
-                  options={activeSegment === "Distributor" ? retailerOptions : distributorOptions}
-                  value={secondaryNames}
-                  onChange={setSecondaryNames}
-                  placeholder={`Type ${secondaryLabel.toLowerCase()} name...`}
-                  required
-                />
+                <SearchableSelect options={activeSegment === "Distributor" ? retailerOptions : distributorOptions} value={secondaryNames} onChange={setSecondaryNames} placeholder={`Search ${secondaryLabel.toLowerCase()} records`} required />
               ) : (
-                <textarea
-                  value={secondaryNames}
-                  onChange={e => setSecondaryNames(e.target.value)}
-                  placeholder={`e.g. ${secondaryLabel} 1, ${secondaryLabel} 2, ${secondaryLabel} 3`}
-                  rows={3}
-                  className="w-full bg-[var(--surface-primary)] border border-[var(--border-default)] rounded-[var(--radius-md)] p-3 text-xs font-medium text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-500)]/20 transition-all resize-none"
-                  required
-                />
+                <textarea value={secondaryNames} onChange={(event) => setSecondaryNames(event.target.value)} placeholder={`Enter one ${secondaryLabel.toLowerCase()} per line or separate names with commas`} rows={5} className="field-control resize-y" required />
               )}
+              {cardinality === "1:N" && <p className="mt-1.5 text-[11px] text-[var(--text-muted)]">Each valid name becomes a separate pending mapping request.</p>}
             </div>
 
-            <Button
-              type="submit"
-              className="w-full h-11"
-            >
-              Log Mapping Task
-            </Button>
+            <div className="flex justify-end border-t border-[var(--border-subtle)] pt-5">
+              <Button type="submit" icon={<Link2 size={15} />} disabled={!primaryName.trim() || !secondaryNames.trim()}>Create mapping {cardinality === "1:N" ? "requests" : "request"}</Button>
+            </div>
           </form>
-        </Card>
+        </section>
 
         <QueueList
-          title="Mapping Queue"
-          items={mappings.map(map => ({
-            id: map.request_id,
+          title="Mapping work queue"
+          items={mappings.map((mapping) => ({
+            id: mapping.request_id,
             primaryNode: (
-              <p className="text-xs font-bold text-[var(--text-primary)] leading-snug">
-                {formatIdentity(map.retailer_lead_id, "Retailer")}
-                <span className="text-[var(--text-muted)] font-normal mx-1">→</span>
-                {formatIdentity(map.distributor_lead_id, "Distributor")}
-              </p>
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-[0.06em] text-[var(--text-muted)]">Retailer → Distributor</p>
+                <p className="mt-1.5 text-[13px] font-semibold leading-5 text-[var(--text-primary)]">{formatIdentity(mapping.retailer_lead_id, "Retailer")}</p>
+                <p className="mt-1 flex items-center gap-2 text-[12px] text-[var(--text-secondary)]"><ArrowRightLeft size={12} className="text-[var(--brand-600)]" /> {formatIdentity(mapping.distributor_lead_id, "Distributor")}</p>
+              </div>
             ),
-            statusText: map.status,
-            statusVariant: map.status === "Completed" ? "success" : "warning",
-            timestamp: new Date(map.created_at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }),
-            actions: map.status !== "Completed" ? (
-              <Button
-                size="sm"
-                variant="success"
-                onClick={() => handleUpdateMappingStatus(map.request_id, "Completed")}
-              >
-                Mark Complete ✓
-              </Button>
+            statusText: mapping.status,
+            statusVariant: mapping.status === "Completed" ? "success" : "warning",
+            timestamp: new Date(mapping.created_at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }),
+            actions: mapping.status !== "Completed" ? (
+              <Button size="sm" variant="success" onClick={() => handleUpdateMappingStatus(mapping.request_id, "Completed")} icon={<CheckCircle2 size={13} />}>Complete</Button>
             ) : (
-              <Chip variant="success" size="sm">
-                <CheckCircle2 size={10}/> Done
-              </Chip>
-            )
+              <Chip variant="success" size="sm"><CheckCircle2 size={10} /> Verified</Chip>
+            ),
           }))}
-          emptyMessage="No mappings recorded."
+          emptyMessage="No mapping requests have been created."
           onRefresh={loadData}
         />
       </div>

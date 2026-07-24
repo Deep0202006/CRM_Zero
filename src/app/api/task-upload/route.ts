@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
 
     // Convert sheet to JSON
     // Expected headers (or similar): 'Legal Name', 'Username', 'Phone Number', 'City'
-    const rawData = xlsx.utils.sheet_to_json<any>(sheet);
+    const rawData = xlsx.utils.sheet_to_json<Record<string, unknown>>(sheet);
 
     if (!rawData || rawData.length === 0) {
       return NextResponse.json({ error: "Excel file is empty" }, { status: 400 });
@@ -73,10 +73,10 @@ export async function POST(req: NextRequest) {
       totalParsed: validData.length
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error processing Excel file:", error);
     return NextResponse.json(
-      { error: "Failed to process Excel file", details: error.message },
+      { error: "Failed to process Excel file", details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }

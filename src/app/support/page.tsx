@@ -13,9 +13,12 @@ import {
 } from "lucide-react";
 import { exportSupport } from "@/lib/excelExport";
 import { SearchableSelect, SearchableOption } from "@/components/SearchableSelect";
-import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { MetricCard } from "@/components/ui/MetricCard";
+import { Modal } from "@/components/ui/Modal";
+import { EmptyState } from "@/components/ui/EmptyState";
 import excelUsers from "@/lib/excel_users.json";
 
 type QueryStatus = "Open" | "In Progress" | "Resolved";
@@ -32,7 +35,7 @@ export default function SupportPage() {
   const [filterTab, setFilterTab] = useState<"all" | "open" | "resolved">("open");
 
   const clientOptions: SearchableOption[] = React.useMemo(() => {
-    const excelOptions: SearchableOption[] = excelUsers.map((eu: any) => ({
+    const excelOptions: SearchableOption[] = (excelUsers as Array<{ username: string; name?: string }>).map((eu) => ({
       value: `EXCEL::${eu.username}::${eu.name || eu.username}`,
       label: `${eu.name || eu.username} (@${eu.username})`,
       searchText: eu.username + " " + (eu.name || "")
@@ -134,242 +137,145 @@ export default function SupportPage() {
 
   if (!hasSupport) {
     return (
-      <Card className="max-w-md mx-auto mt-16 text-center space-y-4 p-8">
-        <AlertCircle size={40} className="mx-auto text-[var(--status-danger)]" />
-        <h3 className="text-base font-black text-[var(--text-primary)]">Access Restricted</h3>
-        <p className="text-xs text-[var(--text-muted)] font-semibold">You don't have Support capabilities assigned.</p>
-      </Card>
+      <section className="access-state" aria-labelledby="support-access-title">
+        <span className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-[var(--radius-lg)] bg-[var(--status-danger-soft)] text-[var(--status-danger)]"><AlertCircle size={22} /></span>
+        <h1 id="support-access-title" className="text-lg font-semibold">Support workspace is restricted</h1>
+        <p className="mx-auto mt-2 max-w-sm text-[13px] leading-5 text-[var(--text-muted)]">Your account is not assigned distributor or retailer support access.</p>
+      </section>
     );
   }
 
+  const supportScope = isAdmin ? "All client segments" : [hasDistSupport && "Distributor", hasRetSupport && "Retailer"].filter(Boolean).join(" and ");
+
   return (
-    <div className="space-y-6 w-full max-w-6xl mx-auto">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
-          <Headphones size={24} className="text-[var(--brand-500)]" />
-          <div>
-            <h1 className="text-2xl font-black text-[var(--text-primary)]">Support & Operations</h1>
-            <p className="text-xs text-[var(--text-muted)] font-bold uppercase tracking-wider">
-              {isAdmin ? "All segments" : [hasDistSupport && "Distributors", hasRetSupport && "Retailers"].filter(Boolean).join(" & ")}
-            </p>
+    <div className="app-page">
+      <PageHeader
+        eyebrow="Service operations"
+        icon={<Headphones size={18} />}
+        title="Client support queue"
+        description="Capture issues with enough context, focus the unresolved queue, and document every resolution outcome."
+        meta={<Chip variant="neutral" size="sm">Scope · {supportScope}</Chip>}
+        actions={
+          <Button size="sm" variant="outline" onClick={() => currentUser && exportSupport(currentUser.user_id)} icon={<Download size={14} />}>
+            Export support data
+          </Button>
+        }
+      />
+
+      <div className="metric-grid">
+        <MetricCard label="Open issues" value={openCount} icon={<AlertCircle size={17} />} tone="danger" note="New issues awaiting action" />
+        <MetricCard label="In progress" value={inProgCount} icon={<Clock size={17} />} tone="warning" note="Work currently underway" />
+        <MetricCard label="Resolved" value={resolvedCount} icon={<CheckCircle2 size={17} />} tone="success" note="Queries with documented outcomes" />
+        <MetricCard label="Total history" value={queries.length} icon={<MessageSquare size={17} />} tone="neutral" note="All locally available service records" />
+      </div>
+
+      {successMsg && <div className="alert-panel alert-panel--success" role="status"><CheckCircle2 size={16} className="mt-0.5 shrink-0" /><span>{successMsg}</span></div>}
+      {errorMsg && <div className="alert-panel alert-panel--danger" role="alert"><AlertCircle size={16} className="mt-0.5 shrink-0" /><span>{errorMsg}</span></div>}
+
+      <div className="workspace-split">
+        <section className="surface-panel overflow-hidden" aria-labelledby="new-support-query-title">
+          <div className="border-b border-[var(--border-subtle)] bg-[var(--surface-secondary)] p-5">
+            <p className="section-kicker">New request</p>
+            <h2 id="new-support-query-title" className="mt-1 section-title">Log a client issue</h2>
+            <p className="mt-1 text-[12px] leading-5 text-[var(--text-muted)]">Use specific language so another team member can continue the resolution without repeating discovery.</p>
           </div>
-        </div>
-        
-        <Button
-          size="sm"
-          onClick={() => {
-            if (currentUser) exportSupport(currentUser.user_id);
-          }}
-          icon={<Download size={14} />}
-        >
-          Export Support Data
-        </Button>
-      </div>
-
-      {/* KPI summary row */}
-      <div className="grid grid-cols-3 gap-4">
-        <Card className="p-4 bg-[var(--status-danger-soft)] border-[var(--status-danger)]/20">
-          <p className="text-2xl font-black text-[var(--status-danger)]">{openCount}</p>
-          <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider mt-0.5">Open Queries</p>
-        </Card>
-        <Card className="p-4 bg-[var(--status-warning-soft)] border-[var(--status-warning)]/20">
-          <p className="text-2xl font-black text-[var(--status-warning)]">{inProgCount}</p>
-          <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider mt-0.5">In Progress</p>
-        </Card>
-        <Card className="p-4 bg-[var(--status-success-soft)] border-[var(--status-success)]/20">
-          <p className="text-2xl font-black text-[var(--status-success)]">{resolvedCount}</p>
-          <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider mt-0.5">Resolved</p>
-        </Card>
-      </div>
-
-      {successMsg && <div className="p-4 bg-[var(--status-success-soft)] border border-[var(--status-success)]/20 rounded-[var(--radius-lg)] text-[var(--status-success)] text-xs font-bold">✓ {successMsg}</div>}
-      {errorMsg && <div className="p-4 bg-[var(--status-danger-soft)] border border-[var(--status-danger)]/20 rounded-[var(--radius-lg)] text-[var(--status-danger)] text-xs font-bold flex gap-2 items-center"><AlertCircle size={14}/>{errorMsg}</div>}
-
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        <Card className="lg:col-span-2 space-y-4">
-          <h2 className="text-sm font-black text-[var(--text-primary)] flex items-center gap-2 border-b border-[var(--border-subtle)] pb-3">
-            <MessageSquare size={16} className="text-[var(--brand-500)]" />
-            Log Client Query
-          </h2>
-
-          <form onSubmit={handleLogQuery} className="space-y-4">
+          <form onSubmit={handleLogQuery} className="space-y-5 p-5 sm:p-6">
             <div>
-              <label className="block text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
-                Client Account
-              </label>
-              <SearchableSelect
-                options={clientOptions}
-                value={clientNameInput}
-                onChange={setClientNameInput}
-                placeholder="Type client name..."
-                required
-              />
+              <label className="field-label">Client account</label>
+              <SearchableSelect options={clientOptions} value={clientNameInput} onChange={setClientNameInput} placeholder="Search a client account" required />
             </div>
-
             <div>
-              <label className="block text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
-                Problem Description
-              </label>
-              <textarea
-                required
-                rows={3}
-                value={queryProblem}
-                onChange={e => setQueryProblem(e.target.value)}
-                placeholder="Describe the issue reported by the client..."
-                className="w-full bg-[var(--surface-primary)] border border-[var(--border-default)] rounded-[var(--radius-md)] p-3 text-xs font-medium text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-500)]/20 transition-all resize-none"
-              />
+              <label htmlFor="support-problem" className="field-label">Problem description</label>
+              <textarea id="support-problem" required rows={5} value={queryProblem} onChange={(event) => setQueryProblem(event.target.value)} placeholder="What happened, what the client expected, and what has already been tried?" className="field-control resize-y" />
             </div>
-
-            <Button
-              type="submit"
-              className="w-full h-11"
-            >
-              Log Query
-            </Button>
+            <div className="flex justify-end border-t border-[var(--border-subtle)] pt-5">
+              <Button type="submit" icon={<MessageSquare size={15} />} disabled={!clientNameInput.trim() || !queryProblem.trim()}>Add to support queue</Button>
+            </div>
           </form>
-        </Card>
+        </section>
 
-        {/* Query Queue */}
-        <Card className="lg:col-span-3 space-y-4 flex flex-col h-full max-h-[650px]">
-          <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
-            <h2 className="text-sm font-black text-[var(--text-primary)] flex items-center gap-2">
-              <Clock size={16} className="text-[var(--brand-500)]" /> Query Queue
-            </h2>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={loadData}
-              title="Refresh"
-            >
-              Refresh
-            </Button>
-          </div>
-
-          <div className="flex gap-1.5 p-1 bg-[var(--surface-secondary)] rounded-[var(--radius-md)]">
-            {(["open", "all", "resolved"] as const).map(tab => (
-              <button
-                key={tab}
-                onClick={() => setFilterTab(tab)}
-                className={`flex-1 py-1.5 rounded-[var(--radius-sm)] text-xs font-bold transition-all cursor-pointer capitalize ${
-                  filterTab === tab ? "bg-[var(--surface-primary)] text-[var(--brand-500)] shadow-xs" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                }`}
-              >
-                {tab === "open" ? `Open (${openCount})` : tab === "resolved" ? `Resolved (${resolvedCount})` : "All"}
-              </button>
-            ))}
-          </div>
-
-          <div className="space-y-3 overflow-y-auto pr-1 flex-1 pb-2">
-            {filteredQueries.length === 0 && (
-              <p className="text-xs italic text-[var(--text-muted)] text-center py-12 font-semibold">No queries in this view.</p>
-            )}
-            {filteredQueries.map(query => (
-              <div
-                key={query.query_id}
-                className="p-3.5 bg-[var(--surface-secondary)] rounded-[var(--radius-md)] border border-[var(--border-subtle)] space-y-2.5 hover:border-[var(--border-default)] transition-all"
-              >
-                <div className="flex justify-between items-start gap-2">
-                  <div>
-                    <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">
-                      {query.client_name}
-                    </p>
-                    <p className="text-xs font-bold text-[var(--text-primary)] mt-0.5 leading-snug">
-                      "{query.client_problem}"
-                    </p>
-                  </div>
-                  <Chip variant={query.problem_status === "Resolved" ? "success" : "danger"} size="sm">
-                    {query.problem_status}
-                  </Chip>
-                </div>
-
-                <div className="flex items-center justify-between text-[10px] text-[var(--text-muted)] font-semibold border-t border-[var(--border-subtle)] pt-2">
-                  <span>{new Date(query.created_at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
-                  
-                  {/* Single Action Completion Button: "Done" / "Resolve" */}
-                  {query.problem_status !== "Resolved" && (
-                    <Button
-                      size="sm"
-                      variant="success"
-                      onClick={() => setResolveModalQuery(query)}
-                    >
-                      Resolve ✓
-                    </Button>
-                  )}
-                  {query.problem_status === "Resolved" && (
-                    <Chip variant="success" size="sm">
-                      <CheckCircle2 size={10}/> Done
-                    </Chip>
-                  )}
-                </div>
+        <section className="surface-panel min-h-[560px] overflow-hidden" aria-labelledby="support-queue-title">
+          <div className="flex flex-col gap-4 border-b border-[var(--border-subtle)] p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="section-kicker">Resolution workspace</p>
+              <h2 id="support-queue-title" className="mt-1 section-title">Query queue</h2>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="segmented-control" aria-label="Support queue view">
+                {(["open", "all", "resolved"] as const).map((tab) => (
+                  <button key={tab} type="button" aria-pressed={filterTab === tab} onClick={() => setFilterTab(tab)}>
+                    {tab === "open" ? `Open ${openCount}` : tab === "resolved" ? `Resolved ${resolvedCount}` : `All ${queries.length}`}
+                  </button>
+                ))}
               </div>
-            ))}
+              <Button variant="ghost" size="sm" onClick={loadData}>Refresh</Button>
+            </div>
           </div>
-        </Card>
+
+          <div className="max-h-[650px] overflow-y-auto p-4 sm:p-5">
+            {filteredQueries.length === 0 ? (
+              <EmptyState icon={<Headphones size={21} />} title="No queries in this view" description="Change the queue filter or add a new client issue." />
+            ) : (
+              <div className="space-y-3">
+                {filteredQueries.map((query) => {
+                  const resolved = query.problem_status === "Resolved";
+                  const statusVariant = resolved ? "success" : query.problem_status === "In Progress" ? "warning" : "danger";
+                  return (
+                    <article key={query.query_id} className="rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-4 transition hover:border-[var(--border-default)] hover:shadow-[var(--shadow-raised)]">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0">
+                          <p className="truncate text-[11px] font-bold uppercase tracking-[0.06em] text-[var(--text-muted)]">{query.client_name}</p>
+                          <p className="mt-2 text-[13px] font-semibold leading-5 text-[var(--text-primary)]">{query.client_problem}</p>
+                        </div>
+                        <Chip variant={statusVariant} size="sm" dot>{query.problem_status}</Chip>
+                      </div>
+                      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border-subtle)] pt-3">
+                        <span className="text-[11px] text-[var(--text-muted)]">Logged {new Date(query.created_at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+                        {resolved ? (
+                          <Chip variant="success" size="sm"><CheckCircle2 size={11} /> Outcome recorded</Chip>
+                        ) : (
+                          <Button size="sm" variant="success" onClick={() => setResolveModalQuery(query)} icon={<CheckCircle2 size={13} />}>Resolve issue</Button>
+                        )}
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </section>
       </div>
 
-      {/* Resolve Modal */}
-      {resolveModalQuery && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-[var(--z-modal)] flex items-center justify-center p-4">
-          <Card className="w-full max-w-sm p-6 space-y-4">
-            <h3 className="text-base font-black text-[var(--text-primary)] flex items-center gap-2">
-              <CheckCircle2 size={18} className="text-[var(--status-success)]" /> Mark Query Resolved
-            </h3>
-            <p className="text-xs font-semibold text-[var(--text-muted)]">
-              {resolveModalQuery.client_name}
-            </p>
-            <form onSubmit={handleResolveSubmit} className="space-y-4">
-              <div>
-                <label className="block text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
-                  Resolution Outcome
-                </label>
-
-                <div className="flex flex-wrap gap-1.5 mb-3">
-                  {QUICK_REPLIES.map((reply) => (
-                    <button
-                      key={reply}
-                      type="button"
-                      onClick={() => setResolutionNotes(reply)}
-                      className={`px-2.5 py-1 rounded-[var(--radius-round)] border text-[10px] font-bold cursor-pointer transition-all ${
-                        resolutionNotes === reply
-                          ? "bg-[var(--status-success-soft)] border-[var(--status-success)]/30 text-[var(--status-success)]"
-                          : "bg-[var(--surface-primary)] border-[var(--border-default)] text-[var(--text-secondary)] hover:border-[var(--brand-500)]"
-                      }`}
-                    >
-                      {reply}
-                    </button>
-                  ))}
-                </div>
-
-                <input
-                  required
-                  value={resolutionNotes}
-                  onChange={e => setResolutionNotes(e.target.value)}
-                  placeholder="Resolution details..."
-                  className="w-full bg-[var(--surface-primary)] border border-[var(--border-default)] rounded-[var(--radius-md)] p-2.5 text-xs font-semibold text-[var(--text-primary)] focus:outline-none focus:border-[var(--status-success)] focus:ring-2 focus:ring-[var(--status-success)]/20 transition-all"
-                />
-              </div>
-              <div className="flex gap-2 pt-2">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="flex-1"
-                  onClick={() => { setResolveModalQuery(null); setResolutionNotes(""); }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  variant="success"
-                  disabled={!resolutionNotes.trim()}
-                  className="flex-1"
-                >
-                  Confirm
-                </Button>
-              </div>
-            </form>
-          </Card>
-        </div>
-      )}
+      <Modal
+        open={Boolean(resolveModalQuery)}
+        onClose={() => { setResolveModalQuery(null); setResolutionNotes(""); }}
+        title="Document the resolution"
+        description={resolveModalQuery ? `${resolveModalQuery.client_name} · ${resolveModalQuery.client_problem}` : undefined}
+        size="md"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => { setResolveModalQuery(null); setResolutionNotes(""); }}>Cancel</Button>
+            <Button type="submit" form="resolve-support-form" variant="success" disabled={!resolutionNotes.trim()}>Mark resolved</Button>
+          </>
+        }
+      >
+        <form id="resolve-support-form" onSubmit={handleResolveSubmit} className="space-y-5">
+          <fieldset>
+            <legend className="field-label">Common outcomes</legend>
+            <div className="flex flex-wrap gap-2">
+              {QUICK_REPLIES.map((reply) => (
+                <button key={reply} type="button" onClick={() => setResolutionNotes(reply)} aria-pressed={resolutionNotes === reply} className={`min-h-8 rounded-[var(--radius-round)] border px-3 text-[11px] font-semibold transition ${resolutionNotes === reply ? "border-[var(--status-success)] bg-[var(--status-success-soft)] text-[var(--status-success)]" : "border-[var(--border-default)] bg-[var(--surface-primary)] text-[var(--text-secondary)] hover:border-[var(--brand-500)]"}`}>
+                  {reply}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+          <div>
+            <label htmlFor="resolution-notes" className="field-label">Resolution notes</label>
+            <textarea id="resolution-notes" required rows={4} value={resolutionNotes} onChange={(event) => setResolutionNotes(event.target.value)} placeholder="Describe what fixed the issue and anything the next agent should know." className="field-control resize-y" />
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

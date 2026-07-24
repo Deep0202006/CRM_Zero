@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
 
   const { data: callerCaps } = await supabaseAdmin
     .from("user_capabilities").select("capability_code").eq("user_id", caller.id);
-  const isAdmin = callerCaps?.some((c: any) => c.capability_code === "admin");
+  const isAdmin = callerCaps?.some((c: { capability_code: string }) => c.capability_code === "admin");
   if (!isAdmin) return NextResponse.json({ error: "Admin access required" }, { status: 403 });
 
   const parsed = UpdateUserSchema.safeParse(await req.json());
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
 
   const authEmail = email.includes('@') ? email.toLowerCase() : `${email.toLowerCase()}@zerodata.local`;
   
-  const updatePayload: any = {
+  const updatePayload: { email_confirm: boolean; user_metadata: Record<string, unknown>; email?: string } = {
     email_confirm: true,
     user_metadata: { ...currentMeta, name }
   };

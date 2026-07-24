@@ -8,9 +8,10 @@ import { PhoneCall, CheckCircle2, AlertCircle, Download } from "lucide-react";
 import excelUsers from "@/lib/excel_users.json";
 import { exportCallLogs } from "@/lib/excelExport";
 import { QueueList } from "@/components/QueueList";
-import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { MetricCard } from "@/components/ui/MetricCard";
 
 export default function CallLogsPage() {
   const { currentUser, isAdmin } = useAuth();
@@ -39,7 +40,7 @@ export default function CallLogsPage() {
   ];
 
   const leadOptions: SearchableOption[] = React.useMemo(() => {
-    const excelOptions: SearchableOption[] = excelUsers.map((eu: any) => ({
+    const excelOptions: SearchableOption[] = (excelUsers as Array<{ username: string; name?: string }>).map((eu) => ({
       value: `EXCEL::${eu.username}::${eu.name || eu.username}`,
       label: `${eu.name || eu.username} (@${eu.username})`,
       searchText: eu.username + " " + (eu.name || "")
@@ -145,8 +146,8 @@ export default function CallLogsPage() {
       await loadData();
       
       setTimeout(() => setSuccess(false), 3000);
-    } catch (err: any) {
-      setError(err.message || "Failed to log call.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to log call.");
     } finally {
       setSubmitting(false);
     }
@@ -177,138 +178,88 @@ export default function CallLogsPage() {
     return `${user.name} (@${user.email})`;
   };
 
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const callsToday = logs.filter((log) => log.timestamp.startsWith(todayKey)).length;
+  const followupsScheduled = logs.filter((log) => Boolean(log.next_followup_date)).length;
+  const reachedClients = logs.filter((log) => !log.outcome.toLowerCase().includes("no response")).length;
+
   return (
-    <div className="space-y-6 w-full max-w-6xl mx-auto">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
-          <PhoneCall size={24} className="text-[var(--brand-500)]" />
-          <div>
-            <h1 className="text-2xl font-black text-[var(--text-primary)]">Call Logs</h1>
-            <p className="text-xs text-[var(--text-muted)] font-bold uppercase tracking-wider">
-              Record manual calls made to distributors and retailers
-            </p>
-          </div>
-        </div>
-        
-        {currentUser && (
-          <Button
-            size="sm"
-            onClick={() => exportCallLogs(currentUser.user_id, isAdmin)}
-            icon={<Download size={14} />}
-          >
-            Export Call Logs
+    <div className="app-page">
+      <PageHeader
+        eyebrow="Communication desk"
+        icon={<PhoneCall size={18} />}
+        title="Call activity"
+        description="Capture outcomes, schedule follow-ups, and keep a trustworthy history of every client conversation."
+        actions={currentUser ? (
+          <Button size="sm" variant="outline" onClick={() => exportCallLogs(currentUser.user_id, isAdmin)} icon={<Download size={14} />}>
+            Export history
           </Button>
-        )}
+        ) : undefined}
+      />
+
+      <div className="metric-grid">
+        <MetricCard label="Calls today" value={callsToday} icon={<PhoneCall size={17} />} note="Recorded in the current calendar day" />
+        <MetricCard label="Total records" value={logs.length} icon={<CheckCircle2 size={17} />} tone="neutral" note="All locally available call outcomes" />
+        <MetricCard label="Follow-ups planned" value={followupsScheduled} icon={<AlertCircle size={17} />} tone="warning" note="Calls with a scheduled next step" />
+        <MetricCard label="Clients reached" value={reachedClients} icon={<CheckCircle2 size={17} />} tone="success" note="Outcomes other than no response" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        <Card className="lg:col-span-2 space-y-4">
-          <h2 className="text-sm font-black text-[var(--text-primary)] flex items-center gap-2 border-b border-[var(--border-subtle)] pb-3">
-            <PhoneCall size={16} className="text-[var(--brand-500)]" />
-            Log Call Outcome
-          </h2>
+      <div className="workspace-split">
+        <section className="surface-panel overflow-hidden" aria-labelledby="log-call-title">
+          <div className="border-b border-[var(--border-subtle)] bg-[var(--surface-secondary)] p-5">
+            <p className="section-kicker">New activity</p>
+            <h2 id="log-call-title" className="mt-1 section-title">Record a call outcome</h2>
+            <p className="mt-1 text-[12px] leading-5 text-[var(--text-muted)]">A follow-up task is created automatically when the selected outcome needs another contact.</p>
+          </div>
 
-          <form onSubmit={handleLogCall} className="space-y-4">
+          <form onSubmit={handleLogCall} className="space-y-5 p-5 sm:p-6">
             <div>
-              <label className="block text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
-                Select Lead
-              </label>
-              <SearchableSelect
-                options={leadOptions}
-                value={selectedLeadId}
-                onChange={setSelectedLeadId}
-                placeholder="Search by name or username..."
-                required
-              />
+              <label className="field-label">Client or lead</label>
+              <SearchableSelect options={leadOptions} value={selectedLeadId} onChange={setSelectedLeadId} placeholder="Search by name or username" required />
             </div>
 
             <div>
-              <label className="block text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
-                Call Response / Outcome
-              </label>
-              <select
-                value={outcome}
-                onChange={(e) => setOutcome(e.target.value)}
-                className="w-full bg-[var(--surface-primary)] border border-[var(--border-default)] rounded-[var(--radius-md)] p-2.5 text-xs font-semibold text-[var(--text-primary)] focus:outline-none focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-500)]/20 transition-all"
-                required
-              >
-                <option value="" disabled>Select an outcome...</option>
-                {commonOutcomes.map((opt) => (
-                  <option key={opt} value={opt}>{opt}</option>
-                ))}
+              <label htmlFor="call-outcome" className="field-label">Outcome</label>
+              <select id="call-outcome" value={outcome} onChange={(event) => setOutcome(event.target.value)} className="field-control" required>
+                <option value="" disabled>Select an outcome</option>
+                {commonOutcomes.map((option) => <option key={option} value={option}>{option}</option>)}
               </select>
             </div>
 
             <div>
-              <label className="block text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
-                Additional Notes <span className="text-[var(--text-muted)] font-normal">(Optional)</span>
-              </label>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Any important details discussed..."
-                rows={3}
-                className="w-full bg-[var(--surface-primary)] border border-[var(--border-default)] rounded-[var(--radius-md)] p-3 text-xs font-medium text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-500)]/20 transition-all resize-none"
-              />
+              <label htmlFor="call-notes" className="field-label">Conversation notes <span className="font-normal text-[var(--text-muted)]">(optional)</span></label>
+              <textarea id="call-notes" value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Important details, objections, or commitments" rows={4} className="field-control resize-y" />
             </div>
 
             {showFollowup && (
-              <Input
-                label="Next Follow-up Date (Optional)"
-                type="date"
-                value={nextFollowup}
-                onChange={(e) => setNextFollowup(e.target.value)}
-              />
+              <Input label="Next follow-up date" type="date" value={nextFollowup} onChange={(event) => setNextFollowup(event.target.value)} description="A high-priority task will be added to My Day." />
             )}
 
-            {error && (
-              <div className="p-3 bg-[var(--status-danger-soft)] text-[var(--status-danger)] rounded-[var(--radius-md)] flex items-start gap-2 border border-[var(--status-danger)]/20 text-xs font-semibold">
-                <AlertCircle size={16} className="mt-0.5 shrink-0" />
-                <p>{error}</p>
-              </div>
-            )}
+            {error && <div className="alert-panel alert-panel--danger" role="alert"><AlertCircle size={16} className="mt-0.5 shrink-0" /><span>{error}</span></div>}
+            {success && <div className="alert-panel alert-panel--success" role="status"><CheckCircle2 size={16} className="mt-0.5 shrink-0" /><span>Call recorded and the activity history is up to date.</span></div>}
 
-            {success && (
-              <div className="p-3 bg-[var(--status-success-soft)] text-[var(--status-success)] rounded-[var(--radius-md)] flex items-center gap-2 border border-[var(--status-success)]/20 text-xs font-semibold">
-                <CheckCircle2 size={16} className="shrink-0" />
-                <p>Call logged successfully!</p>
-              </div>
-            )}
-
-            <Button
-              type="submit"
-              isLoading={submitting}
-              className="w-full h-11"
-            >
-              Log Call
-            </Button>
+            <div className="flex justify-end border-t border-[var(--border-subtle)] pt-5">
+              <Button type="submit" isLoading={submitting} icon={<PhoneCall size={15} />} disabled={!selectedLeadId || !outcome}>Record call</Button>
+            </div>
           </form>
-        </Card>
+        </section>
 
         <QueueList
-          title="Call History"
-          items={logs.map(log => ({
+          title="Recent call history"
+          items={logs.map((log) => ({
             id: log.log_id,
             primaryNode: (
               <div>
-                <p className="text-xs font-bold text-[var(--text-primary)] leading-snug">
-                  {getLeadDisplay(log.lead_id)}
-                </p>
-                <p className="text-[10px] font-semibold text-[var(--text-muted)] mt-0.5 uppercase tracking-wider">
-                  Agent: <span className="text-[var(--text-secondary)]">{getAgentDisplay(log.user_id)}</span>
-                </p>
-                {log.notes && (
-                  <p className="text-xs text-[var(--text-secondary)] mt-1.5 bg-[var(--surface-secondary)] p-2 rounded-[var(--radius-sm)] italic">
-                    {log.notes}
-                  </p>
-                )}
+                <p className="text-[13px] font-semibold leading-snug text-[var(--text-primary)]">{getLeadDisplay(log.lead_id)}</p>
+                <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--text-muted)]">Agent · <span className="normal-case tracking-normal text-[var(--text-secondary)]">{getAgentDisplay(log.user_id)}</span></p>
+                {log.notes && <p className="mt-2 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-2.5 text-[12px] leading-5 text-[var(--text-secondary)]">{log.notes}</p>}
               </div>
             ),
             statusText: log.outcome,
             statusVariant: "brand",
             timestamp: new Date(log.timestamp).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }),
           }))}
-          emptyMessage="No calls logged yet."
+          emptyMessage={loading ? "Loading call activity…" : "No calls have been recorded yet."}
           onRefresh={loadData}
         />
       </div>

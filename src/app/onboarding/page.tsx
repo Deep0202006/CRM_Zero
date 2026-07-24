@@ -3,29 +3,21 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { db, transactionalMutation, LocalLead, LocalCallLog } from "@/lib/db";
-import { type LocalTask } from "@/lib/taskEngine";
 import { validateLeadStatusTransition, LeadStatus } from "@/lib/validation";
-import { isMobileDevice } from "@/lib/deviceUtils";
 import {
   Plus,
-  X,
-  Phone,
-  FolderOpen,
   AlertCircle,
   CheckCircle2,
-  Clock,
-  FileText,
-  ArrowRight,
-  Lock,
   Layers,
   Search,
-  SlidersHorizontal,
 } from "lucide-react";
-import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Chip } from "@/components/ui/Chip";
 import { RecordInspector, RecordInspectorData } from "@/components/RecordInspector";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Modal } from "@/components/ui/Modal";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 type GateKey = `${LeadStatus}→${LeadStatus}`;
 
@@ -159,7 +151,7 @@ export default function OnboardingPage() {
         await transactionalMutation("call_logs", "INSERT", logEntry);
       }
 
-      const updateData: any = { status: targetStatus };
+      const updateData: { status: string; onboarded_at?: string } = { status: targetStatus };
       if (targetStatus === "Installation") updateData.onboarded_at = now;
 
       await transactionalMutation("leads", "UPDATE", { lead_id: lead.lead_id, ...updateData });
@@ -207,7 +199,7 @@ export default function OnboardingPage() {
         phone: newPhone.trim(),
         segment_type: newSegmentType,
         status: "New",
-        lead_source: newLeadSource,
+        lead_source: newLeadSource === "Other" ? newLeadSourceOther.trim() || "Other" : newLeadSource,
         area: newArea.trim() || undefined,
         assigned_to: currentUser?.user_id || "unassigned",
         created_at: new Date().toISOString(),
@@ -217,6 +209,8 @@ export default function OnboardingPage() {
       setNewContactPerson("");
       setNewPhone("");
       setNewArea("");
+      setNewLeadSource("Cold Call");
+      setNewLeadSourceOther("");
       setShowAddModal(false);
       await loadLeads();
       setSuccessMsg("Lead created.");
@@ -237,11 +231,18 @@ export default function OnboardingPage() {
 
   if (!hasOnboarding) {
     return (
-      <Card className="max-w-md mx-auto mt-16 text-center space-y-4 p-8">
-        <AlertCircle size={40} className="mx-auto text-[var(--status-danger)]" />
-        <h3 className="text-base font-black text-[var(--text-primary)]">Access Restricted</h3>
-        <p className="text-xs text-[var(--text-muted)] font-semibold">You don't have Onboarding capability assigned.</p>
-      </Card>
+      <div className="app-page">
+        <section className="access-state" role="status" aria-labelledby="onboarding-access-title">
+          <span className="access-state__icon" aria-hidden="true"><AlertCircle size={22} /></span>
+          <div>
+            <p className="section-kicker">Permission required</p>
+            <h1 id="onboarding-access-title" className="section-title mt-1">Onboarding access is restricted</h1>
+            <p className="mt-2 max-w-md text-[13px] leading-6 text-[var(--text-muted)]">
+              Your account does not currently include the Onboarding capability. Ask an administrator to update your role.
+            </p>
+          </div>
+        </section>
+      </div>
     );
   }
 
@@ -266,218 +267,207 @@ export default function OnboardingPage() {
     : null;
 
   return (
-    <div className="space-y-6 w-full max-w-7xl mx-auto relative">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-black text-[var(--text-primary)]">Lead Onboarding Pipeline</h1>
-          <p className="text-xs text-[var(--text-muted)] font-bold uppercase tracking-wider">
-            Stage-gated conversion workspace
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <div className="flex p-1 bg-[var(--surface-secondary)] rounded-[var(--radius-md)] gap-1">
-            {canViewRetailers && (
-              <button
-                onClick={() => setSegmentTab("Retailer")}
-                className={`px-3 py-1.5 rounded-[var(--radius-sm)] text-xs font-bold transition-all cursor-pointer ${
-                  segmentTab === "Retailer"
-                    ? "bg-[var(--surface-primary)] text-[var(--brand-500)] shadow-xs"
-                    : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                }`}
-              >
-                Retailers
-              </button>
-            )}
-            {canViewDistributors && (
-              <button
-                onClick={() => setSegmentTab("Distributor")}
-                className={`px-3 py-1.5 rounded-[var(--radius-sm)] text-xs font-bold transition-all cursor-pointer ${
-                  segmentTab === "Distributor"
-                    ? "bg-[var(--surface-primary)] text-[var(--brand-500)] shadow-xs"
-                    : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                }`}
-              >
-                Distributors
-              </button>
-            )}
-          </div>
-
-          <Button size="sm" onClick={() => setShowAddModal(true)} icon={<Plus size={14} />}>
-            New Lead
-          </Button>
-        </div>
-      </div>
+    <div className="app-page relative">
+      <PageHeader
+        eyebrow="Sales onboarding"
+        icon={<Layers size={16} />}
+        title="Lead conversion pipeline"
+        description="A stage-gated workspace for moving retailer and distributor prospects from first contact to successful onboarding."
+        actions={
+          <>
+            <div className="segmented-control" aria-label="Lead segment">
+              {canViewRetailers && (
+                <button type="button" aria-pressed={segmentTab === "Retailer"} onClick={() => setSegmentTab("Retailer")}>Retailers</button>
+              )}
+              {canViewDistributors && (
+                <button type="button" aria-pressed={segmentTab === "Distributor"} onClick={() => setSegmentTab("Distributor")}>Distributors</button>
+              )}
+            </div>
+            <Button
+              onClick={() => {
+                setNewSegmentType(segmentTab);
+                setShowAddModal(true);
+              }}
+              icon={<Plus size={15} />}
+            >
+              New lead
+            </Button>
+          </>
+        }
+        meta={
+          <>
+            <Chip variant="brand" size="sm" dot>{visibleLeads.length} visible leads</Chip>
+            <Chip variant="neutral" size="sm">{activeStages.length} active stages</Chip>
+          </>
+        }
+      />
 
       {successMsg && (
-        <div className="p-3 bg-[var(--status-success-soft)] border border-[var(--status-success)]/20 text-[var(--status-success)] rounded-[var(--radius-md)] text-xs font-bold">
-          ✓ {successMsg}
+        <div className="flex items-center gap-3 rounded-[var(--radius-md)] border border-[var(--status-success)]/20 bg-[var(--status-success-soft)] p-3.5 text-[12px] font-medium text-[var(--status-success)]">
+          <CheckCircle2 size={16} className="shrink-0" /> {successMsg}
         </div>
       )}
       {errorMsg && (
-        <div className="p-3 bg-[var(--status-danger-soft)] border border-[var(--status-danger)]/20 text-[var(--status-danger)] rounded-[var(--radius-md)] text-xs font-bold flex items-center gap-2">
-          <AlertCircle size={14} /> {errorMsg}
+        <div className="flex items-center gap-3 rounded-[var(--radius-md)] border border-[var(--status-danger)]/20 bg-[var(--status-danger-soft)] p-3.5 text-[12px] font-medium text-[var(--status-danger)]">
+          <AlertCircle size={16} className="shrink-0" /> {errorMsg}
         </div>
       )}
 
-      {/* Toolbar & Search */}
-      <Card className="p-3 flex items-center justify-between gap-4">
-        <div className="relative flex-1 max-w-sm">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
+      <section className="surface-toolbar flex-col sm:flex-row" aria-label="Pipeline controls">
+        <div className="relative w-full flex-1 sm:max-w-md">
+          <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
           <input
-            type="text"
-            placeholder="Search leads by business or contact..."
+            type="search"
+            placeholder="Search by business or contact…"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-1.5 bg-[var(--surface-secondary)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] text-xs font-semibold text-[var(--text-primary)] focus:outline-none focus:border-[var(--brand-500)]"
+            onChange={(event) => setSearchQuery(event.target.value)}
+            className="h-10 w-full rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--surface-secondary)] pl-9 pr-3 text-[13px] font-medium text-[var(--text-primary)] outline-none transition focus:border-[var(--brand-500)] focus:ring-4 focus:ring-[var(--brand-glow)]"
           />
         </div>
-        <Chip variant="brand" size="sm">
-          {visibleLeads.length} Leads
-        </Chip>
-      </Card>
+        <div className="flex w-full items-center justify-between gap-3 sm:w-auto sm:justify-end">
+          <span className="text-[11px] font-medium text-[var(--text-muted)]">Drag-free, validated stage movement</span>
+          <Chip variant="brand" size="sm">{visibleLeads.length} leads</Chip>
+        </div>
+      </section>
 
-      {/* Kanban Board Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 gap-4 overflow-x-auto pb-4">
-        {activeStages.map((stage) => {
-          const stageLeads = visibleLeads.filter((l) => l.status === stage.code);
-          return (
-            <div key={stage.code} className="space-y-3 min-w-[220px]">
-              <div className="flex items-center justify-between p-2 bg-[var(--surface-secondary)] rounded-[var(--radius-md)] border border-[var(--border-subtle)]">
-                <span className="text-xs font-black text-[var(--text-primary)]">{stage.display}</span>
-                <Chip variant={stage.variant} size="sm">
-                  {stageLeads.length}
-                </Chip>
-              </div>
-
-              <div className="space-y-2">
-                {stageLeads.map((lead) => (
-                  <Card
-                    key={lead.lead_id}
-                    className={`p-3 space-y-2 cursor-pointer transition-all hover:border-[var(--brand-500)] ${
-                      selectedLead?.lead_id === lead.lead_id ? "border-[var(--brand-500)] ring-2 ring-[var(--brand-100)]" : ""
-                    }`}
-                    onClick={() => handleOpenLead(lead)}
-                  >
-                    <div className="flex justify-between items-start">
-                      <h3 className="text-xs font-black text-[var(--text-primary)] truncate">{lead.business_name}</h3>
-                    </div>
-
-                    <p className="text-[11px] text-[var(--text-muted)] font-semibold truncate">
-                      {lead.contact_person} (@{lead.assigned_to}) - {lead.phone}
-                    </p>
-
-                    <div className="flex justify-between items-center pt-2 border-t border-[var(--border-subtle)] text-[10px]">
-                      <span className="font-mono text-[var(--text-muted)]">{lead.area || "No Area"}</span>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-6 px-2 text-[10px]"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleOpenLead(lead);
-                        }}
-                      >
-                        Inspect →
-                      </Button>
-                    </div>
-                  </Card>
-                ))}
-
-                {stageLeads.length === 0 && (
-                  <div className="p-4 text-center border border-dashed border-[var(--border-subtle)] rounded-[var(--radius-md)] text-[11px] text-[var(--text-muted)] font-semibold">
-                    Empty Stage
+      <section className="-mx-4 overflow-x-auto px-4 pb-3 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8" aria-label={`${segmentTab} pipeline board`}>
+        <div className="flex min-w-max gap-3 xl:min-w-0">
+          {activeStages.map((stage) => {
+            const stageLeads = visibleLeads.filter((lead) => lead.status === stage.code);
+            return (
+              <article key={stage.code} className="flex w-[292px] shrink-0 flex-col rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--surface-secondary)] xl:min-w-[240px] xl:flex-1">
+                <header className="flex items-center justify-between border-b border-[var(--border-subtle)] px-3.5 py-3">
+                  <div>
+                    <p className="text-[12px] font-semibold text-[var(--text-primary)]">{stage.display}</p>
+                    <p className="mt-0.5 text-[10px] text-[var(--text-muted)]">{stageLeads.length ? `${stageLeads.length} in this stage` : "No active leads"}</p>
                   </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+                  <Chip variant={stage.variant} size="sm">{stageLeads.length}</Chip>
+                </header>
 
-      {/* Persistent Record Inspector Drawer */}
+                <div className="min-h-[220px] space-y-2 p-2.5">
+                  {stageLeads.map((lead) => {
+                    const initials = lead.business_name.trim().slice(0, 2).toUpperCase();
+                    return (
+                      <button
+                        key={lead.lead_id}
+                        type="button"
+                        onClick={() => handleOpenLead(lead)}
+                        className={`group w-full rounded-[var(--radius-md)] border bg-[var(--surface-primary)] p-3 text-left shadow-[var(--shadow-raised)] transition hover:-translate-y-px hover:border-[var(--brand-300)] hover:shadow-[var(--shadow-card-hover)] ${
+                          selectedLead?.lead_id === lead.lead_id ? "border-[var(--brand-400)] ring-2 ring-[var(--brand-100)]" : "border-[var(--border-subtle)]"
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-[var(--brand-50)] text-[11px] font-bold text-[var(--brand-800)]">{initials}</span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-[12px] font-semibold text-[var(--text-primary)]">{lead.business_name}</span>
+                            <span className="mt-0.5 block truncate text-[10px] text-[var(--text-muted)]">{lead.contact_person} · {lead.phone}</span>
+                          </span>
+                        </div>
+                        <div className="mt-3 flex items-center justify-between gap-2 border-t border-[var(--border-subtle)] pt-2.5">
+                          <span className="truncate text-[10px] font-medium text-[var(--text-muted)]">{lead.area || "Area not set"}</span>
+                          <span className="text-[10px] font-semibold text-[var(--brand-600)]">Inspect →</span>
+                        </div>
+                      </button>
+                    );
+                  })}
+
+                  {stageLeads.length === 0 && (
+                    <EmptyState title="Stage is clear" description="Leads will appear here after a valid transition." className="min-h-[190px] border-0 bg-transparent px-3 py-6" />
+                  )}
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      </section>
+
       <RecordInspector
         record={inspectorData}
         onClose={handleCloseLead}
-        onAction={(action, rec) => {
-          if (selectedLead && selectedLead.status === "New") {
-            handleRequestTransition(selectedLead, "Contacted");
-          }
+        onAction={() => {
+          if (selectedLead && selectedLead.status === "New") handleRequestTransition(selectedLead, "Contacted");
         }}
       />
 
-      {/* Stage Gate Modal */}
-      {gateModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-[var(--z-modal)] flex items-center justify-center p-4">
-          <Card className="w-full max-w-sm p-6 space-y-4">
-            <h3 className="text-base font-black text-[var(--text-primary)]">
-              Stage Transition Gate: {gateModal.targetStatus}
-            </h3>
-            <p className="text-xs text-[var(--text-muted)] font-semibold">{gateModal.config.placeholder}</p>
-            <form onSubmit={handleGateSubmit} className="space-y-3">
+      <Modal
+        open={Boolean(gateModal)}
+        onClose={() => setGateModal(null)}
+        title={gateModal ? `Move lead to ${gateModal.targetStatus}` : "Stage transition"}
+        description={gateModal?.config.placeholder}
+        size="sm"
+      >
+        {gateModal && (
+          <form onSubmit={handleGateSubmit} className="space-y-4">
+            <div>
+              <label htmlFor="gate-note" className="mb-1.5 block text-[12px] font-semibold text-[var(--text-secondary)]">{gateModal.config.label}</label>
               <textarea
-                rows={3}
+                id="gate-note"
+                rows={4}
                 required={gateModal.config.required}
                 value={gateNote}
-                onChange={(e) => setGateNote(e.target.value)}
-                placeholder="Enter mandatory transition notes..."
-                className="w-full p-3 bg-[var(--surface-secondary)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] text-xs font-semibold text-[var(--text-primary)] focus:outline-none focus:border-[var(--brand-500)]"
+                onChange={(event) => setGateNote(event.target.value)}
+                placeholder="Add the evidence or context required for this stage change…"
+                className="w-full resize-y rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--surface-primary)] p-3 text-[13px] text-[var(--text-primary)] outline-none transition focus:border-[var(--brand-500)] focus:ring-4 focus:ring-[var(--brand-glow)]"
               />
-              <div className="flex gap-2">
-                <Button variant="secondary" className="flex-1" type="button" onClick={() => setGateModal(null)}>
-                  Cancel
-                </Button>
-                <Button type="submit" isLoading={gateLoading} className="flex-1">
-                  Confirm Transition
-                </Button>
-              </div>
-            </form>
-          </Card>
-        </div>
-      )}
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" type="button" onClick={() => setGateModal(null)}>Cancel</Button>
+              <Button type="submit" isLoading={gateLoading}>Confirm transition</Button>
+            </div>
+          </form>
+        )}
+      </Modal>
 
-      {/* New Lead Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-[var(--z-modal)] flex items-center justify-center p-4">
-          <Card className="w-full max-w-sm p-6 space-y-4">
-            <h3 className="text-base font-black text-[var(--text-primary)]">Create New Lead</h3>
-            <form onSubmit={handleCreateLead} className="space-y-3">
-              <Input
-                label="Business Name"
-                required
-                value={newBusinessName}
-                onChange={(e) => setNewBusinessName(e.target.value)}
-              />
-              <Input
-                label="Contact Person"
-                required
-                value={newContactPerson}
-                onChange={(e) => setNewContactPerson(e.target.value)}
-              />
-              <Input
-                label="Phone Number"
-                required
-                value={newPhone}
-                onChange={(e) => setNewPhone(e.target.value)}
-              />
-              <Input
-                label="Area / City"
-                value={newArea}
-                onChange={(e) => setNewArea(e.target.value)}
-              />
-              <div className="flex gap-2 pt-2">
-                <Button variant="secondary" className="flex-1" type="button" onClick={() => setShowAddModal(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit" className="flex-1">
-                  Create Lead
-                </Button>
-              </div>
-            </form>
-          </Card>
-        </div>
-      )}
+      <Modal
+        open={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        title="Create a new lead"
+        description="Add the minimum verified details. Ownership and lifecycle rules remain unchanged."
+        size="sm"
+      >
+        <form onSubmit={handleCreateLead} className="space-y-4">
+          <Input label="Business name" required value={newBusinessName} onChange={(event) => setNewBusinessName(event.target.value)} />
+          <Input label="Contact person" required value={newContactPerson} onChange={(event) => setNewContactPerson(event.target.value)} />
+          <Input label="Phone number" required value={newPhone} onChange={(event) => setNewPhone(event.target.value)} />
+          <Input label="Area or city" value={newArea} onChange={(event) => setNewArea(event.target.value)} />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="space-y-1.5">
+              <span className="field-label">Segment</span>
+              <select
+                className="field-control"
+                value={newSegmentType}
+                onChange={(event) => setNewSegmentType(event.target.value as "Distributor" | "Retailer")}
+              >
+                {canViewRetailers && <option value="Retailer">Retailer</option>}
+                {canViewDistributors && <option value="Distributor">Distributor</option>}
+              </select>
+            </label>
+            <label className="space-y-1.5">
+              <span className="field-label">Lead source</span>
+              <select className="field-control" value={newLeadSource} onChange={(event) => setNewLeadSource(event.target.value)}>
+                <option value="Cold Call">Cold call</option>
+                <option value="Referral">Referral</option>
+                <option value="Website">Website</option>
+                <option value="Field Visit">Field visit</option>
+                <option value="Other">Other</option>
+              </select>
+            </label>
+          </div>
+          {newLeadSource === "Other" && (
+            <Input
+              label="Other lead source"
+              required
+              value={newLeadSourceOther}
+              onChange={(event) => setNewLeadSourceOther(event.target.value)}
+              placeholder="Enter the source"
+            />
+          )}
+          <div className="flex justify-end gap-2 pt-1">
+            <Button variant="outline" type="button" onClick={() => setShowAddModal(false)}>Cancel</Button>
+            <Button type="submit">Create lead</Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }
