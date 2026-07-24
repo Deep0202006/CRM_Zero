@@ -1,7 +1,26 @@
 -- Migration 021: Field Visits Hardening
 -- Adds columns and strict RLS for production field visit usage.
 
--- 1. Add missing columns to field_visits
+-- 1. Create table if it doesn't exist (incorporating 019 for safety)
+CREATE TABLE IF NOT EXISTS public.field_visits (
+    visit_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    lead_id TEXT NOT NULL,
+    user_id UUID NOT NULL REFERENCES public.users(user_id) ON DELETE CASCADE,
+    visit_date DATE NOT NULL,
+    check_in_time TIMESTAMPTZ NOT NULL,
+    check_in_lat DOUBLE PRECISION,
+    check_in_lng DOUBLE PRECISION,
+    check_in_photo_url TEXT,
+    visit_outcome TEXT NOT NULL,
+    visit_notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT now() NOT NULL
+);
+
+-- Enable RLS
+ALTER TABLE public.field_visits ENABLE ROW LEVEL SECURITY;
+
+-- 2. Add missing columns to field_visits
 ALTER TABLE public.field_visits
   ADD COLUMN IF NOT EXISTS attendance_id UUID,
   ADD COLUMN IF NOT EXISTS person_met TEXT,
