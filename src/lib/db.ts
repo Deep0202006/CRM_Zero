@@ -834,14 +834,14 @@ export async function pullDownSync() {
       } else if (data && data.length === 0) {
         // HOTFIX RECOVERY: Supabase is empty, DO NOT DELETE local data!
         // Instead, we act as a master node and PUSH our local data back up to Supabase to restore it.
-        const table = dynamicTables[tableName];
+        const table = dynamicTables[localTableName];
         const localItems = await table.toArray();
         
         if (localItems.length > 0) {
-          console.warn(`[RECOVERY] Remote table ${tableName} is empty, but local has ${localItems.length} records. Pushing local data to restore remote...`);
+          console.warn(`[RECOVERY] Remote table ${remoteTableName} is empty, but local has ${localItems.length} records. Pushing local data to restore remote...`);
           for (const item of localItems) {
             // Reformat mappings format on the fly if it's a lead or client_query
-            if (tableName === 'leads' && item.business_name && typeof item.business_name === 'string') {
+            if (localTableName === 'leads' && item.business_name && typeof item.business_name === 'string') {
               if (item.business_name.includes('(@')) {
                 // old format: Name (@Username) -> new format: [Username] - Name
                 const match = item.business_name.match(/(.+) \(@(.+)\)/);
@@ -850,7 +850,7 @@ export async function pullDownSync() {
                   if (item.contact_person === match[0]) item.contact_person = item.business_name;
                 }
               }
-            } else if (tableName === 'client_queries' && item.client_name && typeof item.client_name === 'string') {
+            } else if (localTableName === 'client_queries' && item.client_name && typeof item.client_name === 'string') {
                if (item.client_name.includes('(@')) {
                 const match = item.client_name.match(/(.+) \(@(.+)\)/);
                 if (match) {
@@ -860,7 +860,7 @@ export async function pullDownSync() {
             }
 
             // Queue an insert to push this local item back to Supabase
-            await queueOfflineMutation(tableName, "INSERT", item);
+            await queueOfflineMutation(localTableName, "INSERT", item);
           }
         }
       }
