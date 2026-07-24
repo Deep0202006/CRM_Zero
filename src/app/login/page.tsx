@@ -220,7 +220,7 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <div ref={formRef} id="login-form" className="relative flex items-center justify-center bg-[var(--surface-canvas)] px-4 py-8 sm:px-10 lg:min-h-[100svh] lg:px-12 xl:px-20">
+        <div ref={formRef} id="login-form" className="relative flex items-start lg:items-center justify-center bg-[var(--surface-canvas)] px-4 pt-4 pb-8 sm:px-10 lg:min-h-[100svh] lg:px-12 xl:px-20">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_10%,var(--surface-brand-haze-medium),transparent_24rem)]" />
           <div className="relative z-10 w-full max-w-[430px]">
             <div className="mb-8">
