@@ -130,13 +130,13 @@ export default function LoginPage() {
       )}
 
       <section className="grid min-h-[100svh] lg:grid-cols-[1.12fr_0.88fr]">
-        <div className="relative flex min-h-[58svh] overflow-hidden bg-[var(--surface-sidebar)] text-white lg:min-h-[100svh]">
-          <div className="login-grid-pattern absolute inset-0 opacity-70" />
-          <div className="absolute -left-24 top-12 h-72 w-72 rounded-full bg-[var(--brand-500)]/20 blur-[90px]" />
-          <div className="absolute -bottom-28 right-0 h-96 w-96 rounded-full bg-[var(--chart-2)]/15 blur-[110px]" />
+        <div className="relative flex min-h-[58svh] overflow-y-auto overflow-x-hidden bg-[var(--surface-sidebar)] text-white lg:min-h-[100svh]">
+          <div className="login-grid-pattern absolute inset-0 opacity-70 pointer-events-none" />
+          <div className="absolute -left-24 top-12 h-72 w-72 rounded-full bg-[var(--brand-500)]/20 blur-[90px] pointer-events-none" />
+          <div className="absolute -bottom-28 right-0 h-96 w-96 rounded-full bg-[var(--chart-2)]/15 blur-[110px] pointer-events-none" />
 
-          <div className="relative z-10 flex w-full flex-col justify-between gap-12 p-6 sm:p-9 lg:p-12 xl:p-16">
-            <div className="flex items-center justify-between gap-4">
+          <div className="relative z-10 flex w-full flex-col gap-12 p-6 sm:p-9 lg:p-12 xl:p-16 min-h-max">
+            <div className="flex items-center justify-between gap-4 shrink-0">
               <div className="flex items-center gap-3">
                 <span className="grid h-10 w-10 place-items-center overflow-hidden rounded-[12px] bg-white">
                   <Image src="/logo-icon.png" alt="" width={36} height={36} className="h-9 w-9 object-cover" priority />
@@ -152,30 +152,30 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <div className="flex flex-col gap-10">
-              <div className="max-w-2xl">
-                <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.045] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--brand-300)]">
-                  <Sparkles size={13} /> Operational intelligence
-                </span>
-                <h1 className="mt-6 text-[clamp(2.25rem,8.5vw,5.5rem)] font-semibold leading-[1.2] sm:leading-[1.1] tracking-[-0.04em] sm:tracking-[-0.065em] text-white">
-                  Every client move,
-                  <span className="block text-[var(--brand-300)] mt-1 sm:mt-0">clearly connected.</span>
-                </h1>
-                <p className="mt-6 max-w-xl text-[14px] leading-7 text-[var(--login-copy)] sm:text-[16px]">
-                  One focused workspace for sales onboarding, field execution, mappings, support, calls, attendance, and team performance.
-                </p>
+            <div className="max-w-2xl shrink-0">
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.045] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--brand-300)]">
+                <Sparkles size={13} /> Operational intelligence
+              </span>
+              <h1 className="mt-6 text-[clamp(2.25rem,8.5vw,5.5rem)] font-semibold leading-[1.2] sm:leading-[1.1] tracking-[-0.04em] sm:tracking-[-0.065em] text-white">
+                Every client move,
+                <span className="block text-[var(--brand-300)] mt-1 sm:mt-0">clearly connected.</span>
+              </h1>
+              <p className="mt-6 max-w-xl text-[14px] leading-7 text-[var(--login-copy)] sm:text-[16px]">
+                One focused workspace for sales onboarding, field execution, mappings, support, calls, attendance, and team performance.
+              </p>
 
-                <div className="mt-8 flex flex-wrap gap-x-6 gap-y-3 text-[11px] font-medium text-[var(--login-copy-strong)]">
-                  {["Role-aware access", "Offline-ready operations", "Live execution queues"].map((item) => (
-                    <span key={item} className="flex items-center gap-2">
-                      <span className="grid h-5 w-5 place-items-center rounded-full bg-[var(--brand-400)]/15 text-[var(--brand-300)]"><Check size={12} /></span>
-                      {item}
-                    </span>
-                  ))}
-                </div>
+              <div className="mt-8 flex flex-wrap gap-x-6 gap-y-3 text-[11px] font-medium text-[var(--login-copy-strong)]">
+                {["Role-aware access", "Offline-ready operations", "Live execution queues"].map((item) => (
+                  <span key={item} className="flex items-center gap-2">
+                    <span className="grid h-5 w-5 place-items-center rounded-full bg-[var(--brand-400)]/15 text-[var(--brand-300)]"><Check size={12} /></span>
+                    {item}
+                  </span>
+                ))}
               </div>
+            </div>
 
-              <div className="relative hidden sm:block max-w-[360px] mt-4" aria-hidden="true">
+            <div className="mt-auto pt-8 flex flex-col gap-10 shrink-0">
+              <div className="relative hidden sm:block max-w-[360px]" aria-hidden="true">
                 <div className="animate-float relative overflow-hidden rounded-[24px] border border-white/10 bg-[var(--login-panel)]/85 p-4 shadow-[var(--shadow-login-card)] backdrop-blur-xl">
                   <div className="mb-4 flex items-center justify-between">
                     <div>
@@ -205,18 +205,18 @@ export default function LoginPage() {
                     </div>
                   </div>
                 </div>
-                <div className="animate-orbit absolute -right-8 -top-8 h-24 w-24 rounded-full border border-dashed border-[var(--brand-300)]/25" />
+                <div className="animate-orbit absolute -right-4 -bottom-4 h-24 w-24 rounded-full border border-dashed border-[var(--brand-300)]/25" />
               </div>
-            </div>
 
-            <button
-              type="button"
-              onClick={() => scrollToElement(document.getElementById("login-story"))}
-              className="flex w-fit items-center gap-3 text-left text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--login-muted)] transition hover:text-white"
-            >
-              <span className="grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-white/[0.035]"><ArrowDown size={15} /></span>
-              Scroll to explore the workspace
-            </button>
+              <button
+                type="button"
+                onClick={() => scrollToElement(document.getElementById("login-story"))}
+                className="flex w-fit items-center gap-3 text-left text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--login-muted)] transition hover:text-white"
+              >
+                <span className="grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-white/[0.035]"><ArrowDown size={15} /></span>
+                Scroll to explore the workspace
+              </button>
+            </div>
           </div>
         </div>
 
