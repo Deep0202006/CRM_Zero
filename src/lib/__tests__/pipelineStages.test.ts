@@ -1,3 +1,4 @@
+
 // src/lib/__tests__/pipelineStages.test.ts
 import { ALLOWED_TRANSITIONS, PIPELINE_STAGES, isTransitionAllowed } from "../pipelineStages";
 
