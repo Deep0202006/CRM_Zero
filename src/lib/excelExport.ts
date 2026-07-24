@@ -7,7 +7,7 @@ const formatIsoDate = (dateString?: string | null) => {
     const d = new Date(dateString);
     if (isNaN(d.getTime())) return dateString;
     return d.toISOString().slice(0, 16).replace('T', ' '); // YYYY-MM-DD HH:mm
-  } catch (e) {
+  } catch (_e) {
     return dateString;
   }
 };

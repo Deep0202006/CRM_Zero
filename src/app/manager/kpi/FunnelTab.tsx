@@ -164,7 +164,7 @@ export default function FunnelTab() {
 
   const currentTime = PIPELINE_STAGES.filter((s: string) => s !== "Payment" && s !== "Not Interested").map((stage: string) => {
     const stageData = timeData
-      .filter((t: any) => (activeSegment === "All" || t.segment_type === activeSegment) && t.status === stage);
+      .filter((t) => (activeSegment === "All" || t.segment_type === activeSegment) && t.status === stage);
     
     let avg = 0;
     if (stageData.length > 0) {

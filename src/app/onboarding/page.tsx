@@ -151,7 +151,7 @@ export default function OnboardingPage() {
         await transactionalMutation("call_logs", "INSERT", logEntry);
       }
 
-      const updateData: any = { status: targetStatus };
+      const updateData: { status: string; onboarded_at?: string } = { status: targetStatus };
       if (targetStatus === "Installation") updateData.onboarded_at = now;
 
       await transactionalMutation("leads", "UPDATE", { lead_id: lead.lead_id, ...updateData });

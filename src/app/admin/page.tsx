@@ -125,8 +125,8 @@ export default function AdminPage() {
       await loadAdminData();
       setHighlightRowId(targetUserId);
       setTimeout(() => setHighlightRowId(null), 1200);
-    } catch (err: any) {
-      setErrorMsg(err.message || "Failed to update capabilities mapping in database.");
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : "Failed to update capabilities mapping in database.");
     }
   };
 
@@ -151,8 +151,8 @@ export default function AdminPage() {
       if (!res.ok) throw new Error(data.error || "Failed to reset password");
       
       setNewPasswordResult(data.tempPassword);
-    } catch (err: any) {
-      setErrorMsg(err.message || "Failed to reset password");
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : "Failed to reset password");
     } finally {
       setIsResetting(false);
     }
@@ -198,8 +198,8 @@ export default function AdminPage() {
       setSuccessMsg(`Updated user ${editUserForm.name} successfully.`);
       setEditingUser(null);
       setTimeout(() => setSuccessMsg(null), 3000);
-    } catch (err: any) {
-      setErrorMsg(err.message || "Failed to update user");
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : "Failed to update user");
     } finally {
       setIsUpdatingUser(false);
     }
@@ -214,8 +214,8 @@ export default function AdminPage() {
       await loadAdminData();
       setSuccessMsg("Manager assignment updated.");
       setTimeout(() => setSuccessMsg(null), 2000);
-    } catch (err: any) {
-      setErrorMsg(err.message || "Failed to update manager assignment.");
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : "Failed to update manager assignment.");
     }
   };
 
@@ -230,8 +230,8 @@ export default function AdminPage() {
       await loadAdminData();
       setSuccessMsg("Template saved.");
       setTimeout(() => setSuccessMsg(null), 2000);
-    } catch (err: any) {
-      setErrorMsg(err.message || "Failed to save template.");
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : "Failed to save template.");
     }
   };
 
@@ -243,8 +243,8 @@ export default function AdminPage() {
       
       await db.task_templates.update(tpl.template_id, { is_active: newActive });
       await loadAdminData();
-    } catch (err: any) {
-      setErrorMsg(err.message || "Failed to toggle template.");
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : "Failed to toggle template.");
     }
   };
 

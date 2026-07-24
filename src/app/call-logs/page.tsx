@@ -40,7 +40,7 @@ export default function CallLogsPage() {
   ];
 
   const leadOptions: SearchableOption[] = React.useMemo(() => {
-    const excelOptions: SearchableOption[] = excelUsers.map((eu: any) => ({
+    const excelOptions: SearchableOption[] = (excelUsers as Array<{ username: string; name?: string }>).map((eu) => ({
       value: `EXCEL::${eu.username}::${eu.name || eu.username}`,
       label: `${eu.name || eu.username} (@${eu.username})`,
       searchText: eu.username + " " + (eu.name || "")
@@ -146,8 +146,8 @@ export default function CallLogsPage() {
       await loadData();
       
       setTimeout(() => setSuccess(false), 3000);
-    } catch (err: any) {
-      setError(err.message || "Failed to log call.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to log call.");
     } finally {
       setSubmitting(false);
     }

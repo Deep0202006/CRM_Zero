@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
-import { CONVERTED_STAGES } from "@/lib/pipelineRules";
+import { CONVERTED_STAGES, PipelineStage } from "@/lib/pipelineRules";
 import { db } from "@/lib/db";
 import {
   BarChart,
@@ -58,7 +58,7 @@ async function buildLocalKpiRows(date: string): Promise<KpiRow[]> {
     const converted = leads.filter(
       (l) =>
         l.assigned_to === u.user_id &&
-        CONVERTED_STAGES.includes(l.status as any)
+        CONVERTED_STAGES.includes(l.status as PipelineStage)
     ).length;
     const callsMade = calls.filter((c) => c.user_id === u.user_id && c.timestamp.startsWith(date)).length;
 
@@ -101,17 +101,21 @@ export default function ManagerKpiPage() {
           )
           .eq("date", date);
 
-        const mapped: KpiRow[] = (data || []).map((r: any) => ({
-          user_id: r.user_id,
-          name: r.users.name,
-          completion_rate: Number(r.completion_rate) || 0,
-          tasks_assigned: r.tasks_assigned || 0,
-          tasks_completed: r.tasks_completed || 0,
-          attendance_status: r.attendance_status ?? "Absent",
-          leads_converted: r.leads_converted || 0,
-          tickets_resolved: r.tickets_resolved || 0,
-          calls_made: r.calls_made || 0,
-        }));
+        const mapped: KpiRow[] = (data || []).map((r: unknown) => {
+          const row = r as Record<string, unknown> & { users: { name: string } | { name: string }[] };
+          const userName = Array.isArray(row.users) ? row.users[0]?.name : row.users?.name;
+          return {
+            user_id: String(row.user_id),
+            name: userName || "",
+            completion_rate: Number(row.completion_rate) || 0,
+            tasks_assigned: Number(row.tasks_assigned) || 0,
+            tasks_completed: Number(row.tasks_completed) || 0,
+            attendance_status: row.attendance_status ? String(row.attendance_status) : "Absent",
+            leads_converted: Number(row.leads_converted) || 0,
+            tickets_resolved: Number(row.tickets_resolved) || 0,
+            calls_made: Number(row.calls_made) || 0,
+          };
+        });
         let finalMapped = mapped;
         if (!isAdmin && currentUser) {
           finalMapped = mapped.filter((r) => r.user_id === currentUser.user_id);

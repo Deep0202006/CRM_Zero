@@ -150,7 +150,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const newUser = {
               ...remoteUser,
               is_active: remoteUser.is_active ? 1 : 0
-            } as any;
+            } as LocalUser;
             user = newUser;
             await db.users.put(newUser);
             

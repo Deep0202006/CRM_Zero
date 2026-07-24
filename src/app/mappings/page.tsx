@@ -26,7 +26,7 @@ export default function MappingsPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  const excelOptions: SearchableOption[] = React.useMemo(() => excelUsers.map((eu: any) => ({
+  const excelOptions: SearchableOption[] = React.useMemo(() => (excelUsers as Array<{ username: string; name?: string }>).map((eu) => ({
     value: `EXCEL::${eu.username}::${eu.name || eu.username}`,
     label: `${eu.name || eu.username} (@${eu.username})`,
     searchText: eu.username + " " + (eu.name || "")
@@ -170,7 +170,7 @@ export default function MappingsPage() {
 
   const handleUpdateMappingStatus = async (request_id: string, newStatus: string) => {
     try {
-      const updates: any = { status: newStatus };
+      const updates: { status: string; completed_at?: string } = { status: newStatus };
       if (newStatus === "Completed") updates.completed_at = new Date().toISOString();
       await transactionalMutation("mapping_requests", "UPDATE", { request_id, ...updates });
       await loadData();

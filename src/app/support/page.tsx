@@ -35,7 +35,7 @@ export default function SupportPage() {
   const [filterTab, setFilterTab] = useState<"all" | "open" | "resolved">("open");
 
   const clientOptions: SearchableOption[] = React.useMemo(() => {
-    const excelOptions: SearchableOption[] = excelUsers.map((eu: any) => ({
+    const excelOptions: SearchableOption[] = (excelUsers as Array<{ username: string; name?: string }>).map((eu) => ({
       value: `EXCEL::${eu.username}::${eu.name || eu.username}`,
       label: `${eu.name || eu.username} (@${eu.username})`,
       searchText: eu.username + " " + (eu.name || "")

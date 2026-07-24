@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
 
   const { data: callerCaps } = await supabaseAdmin
     .from("user_capabilities").select("capability_code").eq("user_id", caller.id);
-  const isAdmin = callerCaps?.some((c: any) => c.capability_code === "admin");
+  const isAdmin = callerCaps?.some((c: { capability_code: string }) => c.capability_code === "admin");
   if (!isAdmin) return NextResponse.json({ error: "Admin access required" }, { status: 403 });
 
   const parsed = CreateUserSchema.safeParse(await req.json());
