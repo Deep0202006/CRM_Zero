@@ -1,0 +1,25 @@
+fix/field-visits-production-hardening
+ M docs/field-visits-hardening/05-root-cause-register.md
+ M docs/field-visits-hardening/implementation-state.yaml
+?? docs/field-visits-hardening/00-current-architecture.md
+?? docs/field-visits-hardening/01-current-data-contract.md
+?? docs/field-visits-hardening/02-current-selfie-location-flow.md
+?? docs/field-visits-hardening/03-current-sync-flow.md
+?? docs/field-visits-hardening/04-admin-reporting-flow.md
+?? docs/field-visits-hardening/06-excel-export-contract.md
+?? docs/field-visits-hardening/07-test-matrix.md
+ docs/field-visits-hardening/05-root-cause-register.md |  8 ++++----
+ docs/field-visits-hardening/implementation-state.yaml | 10 +++++-----
+ 2 files changed, 9 insertions(+), 9 deletions(-)
+docs/field-visits-hardening/05-root-cause-register.md
+docs/field-visits-hardening/implementation-state.yaml
+8523853 fix: pipeline transitions, selfie bug, layout overlap, and DB schema checks
+c714476 fix: ensure field_visits table exists in migration and fix jest typing in tsconfig
+c065c37 fix(tests): add @types/jest to resolve IDE type errors in test files
+294bd11 fix(login): resolve layout overlap between text and execution pulse card
+fab25d0 fix: resolve ESLint and TS errors, fix login layout overlap
+cbf2909 Fix text overlap on login page
+2b824e7 Fix pipeline transition atomic ops and Vercel deployment root cause
+2ff4e60 Fix TypeScript compilation error in db.ts
+1a7f715 Complete Field Visits and Frontend Repairs
+03e047c chore: checkpoint before field visits implementation

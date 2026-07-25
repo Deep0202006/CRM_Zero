@@ -2,7 +2,7 @@
 
 | ID | Symptom | Root Cause | File Boundary | Permanent Repair |
 |---|---|---|---|---|
-| FV-01 | Camera crashes/memory leak on exit | `getUserMedia` tracks are not consistently stopped when unmounting | `src/app/visits/new/page.tsx` | Isolate camera to `SelfieCapture.tsx` with proper `useEffect` cleanup. |
-| FV-02 | Cannot submit when offline | `transactionalMutation` might fail if DB is locked, or image is too large | `src/app/visits/new/page.tsx` | Implement dedicated offline queue states for visits; compress image before save. |
-| FV-03 | Missing segment filter | Uses `excel_users.json` directly without validating role capabilities | `src/app/visits/new/page.tsx` | Use `db.leads` filtering by `LeadSegment` based on active user capabilities. |
-| FV-04 | Visit bypasses attendance checks | Missing server-side attendance verification and India business date check | `supabase/migrations/` | Implement RLS and DB functions to strictly enforce attendance for the exact IST date. |
+| FV-01 | Offline queue bloated, network timeouts | Images are uncompressed and sent via generic JSON payload. | `SelfieCapture.tsx`, `sync.ts` | Compress image client-side to <200kb. Decouple storage upload from row insert in sync worker. |
+| FV-02 | Incomplete Admin Export | Current export is a placeholder CSV button without data. | `admin/visits/page.tsx`, `api/admin/visits/export` | Build an API route utilizing `xlsx` to generate the 4 required sheets server-side. |
+| FV-03 | Attendance bypass | Client is not explicitly required to provide `attendance_id` mapping to a valid check-in. | `visits/new/page.tsx`, `db.ts` | Fetch active attendance ID via `CheckInGate` state and attach it to the local visit row. |
+| FV-04 | RLS lacks segment validation | `field_visits` insert RLS allows user to insert any `segment_type`. | `021_field_visits_hardening.sql` | Extend RLS to verify `user_capabilities` against the provided `segment_type`. |
