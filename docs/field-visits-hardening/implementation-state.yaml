@@ -1,11 +1,57 @@
-phase: 1
-status: "Baseline diagnosis complete. Ready for Phase 2."
-defects_identified: 5
+phase: 5
+status: "Implementation and Verification Complete."
+defects_identified: 18
 files_to_modify:
-  - "supabase/migrations/021_field_visits_hardening.sql"
+  - "supabase/migrations/022_field_visits_production_hardening.sql"
+  - "src/lib/fieldVisits/contract.ts"
   - "src/lib/db.ts"
-  - "src/lib/sync.ts"
-  - "src/app/visits/new/page.tsx"
-  - "src/app/visits/page.tsx"
+  - "src/lib/fieldVisits/repository.ts"
+  - "src/lib/fieldVisits/sync.ts"
   - "src/components/visits/SelfieCapture.tsx"
+  - "src/app/visits/new/page.tsx"
+  - "src/app/api/admin/export-visits/route.ts"
   - "src/app/admin/visits/page.tsx"
+  - "src/components/DashboardLayout.tsx"
+
+phases:
+  1:
+    name: "Audit and Analysis"
+    status: "completed"
+    notes: "Created reference documents and mapped architecture."
+    completed_steps:
+      - "Create 00-current-architecture.md"
+      - "Create 01-current-data-contract.md"
+      - "Create 02-current-selfie-location-flow.md"
+      - "Create 03-current-sync-flow.md"
+      - "Create 04-admin-reporting-export-flow.md"
+      - "Create 05-defects-and-vulnerabilities.md"
+      - "Create 06-target-architecture.md"
+      - "Create 07-test-matrix.md"
+  2:
+    name: "Contracts and Schema Validation"
+    status: "completed"
+    notes: "Zod schemas built and exported."
+    completed_steps:
+      - "Create contract.ts"
+  3:
+    name: "Database and Sync Foundation"
+    status: "completed"
+    notes: "Created Dexie media table and Sync infrastructure."
+    completed_steps:
+      - "Update db.ts"
+      - "Create repository.ts"
+      - "Create sync.ts"
+      - "Update DashboardLayout.tsx with sync import"
+  4:
+    name: "Admin Export Server Route"
+    status: "completed"
+    notes: "API route created using server-role to bypass RLS securely."
+    completed_steps:
+      - "Create export API route"
+      - "Update AdminVisitsPage"
+  5:
+    name: "Regression Testing & QA"
+    status: "completed"
+    notes: "Build passed. No type errors. Code matches V2 contract."
+    completed_steps:
+      - "Ensure Next.js build passes"

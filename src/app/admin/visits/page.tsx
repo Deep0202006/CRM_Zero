@@ -9,11 +9,13 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { QueueList } from "@/components/QueueList";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { Button } from "@/components/ui/Button";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function AdminVisitsPage() {
   const { currentUser, isAdmin } = useAuth();
-  
+
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
   const [visits, setVisits] = useState<LocalFieldVisit[]>([]);
   const [usersMap, setUsersMap] = useState<Map<string, LocalUser>>(new Map());
   const [leadsMap, setLeadsMap] = useState<Map<string, LocalLead>>(new Map());
@@ -23,15 +25,15 @@ export default function AdminVisitsPage() {
     try {
       const fetchedVisits = await db.field_visits.toArray();
       fetchedVisits.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-      
+
       const allUsers = await db.users.toArray();
       const uMap = new Map<string, LocalUser>();
       allUsers.forEach(u => uMap.set(u.user_id, u));
-      
+
       const allLeads = await db.leads.toArray();
       const lMap = new Map<string, LocalLead>();
       allLeads.forEach(l => lMap.set(l.lead_id, l));
-      
+
       setUsersMap(uMap);
       setLeadsMap(lMap);
       setVisits(fetchedVisits);
@@ -69,6 +71,44 @@ export default function AdminVisitsPage() {
     return `${user.name} (@${user.email})`;
   };
 
+  const handleExportExcel = async () => {
+    try {
+      setExporting(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("No session found");
+
+      // We pass the token in URL for simplicity since GET requests are standard for downloads,
+      // but if we fetch we can avoid URL logs. Let's fetch to keep token out of URL logs.
+      const url = new URL(window.location.origin + '/api/admin/export-visits');
+      url.searchParams.append('token', session.access_token);
+      if (filterOutcome !== "ALL") url.searchParams.append('outcome', filterOutcome);
+      if (filterAgent !== "ALL") url.searchParams.append('agent', filterAgent);
+
+      const response = await fetch(url.toString(), {
+        method: 'GET'
+      });
+
+      if (!response.ok) {
+        throw new Error('Export failed: ' + await response.text());
+      }
+
+      const blob = await response.blob();
+      const downloadUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = downloadUrl;
+      a.download = `FieldVisitsExport_${new Date().toISOString().split('T')[0]}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(downloadUrl);
+    } catch (err) {
+      console.error("Export error", err);
+      alert("Failed to export Excel. See console for details.");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   if (!isAdmin) {
     return (
       <div className="app-page">
@@ -104,8 +144,8 @@ export default function AdminVisitsPage() {
         title="Team Field Visits"
         description="Monitor field visit compliance, check-ins, and outcomes across the organization."
         actions={
-          <Button size="sm" variant="outline" icon={<Download size={14} />}>
-            Export to CSV
+          <Button size="sm" variant="outline" icon={<Download size={14} />} onClick={handleExportExcel} isLoading={exporting}>
+            Export to Excel
           </Button>
         }
       />
@@ -117,12 +157,12 @@ export default function AdminVisitsPage() {
       </div>
 
       <div className="mb-6 flex flex-wrap gap-4 items-center">
-         <input 
-           type="text" 
-           placeholder="Search business, agent, or notes..." 
-           className="field-control max-w-sm" 
-           value={searchTerm} 
-           onChange={(e) => setSearchTerm(e.target.value)} 
+         <input
+           type="text"
+           placeholder="Search business, agent, or notes..."
+           className="field-control max-w-sm"
+           value={searchTerm}
+           onChange={(e) => setSearchTerm(e.target.value)}
          />
          <select className="field-control max-w-xs" value={filterOutcome} onChange={(e) => setFilterOutcome(e.target.value)}>
            <option value="ALL">All Outcomes</option>
@@ -179,14 +219,14 @@ export default function AdminVisitsPage() {
 
 function PhotoViewerLink({ rawUrl }: { rawUrl: string }) {
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
-  
+
   useEffect(() => {
     async function load() {
       // Extract file path from publicUrl format
       // https://[ref].supabase.co/storage/v1/object/public/visits-evidence/uuid/file.jpg -> uuid/file.jpg
       const match = rawUrl.match(/visits-evidence\/(.+)$/);
       const filePath = match ? match[1] : rawUrl;
-      
+
       const { supabase } = await import('@/lib/supabaseClient');
       const { data } = await supabase.storage.from("visits-evidence").createSignedUrl(filePath, 3600);
       if (data?.signedUrl) {
@@ -199,10 +239,10 @@ function PhotoViewerLink({ rawUrl }: { rawUrl: string }) {
   }, [rawUrl]);
 
   return (
-    <a 
-      href={signedUrl || "#"} 
-      target={signedUrl ? "_blank" : undefined} 
-      rel="noreferrer" 
+    <a
+      href={signedUrl || "#"}
+      target={signedUrl ? "_blank" : undefined}
+      rel="noreferrer"
       className={`text-brand-600 hover:underline ${!signedUrl ? "opacity-50 cursor-not-allowed" : ""}`}
       onClick={(e) => { if (!signedUrl) e.preventDefault(); }}
     >
