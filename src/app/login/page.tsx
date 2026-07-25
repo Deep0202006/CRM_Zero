@@ -159,10 +159,6 @@ export default function LoginPage() {
             >
               {isLoading ? "Verifying..." : "Login"}
             </button>
-            
-            <div className={styles.adminLine}>
-              Are you an Admin? <a href="#" className={styles.adminLink}>Login Here</a>
-            </div>
 
             <div className={styles.trustDivider}>
               <div className={styles.trustLine} />
