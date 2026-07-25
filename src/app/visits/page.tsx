@@ -41,15 +41,16 @@ export default function FieldVisitsPage() {
 
   useEffect(() => {
     loadData();
-  }, [currentUser]);
+  }, [currentUser, loadData]);
 
   const getLeadDisplay = (lead_id: string) => {
+    if (!lead_id) return "Unknown";
     const lead = leadsMap.get(lead_id);
     if (lead) {
       if (lead.business_name.includes("(@")) return lead.business_name;
       return `${lead.business_name} - ${lead.phone || "N/A"}`;
     }
-    return lead_id;
+    return `Unknown location (${lead_id.split("-")[0]})`;
   };
 
   const todayStr = getCurrentISTDate();
