@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Camera, Image as ImageIcon, X } from "lucide-react";
+import { compressSelfie } from "@/lib/imageCompression";
 
 interface SelfieCaptureProps {
   onCapture: (blob: Blob | null) => void;
@@ -28,6 +29,22 @@ export default function SelfieCapture({ onCapture, existingPhotoUrl }: SelfieCap
     };
   }, [stream]);
 
+  // Cleanup object URLs on unmount or previewUrl change
+  useEffect(() => {
+    return () => {
+      if (previewUrl && previewUrl !== existingPhotoUrl && previewUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl, existingPhotoUrl]);
+
+  // Attach stream after video element is rendered
+  useEffect(() => {
+    if (isCameraActive && stream && videoRef.current) {
+      videoRef.current.srcObject = stream;
+    }
+  }, [isCameraActive, stream]);
+
   const startCamera = async () => {
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({
@@ -35,9 +52,6 @@ export default function SelfieCapture({ onCapture, existingPhotoUrl }: SelfieCap
       });
       setStream(mediaStream);
       setIsCameraActive(true);
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-      }
     } catch (err) {
       console.error("Camera access denied or unavailable", err);
       // Fallback to file input if camera is completely blocked/missing
@@ -51,50 +65,31 @@ export default function SelfieCapture({ onCapture, existingPhotoUrl }: SelfieCap
     setIsCameraActive(false);
   };
 
-  const processAndSetImage = (fileOrBlob: File | Blob) => {
-    const url = URL.createObjectURL(fileOrBlob);
-    
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      const MAX_WIDTH = 800;
-      const MAX_HEIGHT = 800;
-      let width = img.width;
-      let height = img.height;
+  const processAndSetImage = async (fileOrBlob: File | Blob) => {
+    try {
+      const file = fileOrBlob instanceof File
+        ? fileOrBlob
+        : new File([fileOrBlob], "selfie.jpg", { type: "image/jpeg" });
 
-      if (width > height) {
-        if (width > MAX_WIDTH) {
-          height *= MAX_WIDTH / width;
-          width = MAX_WIDTH;
-        }
-      } else {
-        if (height > MAX_HEIGHT) {
-          width *= MAX_HEIGHT / height;
-          height = MAX_HEIGHT;
-        }
+      const compressed = await compressSelfie(file);
+
+      if (previewUrl && previewUrl !== existingPhotoUrl && previewUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(previewUrl);
       }
 
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext("2d");
-      ctx?.drawImage(img, 0, 0, width, height);
-
-      // Compress to JPEG ~200kb (0.7 quality usually does it)
-      canvas.toBlob((blob) => {
-        if (blob) {
-          setPreviewUrl(URL.createObjectURL(blob));
-          onCapture(blob);
-        }
-      }, "image/jpeg", 0.7);
-    };
-    img.src = url;
+      const newPreviewUrl = URL.createObjectURL(compressed);
+      setPreviewUrl(newPreviewUrl);
+      onCapture(compressed);
+    } catch (error) {
+      console.error("Error compressing image:", error);
+    }
   };
 
   const capturePhoto = () => {
     if (videoRef.current && stream) {
       const video = videoRef.current;
       const canvas = document.createElement("canvas");
-      
+
       const MAX_WIDTH = 800;
       const MAX_HEIGHT = 800;
       let width = video.videoWidth;
@@ -115,15 +110,14 @@ export default function SelfieCapture({ onCapture, existingPhotoUrl }: SelfieCap
       canvas.width = width;
       canvas.height = height;
       const ctx = canvas.getContext("2d");
-      ctx?.drawImage(video, 0, 0, width, height);
-
-      canvas.toBlob((blob) => {
-        if (blob) {
-          setPreviewUrl(URL.createObjectURL(blob));
-          onCapture(blob);
-          stopCamera();
-        }
-      }, "image/jpeg", 0.7);
+      if (ctx) {
+        ctx.drawImage(video, 0, 0, width, height);
+        canvas.toBlob((blob) => {
+          if (blob) {
+            processAndSetImage(blob).then(() => stopCamera());
+          }
+        }, "image/jpeg", 1.0); // Pass uncompressed to compressSelfie
+      }
     }
   };
 
@@ -135,9 +129,15 @@ export default function SelfieCapture({ onCapture, existingPhotoUrl }: SelfieCap
   };
 
   const clearPhoto = () => {
+    if (previewUrl && previewUrl !== existingPhotoUrl && previewUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(previewUrl);
+    }
     setPreviewUrl(null);
     onCapture(null);
     stopCamera();
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
   if (previewUrl) {

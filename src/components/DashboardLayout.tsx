@@ -30,6 +30,7 @@ import {
   X,
 } from "lucide-react";
 import { db } from "@/lib/db";
+import "@/lib/fieldVisits/sync";
 import { AppLogo } from "@/components/AppLogo";
 import { CommandItem, CommandPalette } from "@/components/CommandPalette";
 

@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { db, transactionalMutation, LocalLead } from "@/lib/db";
+import { db, LocalLead } from "@/lib/db";
+import { FieldVisitsRepository } from "@/lib/fieldVisits/repository";
 import { getCurrentISTDate } from "@/lib/dateTime";
 import { SearchableSelect, SearchableOption } from "@/components/SearchableSelect";
 import { MapPin, Navigation, CheckCircle2, AlertCircle, ArrowLeft } from "lucide-react";
@@ -11,6 +12,15 @@ import Link from "next/link";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { CheckInGate } from "@/components/CheckInGate";
 import SelfieCapture from "@/components/visits/SelfieCapture";
+
+const blobToBase64 = (blob: Blob): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+};
 
 export default function NewVisitPage() {
   const { currentUser, capabilities } = useAuth();
@@ -26,6 +36,8 @@ export default function NewVisitPage() {
   const [locationError, setLocationError] = useState<string | null>(null);
   const [lat, setLat] = useState<number | null>(null);
   const [lng, setLng] = useState<number | null>(null);
+  const [accuracy, setAccuracy] = useState<number | null>(null);
+  const [locCapturedAt, setLocCapturedAt] = useState<string | null>(null);
   const [locating, setLocating] = useState(false);
   
   const [submitting, setSubmitting] = useState(false);
@@ -74,6 +86,8 @@ export default function NewVisitPage() {
       (position) => {
         setLat(position.coords.latitude);
         setLng(position.coords.longitude);
+        setAccuracy(position.coords.accuracy);
+        setLocCapturedAt(new Date().toISOString());
         setLocating(false);
       },
       (err) => {
@@ -87,9 +101,9 @@ export default function NewVisitPage() {
 
   useEffect(() => {
     if (capabilities) {
-      loadData();
+      Promise.resolve().then(() => loadData());
     }
-    requestLocation();
+    Promise.resolve().then(() => requestLocation());
   }, [capabilities, loadData, requestLocation]);
 
   const leadOptions: SearchableOption[] = React.useMemo(() => {
@@ -130,9 +144,7 @@ export default function NewVisitPage() {
       const targetLead = leadsMap.get(selectedLeadId);
       const segmentType = targetLead?.segment_type || "Unknown";
 
-      // 1. We must verify attendance exists for today (the server will also enforce this via RLS)
-      // Since we don't have attendance_id easily available without query, the DB sync queue handles it, 
-      // but let's just query db.attendance first to store it.
+      // 1. Verify attendance exists for today
       const today = getCurrentISTDate();
       const attendanceRec = await db.attendance.where({ user_id: currentUser.user_id, date: today }).first();
       
@@ -140,6 +152,12 @@ export default function NewVisitPage() {
          throw new Error("You must check in for attendance today before logging visits.");
       }
 
+      // 2. Generate Base64 from Blob
+      const mediaBase64 = await blobToBase64(photoBlob);
+
+      const locationQuality = accuracy && accuracy <= 50 ? "high" : accuracy && accuracy <= 200 ? "medium" : "low";
+
+      // 3. Prepare Visit Record using V2 schema
       const visitRecord = {
         visit_id: visitId,
         lead_id: selectedLeadId,
@@ -148,7 +166,14 @@ export default function NewVisitPage() {
         check_in_time: now,
         check_in_lat: lat,
         check_in_lng: lng,
-        check_in_photo_url: null, // set later by sync
+        location_accuracy_m: accuracy,
+        location_captured_at: locCapturedAt,
+        location_acquisition_mode: 'gps',
+        location_quality: locationQuality,
+        check_in_photo_url: null,
+        selfie_captured_at: now,
+        selfie_capture_method: 'camera_or_upload',
+        selfie_storage_path: null,
         visit_outcome: outcome,
         visit_notes: notes.trim() || null,
         person_met: personMet.trim() || null,
@@ -156,12 +181,11 @@ export default function NewVisitPage() {
         follow_up_date: followUpDate || null,
         attendance_id: attendanceRec?.attendance_id || null,
         sync_status: "pending_sync" as const,
-        local_photo_blob: photoBlob,
         created_at: now,
         updated_at: now
       };
 
-      await transactionalMutation("field_visits", "INSERT", visitRecord);
+      await FieldVisitsRepository.saveVisitWithMedia(visitRecord, mediaBase64);
       
       setSuccess(true);
       setTimeout(() => {
@@ -212,7 +236,9 @@ export default function NewVisitPage() {
                   ) : lat && lng ? (
                     <div className="mt-1 text-[12px] text-[var(--text-secondary)]">
                       <p>Coordinates captured successfully.</p>
-                      <p className="text-[10px] text-[var(--text-muted)] font-mono mt-0.5">{lat.toFixed(6)}, {lng.toFixed(6)}</p>
+                      <p className="text-[10px] text-[var(--text-muted)] font-mono mt-0.5">
+                        {lat.toFixed(6)}, {lng.toFixed(6)} {accuracy ? `(±${Math.round(accuracy)}m)` : ''}
+                      </p>
                     </div>
                   ) : null}
                 </div>

@@ -159,7 +159,14 @@ export interface LocalFieldVisit {
   check_in_time: string;
   check_in_lat: number | null;
   check_in_lng: number | null;
+  location_accuracy_m?: number | null;
+  location_captured_at?: string | null;
+  location_acquisition_mode?: string | null;
+  location_quality?: string | null;
   check_in_photo_url: string | null;
+  selfie_captured_at?: string | null;
+  selfie_capture_method?: string | null;
+  selfie_storage_path?: string | null;
   visit_outcome: string;
   visit_notes: string | null;
   attendance_id?: string | null;
@@ -167,9 +174,16 @@ export interface LocalFieldVisit {
   segment_type?: string | null;
   follow_up_date?: string | null;
   sync_status?: 'pending_sync' | 'synced' | 'sync_failed';
-  local_photo_blob?: Blob | null; // For local storage before upload
   created_at: string;
   updated_at: string;
+}
+
+export interface LocalFieldVisitMedia {
+  media_id: string;
+  visit_id: string;
+  user_id: string;
+  media_data: string; // Base64 data URI
+  created_at: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -315,6 +329,7 @@ class CRMDatabase extends Dexie {
   lead_installation_details!: Table<LocalInstallationDetails, string>;
   lead_payment_details!: Table<LocalPaymentDetails, string>;
   field_visits!: Table<LocalFieldVisit, string>;
+  field_visit_media!: Table<LocalFieldVisitMedia, string>;
 
   // Task allocation (Excel uploads)
   task_upload_batches!: Table<LocalTaskUploadBatch, string>;
@@ -560,6 +575,32 @@ class CRMDatabase extends Dexie {
       allocated_targets: "target_id, batch_id, assigned_to_user_id, city, is_completed, [assigned_to_user_id+is_completed+city]",
       field_visits: "visit_id, lead_id, user_id, visit_date, sync_status, [user_id+visit_date]",
     });
+
+    // Version 13 — Field Visits Production Hardening
+    this.version(13).stores({
+      users: "user_id, email, is_active, manager_id",
+      capabilities: "code",
+      user_capabilities: "id, user_id, capability_code, [user_id+capability_code]",
+      leads: "lead_id, business_name, segment_type, status, assigned_to, stage_entered_at, lead_source, area, renewal_date",
+      client_queries: "query_id, client_username, problem_status, assigned_to, created_at",
+      mappings: "mapping_id, distributor_lead_id, retailer_lead_id, [distributor_lead_id+retailer_lead_id], mapped_by",
+      mapping_requests: "request_id, distributor_lead_id, retailer_lead_id, mapped_by, status, created_at",
+      internal_tickets: "ticket_id, raised_by, status, assigned_to",
+      attendance: "attendance_id, user_id, date, [user_id+date]",
+      call_logs: "log_id, user_id, lead_id, timestamp",
+      sync_queue: "++id, idempotency_key, table_name, action, timestamp, retry_count",
+      task_templates: "template_id, applies_to_capability, is_active",
+      tasks: "task_id, assigned_to, due_date, status, [assigned_to+due_date], template_id",
+      task_status_history: "id, task_id, changed_at",
+      kpi_snapshots: "snapshot_id, user_id, date, [user_id+date]",
+      lead_registration_checklist: "checklist_id, lead_id",
+      lead_installation_details: "installation_id, lead_id",
+      lead_payment_details: "payment_id, lead_id",
+      task_upload_batches: "id, uploaded_by, file_hash",
+      allocated_targets: "target_id, batch_id, assigned_to_user_id, city, is_completed, [assigned_to_user_id+is_completed+city]",
+      field_visits: "visit_id, lead_id, user_id, visit_date, sync_status, [user_id+visit_date]",
+      field_visit_media: "media_id, visit_id, user_id"
+    });
   }
 }
 
@@ -633,6 +674,7 @@ const TABLE_PK: Record<string, string> = {
   user_capabilities: "id",
   task_upload_batches: "id",
   allocated_targets: "target_id",
+  field_visit_media: "media_id",
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -720,29 +762,7 @@ export async function processSyncQueue() {
         const client = supabase.from(remoteTableName);
         let error: { message: string } | null = null;
 
-        // Custom preprocessing for field_visits to upload the selfie
-        if (item.table_name === "field_visits" && (item.action === "INSERT" || item.action === "UPDATE")) {
-          const visitData = item.data as Partial<LocalFieldVisit>;
-          if (visitData.local_photo_blob) {
-            const file = new File([visitData.local_photo_blob], 'selfie.jpg', { type: 'image/jpeg' });
-            const filePath = `${visitData.user_id}/${visitData.visit_date}/${visitData.visit_id}.jpg`;
-            const { error: uploadError } = await supabase.storage.from('visits-evidence').upload(filePath, file, { upsert: true });
-            
-            if (uploadError) {
-              error = uploadError;
-            } else {
-              // Get public URL or just store the path
-              const { data: publicUrlData } = supabase.storage.from('visits-evidence').getPublicUrl(filePath);
-              visitData.check_in_photo_url = publicUrlData.publicUrl;
-              delete visitData.local_photo_blob;
-              item.data = visitData; // Update queue item data
-            }
-          }
-        }
-
-        if (error) {
-           // Skip insert/update if upload failed
-        } else if (item.action === "INSERT") {
+        if (item.action === "INSERT") {
           const { error: err } = await client.insert(item.data);
           error = err;
         } else if (item.action === "UPDATE") {
@@ -751,7 +771,7 @@ export async function processSyncQueue() {
           if (pkValue) {
             const updateData = omitPrimaryKeyFromUpdate(toDynamicRow(item.data), pk);
             if (Object.keys(updateData).length === 0) throw new Error(`No update fields provided for ${item.table_name}`);
-            
+
             // Special handling for offline pipeline stage transitions
             if (item.table_name === "leads" && updateData.status !== undefined) {
               const { data: rpcData, error: rpcError } = await supabase.rpc("transition_lead_stage", {
@@ -760,7 +780,7 @@ export async function processSyncQueue() {
                 p_new_stage: updateData.status as string,
                 p_actor: "agent"
               });
-              
+
               if (rpcError) {
                 error = rpcError;
               } else if (rpcData && !rpcData.success) {
@@ -769,7 +789,7 @@ export async function processSyncQueue() {
                 // We'll throw so it can be retried or dead-lettered
                 throw new Error(rpcData.error);
               }
-              
+
               // If there are other fields to update besides status, we still need to run the standard update for them
               const otherUpdateData = { ...updateData };
               delete otherUpdateData.status;
@@ -799,7 +819,7 @@ export async function processSyncQueue() {
 
       // Success — delete from queue
       if (item.id) await db.sync_queue.delete(item.id);
-      
+
       // If it was a field visit, update the local record's sync_status
       if (item.table_name === "field_visits") {
         const pkValue = getDynamicField(item.data, "visit_id");
@@ -818,7 +838,7 @@ export async function processSyncQueue() {
         retry_count: retryCount,
         last_error: String(err),
       });
-      
+
       if (item.table_name === "field_visits") {
         const pkValue = getDynamicField(item.data, "visit_id");
         if (pkValue && retryCount >= 5) {
@@ -895,13 +915,13 @@ export async function pullDownSync() {
         console.warn(`Failed to pull table ${remoteTableName}:`, fetchError);
         continue;
       }
-      
+
       const data = allData;
-      
+
       if (data && data.length > 0) {
         const table = dynamicTables[localTableName];
         const pk = TABLE_PK[localTableName] ?? "id";
-        
+
         // Find local items
         const localItems = await table.toArray();
         const localIds = new Set(localItems.map((item: DynamicRow) => item[pk]));
@@ -939,7 +959,7 @@ export async function pullDownSync() {
         // Instead, we act as a master node and PUSH our local data back up to Supabase to restore it.
         const table = dynamicTables[localTableName];
         const localItems = await table.toArray();
-        
+
         if (localItems.length > 0) {
           console.warn(`[RECOVERY] Remote table ${remoteTableName} is empty, but local has ${localItems.length} records. Pushing local data to restore remote...`);
           for (const item of localItems) {
@@ -968,7 +988,7 @@ export async function pullDownSync() {
         }
       }
     }
-    
+
     console.log("Downward sync complete.");
   } catch (err) {
     console.error("Failed to perform pull down sync:", err);
@@ -992,10 +1012,10 @@ if (typeof window !== "undefined") {
     if (document.visibilityState === "visible" && navigator.onLine) {
        console.log("Tab focused. Checking sync throttle...");
        processSyncQueue().catch(console.error);
-       
+
        const lastSyncStr = localStorage.getItem("last_pull_sync");
        const lastSync = lastSyncStr ? parseInt(lastSyncStr, 10) : 0;
-       
+
        // Throttle pullDownSync to once every 5 minutes (300000 ms)
        if (Date.now() - lastSync > 300000) {
          console.log("Throttle passed. Triggering full pullDownSync...");
@@ -1012,7 +1032,7 @@ if (typeof window !== "undefined") {
       "users", "capabilities", "user_capabilities", "leads",
       "client_queries", "mappings", "mapping_requests", "task_templates",
       "tasks", "task_status_history", "internal_tickets", "attendance", "call_logs",
-      "kpi_snapshots", "lead_registration_checklist", 
+      "kpi_snapshots", "lead_registration_checklist",
       "lead_installation_details", "lead_payment_details",
       "task_upload_batches", "allocated_targets"
     ];
@@ -1033,13 +1053,13 @@ if (typeof window !== "undefined") {
 
             if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
               const record = payload.new;
-              
+
               // Skip if we have a pending offline mutation for this item (our local version is newer)
               const pendingMutation = await db.sync_queue
                 .where("table_name").equals(tableName)
                 .and(item => getDynamicField(item.data, pk) === record[pk])
                 .first();
-                
+
               if (!pendingMutation) {
                 await db.transaction('rw', table, async () => {
                   await table.put(record);
