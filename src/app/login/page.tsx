@@ -13,6 +13,14 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [showSplash, setShowSplash] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowSplash(false);
+    }, 1800); // Give it enough time for the fade-out animation to finish
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -43,6 +51,23 @@ export default function LoginPage() {
       setErrorMsg("We could not verify these credentials. Check the username and password, then try again.");
     }
   };
+
+  if (showSplash) {
+    return (
+      <main className={styles.splashPage}>
+        <div className={styles.splashContainer}>
+          <Image
+            src="/ZeroData_Logo.png"
+            alt="ZeroData Logo"
+            width={320}
+            height={90}
+            className={styles.splashLogo}
+            priority
+          />
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className={styles.loginPage}>
