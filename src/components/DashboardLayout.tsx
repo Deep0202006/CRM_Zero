@@ -326,14 +326,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           visible: isAdmin,
         },
         {
-          icon: <Activity size={17} />,
-          label: "Activity Deck",
-          path: "/admin/activity",
-          description: "Day-wise operational activity",
-          group: "Management",
-          visible: isAdmin,
-        },
-        {
           icon: <ShieldCheck size={17} />,
           label: "Admin Control",
           path: "/admin",

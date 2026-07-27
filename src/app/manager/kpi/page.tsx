@@ -3,8 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
-import { CONVERTED_STAGES, PipelineStage } from "@/lib/pipelineStages";
-import { db } from "@/lib/db";
+import { TeamKpiRow } from "@/lib/teamKpi/contract";
 import {
   BarChart,
   Bar,
@@ -31,59 +30,14 @@ import { MetricCard } from "@/components/ui/MetricCard";
 import { Input } from "@/components/ui/Input";
 import { EmptyState } from "@/components/ui/EmptyState";
 
-interface KpiRow {
-  user_id: string;
-  name: string;
-  completion_rate: number;
-  tasks_assigned: number;
-  tasks_completed: number;
-  attendance_status: string;
-  leads_converted: number;
-  tickets_resolved: number;
-  calls_made: number;
-}
-
-async function buildLocalKpiRows(date: string): Promise<KpiRow[]> {
-  const users = await db.users.toArray();
-  const tasks = await db.tasks.where("due_date").equals(date).toArray();
-  const attendance = await db.attendance.toArray();
-  const leads = await db.leads.toArray();
-  const calls = await db.call_logs.toArray();
-
-  return users.map((u) => {
-    const userTasks = tasks.filter((t) => t.assigned_to === u.user_id);
-    const completed = userTasks.filter((t) => t.status === "Completed").length;
-    const assigned = userTasks.length;
-    const att = attendance.find((a) => a.user_id === u.user_id && a.date === date);
-    const converted = leads.filter(
-      (l) =>
-        l.assigned_to === u.user_id &&
-        CONVERTED_STAGES.includes(l.status as PipelineStage)
-    ).length;
-    const callsMade = calls.filter((c) => c.user_id === u.user_id && c.timestamp.startsWith(date)).length;
-
-    return {
-      user_id: u.user_id,
-      name: u.name,
-      completion_rate: assigned === 0 ? 0 : Math.round((completed / assigned) * 100),
-      tasks_assigned: assigned,
-      tasks_completed: completed,
-      attendance_status: att ? (att.clock_in ? "Present" : "Absent") : "Absent",
-      leads_converted: converted,
-      tickets_resolved: 0,
-      calls_made: callsMade,
-    };
-  });
-}
-
 function AttBadge({ status }: { status: string }) {
   const variant = status === "Present" ? "success" : status === "Late" ? "warning" : "danger";
   return <Chip variant={variant} size="sm">{status}</Chip>;
 }
 
 export default function ManagerKpiPage() {
-  const { currentUser, isAdmin, hasOnboarding, hasSupport } = useAuth();
-  const [rows, setRows] = useState<KpiRow[]>([]);
+  const { currentUser, isAdmin } = useAuth();
+  const [rows, setRows] = useState<TeamKpiRow[]>([]);
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"Team" | "Funnel">("Team");
@@ -93,50 +47,27 @@ export default function ManagerKpiPage() {
     setLoading(true);
 
     (async () => {
-      if (isSupabaseConfigured) {
-        const { data } = await supabase
-          .from("kpi_daily_snapshot")
-          .select(
-            "user_id, completion_rate, tasks_assigned, tasks_completed, attendance_status, leads_converted, tickets_resolved, users!inner(name)"
-          )
-          .eq("date", date);
-
-        const mapped: KpiRow[] = (data || []).map((r: unknown) => {
-          const row = r as Record<string, unknown> & { users: { name: string } | { name: string }[] };
-          const userName = Array.isArray(row.users) ? row.users[0]?.name : row.users?.name;
-          return {
-            user_id: String(row.user_id),
-            name: userName || "",
-            completion_rate: Number(row.completion_rate) || 0,
-            tasks_assigned: Number(row.tasks_assigned) || 0,
-            tasks_completed: Number(row.tasks_completed) || 0,
-            attendance_status: row.attendance_status ? String(row.attendance_status) : "Absent",
-            leads_converted: Number(row.leads_converted) || 0,
-            tickets_resolved: Number(row.tickets_resolved) || 0,
-            calls_made: Number(row.calls_made) || 0,
-          };
-        });
-        let finalMapped = mapped;
+      if (!isSupabaseConfigured) {
+        console.warn("Supabase not configured, cannot load KPI data.");
+        setRows([]);
+        setLoading(false);
+        return;
+      }
+      const { data, error } = await supabase.rpc("get_team_kpi_daily", { target_date: date });
+      if (error || !data) {
+        console.error("Failed to load KPI data:", error);
+        setRows([]);
+      } else {
+        let finalMapped: TeamKpiRow[] = typeof data === 'string' ? JSON.parse(data) : data;
         if (!isAdmin && currentUser) {
-          finalMapped = mapped.filter((r) => r.user_id === currentUser.user_id);
+          finalMapped = finalMapped.filter((r) => r.user_id === currentUser.user_id);
         }
         finalMapped.sort((a, b) => b.completion_rate - a.completion_rate);
         setRows(finalMapped);
-      } else {
-        const local = await buildLocalKpiRows(date);
-        let finalLocal = local;
-        if (!isAdmin && currentUser) {
-          finalLocal = local.filter((r) => r.user_id === currentUser.user_id);
-        }
-        finalLocal.sort((a, b) => b.completion_rate - a.completion_rate);
-        setRows(finalLocal);
       }
       setLoading(false);
     })();
   }, [date, isAdmin, currentUser]);
-
-  const showOnboardingCols = isAdmin || hasOnboarding;
-  const showSupportCols = isAdmin || hasSupport;
 
   const flagged = rows.filter(
     (r) => r.completion_rate < 50 || r.attendance_status !== "Present"
@@ -215,17 +146,21 @@ export default function ManagerKpiPage() {
               <div className="p-5"><EmptyState icon={<BarChart3 size={21} />} title="No KPI snapshot" description={`No performance data is available for ${date}.`} /></div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="min-w-[760px]">
-                  <thead><tr><th>Team member</th><th>Attendance</th><th>Completion</th><th>Assigned / done</th>{showOnboardingCols && <th>Converted</th>}{showSupportCols && <th>Calls</th>}</tr></thead>
+                <table className="min-w-[960px]">
+                  <thead><tr><th>Team member</th><th>Role</th><th>Attendance</th><th>Completion</th><th>Total Work</th><th>Tasks (Done/Asg)</th><th>Calls</th><th>Queries</th><th>Mappings</th><th>Last Active</th></tr></thead>
                   <tbody>
                     {rows.map((row) => (
                       <tr key={row.user_id}>
                         <td><p className="font-semibold text-[var(--text-primary)]">{row.name}</p></td>
+                        <td><span className="text-[12px] font-medium text-[var(--text-muted)] capitalize">{row.role?.replace(/_/g, " ")}</span></td>
                         <td><AttBadge status={row.attendance_status} /></td>
                         <td><div className="flex min-w-[140px] items-center gap-3"><div className="h-2 flex-1 overflow-hidden rounded-full bg-[var(--surface-tertiary)]"><div className={`h-full rounded-full ${row.completion_rate >= 80 ? "bg-[var(--status-success)]" : row.completion_rate >= 50 ? "bg-[var(--brand-500)]" : "bg-[var(--status-danger)]"}`} style={{ width: `${Math.min(row.completion_rate, 100)}%` }} /></div><span className="w-10 text-right font-semibold tabular-nums text-[var(--text-primary)]">{row.completion_rate}%</span></div></td>
+                        <td className="font-semibold tabular-nums text-[var(--text-primary)]">{row.total_completed_work}</td>
                         <td className="font-mono text-[12px]">{row.tasks_completed} / {row.tasks_assigned}</td>
-                        {showOnboardingCols && <td className="font-semibold tabular-nums text-[var(--text-primary)]">{row.leads_converted}</td>}
-                        {showSupportCols && <td className="font-semibold tabular-nums text-[var(--text-primary)]">{row.calls_made}</td>}
+                        <td className="font-semibold tabular-nums text-[var(--text-primary)]">{row.calls_made}</td>
+                        <td className="font-semibold tabular-nums text-[var(--text-primary)]">{row.queries_handled}</td>
+                        <td className="font-semibold tabular-nums text-[var(--text-primary)]">{row.mappings_completed}</td>
+                        <td className="text-[12px] text-[var(--text-muted)]">{row.latest_activity_time ? new Date(row.latest_activity_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "N/A"}</td>
                       </tr>
                     ))}
                   </tbody>
