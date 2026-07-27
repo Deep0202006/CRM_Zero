@@ -11,6 +11,7 @@ const UpdateUserSchema = z.object({
   user_id: z.string().uuid(),
   email: z.string().min(3, "Email/Username is required"),
   name: z.string().min(2, "Name is required"),
+  phone: z.string().max(20, "Phone number is too long").optional().nullable(),
   is_active: z.boolean(),
 });
 
@@ -34,7 +35,7 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
-  const { user_id, email, name, is_active } = parsed.data;
+  const { user_id, email, name, phone, is_active } = parsed.data;
 
   const { data: existingUser } = await supabaseAdmin.auth.admin.getUserById(user_id);
   const currentMeta = existingUser?.user?.user_metadata || {};
@@ -58,10 +59,12 @@ export async function POST(req: NextRequest) {
   }
 
   // 2. Update public.users - is_active is a boolean in the schema
-  const { error: dbError } = await supabaseAdmin
-    .from("users")
-    .update({ name, email, is_active })
-    .eq("user_id", user_id);
+  const { error: dbError } = await supabaseAdmin.from("users").update({
+    name,
+    email,
+    phone: phone || null,
+    is_active
+  }).eq("user_id", user_id);
 
   if (dbError) {
     return NextResponse.json({ error: `Failed to update user profile: ${dbError.message}` }, { status: 400 });

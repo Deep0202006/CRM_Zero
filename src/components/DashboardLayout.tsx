@@ -28,6 +28,7 @@ import {
   Wifi,
   WifiOff,
   X,
+  Activity,
 } from "lucide-react";
 import { db } from "@/lib/db";
 import "@/lib/fieldVisits/sync";
@@ -321,6 +322,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           label: "Visits Overview",
           path: "/admin/visits",
           description: "Monitor field visit compliance",
+          group: "Management",
+          visible: isAdmin,
+        },
+        {
+          icon: <Activity size={17} />,
+          label: "Activity Deck",
+          path: "/admin/activity",
+          description: "Day-wise operational activity",
           group: "Management",
           visible: isAdmin,
         },

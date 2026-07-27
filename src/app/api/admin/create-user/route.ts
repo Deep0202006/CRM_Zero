@@ -15,6 +15,7 @@ const VALID_CAPABILITIES = [
 const CreateUserSchema = z.object({
   email: z.string().min(3, "Email/Username is required"),
   name: z.string().min(2, "Name is required"),
+  phone: z.string().max(20, "Phone number is too long").optional().nullable(),
   password: z.string().min(6, "Password must be at least 6 characters").optional(),
   capabilities: z.array(z.enum(VALID_CAPABILITIES)).min(1, "Select at least one role"),
   manager_id: z.string().uuid().nullable().optional(),
@@ -44,7 +45,7 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
-  const { email, name, password, capabilities, manager_id } = parsed.data;
+  const { email, name, phone, password, capabilities, manager_id } = parsed.data;
 
   // Removing strict format validation as requested to allow arbitrary usernames like username_123
   // Users still require 3 characters minimum enforced by Zod schema
@@ -62,7 +63,7 @@ export async function POST(req: NextRequest) {
 
   // Use upsert so it doesn't conflict with DB trigger if it fires first
   const { error: dbError } = await supabaseAdmin.from("users").upsert({
-    user_id: newUser.user.id, name, email, is_active: true, manager_id: manager_id || null,
+    user_id: newUser.user.id, name, email, phone: phone || null, is_active: true, manager_id: manager_id || null,
   });
 
   if (dbError) {

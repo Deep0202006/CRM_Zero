@@ -10,6 +10,7 @@ export interface LocalUser {
   user_id: string;
   name: string;
   email: string;
+  phone?: string | null;
   is_active: number;
   manager_id?: string | null; // added for KPI rollup hierarchy
   created_at: string;

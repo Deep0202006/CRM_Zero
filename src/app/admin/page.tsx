@@ -59,7 +59,7 @@ export default function AdminPage() {
   const [isResetting, setIsResetting] = useState(false);
 
   const [editingUser, setEditingUser] = useState<LocalUser | null>(null);
-  const [editUserForm, setEditUserForm] = useState({ name: "", email: "", is_active: false });
+  const [editUserForm, setEditUserForm] = useState({ name: "", email: "", phone: "", is_active: false });
   const [isUpdatingUser, setIsUpdatingUser] = useState(false);
 
   const ALL_CAPABILITIES = [
@@ -202,6 +202,7 @@ export default function AdminPage() {
           user_id: editingUser.user_id,
           name: editUserForm.name,
           email: editUserForm.email,
+          phone: editUserForm.phone || null,
           is_active: editUserForm.is_active
         })
       });
@@ -215,6 +216,7 @@ export default function AdminPage() {
       await db.users.update(editingUser.user_id, {
         name: editUserForm.name,
         email: editUserForm.email,
+        phone: editUserForm.phone || null,
         is_active: editUserForm.is_active ? 1 : 0
       });
       await loadAdminData();
@@ -367,7 +369,7 @@ export default function AdminPage() {
                           })}
                         </div>
                         <div className="flex shrink-0 gap-2">
-                          <Button size="sm" variant="secondary" onClick={() => { setEditingUser(user); setEditUserForm({ name: user.name, email: user.email, is_active: String(user.is_active) === "1" || String(user.is_active) === "true" }); }} icon={<Edit2 size={13} />}>Edit</Button>
+                          <Button size="sm" variant="secondary" onClick={() => { setEditingUser(user); setEditUserForm({ name: user.name, email: user.email, phone: user.phone || "", is_active: String(user.is_active) === "1" || String(user.is_active) === "true" }); }} icon={<Edit2 size={13} />}>Edit</Button>
                           <Button size="sm" variant="outline" onClick={() => { setResetPasswordInput(""); setNewPasswordResult(null); setResettingPasswordFor(user.user_id); }} icon={<Key size={13} />}>Password</Button>
                           <Button size="sm" variant="danger" onClick={() => handleDeleteUser(user.user_id, user.name)} icon={<Trash2 size={13} />}>Delete</Button>
                         </div>
@@ -456,6 +458,7 @@ export default function AdminPage() {
         <form id="edit-user-form" onSubmit={handleUpdateUser} className="space-y-4">
           <Input label="Full name" value={editUserForm.name} onChange={(event) => setEditUserForm({ ...editUserForm, name: event.target.value })} required />
           <Input label="Username (Email)" type="text" value={editUserForm.email} onChange={(event) => setEditUserForm({ ...editUserForm, email: event.target.value })} required />
+          <Input label="Phone (Optional)" type="tel" value={editUserForm.phone} onChange={(event) => setEditUserForm({ ...editUserForm, phone: event.target.value })} />
           <label className="flex min-h-11 items-center gap-3 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-secondary)] px-3 text-[12px] font-semibold text-[var(--text-primary)]"><input type="checkbox" checked={editUserForm.is_active} onChange={(event) => setEditUserForm({ ...editUserForm, is_active: event.target.checked })} className="h-4 w-4 rounded accent-[var(--brand-600)]" /> Account active</label>
         </form>
       </Modal>

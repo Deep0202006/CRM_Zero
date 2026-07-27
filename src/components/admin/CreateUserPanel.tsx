@@ -19,7 +19,7 @@ const CAPABILITY_LABELS: Record<string, string> = {
 };
 
 export function CreateUserPanel() {
-  const [form, setForm] = useState({ email: "", name: "", password: "", capabilities: [] as string[] });
+  const [form, setForm] = useState({ email: "", name: "", phone: "", password: "", capabilities: [] as string[] });
   const [result, setResult] = useState<{ email: string; tempPassword: string; name: string } | null>(null);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -42,7 +42,7 @@ export function CreateUserPanel() {
         return;
       }
       setResult(data);
-      setForm({ email: "", name: "", password: "", capabilities: [] });
+      setForm({ email: "", name: "", phone: "", password: "", capabilities: [] });
     } catch (caughtError: unknown) {
       setError(caughtError instanceof Error ? caughtError.message : "An unexpected error occurred");
     } finally {
@@ -88,9 +88,10 @@ export function CreateUserPanel() {
 
       <form onSubmit={handleSubmit} className="grid gap-6 p-5 sm:p-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
         <div className="space-y-5">
-          <Input label="Full name" required placeholder="Example: Jane Doe" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
-          <Input label="Username" required placeholder="Example: zerodata501_jane" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} description="Use the existing CRM username format." />
-          <Input label="Initial password" type="text" placeholder="Leave empty to generate automatically" value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} />
+          <Input label="Full name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="e.g. Prince K" required />
+          <Input label="Username (Email)" type="text" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="e.g. zerodata_prince" required />
+          <Input label="Phone (Optional)" type="tel" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="e.g. +91 9876543210" />
+          <Input label="Temporary Password" type="text" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} placeholder="Leave blank to auto-generate" />
           {error && <div className="alert-panel alert-panel--danger" role="alert"><AlertCircle size={16} className="mt-0.5 shrink-0" /><span>{error}</span></div>}
         </div>
 
