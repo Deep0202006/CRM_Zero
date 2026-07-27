@@ -1,133 +1,144 @@
-# APPLY THE PRINCIPAL-ARCHITECT TEAM KPI REPAIR
+# INSTALL THE APPROVED ZERODATA TEAM KPI LIVE-DATA REPAIR
 
-Act as a careful senior integration engineer. The architecture and code changes are already approved in this package. Your job is to apply them exactly, verify them, deploy the database migration safely, and prepare a Vercel preview. Do not redesign or reinterpret the feature.
+Act only as a careful senior integration and verification engineer.
 
-## 1. Non-negotiable rules
+The Principal Architect has already completed the Team KPI analysis and approved
+implementation. Do not redesign, reinterpret, simplify, or replace it.
 
-- Do not print or read `.env`, `.env.local`, `.env.production`, database passwords, service-role keys, JWTs, Git credentials, or Vercel tokens.
-- Do not run commands containing a password on the command line.
-- Do not push directly to `main`.
-- Do not replace unrelated files.
-- Do not modify login, pipeline, Field Visits, global CSS, design tokens, navigation styling, or unrelated CRM workflows.
-- Do not return to browser-side raw aggregation.
-- Do not use `users.role`; that column does not exist.
-- Do not use `kpi_snapshots` or `kpi_daily_snapshot` as Team KPI authority.
-- Do not weaken RLS or add a service-role key to browser code.
-- Do not edit historical migrations 023, 024, or 025.
-- If a migration numbered 026 already exists and differs, stop and report the conflict instead of overwriting it.
+The package in the project root is:
 
-## 2. Create a safe branch
+`TEAM_KPI_LIVE_DATA_REPAIR_PACKAGE.zip`
 
-From the CRM project root:
+## Fixed product goal
+
+Keep the current Team KPI UI unchanged and make it show, for every active user and
+selected India business date:
+
+- calls;
+- resolved client queries;
+- completed mappings;
+- completed normal tasks;
+- completed spreadsheet targets;
+- total completed work;
+- latest activity;
+- zero values for active users with no work.
+
+The report must update after confirmed source-table changes and must not depend on
+Activity Deck, KPI snapshots, or browser-side raw-table aggregation.
+
+## Absolute rules
+
+1. Do not change any visual design, global CSS, design token, page composition,
+   card, chart, table, typography, spacing, or Funnel tab.
+2. Do not change login, pipeline, visits, attendance, calls, support, mappings,
+   tasks, My Day, authentication, or their business workflows.
+3. Do not expose or read `.env` files, passwords, tokens, database URLs, or
+   service-role credentials.
+4. Do not use a service-role key in browser or server application code.
+5. Do not run Supabase CLI, Docker, `db push`, `supabase link`, or PowerShell
+   database commands. The operator will use Supabase Dashboard SQL Editor.
+6. Do not push or merge `main`.
+7. Do not install a new UI, state, chart, or data library.
+8. Do not weaken RLS, TypeScript, lint, tests, or authorization.
+9. Do not fabricate historical data.
+10. Do not claim completion unless repository checks and preview smoke tests pass.
+
+## Phase 1 — Safety checkpoint
+
+From the existing CRM project root:
 
 ```powershell
 git status --short
 git branch --show-current
-git switch -c fix/team-kpi-architect-repair
+git switch -c fix/team-kpi-live-data-final
 git add -A
-git commit -m "chore: checkpoint before Team KPI architect repair"
+git commit -m "chore: checkpoint before final Team KPI live-data repair"
 ```
 
-If the checkpoint has nothing to commit, continue.
+When the branch already exists, remain on it rather than creating a duplicate.
+When there are unrelated uncommitted changes, record them and do not overwrite
+or discard them.
 
-## 3. Put the delivery package in the project root
+## Phase 2 — Extract outside the source tree
 
-The package must contain:
+Extract the ZIP to a temporary folder outside the project. Do not copy the whole
+`replacement-files` folder into the repository before checking the patch.
 
-- `TEAM_KPI_ARCHITECT_REPAIR.patch`
-- `replacement-files/`
-- this instruction file
-- the architect analysis and static verification
+Verify these files exist in the extracted package:
 
-Do not copy the whole replacement-files folder over the repository yet.
+- `TEAM_KPI_LIVE_DATA_REPAIR.patch`
+- `PATCH_MANIFEST.txt`
+- `STATIC_VERIFICATION.txt`
+- `replacement-files/src/app/api/team-kpi/route.ts`
+- `replacement-files/src/app/manager/kpi/page.tsx`
+- `replacement-files/src/lib/teamKpi/aggregate.ts`
+- `replacement-files/src/lib/teamKpi/contract.ts`
+- `replacement-files/src/lib/teamKpi/serverReport.ts`
+- `replacement-files/supabase/migrations/027_team_kpi_live_data_repair.sql`
+- `MANUAL_SUPABASE/01_PRECHECK_READ_ONLY.sql`
+- `MANUAL_SUPABASE/02_APPLY_TEAM_KPI_027.sql`
+- `MANUAL_SUPABASE/03_VERIFY_READ_ONLY.sql`
 
-## 4. Apply the patch first
+Stop when any required file is missing.
 
-Run:
+## Phase 3 — Apply the exact approved patch
+
+Copy only the patch file to the project root, then run:
 
 ```powershell
-git apply --check --ignore-space-change --ignore-whitespace .\TEAM_KPI_ARCHITECT_REPAIR.patch
+git apply --check --ignore-space-change --ignore-whitespace .\TEAM_KPI_LIVE_DATA_REPAIR.patch
+git apply --ignore-space-change --ignore-whitespace .\TEAM_KPI_LIVE_DATA_REPAIR.patch
 ```
 
-When the check passes:
-
-```powershell
-git apply --ignore-space-change --ignore-whitespace .\TEAM_KPI_ARCHITECT_REPAIR.patch
-```
+The check must pass before applying.
 
 When the check fails:
 
-1. Do not run `git apply --reject` blindly.
-2. Inspect the reported files.
-3. Use `replacement-files` only as the approved source for those exact files.
-4. Preserve unrelated changes already present in the current repository.
-5. Manually merge only the changed Team KPI and mapping-attribution sections.
-6. Do not simplify the architecture.
+- do not invent a merge;
+- do not copy the complete repository;
+- compare the exact conflicting file with its matching file under
+  `replacement-files`;
+- preserve unrelated changes;
+- apply only the approved Team KPI changes;
+- list every conflict and every manual line-level resolution.
 
-The expected changed files are listed in `PATCH_MANIFEST.txt`.
+The approved changed paths are exactly those in `PATCH_MANIFEST.txt`. Restore any
+unrelated changed file.
 
-## 5. Architectural invariants after applying
+Remove temporary delivery artifacts from the repository working tree after the
+patch is applied. Do not commit the ZIP, patch, or extracted package.
 
-Verify all of these:
+## Phase 4 — Architectural assertions
 
-### Team KPI frontend
+Verify all of the following in the installed source:
 
-- `/manager/kpi` makes one call to `supabase.rpc("get_team_kpi_daily", { target_date })`.
-- It does not query users, calls, queries, mappings, or tasks directly from the browser.
-- It uses `getCurrentISTDate()`.
-- It validates the RPC response through Zod.
-- It retains the last confirmed report when a background refresh fails.
-- It protects against stale request responses.
-- It refreshes on manual action, tab visibility, and debounced relevant realtime events.
-- It shows all active users, including zero-work users.
-- It shows Calls, Client queries, Mappings, Tasks done, Total work, Role, and Last activity.
-- It uses only the existing CRM components, tokens, layout, and visual language.
+- The browser page calls exactly one `/api/team-kpi?date=...` request.
+- The browser page does not query `users`, `call_logs`, `client_queries`,
+  `mapping_requests`, `tasks`, or KPI snapshot tables directly.
+- The server route verifies the Supabase access token.
+- The server route verifies the exact `admin` capability.
+- The server route prefers `get_team_kpi_daily` and uses server-side paginated
+  RLS aggregation only as a degraded fallback.
+- No service-role key is referenced.
+- All active users are constructed independently of work rows.
+- Zero-work users remain in the report.
+- Calls exclude synthetic pipeline arrow records.
+- Client queries use `resolved_by` with a legacy `assigned_to` fallback.
+- Mappings use `mapped_by` and `completed_at`.
+- Normal tasks use one completion event per task/day and legacy `completed_at`
+  only when no completion history exists.
+- Reopened-task attribution can fall back to the task assignee when the history
+  actor is missing.
+- Spreadsheet targets are included in Tasks done.
+- India date filtering uses half-open Asia/Kolkata boundaries.
+- Totals are validated against row components.
+- Realtime only triggers a debounced authoritative refresh; it never increments
+  counters locally.
+- A visible-tab one-minute refresh remains as a lightweight degraded fallback.
 
-### Database migration 026
+Do not continue when an assertion fails.
 
-- The function is admin-only.
-- It derives authorization from `auth.uid()` and `user_capabilities`.
-- It has a fixed search path.
-- It does not depend on `public.has_capability`.
-- It does not reference `users.role`.
-- It uses Asia/Kolkata half-open date boundaries.
-- It aggregates calls, resolved queries, completed mappings, immutable normal-task completion events, legacy task fallback, and completed spreadsheet targets.
-- It excludes synthetic pipeline arrow call logs.
-- It includes active users with zero work.
-- It revokes execution from PUBLIC and anon.
-- It keeps historical snapshot data but retires obsolete snapshot triggers and active snapshot synchronization.
-- It adds `mapping_requests.requested_by` and preserves the requester separately from the completion actor.
-
-### Mapping workflow
-
-- New mapping requests preserve `requested_by`.
-- Existing `mapped_by` behavior remains compatible while pending.
-- Completing a mapping sets `mapped_by` to the authenticated completing user and sets `completed_at`.
-- No visual mapping-page redesign occurs.
-
-## 6. Inspect the exact diff
-
-Run:
-
-```powershell
-git diff --check
-git diff --stat
-git diff --name-only
-```
-
-Fail the task if unrelated visual or workflow files changed.
-
-Search for forbidden Team KPI patterns:
-
-```powershell
-Select-String -Path .\src\app\manager\kpi\page.tsx -Pattern 'supabase\.from\('
-Select-String -Path .\src\app\manager\kpi\page.tsx -Pattern 'kpi_snapshots|kpi_daily_snapshot|users\.role|u\.role'
-Select-String -Path .\supabase\migrations\026_team_kpi_repair.sql -Pattern 'users\.role|u\.role|public\.has_capability'
-```
-
-All three searches must return no forbidden match.
-
-## 7. Install and verify repository code
+## Phase 5 — Repository verification
 
 Run separately:
 
@@ -139,164 +150,166 @@ npm run build
 git diff --check
 ```
 
-Do not continue after a failure.
+Record the exact exit code and test count for every command.
 
-Fix only the exact defect. Do not disable tests, suppress TypeScript, add `@ts-ignore`, add unexplained `any`, or remove architecture checks.
+Do not:
 
-Required focused tests include:
+- use `npm audit fix --force`;
+- alter package versions to bypass a network problem;
+- delete tests;
+- weaken assertions;
+- add `@ts-ignore`;
+- suppress build or lint errors.
 
-- `teamKpiContract.test.ts`
-- `teamKpiMigration.test.ts`
-- `teamKpiPageContract.test.ts`
-- `teamKpiWorkflowAttribution.test.ts`
-- `teamKpiLegacyRetirement.test.ts`
+When `npm ci` fails only because the package registry is temporarily unavailable,
+record the exact network error and retry later. Do not report code verification
+as complete until all commands pass locally.
 
-## 8. Commit the code before database deployment
+## Phase 6 — Commit feature branch only
+
+When repository checks pass:
 
 ```powershell
 git add -A
-git commit -m "fix: install authoritative Team KPI reporting"
+git commit -m "fix: make Team KPI show authoritative live daily data"
+git status --short
 ```
 
-Do not push `main`.
+Do not push `main`. Pushing the feature branch for a Vercel Preview is permitted
+only after the operator approves.
 
-## 9. Safely inspect Supabase migration state
+## Phase 7 — Manual Supabase handoff
 
-Do not display credentials.
+Do not execute database SQL yourself.
 
-Run:
+Tell the operator to open Supabase Dashboard for the CRM project and use SQL
+Editor in this exact order:
 
-```powershell
-npx supabase status
-npx supabase migration list
-npx supabase db push --dry-run
-```
+1. Run `MANUAL_SUPABASE/01_PRECHECK_READ_ONLY.sql`.
+2. Stop if any required column shows `MISSING` or an unexpected function conflict
+   exists.
+3. Back up the database.
+4. Run the complete `MANUAL_SUPABASE/02_APPLY_TEAM_KPI_027.sql` once.
+5. Run `MANUAL_SUPABASE/03_VERIFY_READ_ONLY.sql`.
+6. Run `NOTIFY pgrst, 'reload schema';` only if the preview reports a PostgREST
+   function/schema-cache miss.
 
-Acceptable dry-run states:
+Migration 027 is required for guaranteed complete all-user data. The application
+fallback is deliberately limited by existing source-table RLS.
 
-- Only migration 026 is pending; or
-- Migration 025 followed immediately by 026 is pending, with no older unexpected migration. Migration 026 replaces the broken function created by 025.
+Do not paste only the function body. The complete SQL also installs narrow
+indexes and idempotent Realtime publication membership.
 
-Stop when:
+## Phase 8 — Vercel Preview smoke test
 
-- Any unexpected migration older than 025 is pending.
-- Remote and local histories conflict.
-- Migration 026 already exists remotely with different contents.
-- The linked Supabase project is not the production project used by the CRM.
+Use the feature branch Preview deployment, not production.
 
-Do not use `--include-all`, `migration repair`, or history changes without a separate architectural review.
+Test with a real administrator session:
 
-## 10. Apply migration safely
+1. Open `/manager/kpi` for the current India date.
+2. Confirm every active human user appears, including a known zero-work user.
+3. Compare one selected user/day against raw retained source records.
+4. Confirm one real call counts exactly once.
+5. Confirm a synthetic pipeline arrow record does not count as a call.
+6. Confirm a resolved client query is credited to its resolver.
+7. Confirm a completed mapping is credited to `mapped_by`.
+8. Confirm a normal completed task counts once.
+9. Confirm a completed spreadsheet target counts once.
+10. Confirm Total work equals the four displayed metrics.
+11. Select at least one retained past date and verify its raw records.
+12. Complete one controlled work item and verify a debounced live refresh.
+13. Refresh the browser and verify values persist.
+14. Sign out and sign in again and verify values persist.
+15. Confirm an ordinary user cannot retrieve full-team KPI data.
+16. Confirm no console, hydration, network, authorization, schema-cache, or
+    duplicate Realtime-channel error exists.
 
-After the dry run is correct:
+Do not use client names, employee names, or private data in the final report.
 
-```powershell
-npx supabase db push
-npx supabase migration list
-```
+## Historical-data boundary
 
-Do not put the database password in the command itself. Use the already authenticated CLI or an interactive secure prompt.
+The supplied repository contains migrations 014 and 015 that physically delete
+business records before 8 July 2026. The repaired KPI shows every retained daily
+record. It cannot reconstruct deleted history. Dates before the retained boundary
+require a verified external backup and a separately approved restoration plan.
 
-If PostgREST reports the function is not found after deployment, run in Supabase SQL Editor:
+## Final acceptance
 
-```sql
-NOTIFY pgrst, 'reload schema';
-```
+The feature is complete only when:
 
-Then execute the non-destructive checks in:
+- the existing Team KPI visual design is unchanged;
+- every active user appears;
+- zero-work users appear with zero values;
+- current and retained past dates work;
+- every metric matches its authoritative source;
+- Total work is exact;
+- last activity is correct;
+- Realtime refresh works without double counting;
+- refresh/login persistence works;
+- ordinary users are denied;
+- migration 027 is applied and verified;
+- lint, tests, build, and diff checks pass;
+- no other CRM workflow changed.
 
-`supabase/manual/verify_026_team_kpi_repair.sql`
-
-Use only safe test users. Do not expose personal data in the report.
-
-## 11. Push a preview branch
-
-```powershell
-git push -u origin fix/team-kpi-architect-repair
-```
-
-Do not push directly to `main`.
-
-Use the Vercel Preview deployment created for this branch.
-
-## 12. Required preview tests
-
-Test as a real admin on a known India date:
-
-1. All active users appear.
-2. A zero-work user appears with zero values.
-3. Add one real call; Calls increases by one after sync/realtime refresh.
-4. Resolve one client query; Client queries increases for the resolver.
-5. Complete one mapping by a different user than the requester; the completing user receives the count.
-6. Complete one normal task; Tasks done increases once.
-7. Complete one spreadsheet-allocated target; Tasks done increases once.
-8. Synthetic pipeline arrow logs do not increase Calls.
-9. Refresh and sign in again; values remain unchanged.
-10. An ordinary user cannot access the RPC or Team KPI page.
-11. No console, RPC, schema-cache, realtime, or hydration errors appear.
-12. India date behavior is correct near midnight.
-
-Compare at least one user/day against raw database records using the verification SQL.
-
-## 13. Production release
-
-Merge to `main` only after the preview tests pass and the user approves the preview.
-
-Do not rewrite migration 026 after it has been applied. Any later correction must use migration 027 or the next available forward migration.
-
-## 14. Final report
+## Required final report
 
 Return exactly:
 
 ### Status
 
-- COMPLETE
-- PARTIALLY COMPLETE
-- BLOCKED
+COMPLETE / PARTIALLY COMPLETE / BLOCKED
 
-### Code verification
+### Files installed
 
-- Patch applied
-- Lint
-- Unit tests
-- Production build
-- Git diff check
+List every added and modified repository path.
 
-### Database
+### Repository verification
 
-- Linked project reference, without credentials
-- Dry-run migrations
-- Migration 026 applied: Yes/No
-- PostgREST cache reloaded: Yes/No
-- Verification SQL result
+- npm ci
+- lint
+- Jest tests and count
+- production build
+- git diff check
 
-### KPI source verification
+### Supabase manual SQL
 
-- Calls
-- Client queries
-- Mappings
-- Normal tasks
-- Spreadsheet targets
-- Zero-work users
+- Precheck prepared
+- Migration 027 applied by operator: Yes/No
+- Verification result
+- RPC exists
+- authenticated execute
+- anon/public execute denied
+- Realtime source tables
+
+### KPI verification
+
+- all active users
+- zero-work user
+- calls
+- synthetic-call exclusion
+- client queries
+- mappings
+- normal tasks
+- spreadsheet targets
+- totals
+- last activity
 - India date
-- Synthetic call exclusion
+- retained historical date
+- live refresh
+- ordinary-user denial
 
-### Security
+### Unchanged workflows
 
-- RPC admin authorization
-- Ordinary-user denial
-- PUBLIC execute revoked
-- Service-role browser key added: No
-- Secrets printed: No
-
-### Deployment
-
-- Branch
-- Commit
-- Preview URL
-- Preview smoke result
-- Main merged: Yes/No
+Confirm no changes to login, pipeline, visits, attendance, calls, support,
+mappings, tasks, My Day, global CSS, or design tokens.
 
 ### Remaining issues
 
-Include exact error and reproduction. Do not claim completion when any required test fails.
+Include exact error and reproduction. Do not hide a failed source behind “no data.”
+
+### Git
+
+- branch
+- commit
+- final status
+- main merged: No

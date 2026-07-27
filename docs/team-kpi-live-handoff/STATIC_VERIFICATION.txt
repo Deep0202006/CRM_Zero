@@ -1,0 +1,424 @@
+v24.13.0
+11.6.2
+
+> crm-zero@0.1.0 lint
+> eslint
+
+
+C:\Users\dcp69\Desktop\CRM_Zero\scratch\hardened_form.tsx
+  1:0  error  Parsing error: File appears to be binary
+
+C:\Users\dcp69\Desktop\CRM_Zero\src\app\admin\attendance\page.tsx
+   43:5   warning  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\dcp69\Desktop\CRM_Zero\src\app\admin\attendance\page.tsx:43:5
+  41 |
+  42 |   useEffect(() => {
+> 43 |     loadData();
+     |     ^^^^^^^^ Avoid calling setState() directly within an effect
+  44 |   }, []);
+  45 |
+  46 |   if (!isAdmin) {  react-hooks/set-state-in-effect
+  166:49  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     @next/next/no-img-element
+
+C:\Users\dcp69\Desktop\CRM_Zero\src\app\admin\page.tsx
+   99:5   warning  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\dcp69\Desktop\CRM_Zero\src\app\admin\page.tsx:99:5
+   97 |
+   98 |   useEffect(() => {
+>  99 |     loadAdminData();
+      |     ^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  100 |   }, []);
+  101 |
+  102 |   const handleToggleCapability = async (targetUserId: string, capCode: string, hasCap: boolean) => {  react-hooks/set-state-in-effect
+  180:19  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-explicit-any
+
+C:\Users\dcp69\Desktop\CRM_Zero\src\app\admin\visits\page.tsx
+   7:18  warning  'CheckCircle2' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         @typescript-eslint/no-unused-vars
+  15:11  warning  'currentUser' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 @typescript-eslint/no-unused-vars
+  48:5   warning  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\dcp69\Desktop\CRM_Zero\src\app\admin\visits\page.tsx:48:5
+  46 |
+  47 |   useEffect(() => {
+> 48 |     loadData();
+     |     ^^^^^^^^ Avoid calling setState() directly within an effect
+  49 |   }, [isAdmin]);
+  50 |
+  51 |   const [searchTerm, setSearchTerm] = useState("");  react-hooks/set-state-in-effect
+  49:6   warning  React Hook useEffect has a missing dependency: 'loadData'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      react-hooks/exhaustive-deps
+
+C:\Users\dcp69\Desktop\CRM_Zero\src\app\api\admin\reset-password\route.ts
+  43:11  warning  'data' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\dcp69\Desktop\CRM_Zero\src\app\attendance\page.tsx
+   50:5   warning  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\dcp69\Desktop\CRM_Zero\src\app\attendance\page.tsx:50:5
+  48 |
+  49 |   useEffect(() => {
+> 50 |     loadTodayRecord();
+     |     ^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  51 |   }, [currentUser]);
+  52 |
+  53 |   const initCamera = async () => {                                                                                                                                                                                         react-hooks/set-state-in-effect
+   51:6   warning  React Hook useEffect has a missing dependency: 'loadTodayRecord'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     react-hooks/exhaustive-deps
+   66:14  warning  'err' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        @typescript-eslint/no-unused-vars
+   72:54  warning  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\dcp69\Desktop\CRM_Zero\src\app\attendance\page.tsx:72:54
+  70 |
+  71 |   useEffect(() => {
+> 72 |     if (isFieldStaff && !todayRecord && currentUser) initCamera();
+     |                                                      ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  73 |     return () => {
+  74 |       if (videoRef.current?.srcObject) {
+  75 |         (videoRef.current.srcObject as MediaStream).getTracks().forEach((t) => t.stop());  react-hooks/set-state-in-effect
+   75:19  warning  The ref value 'videoRef.current' will likely have changed by the time this effect cleanup function runs. If this ref points to a node rendered by React, copy 'videoRef.current' to a variable inside the effect, and use that variable in the cleanup function                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        react-hooks/exhaustive-deps
+   78:6   warning  React Hook useEffect has a missing dependency: 'initCamera'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          react-hooks/exhaustive-deps
+  130:14  warning  'err' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        @typescript-eslint/no-unused-vars
+  166:17  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                @next/next/no-img-element
+
+C:\Users\dcp69\Desktop\CRM_Zero\src\app\call-logs\page.tsx
+  75:5  warning  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\dcp69\Desktop\CRM_Zero\src\app\call-logs\page.tsx:75:5
+  73 |
+  74 |   useEffect(() => {
+> 75 |     loadData();
+     |     ^^^^^^^^ Avoid calling setState() directly within an effect
+  76 |   }, []);
+  77 |
+  78 |   const handleLogCall = async (e: React.FormEvent) => {  react-hooks/set-state-in-effect
+
+C:\Users\dcp69\Desktop\CRM_Zero\src\app\manager\kpi\page.tsx
+  150:10  warning  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\dcp69\Desktop\CRM_Zero\src\app\manager\kpi\page.tsx:150:10
+  148 |   useEffect(() => {
+  149 |     if (isAuthLoading || !currentUser || !isAdmin) return;
+> 150 |     void loadTeamKpi(false);
+      |          ^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  151 |   }, [currentUser, isAdmin, isAuthLoading, loadTeamKpi]);
+  152 |
+  153 |   useEffect(() => {  react-hooks/set-state-in-effect
+  185:9   warning  The 'rows' logical expression could make the dependencies of useMemo Hook (at line 189) change on every render. To fix this, wrap the initialization of 'rows' in its own useMemo() Hook                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          react-hooks/exhaustive-deps
+
+C:\Users\dcp69\Desktop\CRM_Zero\src\app\manager\tasks\page.tsx
+  32:7  warning  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\dcp69\Desktop\CRM_Zero\src\app\manager\tasks\page.tsx:32:7
+  30 |   useEffect(() => {
+  31 |     if (allUsers?.length) {
+> 32 |       setUsers(allUsers.filter((user) => String(user.is_active) === "1" || String(user.is_active) === "true"));
+     |       ^^^^^^^^ Avoid calling setState() directly within an effect
+  33 |     }
+  34 |   }, [allUsers]);
+  35 |  react-hooks/set-state-in-effect
+
+C:\Users\dcp69\Desktop\CRM_Zero\src\app\mappings\page.tsx
+   76:5   warning  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\dcp69\Desktop\CRM_Zero\src\app\mappings\page.tsx:76:5
+  74 |
+  75 |   useEffect(() => {
+> 76 |     loadData();
+     |     ^^^^^^^^ Avoid calling setState() directly within an effect
+  77 |   }, []);
+  78 |
+  79 |   const resolveLeadId = async (input: string, segmentType: "Distributor" | "Retailer"): Promise<string> => {  react-hooks/set-state-in-effect
+  181:14  warning  'err' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                @typescript-eslint/no-unused-vars
+
+C:\Users\dcp69\Desktop\CRM_Zero\src\app\onboarding\page.tsx
+   58:24  warning  'isAdmin' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               @typescript-eslint/no-unused-vars
+   90:51  warning  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\dcp69\Desktop\CRM_Zero\src\app\onboarding\page.tsx:90:51
+  88 |
+  89 |   useEffect(() => {
+> 90 |     if (!canViewRetailers && canViewDistributors) setSegmentTab("Distributor");
+     |                                                   ^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  91 |   }, [canViewRetailers, canViewDistributors]);
+  92 |
+  93 |   const loadLeads = useCallback(async () => {  react-hooks/set-state-in-effect
+  102:5   warning  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\dcp69\Desktop\CRM_Zero\src\app\onboarding\page.tsx:102:5
+  100 |
+  101 |   useEffect(() => {
+> 102 |     loadLeads();
+      |     ^^^^^^^^^ Avoid calling setState() directly within an effect
+  103 |   }, [loadLeads]);
+  104 |
+  105 |   const handleOpenLead = async (lead: LocalLead) => {                                                                                                                                react-hooks/set-state-in-effect
+  169:14  warning  'err' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            @typescript-eslint/no-unused-vars
+  220:14  warning  'err' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            @typescript-eslint/no-unused-vars
+
+C:\Users\dcp69\Desktop\CRM_Zero\src\app\support\page.tsx
+   24:6   warning  'QueryStatus' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      @typescript-eslint/no-unused-vars
+   67:21  warning  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\dcp69\Desktop\CRM_Zero\src\app\support\page.tsx:67:21
+  65 |   };
+  66 |
+> 67 |   useEffect(() => { loadData(); }, [currentUser]);
+     |                     ^^^^^^^^ Avoid calling setState() directly within an effect
+  68 |
+  69 |   const handleLogQuery = async (e: React.FormEvent) => {
+  70 |     e.preventDefault();  react-hooks/set-state-in-effect
+  104:14  warning  'err' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              @typescript-eslint/no-unused-vars
+  123:14  warning  'err' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              @typescript-eslint/no-unused-vars
+
+C:\Users\dcp69\Desktop\CRM_Zero\src\app\visits\page.tsx
+  22:9  warning  The 'loadData' function makes the dependencies of useEffect Hook (at line 44) change on every render. To fix this, wrap the definition of 'loadData' in its own useCallback() Hook                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   react-hooks/exhaustive-deps
+  43:5  warning  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\dcp69\Desktop\CRM_Zero\src\app\visits\page.tsx:43:5
+  41 |
+  42 |   useEffect(() => {
+> 43 |     loadData();
+     |     ^^^^^^^^ Avoid calling setState() directly within an effect
+  44 |   }, [currentUser, loadData]);
+  45 |
+  46 |   const getLeadDisplay = (lead_id: string) => {  react-hooks/set-state-in-effect
+
+C:\Users\dcp69\Desktop\CRM_Zero\src\components\CommandPalette.tsx
+  88:5  warning  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\dcp69\Desktop\CRM_Zero\src\components\CommandPalette.tsx:88:5
+  86 |
+  87 |   useEffect(() => {
+> 88 |     setActiveIndex(0);
+     |     ^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  89 |   }, [query]);
+  90 |
+  91 |   useEffect(() => {                                                                                        react-hooks/set-state-in-effect
+  93:7  warning  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\dcp69\Desktop\CRM_Zero\src\components\CommandPalette.tsx:93:7
+  91 |   useEffect(() => {
+  92 |     if (!filtered.length) {
+> 93 |       setActiveIndex(0);
+     |       ^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  94 |       return;
+  95 |     }
+  96 |     setActiveIndex((index) => Math.min(index, filtered.length - 1));  react-hooks/set-state-in-effect
+
+C:\Users\dcp69\Desktop\CRM_Zero\src\components\DashboardLayout.tsx
+  31:3  warning  'Activity' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               @typescript-eslint/no-unused-vars
+  84:5  warning  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\dcp69\Desktop\CRM_Zero\src\components\DashboardLayout.tsx:84:5
+  82 |     if (typeof window === "undefined") return;
+  83 |     const storedCollapsed = localStorage.getItem("zerodata-sidebar-collapsed") === "true";
+> 84 |     setCollapsed(storedCollapsed);
+     |     ^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  85 |     const currentTheme = document.documentElement.dataset.theme === "dark" ? "dark" : "light";
+  86 |     setTheme(currentTheme);
+  87 |   }, []);  react-hooks/set-state-in-effect
+  91:5  warning  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\dcp69\Desktop\CRM_Zero\src\components\DashboardLayout.tsx:91:5
+  89 |   useEffect(() => {
+  90 |     if (typeof window === "undefined" || pathname === "/login") return;
+> 91 |     setIsOnline(navigator.onLine);
+     |     ^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  92 |     const handleOnline = () => setIsOnline(true);
+  93 |     const handleOffline = () => setIsOnline(false);
+  94 |     window.addEventListener("online", handleOnline);                           react-hooks/set-state-in-effect
+
+C:\Users\dcp69\Desktop\CRM_Zero\src\components\visits\SelfieCapture.tsx
+  146:9  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+C:\Users\dcp69\Desktop\CRM_Zero\src\components\visits\VisitEvidence.tsx
+  42:5  warning  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\dcp69\Desktop\CRM_Zero\src\components\visits\VisitEvidence.tsx:42:5
+  40 |
+  41 |   useEffect(() => {
+> 42 |     requestLocation();
+     |     ^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  43 |   }, [requestLocation]);
+  44 |
+  45 |   useEffect(() => {  react-hooks/set-state-in-effect
+
+âœ– 42 problems (2 errors, 40 warnings)
+
+
+> crm-zero@0.1.0 test
+> jest --runInBand
+
+PASS src/lib/__tests__/teamKpiContract.test.ts
+PASS src/lib/__tests__/taskAllocationExcel.test.ts
+PASS src/lib/__tests__/pipelineStages.test.ts
+PASS src/lib/__tests__/syncUpdatePayload.test.ts
+PASS src/lib/__tests__/taskAllocationMigration.test.ts
+PASS src/lib/__tests__/taskAllocationValidation.test.ts
+PASS src/lib/__tests__/teamKpiPageContract.test.ts
+PASS src/lib/__tests__/teamKpiMigration.test.ts
+PASS src/lib/__tests__/teamKpiLegacyRetirement.test.ts
+PASS src/lib/__tests__/teamKpiWorkflowAttribution.test.ts
+
+Test Suites: 10 passed, 10 total
+Tests:       88 passed, 88 total
+Snapshots:   0 total
+Time:        2.364 s
+Ran all test suites.
+
+> crm-zero@0.1.0 build
+> next build
+
+â–² Next.js 16.2.9 (Turbopack)
+- Environments: .env.local, .env.production
+
+  Creating an optimized production build ...
+âœ“ Compiled successfully in 12.0s
+  Running TypeScript ...
+  Finished TypeScript in 10.3s ...
+  Collecting page data using 7 workers ...
+  Generating static pages using 7 workers (0/26) ...
+  Generating static pages using 7 workers (6/26) 
+  Generating static pages using 7 workers (12/26) 
+  Generating static pages using 7 workers (19/26) 
+âœ“ Generating static pages using 7 workers (26/26) in 869ms
+  Finalizing page optimization ...
+
+Route (app)
+â”Œ â—‹ /
+â”œ â—‹ /_not-found
+â”œ â—‹ /admin
+â”œ â—‹ /admin/attendance
+â”œ â—‹ /admin/visits
+â”œ Æ’ /api/admin/create-user
+â”œ Æ’ /api/admin/delete-user
+â”œ Æ’ /api/admin/export-visits
+â”œ Æ’ /api/admin/reset-password
+â”œ Æ’ /api/admin/update-user
+â”œ Æ’ /api/task-upload
+â”œ â—‹ /attendance
+â”œ â—‹ /call-logs
+â”œ â—‹ /login
+â”œ â—‹ /manager/kpi
+â”œ â—‹ /manager/tasks
+â”œ â—‹ /mappings
+â”œ â—‹ /my-day
+â”œ â—‹ /onboarding
+â”œ â—‹ /support
+â”œ â—‹ /visits
+â”œ â—‹ /visits/new
+â”œ â—‹ /visits/new/distributor
+â”” â—‹ /visits/new/retailer
+
+
+â—‹  (Static)   prerendered as static content
+Æ’  (Dynamic)  server-rendered on demand
+

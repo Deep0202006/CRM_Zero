@@ -1,0 +1,54 @@
+$ git branch --show-current
+main
+
+$ git rev-parse HEAD
+8f993e2b6367f3421b5215d2bb45995b7f27f01a
+
+$ git status --short
+ D TEAM_KPI_FORENSIC_HANDOFF.zip
+ D zerodata-crm-industry-redesign.zip
+?? scratch/make_docs_live.py
+?? scratch/make_live_zip.py
+?? scratch/regenerate_sql.py
+?? test-results/
+
+$ git diff --stat
+ TEAM_KPI_FORENSIC_HANDOFF.zip      | Bin 24853571 -> 0 bytes
+ zerodata-crm-industry-redesign.zip | Bin 3597732 -> 0 bytes
+ 2 files changed, 0 insertions(+), 0 deletions(-)
+
+$ git diff --name-only
+TEAM_KPI_FORENSIC_HANDOFF.zip
+zerodata-crm-industry-redesign.zip
+
+$ git log -20 --oneline
+8f993e2 fix: relax search_path verification comparison to support pg_get_functiondef format
+76cf5ff fix: restore block delimiters in manual deployment sql
+0bcdccc fix: remove escaped backslashes from manual sql scripts
+a2d4801 docs: prepare manual Team KPI Supabase deployment
+33183ae fix: install authoritative Team KPI reporting
+a7a3194 chore: checkpoint before Team KPI architect repair
+5071176 fix: change team kpi to run client-side to bypass database migration dependency
+fc507cf refactor: remove Activity Deck and rebuild Team KPI from source of truth
+c8fbd00 feat: Add Global Admin Day-Wise Activity Engine and phone field support
+076e1e8 feat(admin): add delete user functionality
+63fc4bf fix(admin): remove strict format requirements for usernames
+5f65589 chore: Restore field visits type selection with hardened forms
+cfedb59 Merge fix/field-visits-production-hardening into main
+19ac61b test: complete field visits release verification
+c60c57d docs: complete field visits architecture audit
+674ae69 Remove admin login link from login page
+690bde1 Add logo splash screen animation to login page
+2f212cd Fix field visit 404, replace selfie capture with native input, and fix overview robustness
+aca67fd Fix/exact reference login (#10)
+689fc67 Merge branch 'feat/login-and-field-visits-evidence' into main
+
+
+Current branch: main
+Current commit: 8f993e2b6367f3421b5215d2bb45995b7f27f01a
+Commit containing the Team KPI architect repair: 8f993e2b6367f3421b5215d2bb45995b7f27f01a
+Commit containing the client-side KPI hotfix: UNKNOWN/REVERTED
+Whether migration 026 is committed: Yes
+Whether manual Team KPI SQL files exist: Yes
+Whether there are uncommitted Team KPI changes: No
+Whether main contains the current Team KPI implementation: Yes
