@@ -5,7 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { db, LocalUser, LocalTaskTemplate } from "@/lib/db";
 import {
   ShieldCheck, Users, AlertCircle,
-  ListTodo, UserCheck, Clock as ClockIcon, Edit2, Save, ToggleLeft, ToggleRight, Download, UserPlus, Key, UploadCloud, CheckCircle2
+  ListTodo, UserCheck, Clock as ClockIcon, Edit2, Save, ToggleLeft, ToggleRight, Download, UserPlus, Key, UploadCloud, CheckCircle2, Trash2
 } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { exportPipelineToExcel } from "@/lib/pipelineExport";
@@ -155,6 +155,30 @@ export default function AdminPage() {
       setErrorMsg(err instanceof Error ? err.message : "Failed to reset password");
     } finally {
       setIsResetting(false);
+    }
+  };
+
+  const handleDeleteUser = async (userId: string, userName: string) => {
+    if (!window.confirm(`Are you absolutely sure you want to permanently delete the user ${userName}? This action cannot be undone and may fail if the user has associated historical records (visits, leads, etc.).`)) {
+      return;
+    }
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("No active session");
+
+      const res = await fetch(`/api/admin/delete-user?user_id=${userId}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${session.access_token}` }
+      });
+
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || "Failed to delete user");
+
+      setSuccessMsg(`User ${userName} deleted successfully.`);
+      await loadAdminData();
+    } catch (err: any) {
+      setErrorMsg(err.message || "Failed to delete user");
     }
   };
 
@@ -345,6 +369,7 @@ export default function AdminPage() {
                         <div className="flex shrink-0 gap-2">
                           <Button size="sm" variant="secondary" onClick={() => { setEditingUser(user); setEditUserForm({ name: user.name, email: user.email, is_active: String(user.is_active) === "1" || String(user.is_active) === "true" }); }} icon={<Edit2 size={13} />}>Edit</Button>
                           <Button size="sm" variant="outline" onClick={() => { setResetPasswordInput(""); setNewPasswordResult(null); setResettingPasswordFor(user.user_id); }} icon={<Key size={13} />}>Password</Button>
+                          <Button size="sm" variant="danger" onClick={() => handleDeleteUser(user.user_id, user.name)} icon={<Trash2 size={13} />}>Delete</Button>
                         </div>
                       </div>
                     </article>
