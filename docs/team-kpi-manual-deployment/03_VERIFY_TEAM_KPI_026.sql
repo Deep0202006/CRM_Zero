@@ -2,7 +2,7 @@
 -- Verification script to ensure Team KPI migration 026 was applied correctly.
 -- Read-only check.
 
-DO \$\$
+DO 
 DECLARE
   func_exists boolean;
   func_is_secdef boolean;
@@ -48,7 +48,7 @@ BEGIN
 
   RAISE NOTICE 'SUCCESS: All verification checks passed.';
 END;
-\$\$;
+;
 
 -- OPTIONAL: Run this section ONLY IF the application reports that the newly created 
 -- RPC is missing from the PostgREST schema cache.

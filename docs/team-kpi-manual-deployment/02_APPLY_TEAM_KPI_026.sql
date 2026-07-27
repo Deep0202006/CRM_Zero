@@ -344,8 +344,8 @@ COMMENT ON FUNCTION public.get_team_kpi_daily(date) IS
 
 COMMIT;
 
-DO \$\$
+DO 
 BEGIN
   RAISE NOTICE 'APPLY SCRIPT COMPLETED SUCCESSFULLY.';
 END;
-\$\$;
+;

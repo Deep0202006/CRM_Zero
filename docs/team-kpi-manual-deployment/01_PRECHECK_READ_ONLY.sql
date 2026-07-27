@@ -7,7 +7,7 @@
 -- - Existing snapshot triggers should still exist.
 -- - If migration 026 has already been applied, DO NOT run the apply script.
 
-DO \$\$
+DO 
 DECLARE
   func_exists boolean;
   tbl text;
@@ -46,4 +46,4 @@ BEGIN
   SELECT count(*) INTO trigger_count FROM pg_trigger WHERE tgname IN ('on_mapping_request_completed', 'on_client_query_resolved');
   RAISE NOTICE 'INFO: Found % legacy snapshot triggers (Expected > 0 if not yet applied, 0 if applied).', trigger_count;
 END;
-\$\$;
+;
