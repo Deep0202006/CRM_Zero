@@ -78,6 +78,7 @@ export interface LocalMappingRequest {
   request_id: string;
   distributor_lead_id: string;
   retailer_lead_id: string;
+  requested_by?: string | null;
   mapped_by?: string | null;
   status: "Pending" | "Completed";
   notes?: string | null;
@@ -884,7 +885,6 @@ export async function pullDownSync() {
       "internal_tickets",
       "attendance",
       "call_logs",
-      "kpi_daily_snapshot",
       "task_upload_batches",
       "allocated_targets",
       "field_visits",
@@ -1033,7 +1033,7 @@ if (typeof window !== "undefined") {
       "users", "capabilities", "user_capabilities", "leads",
       "client_queries", "mappings", "mapping_requests", "task_templates",
       "tasks", "task_status_history", "internal_tickets", "attendance", "call_logs",
-      "kpi_snapshots", "lead_registration_checklist",
+      "lead_registration_checklist",
       "lead_installation_details", "lead_payment_details",
       "task_upload_batches", "allocated_targets"
     ];

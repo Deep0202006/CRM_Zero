@@ -1,27 +1,54 @@
-# Team KPI Repair & Activity Deck Removal - Deployment Runbook
+# Team KPI repair deployment runbook
 
-## Overview
-This runbook covers the deployment steps for completely removing the `Activity Deck` feature and replacing the Team KPI dashboard with a server-authoritative, real-time database query directly from Supabase.
+## Release order
 
-## Database Migrations
-Run the following SQL migration on the production Supabase database:
-- `supabase/migrations/025_team_kpi_source_of_truth.sql`
+The database migration must be deployed before the matching frontend. Do not deploy only one side.
 
-This migration will:
-1. Drop the old `compute_daily_kpi_snapshot` functions and triggers.
-2. Create the new `public.get_team_kpi_daily(target_date text)` RPC function which aggregates Calls, Client Queries, Tasks, and Mappings on the fly.
+1. Create a database backup in Supabase.
+2. Confirm the project reference is the same Supabase project used by Vercel production variables.
+3. Confirm migration files 023–025 are already represented in remote migration history. Do not use `--include-all` blindly.
+4. Review `supabase/migrations/026_team_kpi_repair.sql`.
+5. Run:
 
-## Files Removed
-- `src/app/admin/activity/page.tsx`
-- `src/components/admin/ActivityDeck.tsx`
-- Old KPI related daily functions.
+   ```powershell
+   npx supabase migration list
+   npx supabase db push --dry-run
+   ```
 
-## Expected Behavior
-1. The **Activity Deck** will no longer appear in the Admin sidebar navigation.
-2. The **Team KPI** page (`/manager/kpi`) will now dynamically render the completion metrics using real-time SQL aggregation via the RPC endpoint instead of relying on legacy snapshots or Dexie local tables.
-3. Total completed work accurately reflects cross-domain objects (calls, tasks, mappings, queries).
+6. The dry run must list only the expected pending migration(s), normally `026_team_kpi_repair.sql`. Stop on any unexpected historical migration.
+7. Apply:
 
-## Rollback Plan
-If issues occur:
-1. Revert the frontend commit deleting the Activity Deck and updating the KPI table.
-2. No immediate database rollback is required for `025_team_kpi_source_of_truth.sql` since it relies on additive RPC functions. Legacy `kpi_daily_snapshot` table data is preserved.
+   ```powershell
+   npx supabase db push
+   npx supabase migration list
+   ```
+
+8. Reload the PostgREST schema cache when the RPC is not visible immediately:
+
+   ```sql
+   NOTIFY pgrst, 'reload schema';
+   ```
+
+9. Run `supabase/manual/verify_026_team_kpi_repair.sql` with safe test users and rollback where indicated.
+10. Deploy the application branch to a Vercel Preview deployment.
+11. Test `/manager/kpi` as an administrator for a known India date and compare counts against raw source records.
+12. Create one call, resolve one client query, complete one mapping, complete one normal task, and complete one spreadsheet target. Confirm one debounced KPI refresh and exact counts.
+13. Confirm an ordinary user cannot execute the RPC or view Team KPI.
+14. Merge and deploy to production only after preview verification.
+
+## Production smoke test
+
+- All active users appear, including users with zero work.
+- Calls match real call logs and exclude synthetic pipeline arrow entries.
+- Resolved queries use resolver attribution.
+- New mapping completion is credited to the completing user.
+- Normal tasks and spreadsheet targets both contribute to Tasks done.
+- India date boundaries are correct near midnight.
+- Refresh, tab visibility, and realtime changes do not double count.
+- Browser console has no RPC, authorization, schema-cache, or realtime errors.
+
+## Rollback
+
+- Frontend: redeploy the previous Vercel deployment.
+- Database: do not edit or delete migration 026 after production use. Apply a new forward-fix migration if a database correction is required.
+- The legacy snapshot tables remain intact; migration 026 does not delete historical KPI data.

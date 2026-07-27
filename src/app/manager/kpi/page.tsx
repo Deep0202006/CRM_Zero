@@ -1,9 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
-import { TeamKpiRow } from "@/lib/teamKpi/contract";
+import {
+  EMPTY_TEAM_KPI_TOTALS,
+  getTeamKpiErrorMessage,
+  parseTeamKpiResponse,
+  TeamKpiResponse,
+  TeamKpiRow,
+} from "@/lib/teamKpi/contract";
+import { getCurrentISTDate, IST_TIMEZONE } from "@/lib/dateTime";
 import {
   BarChart,
   Bar,
@@ -12,16 +19,20 @@ import {
   Tooltip,
   ResponsiveContainer,
   CartesianGrid,
-  Cell,
 } from "recharts";
 import {
-  TrendingUp,
-  Users,
-  AlertTriangle,
-  CheckCircle2,
-  Calendar,
+  Activity,
+  AlertCircle,
   BarChart3,
-  Layers
+  Calendar,
+  CheckCircle2,
+  Layers,
+  Link2,
+  MessageSquare,
+  PhoneCall,
+  RefreshCw,
+  ShieldAlert,
+  Users,
 } from "lucide-react";
 import FunnelTab from "./FunnelTab";
 import { Chip } from "@/components/ui/Chip";
@@ -29,201 +40,345 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { Input } from "@/components/ui/Input";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Button } from "@/components/ui/Button";
 
-function AttBadge({ status }: { status: string }) {
-  const variant = status === "Present" ? "success" : status === "Late" ? "warning" : "danger";
-  return <Chip variant={variant} size="sm">{status}</Chip>;
+const REALTIME_TABLES = [
+  "users",
+  "user_capabilities",
+  "tasks",
+  "task_status_history",
+  "allocated_targets",
+  "call_logs",
+  "client_queries",
+  "mapping_requests",
+] as const;
+
+function formatActivityTime(value: string | null): string {
+  if (!value) return "No work recorded";
+
+  return new Intl.DateTimeFormat("en-IN", {
+    timeZone: IST_TIMEZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  }).format(new Date(value));
+}
+
+function WorkMixRow({
+  label,
+  value,
+  total,
+  icon,
+  barClassName,
+}: {
+  label: string;
+  value: number;
+  total: number;
+  icon: ReactNode;
+  barClassName: string;
+}) {
+  const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+
+  return (
+    <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] p-3">
+      <div className="flex items-center justify-between gap-3">
+        <span className="flex min-w-0 items-center gap-2 text-[12px] font-semibold text-[var(--text-secondary)]">
+          <span className="text-[var(--text-muted)]">{icon}</span>
+          <span className="truncate">{label}</span>
+        </span>
+        <span className="font-semibold tabular-nums text-[var(--text-primary)]">{value}</span>
+      </div>
+      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[var(--surface-tertiary)]">
+        <div className={`h-full rounded-full ${barClassName}`} style={{ width: `${percentage}%` }} />
+      </div>
+      <p className="mt-2 text-[10px] font-medium tabular-nums text-[var(--text-muted)]">{percentage}% of recorded work</p>
+    </div>
+  );
 }
 
 export default function ManagerKpiPage() {
-  const { currentUser, isAdmin } = useAuth();
-  const [rows, setRows] = useState<TeamKpiRow[]>([]);
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const { currentUser, isAdmin, isLoading: isAuthLoading } = useAuth();
+  const [report, setReport] = useState<TeamKpiResponse | null>(null);
+  const [date, setDate] = useState(getCurrentISTDate());
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"Team" | "Funnel">("Team");
+  const requestSequence = useRef(0);
+  const realtimeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const loadTeamKpi = useCallback(async (background = false) => {
+    if (!currentUser || !isAdmin) return;
+
+    const requestId = ++requestSequence.current;
+    if (background) setRefreshing(true);
+    else setLoading(true);
+
+    try {
+      if (!isSupabaseConfigured) {
+        throw new Error("Supabase environment variables are not configured.");
+      }
+
+      const { data, error: rpcError } = await supabase.rpc("get_team_kpi_daily", {
+        target_date: date,
+      });
+
+      if (requestId !== requestSequence.current) return;
+      if (rpcError) throw rpcError;
+
+      const parsed = parseTeamKpiResponse(data);
+      if (parsed.target_date !== date) {
+        throw new Error("Team KPI returned data for a different business date.");
+      }
+
+      setReport(parsed);
+      setError(null);
+    } catch (caughtError: unknown) {
+      if (requestId !== requestSequence.current) return;
+      console.error("Team KPI refresh failed", caughtError);
+      setError(getTeamKpiErrorMessage(caughtError));
+    } finally {
+      if (requestId === requestSequence.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    }
+  }, [currentUser, date, isAdmin]);
 
   useEffect(() => {
-    if (!currentUser) return;
+    if (isAuthLoading || !currentUser || !isAdmin) return;
+    void loadTeamKpi(false);
+  }, [currentUser, isAdmin, isAuthLoading, loadTeamKpi]);
+
+  useEffect(() => {
+    if (!currentUser || !isAdmin || !isSupabaseConfigured) return;
+
+    const scheduleRefresh = () => {
+      if (realtimeTimer.current) clearTimeout(realtimeTimer.current);
+      realtimeTimer.current = setTimeout(() => {
+        void loadTeamKpi(true);
+      }, 750);
+    };
+
+    let channel = supabase.channel(`team-kpi-${currentUser.user_id}`);
+    for (const table of REALTIME_TABLES) {
+      channel = channel.on(
+        "postgres_changes",
+        { event: "*", schema: "public", table },
+        scheduleRefresh,
+      );
+    }
+    channel.subscribe();
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") scheduleRefresh();
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      if (realtimeTimer.current) clearTimeout(realtimeTimer.current);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      void supabase.removeChannel(channel);
+    };
+  }, [currentUser, isAdmin, loadTeamKpi]);
+
+  const rows = report?.rows ?? [];
+  const totals = report?.totals ?? EMPTY_TEAM_KPI_TOTALS;
+  const visibleReportMatchesDate = report?.target_date === date;
+  const noActivityCount = rows.filter((row) => row.total_completed_work === 0).length;
+  const chartRows = useMemo(() => rows.slice(0, 12), [rows]);
+
+  const handleDateChange = (nextDate: string) => {
+    requestSequence.current += 1;
+    setDate(nextDate);
+    setReport(null);
+    setError(null);
     setLoading(true);
+  };
 
-    (async () => {
-      if (!isSupabaseConfigured) {
-        setRows([]);
-        setLoading(false);
-        return;
-      }
-      try {
-        const localStart = new Date(`${date}T00:00:00+05:30`).toISOString();
-        const localEnd = new Date(`${date}T23:59:59.999+05:30`).toISOString();
-
-        const [
-          { data: users },
-          { data: tasks },
-          { data: calls },
-          { data: queries },
-          { data: mappings },
-          { data: attendance },
-          { data: regReqs }
-        ] = await Promise.all([
-          supabase.from("users").select("user_id, name, role, manager_id"),
-          supabase.from("tasks").select("assigned_to, status, completed_at, due_date").eq("due_date", date),
-          supabase.from("call_logs").select("user_id, timestamp").gte("timestamp", localStart).lte("timestamp", localEnd),
-          supabase.from("client_queries").select("resolved_by, resolved_at, problem_status").eq("problem_status", "Resolved").gte("resolved_at", localStart).lte("resolved_at", localEnd),
-          supabase.from("mapping_requests").select("mapped_by, completed_at, status").eq("status", "Completed").gte("completed_at", localStart).lte("completed_at", localEnd),
-          supabase.from("attendance").select("user_id, clock_in, date").eq("date", date),
-          supabase.from("attendance_regularization_requests").select("user_id, status, date").eq("date", date)
-        ]);
-
-        if (!users) {
-          setRows([]);
-          return;
-        }
-
-        const validUsers = users.filter(u => isAdmin || u.user_id === currentUser.user_id || u.manager_id === currentUser.user_id);
-
-        const mapped: TeamKpiRow[] = validUsers.map(u => {
-          const uTasks = (tasks || []).filter(t => t.assigned_to === u.user_id);
-          const uCalls = (call_logs => call_logs.filter(c => c.user_id === u.user_id))(calls || []);
-          const uQueries = (client_queries => client_queries.filter(q => q.resolved_by === u.user_id))(queries || []);
-          const uMappings = (mapping_requests => mapping_requests.filter(m => m.mapped_by === u.user_id))(mappings || []);
-          
-          const tasksAssigned = uTasks.length;
-          const tasksCompleted = uTasks.filter(t => t.status === 'Completed').length;
-          const completionRate = tasksAssigned > 0 ? Math.round((tasksCompleted / tasksAssigned) * 100) : 0;
-          
-          const uAtt = (attendance || []).find(a => a.user_id === u.user_id);
-          const uReg = (regReqs || []).find(r => r.user_id === u.user_id);
-          let attStatus = 'Absent';
-          if (uReg && uReg.status === 'Approved') attStatus = 'Present';
-          else if (uAtt && uAtt.clock_in) attStatus = 'Present';
-
-          const times = [
-            ...uTasks.filter(t => t.status === 'Completed' && t.completed_at >= localStart && t.completed_at <= localEnd).map(t => new Date(t.completed_at).getTime()),
-            ...uCalls.map(c => new Date(c.timestamp).getTime()),
-            ...uQueries.map(q => new Date(q.resolved_at).getTime()),
-            ...uMappings.map(m => new Date(m.completed_at).getTime())
-          ];
-          const latestActivityTime = times.length > 0 ? new Date(Math.max(...times)).toISOString() : null;
-
-          return {
-            user_id: u.user_id,
-            name: u.name,
-            role: u.role,
-            tasks_assigned: tasksAssigned,
-            tasks_completed: tasksCompleted,
-            completion_rate: completionRate,
-            calls_made: uCalls.length,
-            queries_handled: uQueries.length,
-            mappings_completed: uMappings.length,
-            leads_converted: 0,
-            total_completed_work: tasksCompleted + uCalls.length + uQueries.length + uMappings.length,
-            attendance_status: attStatus,
-            latest_activity_time: latestActivityTime
-          };
-        });
-
-        mapped.sort((a, b) => b.completion_rate - a.completion_rate);
-        setRows(mapped);
-      } catch (err) {
-        console.error("Failed to fetch team KPI data:", err);
-        setRows([]);
-      }
-      setLoading(false);
-    })();
-  }, [date, isAdmin, currentUser]);
-
-  const flagged = rows.filter(
-    (r) => r.completion_rate < 50 || r.attendance_status !== "Present"
-  );
-  const avgCompletion =
-    rows.length === 0
-      ? 0
-      : Math.round(rows.reduce((s, r) => s + (r.completion_rate || 0), 0) / rows.length) || 0;
-
-  const presentCount = rows.filter((row) => row.attendance_status === "Present").length;
+  if (!isAuthLoading && currentUser && !isAdmin) {
+    return (
+      <section className="access-state" aria-labelledby="team-kpi-access-title">
+        <span className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-[var(--radius-lg)] bg-[var(--status-danger-soft)] text-[var(--status-danger)]">
+          <ShieldAlert size={22} />
+        </span>
+        <h1 id="team-kpi-access-title" className="text-lg font-semibold">Team KPI is restricted</h1>
+        <p className="mx-auto mt-2 max-w-sm text-[13px] leading-5 text-[var(--text-muted)]">
+          Only administrators can review confirmed work completed across the full team.
+        </p>
+      </section>
+    );
+  }
 
   return (
     <div className="app-page">
       <PageHeader
         eyebrow="Performance intelligence"
         icon={<BarChart3 size={18} />}
-        title={isAdmin ? "Team performance" : "My performance"}
-        description="Compare execution, attendance, conversion, and pipeline health without losing the underlying operational detail."
+        title="Team performance"
+        description="Review confirmed daily work across client calls, resolved queries, completed mappings, and completed tasks."
         actions={
-          <Input type="date" value={date} onChange={(event) => setDate(event.target.value)} leftIcon={<Calendar size={15} />} containerClassName="w-full sm:w-[190px]" aria-label="KPI date" />
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+            <Input
+              type="date"
+              value={date}
+              onChange={(event) => handleDateChange(event.target.value)}
+              leftIcon={<Calendar size={15} />}
+              containerClassName="w-full sm:w-[190px]"
+              aria-label="KPI date"
+            />
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => void loadTeamKpi(true)}
+              disabled={loading || refreshing || !isAdmin}
+              icon={<RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />}
+            >
+              Refresh
+            </Button>
+          </div>
         }
       />
 
       <div className="segmented-control w-fit" aria-label="Performance report view">
-        <button type="button" aria-pressed={activeTab === "Team"} onClick={() => setActiveTab("Team")}><span className="flex items-center gap-2"><Users size={14} /> Team execution</span></button>
-        <button type="button" aria-pressed={activeTab === "Funnel"} onClick={() => setActiveTab("Funnel")}><span className="flex items-center gap-2"><Layers size={14} /> Pipeline funnel</span></button>
+        <button type="button" aria-pressed={activeTab === "Team"} onClick={() => setActiveTab("Team")}>
+          <span className="flex items-center gap-2"><Users size={14} /> Team execution</span>
+        </button>
+        <button type="button" aria-pressed={activeTab === "Funnel"} onClick={() => setActiveTab("Funnel")}>
+          <span className="flex items-center gap-2"><Layers size={14} /> Pipeline funnel</span>
+        </button>
       </div>
 
       {activeTab === "Team" ? (
         <>
-          <div className="metric-grid">
-            <MetricCard label="Active staff" value={rows.length} icon={<Users size={17} />} tone="neutral" note="People included in the selected snapshot" />
-            <MetricCard label="Average completion" value={`${avgCompletion}%`} icon={<TrendingUp size={17} />} tone="brand" note="Mean task completion across visible staff" />
-            <MetricCard label="Needs attention" value={flagged.length} icon={<AlertTriangle size={17} />} tone="warning" note="Low completion or missing attendance" />
-            <MetricCard label="Present" value={presentCount} icon={<CheckCircle2 size={17} />} tone="success" note={`Attendance recorded for ${date}`} />
+          {error && (
+            <div className="alert-panel alert-panel--danger" role="alert">
+              <AlertCircle size={16} className="mt-0.5 shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p>{error}</p>
+                {report && <p className="mt-1 text-[11px] opacity-80">The last confirmed report remains visible below.</p>}
+              </div>
+              <Button size="sm" variant="outline" onClick={() => void loadTeamKpi(false)}>Retry</Button>
+            </div>
+          )}
+
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+            <MetricCard label="Team members" value={totals.team_members} icon={<Users size={17} />} tone="neutral" note="Active people included" />
+            <MetricCard label="Total work" value={totals.total_completed_work} icon={<Activity size={17} />} tone="brand" note="All confirmed actions" />
+            <MetricCard label="Calls" value={totals.calls_made} icon={<PhoneCall size={17} />} tone="info" note="Real call records" />
+            <MetricCard label="Client queries" value={totals.queries_handled} icon={<MessageSquare size={17} />} tone="success" note="Resolved on this day" />
+            <MetricCard label="Mappings" value={totals.mappings_completed} icon={<Link2 size={17} />} tone="warning" note="Completed mappings" />
+            <MetricCard label="Tasks done" value={totals.tasks_completed} icon={<CheckCircle2 size={17} />} tone="success" note="Completed on this day" />
           </div>
 
-          {loading ? (
-            <section className="surface-panel grid min-h-[360px] place-items-center"><p className="text-[13px] font-medium text-[var(--text-muted)]">Loading KPI snapshot…</p></section>
+          {loading || !visibleReportMatchesDate ? (
+            <section className="surface-panel grid min-h-[360px] place-items-center">
+              <p className="text-[13px] font-medium text-[var(--text-muted)]">Loading confirmed Team KPI data…</p>
+            </section>
           ) : rows.length > 0 ? (
-            <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-              <section className="surface-panel overflow-hidden" aria-labelledby="completion-chart-title">
-                <div className="border-b border-[var(--border-subtle)] p-5"><p className="section-kicker">Execution distribution</p><h2 id="completion-chart-title" className="mt-1 section-title">Task completion rate</h2></div>
-                <div className="h-[320px] p-4 sm:p-5">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={rows} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
-                      <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
-                      <YAxis stroke="var(--text-muted)" fontSize={11} domain={[0, 100]} tickLine={false} axisLine={false} />
-                      <Tooltip cursor={{ fill: "var(--surface-hover)" }} contentStyle={{ backgroundColor: "var(--surface-elevated)", borderColor: "var(--border-default)", borderRadius: "10px", color: "var(--text-primary)", fontSize: "12px", boxShadow: "var(--shadow-popover)" }} />
-                      <Bar dataKey="completion_rate" radius={[5, 5, 0, 0]} maxBarSize={48}>
-                        {rows.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.completion_rate >= 80 ? "var(--status-success)" : entry.completion_rate >= 50 ? "var(--brand-500)" : "var(--status-danger)"} />)}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
+            <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
+              <section className="surface-panel overflow-hidden" aria-labelledby="work-distribution-title">
+                <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--border-subtle)] p-5">
+                  <div>
+                    <p className="section-kicker">Execution distribution</p>
+                    <h2 id="work-distribution-title" className="mt-1 section-title">Completed work by team member</h2>
+                  </div>
+                  <Chip variant="neutral" size="sm">Top {Math.min(chartRows.length, 12)} by volume</Chip>
                 </div>
+                {totals.total_completed_work > 0 ? (
+                  <div className="h-[360px] p-4 sm:p-5">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={chartRows} layout="vertical" margin={{ top: 4, right: 12, left: 18, bottom: 4 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" horizontal={false} />
+                        <XAxis type="number" allowDecimals={false} stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
+                        <YAxis type="category" dataKey="name" width={110} stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} tick={{ width: 100 }} />
+                        <Tooltip cursor={{ fill: "var(--surface-hover)" }} contentStyle={{ backgroundColor: "var(--surface-elevated)", borderColor: "var(--border-default)", borderRadius: "10px", color: "var(--text-primary)", fontSize: "12px", boxShadow: "var(--shadow-popover)" }} />
+                        <Bar dataKey="calls_made" name="Calls" stackId="work" fill="var(--status-info)" radius={[4, 0, 0, 4]} />
+                        <Bar dataKey="queries_handled" name="Client queries" stackId="work" fill="var(--status-success)" />
+                        <Bar dataKey="mappings_completed" name="Mappings" stackId="work" fill="var(--status-warning)" />
+                        <Bar dataKey="tasks_completed" name="Tasks done" stackId="work" fill="var(--brand-500)" radius={[0, 4, 4, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <div className="p-5">
+                    <EmptyState icon={<Activity size={21} />} title="No completed work on this day" description="All active team members are still listed below with zero values." />
+                  </div>
+                )}
               </section>
 
-              <aside className="surface-panel overflow-hidden" aria-labelledby="attention-list-title">
-                <div className="border-b border-[var(--border-subtle)] bg-[var(--surface-secondary)] p-5"><p className="section-kicker">Management focus</p><h2 id="attention-list-title" className="mt-1 section-title">People needing attention</h2></div>
-                <div className="max-h-[320px] space-y-2 overflow-y-auto p-4">
-                  {flagged.length ? flagged.map((row) => (
-                    <div key={row.user_id} className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] p-3">
-                      <div className="flex items-center justify-between gap-3"><p className="truncate text-[12px] font-semibold text-[var(--text-primary)]">{row.name}</p><span className="text-[12px] font-semibold tabular-nums text-[var(--status-warning)]">{row.completion_rate}%</span></div>
-                      <div className="mt-2 flex flex-wrap gap-2"><AttBadge status={row.attendance_status} /><Chip variant={row.completion_rate < 50 ? "danger" : "neutral"} size="sm">{row.tasks_completed}/{row.tasks_assigned} tasks</Chip></div>
-                    </div>
-                  )) : <EmptyState compact icon={<CheckCircle2 size={20} />} title="No performance flags" description="Visible staff meet the current attendance and completion thresholds." />}
+              <aside className="surface-panel overflow-hidden" aria-labelledby="activity-mix-title">
+                <div className="border-b border-[var(--border-subtle)] bg-[var(--surface-secondary)] p-5">
+                  <p className="section-kicker">Work mix</p>
+                  <h2 id="activity-mix-title" className="mt-1 section-title">How the day was spent</h2>
+                </div>
+                <div className="space-y-3 p-4">
+                  <WorkMixRow label="Calls" value={totals.calls_made} total={totals.total_completed_work} icon={<PhoneCall size={14} />} barClassName="bg-[var(--status-info)]" />
+                  <WorkMixRow label="Client queries" value={totals.queries_handled} total={totals.total_completed_work} icon={<MessageSquare size={14} />} barClassName="bg-[var(--status-success)]" />
+                  <WorkMixRow label="Mappings" value={totals.mappings_completed} total={totals.total_completed_work} icon={<Link2 size={14} />} barClassName="bg-[var(--status-warning)]" />
+                  <WorkMixRow label="Tasks done" value={totals.tasks_completed} total={totals.total_completed_work} icon={<CheckCircle2 size={14} />} barClassName="bg-[var(--brand-500)]" />
+                  <div className="rounded-[var(--radius-md)] bg-[var(--surface-secondary)] p-3 text-[11px] leading-5 text-[var(--text-muted)]">
+                    {noActivityCount === 0 ? "Every active team member has recorded completed work." : `${noActivityCount} active team member${noActivityCount === 1 ? " has" : "s have"} no confirmed completed work for this date.`}
+                  </div>
                 </div>
               </aside>
             </div>
-          ) : null}
+          ) : (
+            <section className="surface-panel p-5">
+              <EmptyState icon={<Users size={21} />} title="No active team members found" description="Check that active users and capability assignments exist in Supabase." />
+            </section>
+          )}
 
           <section className="data-table-shell" aria-labelledby="kpi-table-title">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-subtle)] px-5 py-4"><div><p className="section-kicker">Detailed scorecard</p><h2 id="kpi-table-title" className="mt-1 section-title">Team KPI register</h2></div><Chip variant="neutral" size="sm">{date}</Chip></div>
-            {rows.length === 0 && !loading ? (
-              <div className="p-5"><EmptyState icon={<BarChart3 size={21} />} title="No KPI snapshot" description={`No performance data is available for ${date}.`} /></div>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-subtle)] px-5 py-4">
+              <div>
+                <p className="section-kicker">Detailed scorecard</p>
+                <h2 id="kpi-table-title" className="mt-1 section-title">Team KPI register</h2>
+                {report && (
+                  <p className="mt-1 text-[11px] text-[var(--text-muted)]">
+                    Last refreshed {formatActivityTime(report.generated_at)} IST
+                    {refreshing ? " · Refreshing…" : ""}
+                  </p>
+                )}
+              </div>
+              <Chip variant="neutral" size="sm">{date}</Chip>
+            </div>
+
+            {!loading && rows.length === 0 ? (
+              <div className="p-5">
+                <EmptyState icon={<BarChart3 size={21} />} title="No KPI rows available" description={error || `No active team members are available for ${date}.`} />
+              </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-[960px]">
-                  <thead><tr><th>Team member</th><th>Role</th><th>Attendance</th><th>Completion</th><th>Total Work</th><th>Tasks (Done/Asg)</th><th>Calls</th><th>Queries</th><th>Mappings</th><th>Last Active</th></tr></thead>
+              <div className="overflow-x-auto" data-allow-overflow="horizontal">
+                <table className="min-w-[940px]">
+                  <thead>
+                    <tr>
+                      <th>Team member</th>
+                      <th>Role</th>
+                      <th>Total work</th>
+                      <th>Calls</th>
+                      <th>Client queries</th>
+                      <th>Mappings</th>
+                      <th>Tasks done</th>
+                      <th>Last activity</th>
+                    </tr>
+                  </thead>
                   <tbody>
-                    {rows.map((row) => (
+                    {rows.map((row: TeamKpiRow) => (
                       <tr key={row.user_id}>
-                        <td><p className="font-semibold text-[var(--text-primary)]">{row.name}</p></td>
-                        <td><span className="text-[12px] font-medium text-[var(--text-muted)] capitalize">{row.role?.replace(/_/g, " ")}</span></td>
-                        <td><AttBadge status={row.attendance_status} /></td>
-                        <td><div className="flex min-w-[140px] items-center gap-3"><div className="h-2 flex-1 overflow-hidden rounded-full bg-[var(--surface-tertiary)]"><div className={`h-full rounded-full ${row.completion_rate >= 80 ? "bg-[var(--status-success)]" : row.completion_rate >= 50 ? "bg-[var(--brand-500)]" : "bg-[var(--status-danger)]"}`} style={{ width: `${Math.min(row.completion_rate, 100)}%` }} /></div><span className="w-10 text-right font-semibold tabular-nums text-[var(--text-primary)]">{row.completion_rate}%</span></div></td>
+                        <td>
+                          <p className="max-w-[220px] break-words font-semibold text-[var(--text-primary)]">{row.name}</p>
+                        </td>
+                        <td>
+                          <span className="block max-w-[220px] truncate text-[12px] font-medium text-[var(--text-muted)]" title={row.role}>{row.role}</span>
+                        </td>
                         <td className="font-semibold tabular-nums text-[var(--text-primary)]">{row.total_completed_work}</td>
-                        <td className="font-mono text-[12px]">{row.tasks_completed} / {row.tasks_assigned}</td>
                         <td className="font-semibold tabular-nums text-[var(--text-primary)]">{row.calls_made}</td>
                         <td className="font-semibold tabular-nums text-[var(--text-primary)]">{row.queries_handled}</td>
                         <td className="font-semibold tabular-nums text-[var(--text-primary)]">{row.mappings_completed}</td>
-                        <td className="text-[12px] text-[var(--text-muted)]">{row.latest_activity_time ? new Date(row.latest_activity_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "N/A"}</td>
+                        <td className="font-semibold tabular-nums text-[var(--text-primary)]">{row.tasks_completed}</td>
+                        <td className="whitespace-nowrap text-[12px] text-[var(--text-muted)]">{formatActivityTime(row.latest_activity_time)}</td>
                       </tr>
                     ))}
                   </tbody>

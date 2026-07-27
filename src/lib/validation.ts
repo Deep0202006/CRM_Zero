@@ -80,6 +80,7 @@ export const mappingRequestSchema = z.object({
   retailer_lead_id: uuidSchema.optional().nullable(),
   distributor_name_unregistered: z.string().optional().nullable(),
   retailer_name_unregistered: z.string().optional().nullable(),
+  requested_by: uuidSchema.optional().nullable(),
   mapped_by: uuidSchema.optional().nullable(),
   status: z.enum(["Pending", "Completed"]).default("Pending"),
   notes: z.string().optional().nullable(),

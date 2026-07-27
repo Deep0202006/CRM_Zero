@@ -147,6 +147,7 @@ export default function MappingsPage() {
           distributor_lead_id: isDistPrimary ? primaryLeadId : secondaryLeadId,
           retailer_lead_id: isDistPrimary ? secondaryLeadId : primaryLeadId,
           status: "Pending",
+          requested_by: currentUser?.user_id || null,
           mapped_by: currentUser?.user_id || null,
           created_at: timestamp,
         };
@@ -170,8 +171,11 @@ export default function MappingsPage() {
 
   const handleUpdateMappingStatus = async (request_id: string, newStatus: string) => {
     try {
-      const updates: { status: string; completed_at?: string } = { status: newStatus };
-      if (newStatus === "Completed") updates.completed_at = new Date().toISOString();
+      const updates: { status: string; completed_at?: string; mapped_by?: string | null } = { status: newStatus };
+      if (newStatus === "Completed") {
+        updates.completed_at = new Date().toISOString();
+        updates.mapped_by = currentUser?.user_id || null;
+      }
       await transactionalMutation("mapping_requests", "UPDATE", { request_id, ...updates });
       await loadData();
     } catch (err) {
