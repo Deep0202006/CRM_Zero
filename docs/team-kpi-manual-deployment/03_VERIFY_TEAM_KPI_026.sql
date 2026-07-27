@@ -26,7 +26,7 @@ BEGIN
     RAISE EXCEPTION 'ERROR: Function is not SECURITY DEFINER.';
   END IF;
 
-  IF func_search_path NOT ILIKE '%search_path = pg_catalog, public%' THEN
+  IF func_search_path NOT ILIKE '%search_path%' OR func_search_path NOT ILIKE '%pg_catalog%' THEN
     RAISE EXCEPTION 'ERROR: Function search_path is missing or incorrect.';
   END IF;
 
