@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { db, transactionalMutation, LocalUser, pullDownSync } from "@/lib/db";
+import { db, transactionalMutation, LocalUser, pullDownSync, processSyncQueue } from "@/lib/db";
 import { supabase } from "@/lib/supabaseClient";
 import { getCurrentISTDate } from "@/lib/dateTime";
 
@@ -199,6 +199,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCurrentUser(null);
     setCapabilities([]);
     localStorage.removeItem("authenticated_user_id");
+
+    // Ensure any pending offline data is pushed before we wipe
+    try {
+      if (typeof window !== 'undefined' && navigator.onLine) {
+        await processSyncQueue();
+      }
+    } catch (e) {
+      console.warn("Failed to flush sync queue on logout", e);
+    }
+
+    // Wipe local IndexedDB to prevent cross-user data contamination
+    try {
+      await Promise.all(db.tables.map(table => table.clear()));
+    } catch (err) {
+      console.error("Failed to clear local DB on logout:", err);
+    }
+
     setIsLoading(false);
     if (typeof window !== "undefined") window.location.href = "/login";
   };

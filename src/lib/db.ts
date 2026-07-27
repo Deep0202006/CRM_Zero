@@ -949,7 +949,9 @@ export async function pullDownSync() {
 
         await db.transaction('rw', table, async () => {
           if (safeIdsToDelete.length > 0) {
-            await table.bulkDelete(safeIdsToDelete);
+            // DO NOT DELETE LOCAL DATA! The user explicitly requested to never remove data.
+            // Old data purged from Supabase should remain accessible locally.
+            // await table.bulkDelete(safeIdsToDelete);
           }
           if (safeDataToPut.length > 0) {
             await table.bulkPut(safeDataToPut);
