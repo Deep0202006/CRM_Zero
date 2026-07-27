@@ -48,22 +48,85 @@ export default function ManagerKpiPage() {
 
     (async () => {
       if (!isSupabaseConfigured) {
-        console.warn("Supabase not configured, cannot load KPI data.");
         setRows([]);
         setLoading(false);
         return;
       }
-      const { data, error } = await supabase.rpc("get_team_kpi_daily", { target_date: date });
-      if (error || !data) {
-        console.error("Failed to load KPI data:", error);
-        setRows([]);
-      } else {
-        let finalMapped: TeamKpiRow[] = typeof data === 'string' ? JSON.parse(data) : data;
-        if (!isAdmin && currentUser) {
-          finalMapped = finalMapped.filter((r) => r.user_id === currentUser.user_id);
+      try {
+        const localStart = new Date(`${date}T00:00:00+05:30`).toISOString();
+        const localEnd = new Date(`${date}T23:59:59.999+05:30`).toISOString();
+
+        const [
+          { data: users },
+          { data: tasks },
+          { data: calls },
+          { data: queries },
+          { data: mappings },
+          { data: attendance },
+          { data: regReqs }
+        ] = await Promise.all([
+          supabase.from("users").select("user_id, name, role, manager_id"),
+          supabase.from("tasks").select("assigned_to, status, completed_at, due_date").eq("due_date", date),
+          supabase.from("call_logs").select("user_id, timestamp").gte("timestamp", localStart).lte("timestamp", localEnd),
+          supabase.from("client_queries").select("resolved_by, resolved_at, problem_status").eq("problem_status", "Resolved").gte("resolved_at", localStart).lte("resolved_at", localEnd),
+          supabase.from("mapping_requests").select("mapped_by, completed_at, status").eq("status", "Completed").gte("completed_at", localStart).lte("completed_at", localEnd),
+          supabase.from("attendance").select("user_id, clock_in, date").eq("date", date),
+          supabase.from("attendance_regularization_requests").select("user_id, status, date").eq("date", date)
+        ]);
+
+        if (!users) {
+          setRows([]);
+          return;
         }
-        finalMapped.sort((a, b) => b.completion_rate - a.completion_rate);
-        setRows(finalMapped);
+
+        const validUsers = users.filter(u => isAdmin || u.user_id === currentUser.user_id || u.manager_id === currentUser.user_id);
+
+        const mapped: TeamKpiRow[] = validUsers.map(u => {
+          const uTasks = (tasks || []).filter(t => t.assigned_to === u.user_id);
+          const uCalls = (call_logs => call_logs.filter(c => c.user_id === u.user_id))(calls || []);
+          const uQueries = (client_queries => client_queries.filter(q => q.resolved_by === u.user_id))(queries || []);
+          const uMappings = (mapping_requests => mapping_requests.filter(m => m.mapped_by === u.user_id))(mappings || []);
+          
+          const tasksAssigned = uTasks.length;
+          const tasksCompleted = uTasks.filter(t => t.status === 'Completed').length;
+          const completionRate = tasksAssigned > 0 ? Math.round((tasksCompleted / tasksAssigned) * 100) : 0;
+          
+          const uAtt = (attendance || []).find(a => a.user_id === u.user_id);
+          const uReg = (regReqs || []).find(r => r.user_id === u.user_id);
+          let attStatus = 'Absent';
+          if (uReg && uReg.status === 'Approved') attStatus = 'Present';
+          else if (uAtt && uAtt.clock_in) attStatus = 'Present';
+
+          const times = [
+            ...uTasks.filter(t => t.status === 'Completed' && t.completed_at >= localStart && t.completed_at <= localEnd).map(t => new Date(t.completed_at).getTime()),
+            ...uCalls.map(c => new Date(c.timestamp).getTime()),
+            ...uQueries.map(q => new Date(q.resolved_at).getTime()),
+            ...uMappings.map(m => new Date(m.completed_at).getTime())
+          ];
+          const latestActivityTime = times.length > 0 ? new Date(Math.max(...times)).toISOString() : null;
+
+          return {
+            user_id: u.user_id,
+            name: u.name,
+            role: u.role,
+            tasks_assigned: tasksAssigned,
+            tasks_completed: tasksCompleted,
+            completion_rate: completionRate,
+            calls_made: uCalls.length,
+            queries_handled: uQueries.length,
+            mappings_completed: uMappings.length,
+            leads_converted: 0,
+            total_completed_work: tasksCompleted + uCalls.length + uQueries.length + uMappings.length,
+            attendance_status: attStatus,
+            latest_activity_time: latestActivityTime
+          };
+        });
+
+        mapped.sort((a, b) => b.completion_rate - a.completion_rate);
+        setRows(mapped);
+      } catch (err) {
+        console.error("Failed to fetch team KPI data:", err);
+        setRows([]);
       }
       setLoading(false);
     })();
