@@ -103,6 +103,7 @@ export default function ManagerKpiPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"Team" | "Funnel">("Team");
   const requestSequence = useRef(0);
   const realtimeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -119,12 +120,21 @@ export default function ManagerKpiPage() {
         throw new Error("Supabase environment variables are not configured.");
       }
 
-      const { data, error: rpcError } = await supabase.rpc("get_team_kpi_daily", {
-        target_date: date,
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (sessionError || !accessToken) {
+        throw { code: "28000", message: "Authentication required" };
+      }
+
+      const response = await fetch(`/api/team-kpi?date=${encodeURIComponent(date)}`, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${accessToken}` },
+        cache: "no-store",
       });
+      const data: unknown = await response.json();
 
       if (requestId !== requestSequence.current) return;
-      if (rpcError) throw rpcError;
+      if (!response.ok) throw data;
 
       const parsed = parseTeamKpiResponse(data);
       if (parsed.target_date !== date) {
@@ -133,6 +143,11 @@ export default function ManagerKpiPage() {
 
       setReport(parsed);
       setError(null);
+      setWarning(
+        parsed.warnings.length > 0
+          ? `Some KPI sources need attention: ${parsed.warnings.map((item) => item.message).join(" ")}`
+          : null,
+      );
     } catch (caughtError: unknown) {
       if (requestId !== requestSequence.current) return;
       console.error("Team KPI refresh failed", caughtError);
@@ -174,9 +189,13 @@ export default function ManagerKpiPage() {
       if (document.visibilityState === "visible") scheduleRefresh();
     };
     document.addEventListener("visibilitychange", handleVisibilityChange);
+    const refreshInterval = window.setInterval(() => {
+      if (document.visibilityState === "visible") scheduleRefresh();
+    }, 60_000);
 
     return () => {
       if (realtimeTimer.current) clearTimeout(realtimeTimer.current);
+      window.clearInterval(refreshInterval);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       void supabase.removeChannel(channel);
     };
@@ -193,6 +212,7 @@ export default function ManagerKpiPage() {
     setDate(nextDate);
     setReport(null);
     setError(null);
+    setWarning(null);
     setLoading(true);
   };
 
@@ -252,6 +272,17 @@ export default function ManagerKpiPage() {
 
       {activeTab === "Team" ? (
         <>
+          {warning && (
+            <div className="alert-panel alert-panel--warning" role="status">
+              <AlertCircle size={16} className="mt-0.5 shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p>{warning}</p>
+                <p className="mt-1 text-[11px] opacity-80">Available confirmed metrics remain visible below.</p>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => void loadTeamKpi(true)}>Refresh</Button>
+            </div>
+          )}
+
           {error && (
             <div className="alert-panel alert-panel--danger" role="alert">
               <AlertCircle size={16} className="mt-0.5 shrink-0" />

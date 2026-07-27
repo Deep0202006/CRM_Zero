@@ -7,9 +7,11 @@ describe("Team KPI page data path", () => {
     "utf8",
   );
 
-  it("uses the single server KPI function instead of browser-side raw aggregation", () => {
-    expect(source).toContain('supabase.rpc("get_team_kpi_daily"');
+  it("uses one authenticated server API request instead of browser-side raw aggregation", () => {
+    expect(source).toContain("/api/team-kpi?date=");
+    expect(source).toContain("supabase.auth.getSession()");
     for (const forbidden of [
+      'supabase.rpc("get_team_kpi_daily"',
       'supabase.from("users")',
       'supabase.from("tasks")',
       'supabase.from("call_logs")',
@@ -22,7 +24,7 @@ describe("Team KPI page data path", () => {
     }
   });
 
-  it("refreshes from the authoritative RPC after all relevant source-table events", () => {
+  it("refreshes after relevant source-table events and has a lightweight visibility polling fallback", () => {
     for (const table of [
       "task_status_history",
       "allocated_targets",
@@ -34,6 +36,7 @@ describe("Team KPI page data path", () => {
     }
     expect(source).toContain("setTimeout");
     expect(source).toContain("750");
+    expect(source).toContain("60_000");
   });
 
   it("keeps all four requested work metrics visible", () => {

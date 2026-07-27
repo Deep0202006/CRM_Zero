@@ -2,6 +2,11 @@ import { z } from "zod";
 
 const nonNegativeInteger = z.coerce.number().int().nonnegative();
 
+export const teamKpiSourceWarningSchema = z.object({
+  source: z.string().min(1),
+  message: z.string().min(1),
+});
+
 export const teamKpiRowSchema = z.object({
   user_id: z.string().uuid(),
   name: z.string().min(1),
@@ -38,6 +43,8 @@ export const teamKpiResponseSchema = z.object({
   generated_at: z.string().datetime({ offset: true }),
   rows: z.array(teamKpiRowSchema),
   totals: teamKpiTotalsSchema,
+  source: z.enum(["server-aggregation", "database-rpc"]).default("server-aggregation"),
+  warnings: z.array(teamKpiSourceWarningSchema).default([]),
 }).superRefine((report, context) => {
   const expectedTotals = report.rows.reduce(
     (totals, row) => ({
@@ -73,6 +80,7 @@ export const teamKpiResponseSchema = z.object({
 export type TeamKpiRow = z.infer<typeof teamKpiRowSchema>;
 export type TeamKpiTotals = z.infer<typeof teamKpiTotalsSchema>;
 export type TeamKpiResponse = z.infer<typeof teamKpiResponseSchema>;
+export type TeamKpiSourceWarning = z.infer<typeof teamKpiSourceWarningSchema>;
 
 export const EMPTY_TEAM_KPI_TOTALS: TeamKpiTotals = {
   team_members: 0,
@@ -109,12 +117,20 @@ export function getTeamKpiErrorMessage(error: unknown): string {
   const code = candidate.code ?? "";
   const message = candidate.message ?? "";
 
-  if (code === "42883" || code === "PGRST202" || (/get_team_kpi_daily/i.test(message) && /not found|schema cache/i.test(message))) {
-    return "Team KPI is not installed in the database yet. Apply the Team KPI repair migration and retry.";
+  if (code === "AUTHENTICATION_REQUIRED" || code === "28000") {
+    return "Your session has expired. Sign in again to refresh Team KPI.";
   }
 
-  if (code === "42501" || code === "28000" || /administrator access|required|unauthorized/i.test(message)) {
+  if (code === "42883" || code === "PGRST202" || (/get_team_kpi_daily/i.test(message) && /not found|schema cache/i.test(message))) {
+    return "The database KPI function is not installed or unavailable. The server fallback will be used after the application is redeployed.";
+  }
+
+  if (code === "42501" || code === "ADMIN_REQUIRED" || code === "AUTHORIZATION_CHECK_FAILED" || /administrator access|required|unauthorized/i.test(message)) {
     return "Your account is not authorized to view team performance data.";
+  }
+
+  if (code.startsWith("SOURCE_USERS_")) {
+    return "Team KPI could not read the active user directory. Check administrator RLS access and retry.";
   }
 
   if (/network|fetch|timeout|connection/i.test(message)) {
