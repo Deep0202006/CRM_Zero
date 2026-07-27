@@ -43,14 +43,9 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
 
 const REALTIME_TABLES = [
+  "team_work_events",
   "users",
   "user_capabilities",
-  "tasks",
-  "task_status_history",
-  "allocated_targets",
-  "call_logs",
-  "client_queries",
-  "mapping_requests",
 ] as const;
 
 function formatActivityTime(value: string | null): string {

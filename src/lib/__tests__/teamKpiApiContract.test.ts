@@ -3,7 +3,6 @@ import path from "path";
 
 describe("Team KPI server API contract", () => {
   const route = fs.readFileSync(path.join(process.cwd(), "src/app/api/team-kpi/route.ts"), "utf8");
-  const serverReport = fs.readFileSync(path.join(process.cwd(), "src/lib/teamKpi/serverReport.ts"), "utf8");
   const page = fs.readFileSync(path.join(process.cwd(), "src/app/manager/kpi/page.tsx"), "utf8");
 
   it("authenticates and authorizes an administrator on the server", () => {
@@ -13,23 +12,20 @@ describe("Team KPI server API contract", () => {
     expect(route).not.toContain("SERVICE_ROLE");
   });
 
-  it("prefers the secure database aggregate and keeps a server-only fallback", () => {
-    expect(route).toContain("const rpcReport = await tryDatabaseRpc");
-    expect(route).toContain("loadTeamKpiServerReport");
-    expect(route.indexOf("tryDatabaseRpc")).toBeLessThan(route.indexOf("loadTeamKpiServerReport(client"));
+  it("requires the durable ledger RPC and never hides its failure behind an RLS-limited raw-table fallback", () => {
+    expect(route).toContain('client.rpc("get_team_kpi_daily_v3"');
+    expect(route).toContain("TEAM_KPI_LEDGER_NOT_INSTALLED");
+    expect(route).toContain("TEAM_KPI_DATABASE_FAILED");
+    expect(route).not.toContain("loadTeamKpiServerReport");
+    expect(route).not.toContain('client.rpc("get_team_kpi_daily"');
   });
 
-  it("uses paginated source reads and India day bounds", () => {
-    expect(serverReport).toContain("PAGE_SIZE = 1000");
-    expect(serverReport).toContain("fetchAllPages");
-    expect(serverReport).toContain("T00:00:00+05:30");
-    for (const source of ["call_logs", "client_queries", "mapping_requests", "tasks", "task_status_history", "allocated_targets"]) {
-      expect(serverReport).toContain(`.from("${source}")`);
-    }
-    expect(serverReport).toContain("fetchTasksByIds");
+  it("returns a diagnostic error rather than an empty report when active users disappear", () => {
+    expect(route).toContain('client.rpc("get_team_kpi_health_v1"');
+    expect(route).toContain("TEAM_KPI_NO_ACTIVE_USERS");
   });
 
-  it("keeps the existing page and replaces the fragile direct RPC dependency with one API call", () => {
+  it("keeps the existing page and uses one authenticated API request", () => {
     expect(page).toContain("/api/team-kpi?date=");
     expect(page).not.toContain('supabase.rpc("get_team_kpi_daily"');
     expect(page).toContain("60_000");

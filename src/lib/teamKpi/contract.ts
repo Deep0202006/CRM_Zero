@@ -43,7 +43,8 @@ export const teamKpiResponseSchema = z.object({
   generated_at: z.string().datetime({ offset: true }),
   rows: z.array(teamKpiRowSchema),
   totals: teamKpiTotalsSchema,
-  source: z.enum(["server-aggregation", "database-rpc"]).default("server-aggregation"),
+  source: z.enum(["server-aggregation", "database-rpc", "team-work-events"]).default("server-aggregation"),
+  schema_version: z.coerce.number().int().positive().optional(),
   warnings: z.array(teamKpiSourceWarningSchema).default([]),
 }).superRefine((report, context) => {
   const expectedTotals = report.rows.reduce(
@@ -119,6 +120,18 @@ export function getTeamKpiErrorMessage(error: unknown): string {
 
   if (code === "AUTHENTICATION_REQUIRED" || code === "28000") {
     return "Your session has expired. Sign in again to refresh Team KPI.";
+  }
+
+  if (code === "TEAM_KPI_LEDGER_NOT_INSTALLED") {
+    return "Team KPI database setup is incomplete. Apply migration 028 and verify the Team KPI event ledger.";
+  }
+
+  if (code === "TEAM_KPI_NO_ACTIVE_USERS") {
+    return "Team KPI is connected but the active-user directory returned no users. Run the Team KPI verification SQL.";
+  }
+
+  if (code === "TEAM_KPI_DATABASE_FAILED" || code === "TEAM_KPI_OBSOLETE_SOURCE" || code === "TEAM_KPI_DATE_MISMATCH") {
+    return "Team KPI database verification failed. Use the provided read-only health check instead of treating this as no data.";
   }
 
   if (code === "42883" || code === "PGRST202" || (/get_team_kpi_daily/i.test(message) && /not found|schema cache/i.test(message))) {

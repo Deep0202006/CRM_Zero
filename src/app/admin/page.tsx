@@ -177,8 +177,8 @@ export default function AdminPage() {
 
       setSuccessMsg(`User ${userName} deleted successfully.`);
       await loadAdminData();
-    } catch (err: any) {
-      setErrorMsg(err.message || "Failed to delete user");
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : "Failed to delete user");
     }
   };
 

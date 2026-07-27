@@ -24,15 +24,18 @@ describe("Team KPI page data path", () => {
     }
   });
 
-  it("refreshes after relevant source-table events and has a lightweight visibility polling fallback", () => {
-    for (const table of [
-      "task_status_history",
-      "allocated_targets",
-      "call_logs",
-      "client_queries",
-      "mapping_requests",
-    ]) {
+  it("refreshes from one durable work-event ledger plus user-directory changes", () => {
+    for (const table of ["team_work_events", "users", "user_capabilities"]) {
       expect(source).toContain(`"${table}"`);
+    }
+    for (const noisyOperationalTable of [
+      '"task_status_history"',
+      '"allocated_targets"',
+      '"call_logs"',
+      '"client_queries"',
+      '"mapping_requests"',
+    ]) {
+      expect(source).not.toContain(noisyOperationalTable);
     }
     expect(source).toContain("setTimeout");
     expect(source).toContain("750");
