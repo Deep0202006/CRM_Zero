@@ -430,7 +430,7 @@ export default function AdminPage() {
       <Modal open={Boolean(editingUser)} onClose={() => setEditingUser(null)} title="Edit user details" description={editingUser ? `Update the profile and account status for ${editingUser.name}.` : undefined} footer={<><Button variant="secondary" onClick={() => setEditingUser(null)}>Cancel</Button><Button type="submit" form="edit-user-form" isLoading={isUpdatingUser}>Save changes</Button></>}>
         <form id="edit-user-form" onSubmit={handleUpdateUser} className="space-y-4">
           <Input label="Full name" value={editUserForm.name} onChange={(event) => setEditUserForm({ ...editUserForm, name: event.target.value })} required />
-          <Input label="Email address" type="email" value={editUserForm.email} onChange={(event) => setEditUserForm({ ...editUserForm, email: event.target.value })} required />
+          <Input label="Username (Email)" type="text" value={editUserForm.email} onChange={(event) => setEditUserForm({ ...editUserForm, email: event.target.value })} required />
           <label className="flex min-h-11 items-center gap-3 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-secondary)] px-3 text-[12px] font-semibold text-[var(--text-primary)]"><input type="checkbox" checked={editUserForm.is_active} onChange={(event) => setEditUserForm({ ...editUserForm, is_active: event.target.checked })} className="h-4 w-4 rounded accent-[var(--brand-600)]" /> Account active</label>
         </form>
       </Modal>

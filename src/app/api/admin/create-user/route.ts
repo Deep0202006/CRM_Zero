@@ -46,17 +46,8 @@ export async function POST(req: NextRequest) {
   }
   const { email, name, password, capabilities, manager_id } = parsed.data;
 
-  // Strict format validation for non-admin accounts
-  const isExempt = capabilities.includes('admin') || 
-                   name.toLowerCase() === 'system administrator' || 
-                   name.toLowerCase() === 'prince';
-
-  if (!isExempt) {
-    const formatRegex = /^zerodata\d*_[a-zA-Z0-9]+$/;
-    if (!formatRegex.test(email)) {
-      return NextResponse.json({ error: "Username must be provided manually and strictly follow the format: zerodata<empno>_<name> (e.g., zerodata501_Deep, zerodata_TL)" }, { status: 400 });
-    }
-  }
+  // Removing strict format validation as requested to allow arbitrary usernames like username_123
+  // Users still require 3 characters minimum enforced by Zod schema
 
   const tempPassword = password || generatePassword();
   
