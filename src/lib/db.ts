@@ -879,15 +879,20 @@ export async function pullDownSync() {
       "user_capabilities",
       "leads",
       "client_queries",
+      "mappings",
       "mapping_requests",
       "task_templates",
       "tasks",
+      "task_status_history",
       "internal_tickets",
       "attendance",
       "call_logs",
       "task_upload_batches",
       "allocated_targets",
       "field_visits",
+      "lead_registration_checklist",
+      "lead_installation_details",
+      "lead_payment_details",
     ];
 
     for (const remoteTableName of tables) {
