@@ -13,4 +13,4 @@ phases:
   kpi: complete
   recovery: complete
   tests: complete
-  release: local_gates_pending
+  release: local_gates_complete
