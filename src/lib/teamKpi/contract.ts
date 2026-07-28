@@ -122,20 +122,29 @@ export function getTeamKpiErrorMessage(error: unknown): string {
     return "Your session has expired. Sign in again to refresh Team KPI.";
   }
 
-  if (code === "TEAM_KPI_LEDGER_NOT_INSTALLED") {
-    return "Team KPI database setup is incomplete. Apply migration 028 and verify the Team KPI event ledger.";
+  if (code === "TEAM_KPI_V4_NOT_INSTALLED") {
+    return "Team KPI database setup is incomplete. Apply migration 029, refresh the schema cache, and retry.";
   }
 
   if (code === "TEAM_KPI_NO_ACTIVE_USERS") {
     return "Team KPI is connected but the active-user directory returned no users. Run the Team KPI verification SQL.";
   }
 
-  if (code === "TEAM_KPI_DATABASE_FAILED" || code === "TEAM_KPI_OBSOLETE_SOURCE" || code === "TEAM_KPI_DATE_MISMATCH") {
-    return "Team KPI database verification failed. Use the provided read-only health check instead of treating this as no data.";
+  if (
+    code === "TEAM_KPI_DATABASE_FAILED" ||
+    code === "TEAM_KPI_SERVER_ERROR" ||
+    code === "TEAM_KPI_DATE_MISMATCH" ||
+    code === "TEAM_KPI_DUPLICATE_USER"
+  ) {
+    return "Team KPI could not validate confirmed source records. Retry and use the provided verification SQL if the error continues.";
+  }
+
+  if (code === "TEAM_KPI_INVALID_RESPONSE") {
+    return "Team KPI reached the wrong or outdated deployment. Verify the Vercel production commit and redeploy the approved branch.";
   }
 
   if (code === "42883" || code === "PGRST202" || (/get_team_kpi_daily/i.test(message) && /not found|schema cache/i.test(message))) {
-    return "The database KPI function is not installed or unavailable. The server fallback will be used after the application is redeployed.";
+    return "The Team KPI database function is unavailable. Apply migration 029 and refresh the Supabase schema cache.";
   }
 
   if (code === "42501" || code === "ADMIN_REQUIRED" || code === "AUTHORIZATION_CHECK_FAILED" || /administrator access|required|unauthorized/i.test(message)) {

@@ -18,6 +18,19 @@ export function getCurrentISTDate(): string {
   return formatter.format(new Date());
 }
 
+
+/** Returns the Asia/Kolkata business-date key for an arbitrary timestamp. */
+export function getISTDateKey(value: string | Date): string {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: IST_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
 /**
  * Returns the current ISO timestamp in IST.
  */

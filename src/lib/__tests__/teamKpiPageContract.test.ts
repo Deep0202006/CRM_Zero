@@ -11,7 +11,7 @@ describe("Team KPI page data path", () => {
     expect(source).toContain("/api/team-kpi?date=");
     expect(source).toContain("supabase.auth.getSession()");
     for (const forbidden of [
-      'supabase.rpc("get_team_kpi_daily"',
+      'supabase.rpc("get_team_kpi_daily',
       'supabase.from("users")',
       'supabase.from("tasks")',
       'supabase.from("call_logs")',
@@ -24,22 +24,24 @@ describe("Team KPI page data path", () => {
     }
   });
 
-  it("refreshes from one durable work-event ledger plus user-directory changes", () => {
-    for (const table of ["team_work_events", "users", "user_capabilities"]) {
+  it("refreshes from the actual confirmed work sources with one debounced API reload", () => {
+    for (const table of [
+      "users",
+      "user_capabilities",
+      "call_logs",
+      "client_queries",
+      "mapping_requests",
+      "mappings",
+      "tasks",
+      "task_status_history",
+      "allocated_targets",
+    ]) {
       expect(source).toContain(`"${table}"`);
     }
-    for (const noisyOperationalTable of [
-      '"task_status_history"',
-      '"allocated_targets"',
-      '"call_logs"',
-      '"client_queries"',
-      '"mapping_requests"',
-    ]) {
-      expect(source).not.toContain(noisyOperationalTable);
-    }
+    expect(source).not.toContain('"team_work_events"');
     expect(source).toContain("setTimeout");
     expect(source).toContain("750");
-    expect(source).toContain("60_000");
+    expect(source).toContain("30_000");
   });
 
   it("keeps all four requested work metrics visible", () => {

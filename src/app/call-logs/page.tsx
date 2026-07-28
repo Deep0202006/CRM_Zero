@@ -7,25 +7,27 @@ import { SearchableSelect, SearchableOption } from "@/components/SearchableSelec
 import { PhoneCall, CheckCircle2, AlertCircle, Download } from "lucide-react";
 import excelUsers from "@/lib/excel_users.json";
 import { exportCallLogs } from "@/lib/excelExport";
+import { parseCallClientReference } from "@/lib/callLogs/contract";
 import { QueueList } from "@/components/QueueList";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { MetricCard } from "@/components/ui/MetricCard";
+import { getCurrentISTDate, getISTDateKey } from "@/lib/dateTime";
 
 export default function CallLogsPage() {
   const { currentUser, isAdmin } = useAuth();
-  
+
   const [loading, setLoading] = useState(true);
   const [logs, setLogs] = useState<LocalCallLog[]>([]);
   const [usersMap, setUsersMap] = useState<Map<string, LocalUser>>(new Map());
   const [leadsMap, setLeadsMap] = useState<Map<string, LocalLead>>(new Map());
-  
+
   const [selectedLeadId, setSelectedLeadId] = useState("");
   const [outcome, setOutcome] = useState("");
   const [notes, setNotes] = useState("");
   const [nextFollowup, setNextFollowup] = useState("");
-  
+
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
@@ -52,15 +54,15 @@ export default function CallLogsPage() {
     try {
       const fetchedLogs = await db.call_logs.toArray();
       fetchedLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-      
+
       const allUsers = await db.users.toArray();
       const uMap = new Map<string, LocalUser>();
       allUsers.forEach(u => uMap.set(u.user_id, u));
-      
+
       const allLeads = await db.leads.toArray();
       const lMap = new Map<string, LocalLead>();
       allLeads.forEach(l => lMap.set(l.lead_id, l));
-      
+
       setUsersMap(uMap);
       setLeadsMap(lMap);
       setLogs(fetchedLogs);
@@ -78,7 +80,7 @@ export default function CallLogsPage() {
   const handleLogCall = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser) return;
-    
+
     if (!selectedLeadId && !outcome) {
       setError("Please select a lead and provide an outcome.");
       return;
@@ -98,11 +100,14 @@ export default function CallLogsPage() {
 
     try {
       const nextFollowupDate = (outcome === "No response (followup)" || outcome === "Requested more info") ? (nextFollowup || null) : null;
+      const clientReference = parseCallClientReference(selectedLeadId);
 
       const log: LocalCallLog = {
         log_id: crypto.randomUUID(),
         user_id: currentUser.user_id,
-        lead_id: selectedLeadId,
+        lead_id: clientReference.leadId,
+        client_username: clientReference.clientUsername,
+        client_name: clientReference.clientName,
         timestamp: new Date().toISOString(),
         outcome: outcome,
         notes: notes.trim() || null,
@@ -112,9 +117,8 @@ export default function CallLogsPage() {
       await transactionalMutation("call_logs", "INSERT", log);
 
       if (nextFollowupDate) {
-        const leadNameMatch = selectedLeadId.split("::");
-        const leadDisplay = leadNameMatch.length === 3 ? `${leadNameMatch[2]} (@${leadNameMatch[1]})` : selectedLeadId;
-        
+        const leadDisplay = clientReference.displayName;
+
         const followupTask = {
           task_id: crypto.randomUUID(),
           assigned_to: currentUser.user_id,
@@ -125,7 +129,7 @@ export default function CallLogsPage() {
           status: "Pending" as const,
           source: "manual" as const,
           template_id: null,
-          related_lead_id: selectedLeadId,
+          related_lead_id: clientReference.leadId,
           due_date: nextFollowupDate,
           started_at: null,
           completed_at: null,
@@ -137,14 +141,14 @@ export default function CallLogsPage() {
       }
 
       setSuccess(true);
-      
+
       setSelectedLeadId("");
       setOutcome("");
       setNotes("");
       setNextFollowup("");
-      
+
       await loadData();
-      
+
       setTimeout(() => setSuccess(false), 3000);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to log call.");
@@ -156,19 +160,18 @@ export default function CallLogsPage() {
   const showFollowup = outcome === "No response (followup)" || outcome === "Requested more info";
 
   // Format identity standard: "{Name} (@{Username}) - {Phone}"
-  const getLeadDisplay = (lead_id: string) => {
-    if (lead_id.startsWith("EXCEL::")) {
-      const parts = lead_id.split("::");
-      if (parts.length === 3) {
-        return `${parts[2]} (@${parts[1]})`;
-      }
+  const getLeadDisplay = (log: LocalCallLog) => {
+    if (log.client_name || log.client_username) {
+      const name = log.client_name || log.client_username || "Unknown client";
+      return log.client_username ? `${name} (@${log.client_username})` : name;
     }
-    const lead = leadsMap.get(lead_id);
+    if (!log.lead_id) return "Unknown client";
+    const lead = leadsMap.get(log.lead_id);
     if (lead) {
       if (lead.business_name.includes("(@")) return lead.business_name;
       return `${lead.business_name} - ${lead.phone || "N/A"}`;
     }
-    return lead_id;
+    return log.lead_id;
   };
 
   const getAgentDisplay = (user_id?: string | null) => {
@@ -178,8 +181,8 @@ export default function CallLogsPage() {
     return `${user.name} (@${user.email})`;
   };
 
-  const todayKey = new Date().toISOString().slice(0, 10);
-  const callsToday = logs.filter((log) => log.timestamp.startsWith(todayKey)).length;
+  const todayKey = getCurrentISTDate();
+  const callsToday = logs.filter((log) => getISTDateKey(log.timestamp) === todayKey).length;
   const followupsScheduled = logs.filter((log) => Boolean(log.next_followup_date)).length;
   const reachedClients = logs.filter((log) => !log.outcome.toLowerCase().includes("no response")).length;
 
@@ -250,7 +253,7 @@ export default function CallLogsPage() {
             id: log.log_id,
             primaryNode: (
               <div>
-                <p className="text-[13px] font-semibold leading-snug text-[var(--text-primary)]">{getLeadDisplay(log.lead_id)}</p>
+                <p className="text-[13px] font-semibold leading-snug text-[var(--text-primary)]">{getLeadDisplay(log)}</p>
                 <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--text-muted)]">Agent · <span className="normal-case tracking-normal text-[var(--text-secondary)]">{getAgentDisplay(log.user_id)}</span></p>
                 {log.notes && <p className="mt-2 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-2.5 text-[12px] leading-5 text-[var(--text-secondary)]">{log.notes}</p>}
               </div>

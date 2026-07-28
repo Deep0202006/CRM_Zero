@@ -98,7 +98,7 @@ export default function HomePage() {
           feed.push({
             id: `call-${call.log_id}`,
             type: "call",
-            title: leadNames.get(call.lead_id) || "Client call",
+            title: call.client_name || (call.lead_id ? leadNames.get(call.lead_id) : null) || "Client call",
             detail: "Call outcome recorded",
             time: date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
             status: call.outcome,

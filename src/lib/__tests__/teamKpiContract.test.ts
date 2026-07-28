@@ -114,7 +114,7 @@ describe("Team KPI response contract", () => {
 describe("Team KPI error messaging", () => {
   it("identifies a missing RPC migration", () => {
     expect(getTeamKpiErrorMessage({ code: "PGRST202", message: "Function not found in schema cache" }))
-      .toContain("not installed");
+      .toContain("unavailable");
   });
 
   it("identifies authorization failures", () => {

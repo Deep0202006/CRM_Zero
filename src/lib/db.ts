@@ -1,6 +1,7 @@
 import Dexie, { type Table } from "dexie";
 import { LeadSegment, LeadStatus } from "./validation";
 import { supabase, isSupabaseConfigured } from "./supabaseClient";
+import { prepareSyncPayload } from "./syncPayload";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // INTERFACES — base system
@@ -113,7 +114,9 @@ export interface LocalAttendance {
 export interface LocalCallLog {
   log_id: string;
   user_id?: string | null;
-  lead_id: string;
+  lead_id: string | null;
+  client_username?: string | null;
+  client_name?: string | null;
   timestamp: string;
   outcome: string;
   notes?: string | null;
@@ -736,7 +739,7 @@ export async function queueOfflineMutation(
   };
   await db.sync_queue.add(item);
   console.log(`Mutation queued offline for table ${tableName} (${action})`);
-  if (navigator.onLine) {
+  if (typeof navigator !== "undefined" && navigator.onLine) {
     await processSyncQueue();
   }
 }
@@ -747,115 +750,227 @@ export async function queueOfflineMutation(
  */
 export function omitPrimaryKeyFromUpdate(data: Record<string, unknown>, primaryKey: string): Record<string, unknown> { const updateData = { ...data }; delete updateData[primaryKey]; return updateData; }
 
-export async function processSyncQueue() {
-  if (!navigator.onLine) return;
+let activeSyncQueueRun: Promise<void> | null = null;
+
+function isDuplicateKeyError(error: { code?: string; message?: string } | null | undefined): boolean {
+  return Boolean(error && (error.code === "23505" || /duplicate key|already exists/i.test(error.message ?? "")));
+}
+
+async function verifyRemoteRowExists(
+  remoteTableName: string,
+  primaryKey: string,
+  primaryKeyValue: unknown,
+): Promise<boolean> {
+  if (primaryKeyValue === undefined || primaryKeyValue === null || primaryKeyValue === "") return false;
+  const { data, error } = await supabase
+    .from(remoteTableName)
+    .select(primaryKey)
+    .eq(primaryKey, primaryKeyValue)
+    .maybeSingle();
+  if (error) throw new Error(`Supabase verification failed for ${remoteTableName}: ${error.message}`);
+  return Boolean(data);
+}
+
+async function ensureLegacyKpiSourceRepairsQueued(): Promise<void> {
+  const legacyCalls = await db.call_logs
+    .filter((call) => typeof call.lead_id === "string" && call.lead_id.startsWith("EXCEL::"))
+    .toArray();
+
+  for (const call of legacyCalls) {
+    const prepared = prepareSyncPayload("call_logs", call);
+    if (!prepared.changed) continue;
+    await db.transaction("rw", [db.call_logs, db.sync_queue], async () => {
+      await db.call_logs.put(prepared.data as unknown as LocalCallLog);
+      const alreadyQueued = await db.sync_queue
+        .filter((entry) => entry.table_name === "call_logs" && getDynamicField(entry.data, "log_id") === call.log_id)
+        .first();
+      if (!alreadyQueued) {
+        await db.sync_queue.add({
+          idempotency_key: `legacy-repair:call_logs:${call.log_id}`,
+          table_name: "call_logs",
+          action: "INSERT",
+          data: prepared.data,
+          timestamp: new Date().toISOString(),
+          retry_count: 0,
+        });
+      }
+    });
+  }
+
+  const legacyTasks = await db.tasks
+    .filter((task) => typeof task.related_lead_id === "string" && task.related_lead_id.startsWith("EXCEL::"))
+    .toArray();
+
+  for (const task of legacyTasks) {
+    const prepared = prepareSyncPayload("tasks", task);
+    if (!prepared.changed) continue;
+    await db.transaction("rw", [db.tasks, db.sync_queue], async () => {
+      await db.tasks.put(prepared.data as unknown as LocalTask);
+      const alreadyQueued = await db.sync_queue
+        .filter((entry) => entry.table_name === "tasks" && getDynamicField(entry.data, "task_id") === task.task_id)
+        .first();
+      if (!alreadyQueued) {
+        await db.sync_queue.add({
+          idempotency_key: `legacy-repair:tasks:${task.task_id}`,
+          table_name: "tasks",
+          action: "INSERT",
+          data: prepared.data,
+          timestamp: new Date().toISOString(),
+          retry_count: 0,
+        });
+      }
+    });
+  }
+}
+
+async function processSyncQueueInternal(): Promise<void> {
+  if (typeof navigator === "undefined" || !navigator.onLine) return;
+
+  await ensureLegacyKpiSourceRepairsQueued();
+
   const items = await db.sync_queue.orderBy("id").toArray();
   if (items.length === 0) return;
 
   console.log(`Processing ${items.length} sync item(s)...`);
 
   for (const item of items) {
-    // Skip dead-lettered items (retry_count >= 5) — they stay in queue for UI visibility
-    if ((item.retry_count ?? 0) >= 5) continue;
+    if (!item.id) continue;
+
+    const prepared = prepareSyncPayload(item.table_name, item.data);
+    const effectiveRetryCount = prepared.changed ? 0 : (item.retry_count ?? 0);
+
+    // Deterministically repaired legacy call/task rows must be retried even if an
+    // older build had already dead-lettered them.
+    if (prepared.changed) {
+      await db.sync_queue.update(item.id, {
+        data: prepared.data,
+        retry_count: 0,
+        last_error: prepared.repairReason
+          ? `Payload repaired: ${prepared.repairReason}`
+          : undefined,
+      });
+    } else if (effectiveRetryCount >= 5) {
+      continue;
+    }
 
     try {
       if (isSupabaseConfigured) {
-        const remoteTableName = Object.keys(REMOTE_TO_LOCAL_TABLE).find(k => REMOTE_TO_LOCAL_TABLE[k] === item.table_name) || item.table_name;
+        const remoteTableName = Object.keys(REMOTE_TO_LOCAL_TABLE)
+          .find((key) => REMOTE_TO_LOCAL_TABLE[key] === item.table_name) ?? item.table_name;
         const client = supabase.from(remoteTableName);
-        let error: { message: string } | null = null;
+        const primaryKey = TABLE_PK[item.table_name] ?? "id";
+        const primaryKeyValue = prepared.data[primaryKey];
 
         if (item.action === "INSERT") {
-          const { error: err } = await client.insert(item.data);
-          error = err;
-        } else if (item.action === "UPDATE") {
-          const pk = TABLE_PK[item.table_name] ?? "id";
-          const pkValue = getDynamicField(item.data, pk);
-          if (pkValue) {
-            const updateData = omitPrimaryKeyFromUpdate(toDynamicRow(item.data), pk);
-            if (Object.keys(updateData).length === 0) throw new Error(`No update fields provided for ${item.table_name}`);
-
-            // Special handling for offline pipeline stage transitions
-            if (item.table_name === "leads" && updateData.status !== undefined) {
-              const { data: rpcData, error: rpcError } = await supabase.rpc("transition_lead_stage", {
-                p_lead_id: pkValue as string,
-                p_expected_current_stage: null, // We don't have expected in the queue currently, so we force update. Alternatively, we could just rely on the standard update for offline queue if we don't care about concurrency when returning online, but RPC is safer.
-                p_new_stage: updateData.status as string,
-                p_actor: "agent"
-              });
-
-              if (rpcError) {
-                error = rpcError;
-              } else if (rpcData && !rpcData.success) {
-                // If it fails concurrency (which it shouldn't if expected=null), we ignore or fail
-                console.warn(`Lead ${pkValue} offline transition failed:`, rpcData.error);
-                // We'll throw so it can be retried or dead-lettered
-                throw new Error(rpcData.error);
-              }
-
-              // If there are other fields to update besides status, we still need to run the standard update for them
-              const otherUpdateData = { ...updateData };
-              delete otherUpdateData.status;
-              if (Object.keys(otherUpdateData).length > 0 && !error) {
-                const { error: err } = await client.update(otherUpdateData).eq(pk, pkValue);
-                error = err;
-              }
-            } else {
-              const { error: err } = await client.update(updateData).eq(pk, pkValue);
-              error = err;
+          const { error } = await client.insert(prepared.data);
+          if (error) {
+            if (!isDuplicateKeyError(error) || !(await verifyRemoteRowExists(remoteTableName, primaryKey, primaryKeyValue))) {
+              throw new Error(`Supabase insert failed for ${remoteTableName}: ${error.message}`);
             }
+          } else if (!(await verifyRemoteRowExists(remoteTableName, primaryKey, primaryKeyValue))) {
+            throw new Error(`Supabase inserted no verifiable ${remoteTableName} row.`);
+          }
+        } else if (item.action === "UPDATE") {
+          if (primaryKeyValue === undefined || primaryKeyValue === null || primaryKeyValue === "") {
+            throw new Error(`Missing ${primaryKey} for ${item.table_name} update.`);
+          }
+
+          const updateData = omitPrimaryKeyFromUpdate(prepared.data, primaryKey);
+          if (Object.keys(updateData).length === 0) {
+            throw new Error(`No update fields provided for ${item.table_name}.`);
+          }
+
+          if (item.table_name === "leads" && updateData.status !== undefined) {
+            const { data: rpcData, error: rpcError } = await supabase.rpc("transition_lead_stage", {
+              p_lead_id: primaryKeyValue as string,
+              p_expected_current_stage: null,
+              p_new_stage: updateData.status as string,
+              p_actor: "agent",
+            });
+            if (rpcError) throw new Error(`Lead transition failed: ${rpcError.message}`);
+            if (rpcData && rpcData.success === false) {
+              throw new Error(String(rpcData.error ?? "Lead transition was rejected."));
+            }
+
+            const otherUpdateData = { ...updateData };
+            delete otherUpdateData.status;
+            if (Object.keys(otherUpdateData).length > 0) {
+              const { data, error } = await client
+                .update(otherUpdateData)
+                .eq(primaryKey, primaryKeyValue)
+                .select(primaryKey)
+                .maybeSingle();
+              if (error) throw new Error(`Supabase update failed for ${remoteTableName}: ${error.message}`);
+              if (!data) throw new Error(`No ${remoteTableName} row was updated.`);
+            } else if (!(await verifyRemoteRowExists(remoteTableName, primaryKey, primaryKeyValue))) {
+              throw new Error(`Lead transition returned without a verifiable lead row.`);
+            }
+          } else {
+            const { data, error } = await client
+              .update(updateData)
+              .eq(primaryKey, primaryKeyValue)
+              .select(primaryKey)
+              .maybeSingle();
+            if (error) throw new Error(`Supabase update failed for ${remoteTableName}: ${error.message}`);
+            if (!data) throw new Error(`No ${remoteTableName} row was updated.`);
           }
         } else if (item.action === "DELETE") {
-          const pk = TABLE_PK[item.table_name] ?? "id";
-          const pkValue = getDynamicField(item.data, pk);
-          if (pkValue) {
-            const { error: err } = await client.delete().eq(pk, pkValue);
-            error = err;
+          if (primaryKeyValue === undefined || primaryKeyValue === null || primaryKeyValue === "") {
+            throw new Error(`Missing ${primaryKey} for ${item.table_name} delete.`);
           }
+          const { error } = await client.delete().eq(primaryKey, primaryKeyValue);
+          if (error) throw new Error(`Supabase delete failed for ${remoteTableName}: ${error.message}`);
         }
-
-        if (error) throw new Error(`Supabase error: ${error.message}`);
       } else {
-        // Offline-demo mode — simulate network delay
         await new Promise((resolve) => setTimeout(resolve, 200));
       }
 
-      // Success — delete from queue
-      if (item.id) await db.sync_queue.delete(item.id);
+      await db.sync_queue.delete(item.id);
 
-      // If it was a field visit, update the local record's sync_status
       if (item.table_name === "field_visits") {
-        const pkValue = getDynamicField(item.data, "visit_id");
-        if (pkValue) {
+        const visitId = prepared.data.visit_id;
+        if (visitId) {
           try {
-            await db.field_visits.update(pkValue as string, { sync_status: "synced" } as Partial<LocalFieldVisit>);
-          } catch (e) {
-             console.warn("Failed to update local field_visit sync_status:", e);
+            await db.field_visits.update(visitId as string, { sync_status: "synced" } as Partial<LocalFieldVisit>);
+          } catch (error) {
+            console.warn("Failed to update local field visit sync state:", error);
           }
         }
       }
-    } catch (err) {
-      const retryCount = (item.retry_count ?? 0) + 1;
-      console.warn(`Sync item ${item.id} failed (attempt ${retryCount}):`, err);
-      await db.sync_queue.update(item.id!, {
+    } catch (error) {
+      const retryCount = effectiveRetryCount + 1;
+      const safeError = error instanceof Error ? error.message : String(error);
+      console.warn(`Sync item ${item.id} failed (attempt ${retryCount}):`, safeError);
+      await db.sync_queue.update(item.id, {
+        data: prepared.data,
         retry_count: retryCount,
-        last_error: String(err),
+        last_error: safeError,
       });
 
       if (item.table_name === "field_visits") {
-        const pkValue = getDynamicField(item.data, "visit_id");
-        if (pkValue && retryCount >= 5) {
+        const visitId = prepared.data.visit_id;
+        if (visitId && retryCount >= 5) {
           try {
-            await db.field_visits.update(pkValue as string, { sync_status: "sync_failed" } as Partial<LocalFieldVisit>);
-          } catch (e) {
-             console.warn("Failed to update local field_visit sync_status to failed:", e);
+            await db.field_visits.update(visitId as string, { sync_status: "sync_failed" } as Partial<LocalFieldVisit>);
+          } catch (syncStateError) {
+            console.warn("Failed to mark field visit sync failure:", syncStateError);
           }
         }
       }
-      // continue — do NOT block the queue for subsequent items
     }
   }
 
   console.log("Sync queue pass complete.");
+}
+
+export function processSyncQueue(): Promise<void> {
+  if (typeof navigator === "undefined" || !navigator.onLine) return Promise.resolve();
+  if (activeSyncQueueRun) return activeSyncQueueRun;
+
+  activeSyncQueueRun = processSyncQueueInternal().finally(() => {
+    activeSyncQueueRun = null;
+  });
+  return activeSyncQueueRun;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -963,37 +1078,11 @@ export async function pullDownSync() {
           }
         });
       } else if (data && data.length === 0) {
-        // HOTFIX RECOVERY: Supabase is empty, DO NOT DELETE local data!
-        // Instead, we act as a master node and PUSH our local data back up to Supabase to restore it.
-        const table = dynamicTables[localTableName];
-        const localItems = await table.toArray();
-
-        if (localItems.length > 0) {
-          console.warn(`[RECOVERY] Remote table ${remoteTableName} is empty, but local has ${localItems.length} records. Pushing local data to restore remote...`);
-          for (const item of localItems) {
-            // Reformat mappings format on the fly if it's a lead or client_query
-            if (localTableName === 'leads' && item.business_name && typeof item.business_name === 'string') {
-              if (item.business_name.includes('(@')) {
-                // old format: Name (@Username) -> new format: [Username] - Name
-                const match = item.business_name.match(/(.+) \(@(.+)\)/);
-                if (match) {
-                  item.business_name = `[${match[2]}] - ${match[1]}`;
-                  if (item.contact_person === match[0]) item.contact_person = item.business_name;
-                }
-              }
-            } else if (localTableName === 'client_queries' && item.client_name && typeof item.client_name === 'string') {
-               if (item.client_name.includes('(@')) {
-                const match = item.client_name.match(/(.+) \(@(.+)\)/);
-                if (match) {
-                  item.client_name = `[${match[2]}] - ${match[1]}`;
-                }
-              }
-            }
-
-            // Queue an insert to push this local item back to Supabase
-            await queueOfflineMutation(localTableName, "INSERT", item);
-          }
-        }
+        // An empty result can mean either a genuinely empty remote table or an
+        // RLS-restricted view. Never repopulate the server from browser cache.
+        // Pending writes are already represented explicitly in sync_queue and
+        // are the only local records allowed to travel upward.
+        console.info(`Remote table ${remoteTableName} returned no visible rows; local data was preserved without recovery writes.`);
       }
     }
 

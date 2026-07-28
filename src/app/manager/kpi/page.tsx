@@ -43,9 +43,15 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
 
 const REALTIME_TABLES = [
-  "team_work_events",
   "users",
   "user_capabilities",
+  "call_logs",
+  "client_queries",
+  "mapping_requests",
+  "mappings",
+  "tasks",
+  "task_status_history",
+  "allocated_targets",
 ] as const;
 
 function formatActivityTime(value: string | null): string {
@@ -126,7 +132,13 @@ export default function ManagerKpiPage() {
         headers: { Authorization: `Bearer ${accessToken}` },
         cache: "no-store",
       });
-      const data: unknown = await response.json();
+      const contentType = response.headers.get("content-type") ?? "";
+      const data: unknown = contentType.includes("application/json")
+        ? await response.json()
+        : {
+            code: "TEAM_KPI_INVALID_RESPONSE",
+            message: `Team KPI returned ${response.status} ${response.statusText} instead of JSON.`,
+          };
 
       if (requestId !== requestSequence.current) return;
       if (!response.ok) throw data;
@@ -186,7 +198,7 @@ export default function ManagerKpiPage() {
     document.addEventListener("visibilitychange", handleVisibilityChange);
     const refreshInterval = window.setInterval(() => {
       if (document.visibilityState === "visible") scheduleRefresh();
-    }, 60_000);
+    }, 30_000);
 
     return () => {
       if (realtimeTimer.current) clearTimeout(realtimeTimer.current);

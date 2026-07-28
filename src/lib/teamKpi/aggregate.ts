@@ -102,10 +102,15 @@ function maxTimestamp(current: string | null, candidate: string | null | undefin
   return !Number.isFinite(currentTime) || candidateTime > currentTime ? candidate : current;
 }
 
-function isSyntheticCall(outcome: string | null): boolean {
+export function isSyntheticCallOutcome(outcome: string | null): boolean {
   if (!outcome) return false;
   const normalized = outcome.trim().toLowerCase();
-  return outcome.includes("→") || normalized.startsWith("[stage note]") || normalized.startsWith("[call outcome] →");
+  return (
+    outcome.includes("→") ||
+    normalized.startsWith("[stage note]") ||
+    normalized.startsWith("[call outcome] →") ||
+    normalized.startsWith("pipeline stage")
+  );
 }
 
 interface MutableMetricRow extends TeamKpiRow {
@@ -151,7 +156,7 @@ export function buildTeamKpiReport(input: BuildTeamKpiReportInput): TeamKpiRespo
   }
 
   for (const call of input.calls) {
-    if (!call.user_id || isSyntheticCall(call.outcome)) continue;
+    if (!call.user_id || isSyntheticCallOutcome(call.outcome)) continue;
     const row = rowsByUser.get(call.user_id);
     if (!row || row.callIds.has(call.log_id)) continue;
     row.callIds.add(call.log_id);
@@ -160,7 +165,7 @@ export function buildTeamKpiReport(input: BuildTeamKpiReportInput): TeamKpiRespo
   }
 
   for (const query of input.clientQueries) {
-    if (query.problem_status !== "Resolved" || !query.resolved_at) continue;
+    if (query.problem_status.toLowerCase() !== "resolved" || !query.resolved_at) continue;
     const actor = query.resolved_by ?? query.assigned_to;
     if (!actor) continue;
     const row = rowsByUser.get(actor);
@@ -171,7 +176,8 @@ export function buildTeamKpiReport(input: BuildTeamKpiReportInput): TeamKpiRespo
   }
 
   for (const mapping of input.mappings) {
-    if (mapping.status !== "Completed" || !mapping.mapped_by || !mapping.completed_at) continue;
+    const completedStatus = ["completed", "resolved"].includes(mapping.status.trim().toLowerCase());
+    if (!completedStatus || !mapping.mapped_by || !mapping.completed_at) continue;
     const row = rowsByUser.get(mapping.mapped_by);
     if (!row || row.mappingIds.has(mapping.request_id)) continue;
     row.mappingIds.add(mapping.request_id);
@@ -180,16 +186,16 @@ export function buildTeamKpiReport(input: BuildTeamKpiReportInput): TeamKpiRespo
   }
 
   const tasksById = new Map(input.tasks.map((task) => [task.task_id, task]));
-  const latestHistoryByTask = new Map<string, KpiTaskHistoryRecord>();
+  const completionHistoryByTask = new Map<string, KpiTaskHistoryRecord>();
   for (const event of input.taskHistory) {
-    if (event.new_status !== "Completed") continue;
-    const current = latestHistoryByTask.get(event.task_id);
+    if (event.new_status.toLowerCase() !== "completed") continue;
+    const current = completionHistoryByTask.get(event.task_id);
     if (!current || Date.parse(event.changed_at) > Date.parse(current.changed_at)) {
-      latestHistoryByTask.set(event.task_id, event);
+      completionHistoryByTask.set(event.task_id, event);
     }
   }
 
-  for (const event of latestHistoryByTask.values()) {
+  for (const event of completionHistoryByTask.values()) {
     const task = tasksById.get(event.task_id);
     const actor = event.changed_by ?? task?.assigned_to ?? null;
     if (!actor) continue;
@@ -200,9 +206,9 @@ export function buildTeamKpiReport(input: BuildTeamKpiReportInput): TeamKpiRespo
     row.latest_activity_time = maxTimestamp(row.latest_activity_time, event.changed_at);
   }
 
-  const taskIdsWithAnyHistory = input.taskIdsWithAnyCompletionHistory ?? new Set(latestHistoryByTask.keys());
+  const taskIdsWithAnyHistory = input.taskIdsWithAnyCompletionHistory ?? new Set(completionHistoryByTask.keys());
   for (const task of input.tasks) {
-    if (task.status !== "Completed" || !task.assigned_to || !task.completed_at) continue;
+    if (task.status.toLowerCase() !== "completed" || !task.assigned_to || !task.completed_at) continue;
     if (taskIdsWithAnyHistory.has(task.task_id)) continue;
     const row = rowsByUser.get(task.assigned_to);
     if (!row || row.normalTaskIds.has(task.task_id)) continue;
