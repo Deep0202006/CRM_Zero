@@ -1,0 +1,18 @@
+{
+  "lockedHash": "baseline-hash",
+  "validMigration": "BEGIN; CREATE TABLE public.example(id uuid PRIMARY KEY); COMMIT;",
+  "enumUnsafeSql": "SELECT lower(COALESCE(status, '')) FROM public.example;",
+  "clientSecret": "const key = process.env.SUPABASE_SERVICE_ROLE_KEY;",
+  "envReader": "fs.readFileSync('.env.local', 'utf8');",
+  "repairZip": "ZERODATA_DATA_REPAIR_PACKAGE.zip",
+  "mappedProductionPaths": ["src/lib/db.ts"],
+  "unmappedProductionPath": "src/lib/new-authority.ts",
+  "duplicateIdempotency": "crypto.randomUUID(); crypto.randomUUID();",
+  "migrationSql": "SELECT 1;",
+  "manualApplySql": "SELECT 2;",
+  "skippedEvidence": {"status": "SKIPPED", "exitCode": null},
+  "evidence": {"status": "PASSED", "exitCode": 0, "stdoutPath": ".codex-artifacts/runs/test/stdout.log"},
+  "context": "bounded deterministic context",
+  "paths": ["a/file.ts", "b/file.ts", "c/file.ts"],
+  "safeOutput": "No credential values are emitted."
+}

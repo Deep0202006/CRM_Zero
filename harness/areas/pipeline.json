@@ -1,0 +1,15 @@
+{
+  "name": "pipeline",
+  "purpose": "Lead lifecycle, onboarding, mappings, calls, and pipeline stage transitions.",
+  "entrypoints": ["src/app/onboarding/**", "src/app/mappings/**", "src/app/call-logs/**", "src/app/page.tsx"],
+  "sharedDependencies": ["src/lib/db.ts", "src/lib/validation.ts"],
+  "databaseObjects": ["leads", "mappings", "mapping_requests", "call_logs"],
+  "invariants": ["Stage transitions use verified paths.", "Completed work uses authenticated commands.", "External client identities never enter UUID columns."],
+  "forbiddenPatterns": ["EXCEL:: in lead_id"],
+  "allowedDefaultPaths": ["src/app/onboarding/**", "src/app/mappings/**", "src/app/call-logs/**", "src/app/page.tsx", "src/lib/**pipeline**", "src/lib/db.ts", "src/lib/__tests__/**", "tests/e2e/**", "docs/**", "harness/**", "scripts/harness/**", "tests/harness/**", "package.json", "package-lock.json", "AGENTS.md", ".github/**"],
+  "requiredTests": ["src/lib/__tests__/syncPayload.test.ts"],
+  "optionalTests": ["tests/e2e/cross-device-data.spec.ts"],
+  "manualGates": [],
+  "relatedDocs": ["NEXUS_CRM_SALES_PIPELINE_OPTIMIZATION.md"],
+  "riskLevel": "high"
+}

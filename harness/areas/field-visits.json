@@ -1,0 +1,15 @@
+{
+  "name": "field-visits",
+  "purpose": "Exactly-once field visit capture, private evidence, and admin reporting.",
+  "entrypoints": ["src/app/visits/**", "src/app/admin/visits/page.tsx", "src/app/api/admin/visits/**", "src/lib/fieldVisits/**"],
+  "sharedDependencies": ["src/lib/db.ts", "src/context/AuthContext.tsx"],
+  "databaseObjects": ["field_visits", "create_field_visit_v1", "get_admin_visit_report_v1", "visit-evidence bucket"],
+  "invariants": ["Role and attendance are server enforced.", "Metadata, media, and outbox save atomically.", "Evidence paths are deterministic and private.", "Signed URLs are on demand only.", "Admin list and export share one filter contract.", "Synchronization is exactly once.", "No background location tracking."],
+  "forbiddenPatterns": ["createSignedUrl(", "watchPosition("],
+  "allowedDefaultPaths": ["src/app/visits/**", "src/app/admin/visits/**", "src/app/api/admin/visits/**", "src/app/api/admin/export-visits/**", "src/lib/fieldVisits/**", "src/components/visits/**", "src/lib/db.ts", "src/lib/__tests__/**visit*.test.ts", "tests/e2e/field-visits-admin.spec.ts", "tests/e2e/offline-outbox.spec.ts", "docs/data-platform-repair/**", "supabase/migrations/**", "harness/**", "scripts/harness/**", "docs/harness/**", "tests/harness/**", "package.json", "package-lock.json", "AGENTS.md", ".github/**"],
+  "requiredTests": ["src/lib/__tests__/fieldVisits.test.ts", "tests/e2e/field-visits-admin.spec.ts", "tests/e2e/offline-outbox.spec.ts", "tests/e2e/authorization.spec.ts"],
+  "optionalTests": ["src/lib/__tests__/dataPlatformDurability.test.ts"],
+  "manualGates": ["Supabase migration execution", "real-device field test"],
+  "relatedDocs": ["docs/data-platform-repair/07-visits-contract.md", "docs/data-platform-repair/05-cross-device-analysis.md"],
+  "riskLevel": "critical"
+}

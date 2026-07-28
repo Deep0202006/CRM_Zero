@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "subscriptions": [
+    {"area": "team-kpi", "tables": ["team_activity_events", "users", "user_capabilities"], "behavior": "debounced refresh signal"},
+    {"area": "field-visits", "tables": ["field_visits"], "behavior": "debounced refresh signal"}
+  ],
+  "invariants": ["No manually incremented counters.", "Channels and timers are cleaned up."]
+}

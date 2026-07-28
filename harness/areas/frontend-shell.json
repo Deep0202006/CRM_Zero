@@ -1,0 +1,15 @@
+{
+  "name": "frontend-shell",
+  "purpose": "Shared navigation, responsive shell, visual tokens, and non-business UI.",
+  "entrypoints": ["src/components/DashboardLayout.tsx", "src/app/globals.css", "src/components/**"],
+  "sharedDependencies": ["src/context/AuthContext.tsx"],
+  "databaseObjects": [],
+  "invariants": ["Preserve established components and responsive navigation.", "UI-only tasks do not change data contracts.", "Accessibility regressions are rejected."],
+  "forbiddenPatterns": ["new UI framework"],
+  "allowedDefaultPaths": ["src/components/**", "src/app/globals.css", "src/app/login/**", "public/**", "tests/e2e/**", "docs/**", "harness/**", "scripts/harness/**", "tests/harness/**", "package.json", "package-lock.json", "AGENTS.md", ".github/**"],
+  "requiredTests": ["tests/e2e/authorization.spec.ts"],
+  "optionalTests": ["npm run build"],
+  "manualGates": ["screenshots when UI changed"],
+  "relatedDocs": ["FRONTEND_HANDOFF.md"],
+  "riskLevel": "medium"
+}

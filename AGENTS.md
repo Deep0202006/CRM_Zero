@@ -14,3 +14,9 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - Add projection and durability tests for every new countable work event.
 - Never acknowledge local-only completed work as synced.
 - Never clear a user cache while pending, retry-wait, or permanent-failure operations remain.
+
+## Harness operating protocol
+
+Run `harness:new`, read its generated context first, and declare scope before editing. Never broaden paths silently. Use `harness:quick` while implementing and `harness:verify` before commit. Generate a review pack, use detached review, then run `harness:release` before ready-for-review. Stop at every human gate.
+
+Keep one orchestrator per campaign. Initial context is at most 1,500 words, implementation handoff 600, and review pack 800. Avoid repeated repository scans and full-file reads until narrow search is insufficient. Store raw evidence and temporary state only in `.codex-artifacts`; keep stable architecture in committed docs. See [docs/harness/README.md](docs/harness/README.md).

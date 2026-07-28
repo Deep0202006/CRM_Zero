@@ -1,0 +1,17 @@
+{
+  "taskId": "",
+  "area": "",
+  "taskDescription": "",
+  "baseBranch": "",
+  "baseCommit": "",
+  "workingBranch": "",
+  "riskLevel": "",
+  "affectedInvariants": [],
+  "expectedEntrypoints": [],
+  "expectedTests": [],
+  "databaseChangeExpected": false,
+  "uiChangeExpected": false,
+  "manualHumanGates": [],
+  "status": "created",
+  "startedAt": ""
+}

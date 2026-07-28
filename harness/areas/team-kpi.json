@@ -1,0 +1,15 @@
+{
+  "name": "team-kpi",
+  "purpose": "Admin daily Team KPI reporting from confirmed immutable events.",
+  "entrypoints": ["src/app/manager/kpi/page.tsx", "src/app/api/team-kpi/route.ts", "src/lib/teamKpi/**"],
+  "sharedDependencies": ["src/lib/db.ts", "src/lib/supabaseClient.ts"],
+  "databaseObjects": ["team_activity_events", "get_team_kpi_daily_v5"],
+  "invariants": ["Use only the final server RPC.", "Include every active human user and zero-work users.", "No Activity Deck or browser raw-table aggregation.", "No service-role fallback.", "Realtime is a debounced refresh signal.", "Use Asia/Kolkata business dates.", "Backend errors never become empty success."],
+  "forbiddenPatterns": ["activity_deck", "get_team_kpi_daily_v4", ".from(\"call_logs\")"],
+  "allowedDefaultPaths": ["src/app/manager/kpi/**", "src/app/api/team-kpi/**", "src/lib/teamKpi/**", "src/lib/__tests__/teamKpi*.test.ts", "tests/e2e/team-kpi-live.spec.ts", "tests/e2e/authorization.spec.ts", "docs/data-platform-repair/**", "supabase/migrations/**", "harness/**", "scripts/harness/**", "docs/harness/**", "tests/harness/**", "package.json", "package-lock.json", "AGENTS.md", ".github/**"],
+  "requiredTests": ["src/lib/__tests__/teamKpiApiContract.test.ts", "src/lib/__tests__/teamKpiPageContract.test.ts", "src/lib/__tests__/dataPlatformDurability.test.ts", "tests/e2e/team-kpi-live.spec.ts", "tests/e2e/authorization.spec.ts"],
+  "optionalTests": ["src/lib/__tests__/teamKpiSyncDurability.test.ts"],
+  "manualGates": ["Supabase migration execution"],
+  "relatedDocs": ["docs/data-platform-repair/06-kpi-contract.md", "docs/data-platform-repair/01-source-of-truth-matrix.md"],
+  "riskLevel": "high"
+}

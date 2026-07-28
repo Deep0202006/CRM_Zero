@@ -1,0 +1,72 @@
+{
+  "version": 1,
+  "generatedAt": "2026-07-28",
+  "acceptedHighAdvisories": [
+    {
+      "advisoryId": "1108110",
+      "package": "xlsx",
+      "dependencyPath": "crm-zero > xlsx",
+      "scope": "runtime-admin-only",
+      "assessment": "Prototype pollution requires a malicious workbook reaching the authenticated administrative import path.",
+      "mitigation": "Restrict import to admins, validate size and shape, and retain formula-injection protection.",
+      "owner": "@Deep0202006",
+      "reviewDate": "2026-07-28",
+      "expiryDate": "2026-10-31"
+    },
+    {
+      "advisoryId": "1108111",
+      "package": "xlsx",
+      "dependencyPath": "crm-zero > xlsx",
+      "scope": "runtime-admin-only",
+      "assessment": "ReDoS requires adversarial workbook content in an authenticated administrative workflow.",
+      "mitigation": "Keep uploads size-limited and replace xlsx under a separately tested export/import migration.",
+      "owner": "@Deep0202006",
+      "reviewDate": "2026-07-28",
+      "expiryDate": "2026-10-31"
+    },
+    {
+      "advisoryId": "1124252",
+      "package": "postcss",
+      "dependencyPath": "crm-zero > next > postcss",
+      "scope": "build",
+      "assessment": "No untrusted CSS is compiled by the CRM.",
+      "mitigation": "Track the upstream Next dependency and keep production builds isolated.",
+      "owner": "@Deep0202006",
+      "reviewDate": "2026-07-28",
+      "expiryDate": "2026-10-31"
+    },
+    {
+      "advisoryId": "1124288",
+      "package": "postcss",
+      "dependencyPath": "crm-zero > next > postcss",
+      "scope": "build",
+      "assessment": "No application route processes attacker-controlled CSS.",
+      "mitigation": "Upgrade through a compatible Next patch when published.",
+      "owner": "@Deep0202006",
+      "reviewDate": "2026-07-28",
+      "expiryDate": "2026-10-31"
+    },
+    {
+      "advisoryId": "1124066",
+      "package": "sharp",
+      "dependencyPath": "crm-zero > next > sharp",
+      "scope": "optional-runtime",
+      "assessment": "Repaired workflows do not route untrusted SVG input through image optimization.",
+      "mitigation": "Keep visit evidence private and outside eager Next image optimization.",
+      "owner": "@Deep0202006",
+      "reviewDate": "2026-07-28",
+      "expiryDate": "2026-10-31"
+    },
+    {
+      "advisoryId": "1124334",
+      "package": "brace-expansion",
+      "dependencyPath": "crm-zero > eslint/jest tooling > minimatch > brace-expansion",
+      "scope": "development",
+      "assessment": "Requires adversarial developer-controlled glob patterns; not reachable from CRM users.",
+      "mitigation": "Run tooling only on repository-owned patterns and update without an unrelated major migration.",
+      "owner": "@Deep0202006",
+      "reviewDate": "2026-07-28",
+      "expiryDate": "2026-10-31"
+    }
+  ]
+}
