@@ -1,0 +1,16 @@
+status: in_progress
+branch: fix/server-authoritative-crm-data
+sql_applied: false
+production_deployed: false
+checkpoint_commit: 3fa83fa
+phases:
+  forensic_audit: complete
+  documentation: complete
+  database: in_progress
+  outbox: in_progress
+  cross_device: pending
+  visits: pending
+  kpi: in_progress
+  recovery: pending
+  tests: pending
+  release: pending
