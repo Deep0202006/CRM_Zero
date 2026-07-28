@@ -39,3 +39,13 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Codex engineering harness and narrow one-off repair artifacts
+.codex-artifacts/
+.harness-cache/
+scratch/
+tmp/
+ZERODATA_*_FORENSIC.zip
+ZERODATA_*_REPAIR_PACKAGE.zip
+TEAM_KPI_*_PACKAGE.zip
+*_HANDOFF.zip
