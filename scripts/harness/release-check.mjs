@@ -7,9 +7,7 @@ const runDirectory = path.join(artifacts, "runs", task.taskId);
 const commands = [
   npmInvocation("run", "harness:verify"),
   npmInvocation("run", "harness:scope"),
-  npmInvocation("audit", "--json"),
-  npmInvocation("run", "harness:review-pack"),
-  npmInvocation("run", "harness:handoff")
+  npmInvocation("audit", "--json")
 ];
 const results = [];
 for (let index = 0; index < commands.length; index += 1) {
@@ -36,6 +34,16 @@ if (process.env.PLAYWRIGHT_USER_EMAIL && process.env.PLAYWRIGHT_ADMIN_EMAIL) {
     reason: "Credential-backed E2E variables unavailable."
   });
   console.log("SKIPPED npm run test:e2e (credentials unavailable)");
+}
+fs.writeFileSync(path.join(runDirectory, "evidence.json"), `${JSON.stringify(results, null, 2)}\n`);
+for (const [index, invocation] of [
+  npmInvocation("run", "harness:review-pack"),
+  npmInvocation("run", "harness:handoff")
+].entries()) {
+  const [command, commandArgs] = invocation;
+  const result = await runCommand(command, commandArgs, runDirectory, `release-${index + 4}`);
+  results.push(result);
+  console.log(`${result.status} ${result.exitCode} ${result.command}`);
 }
 fs.writeFileSync(path.join(runDirectory, "release-evidence.json"), `${JSON.stringify(results, null, 2)}\n`);
 if (results.some((item) => item.exitCode !== 0 && item.status !== "REVIEWED")) process.exit(1);
