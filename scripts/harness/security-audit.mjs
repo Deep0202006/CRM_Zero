@@ -39,7 +39,7 @@ for (const entry of baseline.acceptedHighAdvisories) {
 fs.mkdirSync(artifacts, { recursive: true });
 fs.writeFileSync(path.join(artifacts, "security-audit-result.json"), `${JSON.stringify({
   node: process.version,
-  npm: process.env.npm_config_user_agent?.match(/npm\/([^\s]+)/)?.[1] ?? "unknown",
+  npm: process.env.npm_execpath ? spawnSync(process.execPath, [process.env.npm_execpath, "--version"], { encoding: "utf8" }).stdout.trim() : "unknown",
   critical: criticalPackages,
   acceptedHigh: [...currentHigh.keys()].filter((id) => accepted.has(id)),
   newHigh: [...currentHigh.keys()].filter((id) => !accepted.has(id)),

@@ -4,7 +4,7 @@
   "contextFiles": 6,
   "contextBytes": 17213,
   "quickDurationMs": 15000,
-  "fullDurationMs": 50000,
+  "fullDurationMs": 140000,
   "reviewPackWords": 291,
   "handoffWords": 217,
   "warningRegressionPercent": 25

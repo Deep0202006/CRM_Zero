@@ -9,11 +9,12 @@ if (process.version !== `v${expectedNode}`) {
   console.error(`Expected Node v${expectedNode}, received ${process.version}.`);
   process.exit(1);
 }
-const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
-let actualNpm = execFileSync(npmCommand, ["--version"], { encoding: "utf8" }).trim();
+const npmCli = process.env.npm_execpath;
+if (!npmCli) throw new Error("npm_execpath is required.");
+let actualNpm = execFileSync(process.execPath, [npmCli, "--version"], { encoding: "utf8" }).trim();
 if (actualNpm !== expectedNpm && process.argv.includes("--install-npm")) {
-  execFileSync(npmCommand, ["install", "--global", `npm@${expectedNpm}`], { stdio: "inherit" });
-  actualNpm = execFileSync(npmCommand, ["--version"], { encoding: "utf8" }).trim();
+  execFileSync(process.execPath, [npmCli, "install", "--global", `npm@${expectedNpm}`], { stdio: "inherit" });
+  actualNpm = execFileSync(process.execPath, [npmCli, "--version"], { encoding: "utf8" }).trim();
 }
 if (actualNpm !== expectedNpm) {
   console.error(`Expected npm ${expectedNpm}, received ${actualNpm}.`);

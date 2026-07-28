@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 import { args, artifacts, npmInvocation, runCommand } from "./cli.mjs";
 
 const mode = args().mode ?? "full";
@@ -52,7 +53,7 @@ if (mode === "ci") {
   const quickLabels = new Set(commands.slice(1, 6).map(([command, commandArgs]) => [command, ...commandArgs].join(" ")));
   fs.writeFileSync(path.join(artifacts, "performance-evidence.json"), `${JSON.stringify({
     node: process.version,
-    npm: process.env.npm_config_user_agent?.match(/npm\/([^\s]+)/)?.[1] ?? "unknown",
+    npm: process.env.npm_execpath ? execFileSync(process.execPath, [process.env.npm_execpath, "--version"], { encoding: "utf8" }).trim() : "unknown",
     quickDurationMs: results.filter((item) => quickLabels.has(item.command)).reduce((sum, item) => sum + item.durationMs, 0),
     fullDurationMs: results.reduce((sum, item) => sum + item.durationMs, 0)
   }, null, 2)}\n`);

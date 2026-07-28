@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 import { artifacts, listFiles, normalize, root } from "./cli.mjs";
 
 const output = path.join(artifacts, "ci-evidence");
@@ -23,6 +24,6 @@ for (const file of candidates) {
 }
 fs.writeFileSync(path.join(output, "toolchain.json"), `${JSON.stringify({
   node: process.version,
-  npm: process.env.npm_config_user_agent?.match(/npm\/([^\s]+)/)?.[1] ?? "unknown"
+  npm: process.env.npm_execpath ? execFileSync(process.execPath, [process.env.npm_execpath, "--version"], { encoding: "utf8" }).trim() : "unknown"
 }, null, 2)}\n`);
 console.log(`Sanitized ${candidates.length} evidence files into ${normalize(path.relative(root, output))}.`);
