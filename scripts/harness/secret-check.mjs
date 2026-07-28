@@ -1,6 +1,4 @@
-import fs from "node:fs";
-import path from "node:path";
-import { globMatch, listFiles, readJson, root, safeRead } from "./cli.mjs";
+import { globMatch, listFiles, readJson, safeRead } from "./cli.mjs";
 
 const policy = readJson("harness/policy.json");
 const roots = ["src", "scripts", "tests", "docs", ".github", "supabase"];

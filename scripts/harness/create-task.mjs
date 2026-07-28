@@ -1,5 +1,4 @@
 import fs from "node:fs";
-import path from "node:path";
 import crypto from "node:crypto";
 import { args, artifacts, git, loadAreas, writeJson } from "./cli.mjs";
 

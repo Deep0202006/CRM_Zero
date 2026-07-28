@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { args, changedFiles, globMatch, listFiles, loadAreas, readJson, root, safeRead } from "./cli.mjs";
+import { args, changedFiles, globMatch, listFiles, readJson, root, safeRead } from "./cli.mjs";
 
 const options = args();
 const failures = [];
