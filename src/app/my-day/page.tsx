@@ -259,18 +259,11 @@ export default function MyDayPage() {
     setMarkingId(targetId);
     setTargetErrors((current) => { const next = { ...current }; delete next[targetId]; return next; });
     try {
-      if (!navigator.onLine || !isSupabaseConfigured) {
-        await db.transaction("rw", db.allocated_targets, db.sync_queue, async () => {
-          await db.allocated_targets.update(targetId, { is_completed: true, completed_at: completedAt, sync_status: "pending" });
-          await db.sync_queue.add({ idempotency_key: `complete-target-${targetId}`, table_name: "allocated_targets", action: "UPDATE", data: { target_id: targetId, is_completed: true, completed_at: completedAt }, timestamp: completedAt, retry_count: 0 });
-        });
-        setAllocatedTargets((current) => current.filter((target) => target.target_id !== targetId)); setTargetNotice("Saved offline. Completion is pending synchronization."); return;
-      }
-      const { data, error } = await supabase.from("allocated_targets").update({ is_completed: true, completed_at: completedAt }).eq("target_id", targetId).eq("assigned_to_user_id", currentUser.user_id).eq("is_completed", false).select("target_id").maybeSingle();
-      if (error) throw new Error(error.message);
-      if (!data) throw new Error("This target was already completed or is no longer assigned to you.");
-      await db.allocated_targets.update(targetId, { is_completed: true, completed_at: completedAt, sync_status: "synced", last_synced_at: completedAt });
+      await transactionalMutation("allocated_targets", "UPDATE", {
+        target_id: targetId, is_completed: true, completed_at: completedAt, sync_status: "pending",
+      });
       setAllocatedTargets((current) => current.filter((target) => target.target_id !== targetId));
+      setTargetNotice(navigator.onLine ? "Completion saved and awaiting server confirmation." : "Saved offline. Completion is pending synchronization.");
     } catch (error) { setTargetErrors((current) => ({ ...current, [targetId]: error instanceof Error ? error.message : "Unable to complete this target." })); }
     finally { setMarkingId(null); }
   };

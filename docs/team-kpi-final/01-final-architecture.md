@@ -1,0 +1,5 @@
+- Normalized event projection table: public.team_kpi_events.
+- Server-authoritative KPI RPC: public.get_team_kpi_daily_v5.
+- Database triggers on source tables (call_logs, client_queries, mapping_requests, task_status_history, tasks, allocated_targets) to automatically capture valid work events safely.
+- Server command RPCs (v2) for atomic completion and update workflows.
+- A hardened offline sync processor processing semantically stable, deterministic ID queue items.

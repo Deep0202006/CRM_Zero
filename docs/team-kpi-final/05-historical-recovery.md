@@ -1,0 +1,2 @@
+- **Database Backfill**: Migration 030 safely casts ENUMs and backfills events for retained valid work records using timezone conversion (source_timestamp AT TIME ZONE 'Asia/Kolkata')::date.
+- **Local Legacy Recovery**: Validates IndexedDB and reconstructs stable deterministic keys for old EXCEL:: or failing sync items into new RPC operations without duplicating work.

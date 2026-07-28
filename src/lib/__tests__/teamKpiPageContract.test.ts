@@ -24,24 +24,20 @@ describe("Team KPI page data path", () => {
     }
   });
 
-  it("refreshes from the actual confirmed work sources with one debounced API reload", () => {
+  it("refreshes from the normalized projection with one debounced API reload", () => {
     for (const table of [
+      "team_activity_events",
       "users",
       "user_capabilities",
-      "call_logs",
-      "client_queries",
-      "mapping_requests",
-      "mappings",
-      "tasks",
-      "task_status_history",
-      "allocated_targets",
     ]) {
       expect(source).toContain(`"${table}"`);
     }
-    expect(source).not.toContain('"team_work_events"');
+    for (const table of ["call_logs", "client_queries", "mapping_requests", "tasks", "allocated_targets"]) {
+      expect(source).not.toContain(`"${table}"`);
+    }
     expect(source).toContain("setTimeout");
     expect(source).toContain("750");
-    expect(source).toContain("30_000");
+    expect(source).toContain("AbortController");
   });
 
   it("keeps all four requested work metrics visible", () => {

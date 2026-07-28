@@ -8,6 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "test": "jest",
+    "check:data-platform": "node scripts/architecture/check-data-platform.mjs",
+    "test:e2e": "playwright test",
+    "test:e2e:list": "playwright test --list",
     "vercel-build": "npm run test && next build"
   },
   "dependencies": {
@@ -16,7 +19,7 @@
     "browser-image-compression": "^2.0.2",
     "dexie": "^4.4.4",
     "lucide-react": "^1.23.0",
-    "next": "16.2.9",
+    "next": "^16.2.12",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "recharts": "^3.9.1",
@@ -24,16 +27,20 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
+    "@playwright/test": "^1.62.0",
     "@tailwindcss/postcss": "^4",
     "@types/jest": "^30.0.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.2.9",
+    "eslint-config-next": "^16.2.12",
     "jest": "^30.4.2",
+    "playwright": "^1.62.0",
     "tailwindcss": "^4",
     "ts-jest": "^29.4.11",
+    "tsx": "^4.23.1",
     "typescript": "^5"
   }
 }

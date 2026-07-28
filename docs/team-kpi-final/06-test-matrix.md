@@ -1,0 +1,4 @@
+- **Database Contract Tests**: Enum-safety, immutable old migrations, backfill timestamp retention, missing public execute permissions.
+- **Sync Tests**: Stable idempotency, sequential merging, no early abandonment, empty pull-down safety, logout prevention.
+- **Workflow Tests**: End-to-end workflows representing calls, query resolutions, target completions, mapping updates.
+- **KPI Tests**: Zeros included for active users, duplicate event prevention, total arithmetic.

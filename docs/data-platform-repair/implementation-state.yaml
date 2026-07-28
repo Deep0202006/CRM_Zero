@@ -1,0 +1,16 @@
+status: repository_complete
+branch: fix/server-authoritative-crm-data
+sql_applied: false
+production_deployed: false
+checkpoint_commit: 3fa83fa
+phases:
+  forensic_audit: complete
+  documentation: complete
+  database: complete_manual_apply_pending
+  outbox: complete
+  cross_device: complete
+  visits: complete
+  kpi: complete
+  recovery: complete
+  tests: complete
+  release: local_gates_complete

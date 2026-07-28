@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { db, transactionalMutation, LocalUser, pullDownSync, processSyncQueue } from "@/lib/db";
+import { bootstrapOperationalData, db, transactionalMutation, getUnsynchronizedWorkCounts, LocalUser, processSyncQueue } from "@/lib/db";
 import { supabase } from "@/lib/supabaseClient";
 import { getCurrentISTDate } from "@/lib/dateTime";
 
@@ -11,7 +11,7 @@ interface AuthContextType {
   allUsers: LocalUser[];
   isLoading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
-  logout: () => Promise<void>;
+  logout: () => Promise<{ signedOut: boolean; unsynchronized: number }>;
   // Role flags
   isAdmin: boolean;
   isTechSupport: boolean;
@@ -69,13 +69,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         if (savedUserId) {
-          const matchedUser = users.find(u => u.user_id === savedUserId);
+          let matchedUser = users.find(u => u.user_id === savedUserId);
+          if (!matchedUser) {
+            const { data: remoteUser, error: remoteUserError } = await supabase
+              .from("users")
+              .select("user_id,name,email,phone,is_active,manager_id,created_at")
+              .eq("user_id", savedUserId)
+              .single();
+            if (!remoteUserError && remoteUser) {
+              matchedUser = { ...remoteUser, is_active: remoteUser.is_active ? 1 : 0 } as LocalUser;
+              const { data: remoteCaps, error: remoteCapsError } = await supabase
+                .from("user_capabilities")
+                .select("*")
+                .eq("user_id", savedUserId);
+              await db.transaction("rw", [db.users, db.user_capabilities], async () => {
+                await db.users.put(matchedUser as LocalUser);
+                if (!remoteCapsError && remoteCaps) await db.user_capabilities.bulkPut(remoteCaps);
+              });
+            }
+          }
           if (matchedUser) {
             setCurrentUser(matchedUser);
             const caps = await db.user_capabilities.where("user_id").equals(matchedUser.user_id).toArray();
             setCapabilities(caps.map(c => c.capability_code));
             // Background pull down to hydrate robust offline DB for 10-person team
-            pullDownSync().then(async () => {
+            bootstrapOperationalData(matchedUser.user_id).then(async () => {
               const updatedCaps = await db.user_capabilities.where("user_id").equals(matchedUser.user_id).toArray();
               setCapabilities(updatedCaps.map(c => c.capability_code));
               const updatedUsers = await db.users.toArray();
@@ -174,7 +192,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setIsLoading(false);
           
           // Trigger downward sync to populate the local DB with team data
-          pullDownSync().then(async () => {
+          bootstrapOperationalData(user.user_id).then(async () => {
             const updatedCaps = await db.user_capabilities.where("user_id").equals(user.user_id).toArray();
             setCapabilities(updatedCaps.map(c => c.capability_code));
           }).catch(console.error);
@@ -195,12 +213,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     setIsLoading(true);
-    await supabase.auth.signOut();
-    setCurrentUser(null);
-    setCapabilities([]);
-    localStorage.removeItem("authenticated_user_id");
-
-    // Ensure any pending offline data is pushed before we wipe
     try {
       if (typeof window !== 'undefined' && navigator.onLine) {
         await processSyncQueue();
@@ -209,7 +221,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.warn("Failed to flush sync queue on logout", e);
     }
 
-    // Wipe local IndexedDB to prevent cross-user data contamination
+    const unsynchronized = await getUnsynchronizedWorkCounts();
+    if (unsynchronized.total > 0) {
+      setIsLoading(false);
+      return { signedOut: false, unsynchronized: unsynchronized.total };
+    }
+
+    await supabase.auth.signOut();
+    setCurrentUser(null);
+    setCapabilities([]);
+    localStorage.removeItem("authenticated_user_id");
+
     try {
       await Promise.all(db.tables.map(table => table.clear()));
     } catch (err) {
@@ -218,6 +240,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     setIsLoading(false);
     if (typeof window !== "undefined") window.location.href = "/login";
+    return { signedOut: true, unsynchronized: 0 };
   };
 
   // ─── Derived role flags ──────────────────────────────────────────────────

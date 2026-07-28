@@ -43,15 +43,9 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
 
 const REALTIME_TABLES = [
+  "team_activity_events",
   "users",
   "user_capabilities",
-  "call_logs",
-  "client_queries",
-  "mapping_requests",
-  "mappings",
-  "tasks",
-  "task_status_history",
-  "allocated_targets",
 ] as const;
 
 function formatActivityTime(value: string | null): string {
@@ -107,12 +101,17 @@ export default function ManagerKpiPage() {
   const [warning, setWarning] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"Team" | "Funnel">("Team");
   const requestSequence = useRef(0);
+  const activeRequest = useRef<AbortController | null>(null);
+  const confirmedAt = useRef(0);
   const realtimeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadTeamKpi = useCallback(async (background = false) => {
     if (!currentUser || !isAdmin) return;
 
     const requestId = ++requestSequence.current;
+    activeRequest.current?.abort();
+    const controller = new AbortController();
+    activeRequest.current = controller;
     if (background) setRefreshing(true);
     else setLoading(true);
 
@@ -131,6 +130,7 @@ export default function ManagerKpiPage() {
         method: "GET",
         headers: { Authorization: `Bearer ${accessToken}` },
         cache: "no-store",
+        signal: controller.signal,
       });
       const contentType = response.headers.get("content-type") ?? "";
       const data: unknown = contentType.includes("application/json")
@@ -149,6 +149,7 @@ export default function ManagerKpiPage() {
       }
 
       setReport(parsed);
+      confirmedAt.current = Date.now();
       setError(null);
       setWarning(
         parsed.warnings.length > 0
@@ -157,15 +158,19 @@ export default function ManagerKpiPage() {
       );
     } catch (caughtError: unknown) {
       if (requestId !== requestSequence.current) return;
+      if (caughtError instanceof DOMException && caughtError.name === "AbortError") return;
       console.error("Team KPI refresh failed", caughtError);
       setError(getTeamKpiErrorMessage(caughtError));
     } finally {
       if (requestId === requestSequence.current) {
+        activeRequest.current = null;
         setLoading(false);
         setRefreshing(false);
       }
     }
   }, [currentUser, date, isAdmin]);
+
+  useEffect(() => () => activeRequest.current?.abort(), []);
 
   useEffect(() => {
     if (isAuthLoading || !currentUser || !isAdmin) return;
@@ -193,16 +198,14 @@ export default function ManagerKpiPage() {
     channel.subscribe();
 
     const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") scheduleRefresh();
+      if (document.visibilityState === "visible" && Date.now() - confirmedAt.current > 60_000) {
+        scheduleRefresh();
+      }
     };
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    const refreshInterval = window.setInterval(() => {
-      if (document.visibilityState === "visible") scheduleRefresh();
-    }, 30_000);
 
     return () => {
       if (realtimeTimer.current) clearTimeout(realtimeTimer.current);
-      window.clearInterval(refreshInterval);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       void supabase.removeChannel(channel);
     };

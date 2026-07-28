@@ -13,7 +13,7 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts", ".agents/**", ".codex-artifacts/**", "coverage/**",
     "temp_redesign/**",
-    "check.js", "check_active.js", "check_cols.js", "check_users.js", "check_users_paginated.js",
+    "check.js", "check_active.js", "check_caps.js", "check_cols.js", "check_users.js", "check_users_paginated.js", "check_visits.js",
     "scripts/seed-production-users.js",
   ]),
   // Downgrade React Compiler optimization hints to warnings.
