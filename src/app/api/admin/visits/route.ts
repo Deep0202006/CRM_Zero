@@ -28,7 +28,7 @@ export async function GET(request: Request) {
 
     const { data: visits, error: dbError } = await supabaseAdmin
       .from('field_visits')
-      .select(\ *, users:user_id ( name, email ), leads:lead_id ( business_name, contact_person, phone ) \)
+      .select("*, users:user_id ( name, email ), leads:lead_id ( business_name, contact_person, phone )")
       .order('created_at', { ascending: false });
 
     if (dbError) return NextResponse.json({ error: 'Database error' }, { status: 500 });
