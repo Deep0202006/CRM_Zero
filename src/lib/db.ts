@@ -296,7 +296,20 @@ export interface LocalAllocatedTarget {
 
 export interface SyncQueueItem {
   id?: number;
+  operation_id?: string;
   idempotency_key: string;
+  entity_type?: string;
+  entity_id?: string;
+  command_name?: string;
+  command_args?: Record<string, unknown>;
+  created_at?: string;
+  original_occurred_at?: string;
+  status?: "pending" | "syncing" | "retry_wait" | "permanent_failure";
+  next_retry_at?: string | null;
+  last_attempt_at?: string | null;
+  last_error_code?: string | null;
+  last_error_message?: string | null;
+  confirmed_at?: string | null;
   table_name: string;
   action: "INSERT" | "UPDATE" | "DELETE";
   data: object;
@@ -692,6 +705,67 @@ const dynamicTables = db as unknown as Record<string, DynamicTable>;
 const toDynamicRow = (value: object): DynamicRow => Object.fromEntries(Object.entries(value));
 const getDynamicField = (value: object, key: string): unknown => toDynamicRow(value)[key];
 
+const COMPLETED_VALUES = new Set(["completed", "resolved", "true", "1"]);
+
+export function semanticOperationId(
+  tableName: string,
+  action: "INSERT" | "UPDATE" | "DELETE",
+  data: object,
+): string {
+  const row = toDynamicRow(data);
+  const primaryKey = TABLE_PK[tableName] ?? "id";
+  const entityId = String(row[primaryKey] ?? "");
+  if (!entityId) throw new Error(`Cannot queue ${tableName} without ${primaryKey}.`);
+
+  if (tableName === "call_logs" && action === "INSERT") return `call:${entityId}`;
+  if (tableName === "client_queries" && COMPLETED_VALUES.has(String(row.problem_status).toLowerCase())) {
+    return `query-resolution:${entityId}`;
+  }
+  if (tableName === "mapping_requests" && COMPLETED_VALUES.has(String(row.status).toLowerCase())) {
+    return `mapping-completion:${entityId}`;
+  }
+  if (tableName === "tasks" && COMPLETED_VALUES.has(String(row.status).toLowerCase())) {
+    return `task-completion:${entityId}`;
+  }
+  if (tableName === "allocated_targets" && COMPLETED_VALUES.has(String(row.is_completed).toLowerCase())) {
+    return `allocated-target-completion:${entityId}`;
+  }
+  if (tableName === "field_visits" && action === "INSERT") return `field-visit:${entityId}`;
+  return `${tableName}:${action.toLowerCase()}:${entityId}`;
+}
+
+function buildQueueItem(
+  tableName: string,
+  action: "INSERT" | "UPDATE" | "DELETE",
+  data: object,
+): SyncQueueItem {
+  const now = new Date().toISOString();
+  const row = toDynamicRow(data);
+  const primaryKey = TABLE_PK[tableName] ?? "id";
+  const entityId = String(row[primaryKey]);
+  const operationId = semanticOperationId(tableName, action, data);
+  const occurredAt = String(
+    row.timestamp ?? row.resolved_at ?? row.completed_at ?? row.check_in_time ?? row.created_at ?? now,
+  );
+  return {
+    operation_id: operationId,
+    idempotency_key: operationId,
+    entity_type: tableName,
+    entity_id: entityId,
+    command_name: operationId.split(":")[0],
+    command_args: row,
+    created_at: now,
+    original_occurred_at: occurredAt,
+    status: "pending",
+    next_retry_at: null,
+    table_name: tableName,
+    action,
+    data,
+    timestamp: now,
+    retry_count: 0,
+  };
+}
+
 export async function transactionalMutation(
   tableName: string,
   action: "INSERT" | "UPDATE" | "DELETE",
@@ -709,14 +783,11 @@ export async function transactionalMutation(
       await table.delete(getDynamicField(data, pk));
     }
 
-    const item: SyncQueueItem = {
-      idempotency_key: crypto.randomUUID(),
-      table_name: tableName,
-      action,
-      data,
-      timestamp: new Date().toISOString(),
-    };
-    await db.sync_queue.add(item);
+    const item = buildQueueItem(tableName, action, data);
+    const existing = await db.sync_queue
+      .filter((candidate) => (candidate.operation_id ?? candidate.idempotency_key) === item.operation_id)
+      .first();
+    if (!existing) await db.sync_queue.add(item);
   });
 
   console.log(`Transactional mutation completed for table ${tableName} (${action})`);
@@ -730,14 +801,11 @@ export async function queueOfflineMutation(
   action: "INSERT" | "UPDATE" | "DELETE",
   data: object
 ) {
-  const item: SyncQueueItem = {
-    idempotency_key: crypto.randomUUID(),
-    table_name: tableName,
-    action,
-    data,
-    timestamp: new Date().toISOString(),
-  };
-  await db.sync_queue.add(item);
+  const item = buildQueueItem(tableName, action, data);
+  const existing = await db.sync_queue
+    .filter((candidate) => (candidate.operation_id ?? candidate.idempotency_key) === item.operation_id)
+    .first();
+  if (!existing) await db.sync_queue.add(item);
   console.log(`Mutation queued offline for table ${tableName} (${action})`);
   if (typeof navigator !== "undefined" && navigator.onLine) {
     await processSyncQueue();
@@ -754,6 +822,26 @@ let activeSyncQueueRun: Promise<void> | null = null;
 
 function isDuplicateKeyError(error: { code?: string; message?: string } | null | undefined): boolean {
   return Boolean(error && (error.code === "23505" || /duplicate key|already exists/i.test(error.message ?? "")));
+}
+
+export function classifySyncError(error: unknown): {
+  code: string;
+  status: "retry_wait" | "permanent_failure";
+} {
+  const candidate = error as { code?: string; message?: string };
+  const message = candidate?.message ?? String(error);
+  const code = candidate?.code ?? "SYNC_UNKNOWN";
+  if (
+    ["22P02", "23503", "23514", "42501", "42703", "42P01", "PGRST204"].includes(code) ||
+    /invalid input syntax for type uuid|foreign key|check constraint|permission denied|column .* does not exist|malformed/i.test(message)
+  ) {
+    return { code, status: "permanent_failure" };
+  }
+  return { code, status: "retry_wait" };
+}
+
+export function nextRetryDelayMs(retryCount: number): number {
+  return Math.min(15 * 60_000, 1_000 * 2 ** Math.min(Math.max(retryCount - 1, 0), 10));
 }
 
 async function verifyRemoteRowExists(
@@ -835,6 +923,8 @@ async function processSyncQueueInternal(): Promise<void> {
 
   for (const item of items) {
     if (!item.id) continue;
+    if (item.status === "permanent_failure") continue;
+    if (item.next_retry_at && Date.parse(item.next_retry_at) > Date.now()) continue;
 
     const prepared = prepareSyncPayload(item.table_name, item.data);
     const effectiveRetryCount = prepared.changed ? 0 : (item.retry_count ?? 0);
@@ -849,11 +939,13 @@ async function processSyncQueueInternal(): Promise<void> {
           ? `Payload repaired: ${prepared.repairReason}`
           : undefined,
       });
-    } else if (effectiveRetryCount >= 5) {
-      continue;
     }
 
     try {
+      await db.sync_queue.update(item.id, {
+        status: "syncing",
+        last_attempt_at: new Date().toISOString(),
+      });
       if (isSupabaseConfigured) {
         const remoteTableName = Object.keys(REMOTE_TO_LOCAL_TABLE)
           .find((key) => REMOTE_TO_LOCAL_TABLE[key] === item.table_name) ?? item.table_name;
@@ -940,16 +1032,23 @@ async function processSyncQueueInternal(): Promise<void> {
     } catch (error) {
       const retryCount = effectiveRetryCount + 1;
       const safeError = error instanceof Error ? error.message : String(error);
+      const classification = classifySyncError(error);
       console.warn(`Sync item ${item.id} failed (attempt ${retryCount}):`, safeError);
       await db.sync_queue.update(item.id, {
         data: prepared.data,
         retry_count: retryCount,
         last_error: safeError,
+        status: classification.status,
+        next_retry_at: classification.status === "retry_wait"
+          ? new Date(Date.now() + nextRetryDelayMs(retryCount)).toISOString()
+          : null,
+        last_error_code: classification.code,
+        last_error_message: safeError,
       });
 
       if (item.table_name === "field_visits") {
         const visitId = prepared.data.visit_id;
-        if (visitId && retryCount >= 5) {
+        if (visitId && classification.status === "permanent_failure") {
           try {
             await db.field_visits.update(visitId as string, { sync_status: "sync_failed" } as Partial<LocalFieldVisit>);
           } catch (syncStateError) {
@@ -971,6 +1070,16 @@ export function processSyncQueue(): Promise<void> {
     activeSyncQueueRun = null;
   });
   return activeSyncQueueRun;
+}
+
+export async function getUnsynchronizedWorkCounts() {
+  const items = await db.sync_queue.toArray();
+  return {
+    pending: items.filter((item) => !item.status || item.status === "pending" || item.status === "syncing").length,
+    retry_wait: items.filter((item) => item.status === "retry_wait").length,
+    permanent_failure: items.filter((item) => item.status === "permanent_failure").length,
+    total: items.length,
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { db, transactionalMutation, LocalUser, pullDownSync, processSyncQueue } from "@/lib/db";
+import { db, transactionalMutation, getUnsynchronizedWorkCounts, LocalUser, pullDownSync, processSyncQueue } from "@/lib/db";
 import { supabase } from "@/lib/supabaseClient";
 import { getCurrentISTDate } from "@/lib/dateTime";
 
@@ -11,7 +11,7 @@ interface AuthContextType {
   allUsers: LocalUser[];
   isLoading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
-  logout: () => Promise<void>;
+  logout: () => Promise<{ signedOut: boolean; unsynchronized: number }>;
   // Role flags
   isAdmin: boolean;
   isTechSupport: boolean;
@@ -195,12 +195,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     setIsLoading(true);
-    await supabase.auth.signOut();
-    setCurrentUser(null);
-    setCapabilities([]);
-    localStorage.removeItem("authenticated_user_id");
-
-    // Ensure any pending offline data is pushed before we wipe
     try {
       if (typeof window !== 'undefined' && navigator.onLine) {
         await processSyncQueue();
@@ -209,7 +203,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.warn("Failed to flush sync queue on logout", e);
     }
 
-    // Wipe local IndexedDB to prevent cross-user data contamination
+    const unsynchronized = await getUnsynchronizedWorkCounts();
+    if (unsynchronized.total > 0) {
+      setIsLoading(false);
+      return { signedOut: false, unsynchronized: unsynchronized.total };
+    }
+
+    await supabase.auth.signOut();
+    setCurrentUser(null);
+    setCapabilities([]);
+    localStorage.removeItem("authenticated_user_id");
+
     try {
       await Promise.all(db.tables.map(table => table.clear()));
     } catch (err) {
@@ -218,6 +222,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     setIsLoading(false);
     if (typeof window !== "undefined") window.location.href = "/login";
+    return { signedOut: true, unsynchronized: 0 };
   };
 
   // ─── Derived role flags ──────────────────────────────────────────────────
