@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "@supabase/supabase-js";
 import {
   parseTeamKpiResponse,
   type TeamKpiResponse,
   type TeamKpiRow,
 } from "@/lib/teamKpi/contract";
-import { loadTeamKpiServerReport, TeamKpiServerError } from "@/lib/teamKpi/serverReport";
+import { TeamKpiServerError } from "@/lib/teamKpi/serverReport";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -40,11 +40,7 @@ function jsonError(
   );
 }
 
-function isConfiguredServiceKey(value: string | undefined): value is string {
-  return Boolean(value && value !== "BUILD_TIME_PLACEHOLDER_KEY" && value.length > 40);
-}
-
-function createUserScopedClient(url: string, anonKey: string, accessToken: string): SupabaseClient {
+function createUserScopedClient(url: string, anonKey: string, accessToken: string) {
   return createClient(url, anonKey, {
     auth: {
       persistSession: false,
@@ -53,16 +49,6 @@ function createUserScopedClient(url: string, anonKey: string, accessToken: strin
     },
     global: {
       headers: { Authorization: `Bearer ${accessToken}` },
-    },
-  });
-}
-
-function createServiceClient(url: string, serviceKey: string): SupabaseClient {
-  return createClient(url, serviceKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-      detectSessionInUrl: false,
     },
   });
 }
@@ -145,7 +131,7 @@ function isMissingRpc(error: { code?: string; message?: string } | null): boolea
   return (
     error.code === "PGRST202" ||
     error.code === "42883" ||
-    /get_team_kpi_daily_v4.*(not found|schema cache|does not exist)/i.test(error.message ?? "")
+    /get_team_kpi_daily_v5.*(not found|schema cache|does not exist)/i.test(error.message ?? "")
   );
 }
 
@@ -154,27 +140,9 @@ function isPermissionError(error: { code?: string; message?: string } | null): b
   return error.code === "42501" || /administrator access|required|permission denied|unauthorized/i.test(error.message ?? "");
 }
 
-function isActiveUserValue(value: unknown): boolean {
-  if (typeof value === "boolean") return value;
-  if (typeof value === "number") return value === 1;
-  if (typeof value === "string") return ["1", "true", "t"].includes(value.trim().toLowerCase());
-  return false;
-}
-
-async function verifyAdmin(client: SupabaseClient, userId: string): Promise<boolean> {
-  const [{ data: publicUser, error: userError }, { data: capabilities, error: capabilityError }] = await Promise.all([
-    client.from("users").select("user_id,is_active").eq("user_id", userId).maybeSingle(),
-    client.from("user_capabilities").select("capability_code").eq("user_id", userId),
-  ]);
-
-  if (userError || capabilityError || !publicUser || !isActiveUserValue(publicUser.is_active)) return false;
-  return (capabilities ?? []).some((entry: { capability_code: string }) => entry.capability_code === "admin");
-}
-
 export async function GET(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !supabaseAnonKey) {
     return jsonError(500, "SUPABASE_NOT_CONFIGURED", "Team KPI server access is not configured.");
@@ -195,10 +163,6 @@ export async function GET(request: NextRequest) {
   }
 
   const userClient = createUserScopedClient(supabaseUrl, supabaseAnonKey, accessToken);
-  const serviceClient = isConfiguredServiceKey(serviceRoleKey)
-    ? createServiceClient(supabaseUrl, serviceRoleKey)
-    : null;
-
   try {
     const { data: userData, error: userError } = await userClient.auth.getUser(accessToken);
     if (userError || !userData.user) {
@@ -207,7 +171,7 @@ export async function GET(request: NextRequest) {
 
     // Primary path: a narrowly scoped SECURITY DEFINER RPC. It validates the
     // authenticated admin itself and returns every active user, including zeros.
-    const { data: rpcRows, error: rpcError } = await userClient.rpc("get_team_kpi_daily_v4", {
+    const { data: rpcRows, error: rpcError } = await userClient.rpc("get_team_kpi_daily_v5", {
       p_target_date: targetDate,
     });
 
@@ -224,7 +188,7 @@ export async function GET(request: NextRequest) {
         status: 200,
         headers: {
           "Cache-Control": "no-store, max-age=0",
-          "X-Team-KPI-Source": "database-rpc-v4",
+          "X-Team-KPI-Source": "database-rpc-v5",
         },
       });
     }
@@ -233,41 +197,11 @@ export async function GET(request: NextRequest) {
       return jsonError(403, "ADMIN_REQUIRED", "Administrator access is required for Team KPI.");
     }
 
-    // Controlled fallback: only a server-side service client may aggregate raw
-    // source tables. Browser/RLS-limited aggregation is deliberately forbidden.
-    if (serviceClient) {
-      const isAdmin = await verifyAdmin(serviceClient, userData.user.id);
-      if (!isAdmin) {
-        return jsonError(403, "ADMIN_REQUIRED", "Administrator access is required for Team KPI.");
-      }
-
-      const warnings = [{
-        source: "database RPC",
-        message: isMissingRpc(rpcError)
-          ? "Team KPI migration 029 is not installed or PostgREST has not refreshed; the secure server fallback supplied this report."
-          : `The Team KPI RPC failed (${rpcError.code ?? "unknown"}); the secure server fallback supplied this report.`,
-      }];
-      const report = parseTeamKpiResponse(
-        await loadTeamKpiServerReport(serviceClient, targetDate, warnings),
-      );
-      if (report.totals.team_members === 0) {
-        return jsonError(503, "TEAM_KPI_NO_ACTIVE_USERS", "Team KPI could not find active users.");
-      }
-
-      return NextResponse.json(report, {
-        status: 200,
-        headers: {
-          "Cache-Control": "no-store, max-age=0",
-          "X-Team-KPI-Source": "service-role-server-aggregation",
-        },
-      });
-    }
-
     if (isMissingRpc(rpcError)) {
       return jsonError(
         503,
-        "TEAM_KPI_V4_NOT_INSTALLED",
-        "Team KPI database migration 029 has not been applied or the schema cache is stale.",
+        "TEAM_KPI_V5_NOT_INSTALLED",
+        "Team KPI database migration 030 has not been applied or the schema cache is stale.",
         { supabaseCode: rpcError.code ?? "UNKNOWN" },
       );
     }

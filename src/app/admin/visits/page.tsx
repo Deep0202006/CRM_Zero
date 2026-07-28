@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { db, LocalFieldVisit, LocalUser, LocalLead } from "@/lib/db";
 import { getCurrentISTDate } from "@/lib/dateTime";
-import { MapPin, CheckCircle2, User, Download, Calendar } from "lucide-react";
+import { MapPin, User, Download, Calendar } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { QueueList } from "@/components/QueueList";
 import { MetricCard } from "@/components/ui/MetricCard";
@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/Button";
 import { supabase } from "@/lib/supabaseClient";
 
 export default function AdminVisitsPage() {
-  const { currentUser, isAdmin } = useAuth();
+  const { isAdmin } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
@@ -23,14 +23,18 @@ export default function AdminVisitsPage() {
   const loadData = async () => {
     if (!isAdmin) return;
     try {
-      let fetchedVisits: any[] = [];
+      type ReportVisit = LocalFieldVisit & {
+        users?: { name: string; email: string };
+        leads?: { business_name: string; phone: string };
+      };
+      let fetchedVisits: ReportVisit[] = [];
       if (navigator.onLine) {
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
           const res = await fetch(`/api/admin/visits?token=${session.access_token}`);
           if (res.ok) {
             const data = await res.json();
-            fetchedVisits = data.visits || [];
+            fetchedVisits = Array.isArray(data.visits) ? data.visits as ReportVisit[] : [];
           } else {
             fetchedVisits = await db.field_visits.toArray();
           }
@@ -51,7 +55,7 @@ export default function AdminVisitsPage() {
       allLeads.forEach(l => lMap.set(l.lead_id, l));
 
       // Inject backend-provided names into the maps if missing or outdated locally
-      fetchedVisits.forEach((v: any) => {
+      fetchedVisits.forEach((v) => {
         if (v.users) {
           uMap.set(v.user_id, { user_id: v.user_id, name: v.users.name, email: v.users.email } as LocalUser);
         }

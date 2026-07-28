@@ -7,21 +7,18 @@ describe("Team KPI server API contract", () => {
 
   it("validates the caller session and delegates authorization to the admin-only RPC", () => {
     expect(route).toContain("userClient.auth.getUser(accessToken)");
-    expect(route).toContain('userClient.rpc("get_team_kpi_daily_v4"');
+    expect(route).toContain('userClient.rpc("get_team_kpi_daily_v5"');
     expect(route).toContain("ADMIN_REQUIRED");
   });
 
-  it("uses a server-only service client as a controlled raw-source fallback", () => {
-    expect(route).toContain("process.env.SUPABASE_SERVICE_ROLE_KEY");
-    expect(route).toContain("createServiceClient");
-    expect(route).toContain("loadTeamKpiServerReport(serviceClient");
-    expect(route).toContain("verifyAdmin(serviceClient");
-    expect(route).toContain("isActiveUserValue");
-    expect(route).not.toContain("loadTeamKpiServerReport(userClient");
+  it("has no service-role or raw-table aggregation fallback", () => {
+    expect(route).not.toContain("SUPABASE_SERVICE_ROLE_KEY");
+    expect(route).not.toContain("createServiceClient");
+    expect(route).not.toContain("loadTeamKpiServerReport");
   });
 
   it("returns explicit deployment and source failures instead of an empty dashboard", () => {
-    expect(route).toContain("TEAM_KPI_V4_NOT_INSTALLED");
+    expect(route).toContain("TEAM_KPI_V5_NOT_INSTALLED");
     expect(route).toContain("TEAM_KPI_DATABASE_FAILED");
     expect(route).toContain("TEAM_KPI_NO_ACTIVE_USERS");
   });
@@ -29,7 +26,7 @@ describe("Team KPI server API contract", () => {
   it("keeps the existing page and uses one authenticated API request", () => {
     expect(page).toContain("/api/team-kpi?date=");
     expect(page).not.toContain('supabase.rpc("get_team_kpi_daily');
-    expect(page).toContain("30_000");
+    expect(page).toContain("AbortController");
     for (const label of ["Calls", "Client queries", "Mappings", "Tasks done"]) {
       expect(page).toContain(label);
     }
