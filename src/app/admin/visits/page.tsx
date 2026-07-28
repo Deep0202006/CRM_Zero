@@ -23,14 +23,17 @@ export default function AdminVisitsPage() {
   const loadData = async () => {
     if (!isAdmin) return;
     try {
-      let fetchedVisits: LocalFieldVisit[] = [];
+      let fetchedVisits: any[] = [];
       if (navigator.onLine) {
-        const { data, error } = await supabase
-          .from("field_visits")
-          .select("*")
-          .order("created_at", { ascending: false });
-        if (!error && data) {
-          fetchedVisits = data;
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          const res = await fetch(`/api/admin/visits?token=${session.access_token}`);
+          if (res.ok) {
+            const data = await res.json();
+            fetchedVisits = data.visits || [];
+          } else {
+            fetchedVisits = await db.field_visits.toArray();
+          }
         } else {
           fetchedVisits = await db.field_visits.toArray();
         }
@@ -46,6 +49,16 @@ export default function AdminVisitsPage() {
       const allLeads = await db.leads.toArray();
       const lMap = new Map<string, LocalLead>();
       allLeads.forEach(l => lMap.set(l.lead_id, l));
+
+      // Inject backend-provided names into the maps if missing or outdated locally
+      fetchedVisits.forEach((v: any) => {
+        if (v.users) {
+          uMap.set(v.user_id, { user_id: v.user_id, name: v.users.name, email: v.users.email } as LocalUser);
+        }
+        if (v.leads) {
+          lMap.set(v.lead_id, { lead_id: v.lead_id, business_name: v.leads.business_name, phone: v.leads.phone } as LocalLead);
+        }
+      });
 
       setUsersMap(uMap);
       setLeadsMap(lMap);
