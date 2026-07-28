@@ -23,7 +23,20 @@ export default function AdminVisitsPage() {
   const loadData = async () => {
     if (!isAdmin) return;
     try {
-      const fetchedVisits = await db.field_visits.toArray();
+      let fetchedVisits: LocalFieldVisit[] = [];
+      if (navigator.onLine) {
+        const { data, error } = await supabase
+          .from("field_visits")
+          .select("*")
+          .order("created_at", { ascending: false });
+        if (!error && data) {
+          fetchedVisits = data;
+        } else {
+          fetchedVisits = await db.field_visits.toArray();
+        }
+      } else {
+        fetchedVisits = await db.field_visits.toArray();
+      }
       fetchedVisits.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
       const allUsers = await db.users.toArray();
