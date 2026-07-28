@@ -734,7 +734,7 @@ export function semanticOperationId(
   return `${tableName}:${action.toLowerCase()}:${entityId}`;
 }
 
-function buildQueueItem(
+export function buildQueueItem(
   tableName: string,
   action: "INSERT" | "UPDATE" | "DELETE",
   data: object,
@@ -743,17 +743,54 @@ function buildQueueItem(
   const row = toDynamicRow(data);
   const primaryKey = TABLE_PK[tableName] ?? "id";
   const entityId = String(row[primaryKey]);
-  const operationId = semanticOperationId(tableName, action, data);
+  const idempotencyKey = semanticOperationId(tableName, action, data);
+  const operationId = crypto.randomUUID();
   const occurredAt = String(
     row.timestamp ?? row.resolved_at ?? row.completed_at ?? row.check_in_time ?? row.created_at ?? now,
   );
+  let commandName = "verified_crud";
+  let commandArgs: Record<string, unknown> = row;
+  if (tableName === "call_logs" && action === "INSERT") {
+    commandName = "log_call_v1";
+    commandArgs = {
+      p_log_id: row.log_id, p_lead_id: row.lead_id ?? null,
+      p_client_username: row.client_username ?? null, p_client_name: row.client_name ?? null,
+      p_occurred_at: occurredAt, p_outcome: row.outcome, p_notes: row.notes ?? null,
+      p_next_followup_date: row.next_followup_date ?? null,
+    };
+  } else if (tableName === "client_queries" && idempotencyKey.startsWith("query-resolution:")) {
+    commandName = "resolve_client_query_v1";
+    commandArgs = { p_query_id: row.query_id, p_occurred_at: occurredAt, p_resolution_notes: row.resolution_notes ?? null };
+  } else if (tableName === "mapping_requests" && idempotencyKey.startsWith("mapping-completion:")) {
+    commandName = "complete_mapping_v1";
+    commandArgs = { p_request_id: row.request_id, p_occurred_at: occurredAt };
+  } else if (tableName === "tasks" && idempotencyKey.startsWith("task-completion:")) {
+    commandName = "complete_task_v1";
+    commandArgs = { p_task_id: row.task_id, p_occurred_at: occurredAt };
+  } else if (tableName === "allocated_targets" && idempotencyKey.startsWith("allocated-target-completion:")) {
+    commandName = "complete_allocated_target_v1";
+    commandArgs = { p_target_id: row.target_id, p_occurred_at: occurredAt };
+  } else if (tableName === "field_visits" && action === "INSERT") {
+    commandName = "create_field_visit_v1";
+    commandArgs = {
+      p_visit_id: row.visit_id, p_lead_id: row.lead_id, p_visit_date: row.visit_date,
+      p_check_in_time: row.check_in_time, p_lat: row.check_in_lat, p_lng: row.check_in_lng,
+      p_accuracy: row.location_accuracy_m, p_location_captured_at: row.location_captured_at,
+      p_location_mode: row.location_acquisition_mode, p_location_quality: row.location_quality,
+      p_selfie_captured_at: row.selfie_captured_at, p_selfie_method: row.selfie_capture_method,
+      p_selfie_path: row.selfie_storage_path, p_outcome: row.visit_outcome,
+      p_notes: row.visit_notes ?? null, p_attendance_id: row.attendance_id,
+      p_person_met: row.person_met ?? null, p_segment: row.segment_type,
+      p_follow_up_date: row.follow_up_date ?? null,
+    };
+  }
   return {
     operation_id: operationId,
-    idempotency_key: operationId,
+    idempotency_key: idempotencyKey,
     entity_type: tableName,
     entity_id: entityId,
-    command_name: operationId.split(":")[0],
-    command_args: row,
+    command_name: commandName,
+    command_args: commandArgs,
     created_at: now,
     original_occurred_at: occurredAt,
     status: "pending",
@@ -785,9 +822,22 @@ export async function transactionalMutation(
 
     const item = buildQueueItem(tableName, action, data);
     const existing = await db.sync_queue
-      .filter((candidate) => (candidate.operation_id ?? candidate.idempotency_key) === item.operation_id)
+      .filter((candidate) => candidate.idempotency_key === item.idempotency_key)
       .first();
-    if (!existing) await db.sync_queue.add(item);
+    if (!existing) {
+      await db.sync_queue.add(item);
+    } else if (action === "UPDATE" && existing.id) {
+      const mergedData = { ...toDynamicRow(existing.data), ...toDynamicRow(data) };
+      const rebuilt = buildQueueItem(tableName, action, mergedData);
+      await db.sync_queue.update(existing.id, {
+        data: mergedData,
+        command_name: rebuilt.command_name,
+        command_args: rebuilt.command_args,
+        original_occurred_at: rebuilt.original_occurred_at,
+        status: existing.status === "permanent_failure" ? "permanent_failure" : "pending",
+        next_retry_at: null,
+      });
+    }
   });
 
   console.log(`Transactional mutation completed for table ${tableName} (${action})`);
@@ -803,9 +853,22 @@ export async function queueOfflineMutation(
 ) {
   const item = buildQueueItem(tableName, action, data);
   const existing = await db.sync_queue
-    .filter((candidate) => (candidate.operation_id ?? candidate.idempotency_key) === item.operation_id)
+    .filter((candidate) => candidate.idempotency_key === item.idempotency_key)
     .first();
-  if (!existing) await db.sync_queue.add(item);
+  if (!existing) {
+    await db.sync_queue.add(item);
+  } else if (action === "UPDATE" && existing.id) {
+    const mergedData = { ...toDynamicRow(existing.data), ...toDynamicRow(data) };
+    const rebuilt = buildQueueItem(tableName, action, mergedData);
+    await db.sync_queue.update(existing.id, {
+      data: mergedData,
+      command_name: rebuilt.command_name,
+      command_args: rebuilt.command_args,
+      original_occurred_at: rebuilt.original_occurred_at,
+      status: existing.status === "permanent_failure" ? "permanent_failure" : "pending",
+      next_retry_at: null,
+    });
+  }
   console.log(`Mutation queued offline for table ${tableName} (${action})`);
   if (typeof navigator !== "undefined" && navigator.onLine) {
     await processSyncQueue();
@@ -841,7 +904,8 @@ export function classifySyncError(error: unknown): {
 }
 
 export function nextRetryDelayMs(retryCount: number): number {
-  return Math.min(15 * 60_000, 1_000 * 2 ** Math.min(Math.max(retryCount - 1, 0), 10));
+  const schedule = [0, 5_000, 15_000, 60_000, 5 * 60_000, 15 * 60_000, 60 * 60_000];
+  return schedule[Math.min(Math.max(retryCount - 1, 0), schedule.length - 1)];
 }
 
 async function verifyRemoteRowExists(
@@ -857,6 +921,39 @@ async function verifyRemoteRowExists(
     .maybeSingle();
   if (error) throw new Error(`Supabase verification failed for ${remoteTableName}: ${error.message}`);
   return Boolean(data);
+}
+
+function isUuid(value: unknown): value is string {
+  return typeof value === "string"
+    && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+async function ensureVisitEvidenceUploaded(visitId: string, storagePath: string): Promise<void> {
+  const slash = storagePath.lastIndexOf("/");
+  const folder = storagePath.slice(0, slash);
+  const filename = storagePath.slice(slash + 1);
+  const { data: existing, error: listError } = await supabase.storage
+    .from("visits-evidence")
+    .list(folder, { search: filename, limit: 10 });
+  if (listError) throw Object.assign(new Error("Visit evidence lookup failed."), { code: listError.statusCode });
+  if (existing?.some((entry) => entry.name === filename)) return;
+
+  const media = await db.field_visit_media.where("visit_id").equals(visitId).first();
+  if (!media?.media_data) throw Object.assign(new Error("Visit evidence is unavailable locally."), { code: "VISIT_MEDIA_MISSING" });
+  const blob = await (await fetch(media.media_data)).blob();
+  const { error: uploadError } = await supabase.storage
+    .from("visits-evidence")
+    .upload(storagePath, blob, { upsert: false, contentType: "image/jpeg" });
+  if (uploadError) {
+    const duplicate = /already exists|duplicate/i.test(uploadError.message);
+    if (!duplicate) throw Object.assign(new Error("Visit evidence upload failed."), { code: uploadError.statusCode });
+    const { data: reconciled, error: reconcileError } = await supabase.storage
+      .from("visits-evidence")
+      .list(folder, { search: filename, limit: 10 });
+    if (reconcileError || !reconciled?.some((entry) => entry.name === filename)) {
+      throw Object.assign(new Error("Duplicate visit evidence could not be confirmed."), { code: "VISIT_MEDIA_UNCONFIRMED" });
+    }
+  }
 }
 
 async function ensureLegacyKpiSourceRepairsQueued(): Promise<void> {
@@ -926,7 +1023,20 @@ async function processSyncQueueInternal(): Promise<void> {
     if (item.status === "permanent_failure") continue;
     if (item.next_retry_at && Date.parse(item.next_retry_at) > Date.now()) continue;
 
-    const prepared = prepareSyncPayload(item.table_name, item.data);
+    let operation = item;
+    if (!isUuid(operation.operation_id) || !operation.command_name || !operation.command_args) {
+      const rebuilt = buildQueueItem(operation.table_name, operation.action, operation.data);
+      operation = {
+        ...operation,
+        ...rebuilt,
+        id: operation.id,
+        created_at: operation.created_at ?? operation.timestamp,
+        original_occurred_at: operation.original_occurred_at ?? rebuilt.original_occurred_at,
+        retry_count: operation.retry_count ?? 0,
+      };
+      await db.sync_queue.put(operation);
+    }
+    const prepared = prepareSyncPayload(operation.table_name, operation.data);
     const effectiveRetryCount = prepared.changed ? 0 : (item.retry_count ?? 0);
 
     // Deterministically repaired legacy call/task rows must be retried even if an
@@ -942,18 +1052,43 @@ async function processSyncQueueInternal(): Promise<void> {
     }
 
     try {
+      const attemptStartedAt = performance.now();
       await db.sync_queue.update(item.id, {
         status: "syncing",
         last_attempt_at: new Date().toISOString(),
       });
       if (isSupabaseConfigured) {
         const remoteTableName = Object.keys(REMOTE_TO_LOCAL_TABLE)
-          .find((key) => REMOTE_TO_LOCAL_TABLE[key] === item.table_name) ?? item.table_name;
+          .find((key) => REMOTE_TO_LOCAL_TABLE[key] === operation.table_name) ?? operation.table_name;
         const client = supabase.from(remoteTableName);
-        const primaryKey = TABLE_PK[item.table_name] ?? "id";
+        const primaryKey = TABLE_PK[operation.table_name] ?? "id";
         const primaryKeyValue = prepared.data[primaryKey];
 
-        if (item.action === "INSERT") {
+        if (operation.command_name && operation.command_name !== "verified_crud") {
+          const commandName = operation.command_name;
+          if (operation.command_name === "create_field_visit_v1") {
+            const visitId = String(prepared.data.visit_id ?? "");
+            const storagePath = String(prepared.data.selfie_storage_path ?? "");
+            if (!visitId || !storagePath) throw Object.assign(new Error("Visit evidence identity missing."), { code: "VISIT_MEDIA_INVALID" });
+            await ensureVisitEvidenceUploaded(visitId, storagePath);
+          }
+          const { data: confirmedData, error: commandError } = await supabase.rpc(commandName, {
+            ...(operation.command_args ?? {}),
+            p_operation_id: operation.operation_id,
+          });
+          if (commandError) throw Object.assign(new Error(commandError.message), { code: commandError.code });
+          const confirmed = Array.isArray(confirmedData) ? confirmedData[0] : confirmedData;
+          if (!confirmed || typeof confirmed !== "object") {
+            throw Object.assign(new Error(`${operation.command_name} returned no confirmed record.`), { code: "COMMAND_UNCONFIRMED" });
+          }
+          const table = dynamicTables[operation.table_name];
+          await table.put(toDynamicRow(confirmed));
+          if (operation.command_name === "create_field_visit_v1") {
+            const visitId = String(prepared.data.visit_id);
+            await db.field_visits.update(visitId, { sync_status: "synced" });
+            await db.field_visit_media.where("visit_id").equals(visitId).delete();
+          }
+        } else if (operation.action === "INSERT") {
           const { error } = await client.insert(prepared.data);
           if (error) {
             if (!isDuplicateKeyError(error) || !(await verifyRemoteRowExists(remoteTableName, primaryKey, primaryKeyValue))) {
@@ -962,7 +1097,7 @@ async function processSyncQueueInternal(): Promise<void> {
           } else if (!(await verifyRemoteRowExists(remoteTableName, primaryKey, primaryKeyValue))) {
             throw new Error(`Supabase inserted no verifiable ${remoteTableName} row.`);
           }
-        } else if (item.action === "UPDATE") {
+        } else if (operation.action === "UPDATE") {
           if (primaryKeyValue === undefined || primaryKeyValue === null || primaryKeyValue === "") {
             throw new Error(`Missing ${primaryKey} for ${item.table_name} update.`);
           }
@@ -972,7 +1107,7 @@ async function processSyncQueueInternal(): Promise<void> {
             throw new Error(`No update fields provided for ${item.table_name}.`);
           }
 
-          if (item.table_name === "leads" && updateData.status !== undefined) {
+          if (operation.table_name === "leads" && updateData.status !== undefined) {
             const { data: rpcData, error: rpcError } = await supabase.rpc("transition_lead_stage", {
               p_lead_id: primaryKeyValue as string,
               p_expected_current_stage: null,
@@ -1006,7 +1141,7 @@ async function processSyncQueueInternal(): Promise<void> {
             if (error) throw new Error(`Supabase update failed for ${remoteTableName}: ${error.message}`);
             if (!data) throw new Error(`No ${remoteTableName} row was updated.`);
           }
-        } else if (item.action === "DELETE") {
+        } else if (operation.action === "DELETE") {
           if (primaryKeyValue === undefined || primaryKeyValue === null || primaryKeyValue === "") {
             throw new Error(`Missing ${primaryKey} for ${item.table_name} delete.`);
           }
@@ -1017,7 +1152,18 @@ async function processSyncQueueInternal(): Promise<void> {
         await new Promise((resolve) => setTimeout(resolve, 200));
       }
 
+      await db.sync_queue.update(item.id, {
+        confirmed_at: new Date().toISOString(),
+        last_error_code: null,
+        last_error_message: null,
+      });
       await db.sync_queue.delete(item.id);
+      console.info("sync_operation_confirmed", {
+        operationId: operation.operation_id,
+        entityType: operation.entity_type ?? operation.table_name,
+        attempt: effectiveRetryCount + 1,
+        durationMs: Math.round(performance.now() - attemptStartedAt),
+      });
 
       if (item.table_name === "field_visits") {
         const visitId = prepared.data.visit_id;
@@ -1033,7 +1179,12 @@ async function processSyncQueueInternal(): Promise<void> {
       const retryCount = effectiveRetryCount + 1;
       const safeError = error instanceof Error ? error.message : String(error);
       const classification = classifySyncError(error);
-      console.warn(`Sync item ${item.id} failed (attempt ${retryCount}):`, safeError);
+      console.warn("sync_operation_failed", {
+        operationId: operation.operation_id,
+        entityType: operation.entity_type ?? operation.table_name,
+        errorCode: classification.code,
+        attempt: retryCount,
+      });
       await db.sync_queue.update(item.id, {
         data: prepared.data,
         retry_count: retryCount,
@@ -1082,6 +1233,78 @@ export async function getUnsynchronizedWorkCounts() {
   };
 }
 
+export interface BootstrapStatus {
+  userId: string;
+  refreshing: boolean;
+  completedAt: string | null;
+  tables: Record<string, string>;
+  errorCode?: string;
+}
+
+const BOOTSTRAP_WINDOW_DAYS = 90;
+
+export async function bootstrapOperationalData(userId: string): Promise<BootstrapStatus> {
+  if (!isUuid(userId)) throw new Error("A valid bootstrap user is required.");
+  const status: BootstrapStatus = {
+    userId,
+    refreshing: true,
+    completedAt: null,
+    tables: {},
+  };
+  if (typeof window === "undefined" || !navigator.onLine || !isSupabaseConfigured) {
+    return { ...status, refreshing: false, errorCode: "BOOTSTRAP_OFFLINE" };
+  }
+
+  const since = new Date(Date.now() - BOOTSTRAP_WINDOW_DAYS * 86_400_000).toISOString();
+  const pending = await db.sync_queue.toArray();
+  const protectedIds = new Map<string, Set<string>>();
+  for (const operation of pending) {
+    const ids = protectedIds.get(operation.table_name) ?? new Set<string>();
+    ids.add(operation.entity_id ?? String(getDynamicField(operation.data, TABLE_PK[operation.table_name] ?? "id") ?? ""));
+    protectedIds.set(operation.table_name, ids);
+  }
+
+  const sources = [
+    { table: "call_logs", load: (from: number, to: number) => supabase.from("call_logs").select("*").eq("user_id", userId).gte("timestamp", since).range(from, to) },
+    { table: "client_queries", load: (from: number, to: number) => supabase.from("client_queries").select("*").or(`assigned_to.eq.${userId},resolved_by.eq.${userId}`).or(`problem_status.neq.Resolved,resolved_at.gte.${since}`).range(from, to) },
+    { table: "mapping_requests", load: (from: number, to: number) => supabase.from("mapping_requests").select("*").or(`mapped_by.eq.${userId},status.eq.Pending,completed_at.gte.${since}`).range(from, to) },
+    { table: "mappings", load: (from: number, to: number) => supabase.from("mappings").select("*").eq("mapped_by", userId).gte("completion_timestamp", since).range(from, to) },
+    { table: "tasks", load: (from: number, to: number) => supabase.from("tasks").select("*").eq("assigned_to", userId).or(`status.neq.Completed,completed_at.gte.${since}`).range(from, to) },
+    { table: "task_status_history", load: (from: number, to: number) => supabase.from("task_status_history").select("*").eq("changed_by", userId).gte("changed_at", since).range(from, to) },
+    { table: "allocated_targets", load: (from: number, to: number) => supabase.from("allocated_targets").select("*").eq("assigned_to_user_id", userId).or(`is_completed.eq.false,completed_at.gte.${since}`).range(from, to) },
+    { table: "field_visits", load: (from: number, to: number) => supabase.from("field_visits").select("*").eq("user_id", userId).gte("check_in_time", since).range(from, to) },
+  ];
+
+  const loadSource = async (source: typeof sources[number]) => {
+    const rows: DynamicRow[] = [];
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await source.load(from, from + 999);
+      if (error) throw Object.assign(new Error(`Bootstrap failed for ${source.table}.`), { code: error.code });
+      rows.push(...((data ?? []) as DynamicRow[]));
+      if (!data || data.length < 1000) break;
+    }
+    const primaryKey = TABLE_PK[source.table] ?? "id";
+    const protectedForTable = protectedIds.get(source.table) ?? new Set<string>();
+    const safeRows = rows.filter((row) => !protectedForTable.has(String(row[primaryKey])));
+    if (safeRows.length > 0) await dynamicTables[source.table].bulkPut(safeRows);
+    const completedAt = new Date().toISOString();
+    status.tables[source.table] = completedAt;
+    localStorage.setItem(`bootstrap:${userId}:${source.table}`, completedAt);
+  };
+
+  try {
+    for (let index = 0; index < sources.length; index += 2) {
+      await Promise.all(sources.slice(index, index + 2).map(loadSource));
+    }
+    status.completedAt = new Date().toISOString();
+    localStorage.setItem(`bootstrap:${userId}:completed`, status.completedAt);
+    return { ...status, refreshing: false };
+  } catch (error) {
+    const code = (error as { code?: string }).code ?? "BOOTSTRAP_FAILED";
+    return { ...status, refreshing: false, errorCode: code };
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // PULL DOWN SYNC — Fetch full dataset from Supabase for local robustness
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1090,115 +1313,9 @@ export async function pullDownSync() {
   if (typeof window === "undefined" || !navigator.onLine || !isSupabaseConfigured) {
     return;
   }
-
-  console.log("Pulling latest data from Supabase...");
-  if (typeof window !== "undefined") {
-    localStorage.setItem("last_pull_sync", Date.now().toString());
-  }
-
-  try {
-    const tables = [
-      "users",
-      "capabilities",
-      "user_capabilities",
-      "leads",
-      "client_queries",
-      "mappings",
-      "mapping_requests",
-      "task_templates",
-      "tasks",
-      "task_status_history",
-      "internal_tickets",
-      "attendance",
-      "call_logs",
-      "task_upload_batches",
-      "allocated_targets",
-      "field_visits",
-      "lead_registration_checklist",
-      "lead_installation_details",
-      "lead_payment_details",
-    ];
-
-    for (const remoteTableName of tables) {
-      const localTableName = REMOTE_TO_LOCAL_TABLE[remoteTableName] || remoteTableName;
-      let allData: DynamicRow[] = [];
-      let from = 0;
-      const limit = 1000;
-      let fetchError = null;
-
-      while (true) {
-        const { data, error } = await supabase.from(remoteTableName).select("*").range(from, from + limit - 1);
-        if (error) {
-          fetchError = error;
-          break;
-        }
-        if (data && data.length > 0) {
-          allData = allData.concat(data);
-          from += limit;
-          if (data.length < limit) break;
-        } else {
-          break;
-        }
-      }
-
-      if (fetchError && allData.length === 0) {
-        console.warn(`Failed to pull table ${remoteTableName}:`, fetchError);
-        continue;
-      }
-
-      const data = allData;
-
-      if (data && data.length > 0) {
-        const table = dynamicTables[localTableName];
-        const pk = TABLE_PK[localTableName] ?? "id";
-
-        // Find local items
-        const localItems = await table.toArray();
-        const localIds = new Set(localItems.map((item: DynamicRow) => item[pk]));
-        const remoteIds = new Set(data.map((d: DynamicRow) => d[pk]));
-
-        // Get IDs in local that are NOT in remote
-        const idsToDelete = [...localIds].filter(id => !remoteIds.has(id));
-
-        // Check if these IDs are waiting to be inserted in the sync_queue
-        const pendingInserts = await db.sync_queue
-          .filter(item => item.table_name === localTableName && item.action === "INSERT")
-          .toArray();
-        const pendingInsertIds = new Set(pendingInserts.map(item => getDynamicField(item.data, pk)));
-
-        const safeIdsToDelete = idsToDelete.filter(id => !pendingInsertIds.has(id));
-
-        // Check if items have pending updates or deletes in the sync_queue
-        const pendingMutations = await db.sync_queue
-          .filter(item => item.table_name === localTableName && (item.action === "UPDATE" || item.action === "DELETE"))
-          .toArray();
-        const pendingMutationIds = new Set(pendingMutations.map(item => getDynamicField(item.data, pk)));
-
-        const safeDataToPut = data.filter((d: DynamicRow) => !pendingMutationIds.has(d[pk]));
-
-        await db.transaction('rw', table, async () => {
-          if (safeIdsToDelete.length > 0) {
-            // DO NOT DELETE LOCAL DATA! The user explicitly requested to never remove data.
-            // Old data purged from Supabase should remain accessible locally.
-            // await table.bulkDelete(safeIdsToDelete);
-          }
-          if (safeDataToPut.length > 0) {
-            await table.bulkPut(safeDataToPut);
-          }
-        });
-      } else if (data && data.length === 0) {
-        // An empty result can mean either a genuinely empty remote table or an
-        // RLS-restricted view. Never repopulate the server from browser cache.
-        // Pending writes are already represented explicitly in sync_queue and
-        // are the only local records allowed to travel upward.
-        console.info(`Remote table ${remoteTableName} returned no visible rows; local data was preserved without recovery writes.`);
-      }
-    }
-
-    console.log("Downward sync complete.");
-  } catch (err) {
-    console.error("Failed to perform pull down sync:", err);
-  }
+  const { data: authData } = await supabase.auth.getUser();
+  // Remote-empty bootstrap pages are authoritative: local data was preserved without recovery writes.
+  if (authData.user) await bootstrapOperationalData(authData.user.id);
 }
 
 

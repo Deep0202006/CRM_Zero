@@ -73,6 +73,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [profileOpen, setProfileOpen] = useState(false);
   const [syncOpen, setSyncOpen] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [logoutMessage, setLogoutMessage] = useState<string | null>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   const syncRef = useRef<HTMLDivElement>(null);
   const mobileDrawerRef = useRef<HTMLElement>(null);
@@ -330,6 +331,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           label: "Admin Control",
           path: "/admin",
           description: "Users, roles, and capability access",
+          group: "Management",
+          visible: isAdmin,
+        },
+        {
+          icon: <Activity size={17} />,
+          label: "Data Health",
+          path: "/admin/data-health",
+          description: "Synchronization and reporting health",
           group: "Management",
           visible: isAdmin,
         },
@@ -631,7 +640,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   <button
                     type="button"
                     role="menuitem"
-                    onClick={() => logout()}
+                    onClick={async () => {
+                      const result = await logout();
+                      if (!result.signedOut) {
+                        setLogoutMessage(`${result.unsynchronized} unsynchronized operation${result.unsynchronized === 1 ? "" : "s"} remain. Reconnect or retry sync before signing out.`);
+                        setProfileOpen(false);
+                      }
+                    }}
                     className="flex w-full items-center gap-3 rounded-[var(--radius-md)] px-3 py-2.5 text-left text-[12px] font-medium text-[var(--status-danger)] hover:bg-[var(--status-danger-soft)]"
                   >
                     <LogOut size={16} />
@@ -644,6 +659,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </header>
 
         <main id="main-content" className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          {logoutMessage && (
+            <div role="status" className="mx-4 mt-4 rounded-[var(--radius-md)] border border-[var(--status-warning)] bg-[var(--status-warning-soft)] px-4 py-3 text-[12px] text-[var(--text-primary)] sm:mx-6 lg:mx-8">
+              {logoutMessage}
+            </div>
+          )}
           <div className="px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-7">{children}</div>
         </main>
       </div>

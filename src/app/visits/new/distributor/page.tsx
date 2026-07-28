@@ -12,6 +12,7 @@ import Link from "next/link";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { CheckInGate } from "@/components/CheckInGate";
 import SelfieCapture from "@/components/visits/SelfieCapture";
+import { classifyLocationQuality, generateEvidencePath } from "@/lib/fieldVisits/contract";
 
 const blobToBase64 = (blob: Blob): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -145,7 +146,8 @@ export default function NewDistributorVisitPage() {
       }
 
       const mediaBase64 = await blobToBase64(photoBlob);
-      const locationQuality = accuracy && accuracy <= 50 ? "high" : accuracy && accuracy <= 200 ? "medium" : "low";
+      if (!accuracy || !locCapturedAt || !attendanceRec) throw new Error("Complete attendance and location evidence are required.");
+      const locationQuality = classifyLocationQuality(accuracy);
 
       const visitRecord = {
         visit_id: visitId,
@@ -157,12 +159,12 @@ export default function NewDistributorVisitPage() {
         check_in_lng: lng,
         location_accuracy_m: accuracy,
         location_captured_at: locCapturedAt,
-        location_acquisition_mode: 'gps',
+        location_acquisition_mode: 'high_accuracy',
         location_quality: locationQuality,
         check_in_photo_url: null,
         selfie_captured_at: now,
-        selfie_capture_method: 'camera_or_upload',
-        selfie_storage_path: null,
+        selfie_capture_method: 'file_fallback',
+        selfie_storage_path: generateEvidencePath(currentUser.user_id, visit_date, visitId),
         visit_outcome: outcome,
         visit_notes: notes.trim() || null,
         person_met: personMet.trim() || null,

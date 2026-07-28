@@ -4,7 +4,7 @@
 // them from task_templates matching the user's active capabilities, writes to
 // Dexie and queues for sync using the same sync_queue pattern as leads/attendance.
 
-import { db, transactionalMutation, type LocalTask, type LocalTaskTemplate } from "./db";
+import { buildQueueItem, db, processSyncQueue, transactionalMutation, type LocalTask, type LocalTaskTemplate } from "./db";
 
 export type { LocalTask, LocalTaskTemplate };
 
@@ -122,8 +122,6 @@ export async function updateTaskStatus(
     if (proof?.photoUrl) updates.proof_photo_url = proof.photoUrl;
   }
 
-  await transactionalMutation("tasks", "UPDATE", { task_id: task.task_id, ...updates });
-
   const historyEntry = {
     id: crypto.randomUUID(),
     task_id: task.task_id,
@@ -132,5 +130,19 @@ export async function updateTaskStatus(
     new_status: newStatus,
     changed_at: now,
   };
-  await transactionalMutation("task_status_history", "INSERT", historyEntry);
+  if (newStatus === "Completed") {
+    await db.transaction("rw", [db.tasks, db.task_status_history, db.sync_queue], async () => {
+      await db.tasks.update(task.task_id, updates);
+      await db.task_status_history.put(historyEntry);
+      const operation = buildQueueItem("tasks", "UPDATE", { task_id: task.task_id, ...updates });
+      const existing = await db.sync_queue
+        .filter((entry) => entry.idempotency_key === operation.idempotency_key)
+        .first();
+      if (!existing) await db.sync_queue.add(operation);
+    });
+    if (typeof navigator !== "undefined" && navigator.onLine) void processSyncQueue();
+  } else {
+    await transactionalMutation("tasks", "UPDATE", { task_id: task.task_id, ...updates });
+    await transactionalMutation("task_status_history", "INSERT", historyEntry);
+  }
 }
