@@ -1,0 +1,30 @@
+import fs from "node:fs";
+import path from "node:path";
+import crypto from "node:crypto";
+import { countWords, globMatch, root } from "./cli.mjs";
+
+const fixtureRoot = path.join(root, "tests", "harness", "fixtures");
+const cases = JSON.parse(fs.readFileSync(path.join(fixtureRoot, "cases.json"), "utf8"));
+const results = [];
+const assert = (name, condition) => {
+  results.push({ name, passed: Boolean(condition) });
+  if (!condition) console.error(`FAIL ${name}`);
+};
+assert("valid scoped change", globMatch("src/lib/db.ts", "src/lib/db.ts"));
+assert("changed unrelated file fails", !["src/lib/db.ts"].some((pattern) => globMatch("src/app/globals.css", pattern)));
+assert("modified locked migration fails", crypto.createHash("sha256").update("changed").digest("hex") !== cases.lockedHash);
+assert("new valid migration passes", !/\b(?:DROP\s+TABLE|TRUNCATE)\b/i.test(cases.validMigration));
+assert("enum-unsafe SQL fails", /COALESCE\s*\(\s*status\s*,\s*''/.test(cases.enumUnsafeSql));
+assert("client service-role reference fails", /SUPABASE_SERVICE_ROLE_KEY/.test(cases.clientSecret));
+assert("environment-reading helper fails", /readFileSync\s*\(\s*['\"]\.env/.test(cases.envReader));
+assert("committed repair ZIP fails", /(?:repair|forensic|handoff).*\.(?:zip|7z|rar)$/i.test(cases.repairZip));
+assert("missing test mapping fails", !cases.mappedProductionPaths.includes(cases.unmappedProductionPath));
+assert("duplicate idempotency creation fails", (cases.duplicateIdempotency.match(/crypto\.randomUUID/g) ?? []).length > 1);
+assert("manual apply mismatch fails", cases.migrationSql !== cases.manualApplySql);
+assert("skipped E2E classification", cases.skippedEvidence.status === "SKIPPED");
+assert("evidence report generation", cases.evidence.exitCode === 0 && cases.evidence.stdoutPath);
+assert("context size enforcement", countWords(cases.context) <= 1500 && Buffer.byteLength(cases.context) <= 61440);
+assert("stable context ordering", [...cases.paths].sort().join() === cases.paths.join());
+assert("no secret content in output", !/eyJ[A-Za-z0-9_-]{10,}\./.test(cases.safeOutput));
+if (results.some((result) => !result.passed)) process.exit(1);
+console.log(`Harness self-tests passed (${results.length} fixtures).`);
