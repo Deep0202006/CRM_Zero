@@ -1,0 +1,3 @@
+- Table: public.team_kpi_events
+- Contract: event_key (PK), event_type, source_table, source_record_id, performed_by (FK to users), occurred_at, usiness_date, created_at.
+- Events captured using schema-qualified, non-browser-executable triggers on source tables.

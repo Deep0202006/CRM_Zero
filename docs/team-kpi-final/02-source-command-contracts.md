@@ -1,0 +1,5 @@
+- **Calls**: log_call_v2 (supports Excel client resolution)
+- **Client Queries**: resolve_client_query_v2 (atomically marks resolved)
+- **Mappings**: complete_mapping_request_v2 (atomically marks complete)
+- **Tasks**: complete_task_v2 (updates status and adds history atomically)
+- **Allocated Targets**: complete_allocated_target_v2 (completes target for assigned user)
