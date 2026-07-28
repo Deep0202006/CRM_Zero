@@ -1,4 +1,4 @@
-status: LOCAL_COMPLETE
+status: COMPLETE
 status_contract:
   COMPLETE: local_and_required_remote_ci_green
   LOCAL_COMPLETE: local_gates_green_remote_ci_not_yet_green
@@ -17,4 +17,7 @@ phases:
   kpi: complete
   recovery: complete
   tests: complete
-  release: remote_ci_pending
+  release: remote_ci_green
+remote_ci:
+  workflow_run: https://github.com/Deep0202006/CRM_Zero/actions/runs/30362542456
+  evidence_artifact: zerodata-harness-evidence
