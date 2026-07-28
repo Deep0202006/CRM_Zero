@@ -1,0 +1,68 @@
+{
+  "version": 1,
+  "artifactDirectory": ".codex-artifacts",
+  "maxContextWords": 1500,
+  "maxContextBytes": 61440,
+  "maxLinesPerFile": 80,
+  "maxInitialFiles": 20,
+  "maxHandoffWords": 600,
+  "maxReviewWords": 800,
+  "protectedWorkflowFiles": [
+    "src/app/manager/kpi/page.tsx",
+    "src/app/admin/visits/page.tsx",
+    "src/app/call-logs/page.tsx",
+    "src/app/support/page.tsx",
+    "src/app/mappings/page.tsx",
+    "src/app/my-day/page.tsx"
+  ],
+  "humanGates": [
+    "production SQL", "Supabase migration execution", "destructive migration",
+    "RLS broadening", "service-role use", "credential changes", "production deployment",
+    "attribution-changing backfill", "backup restoration", "ambiguous historical recovery",
+    "major dependency upgrade", "scope expansion", "force push", "merge to main"
+  ],
+  "securityAllowlist": [
+    {
+      "path": "src/app/api/admin/**",
+      "pattern": "SUPABASE_SERVICE_ROLE_KEY",
+      "reason": "Server-only user administration routes require the provider admin API.",
+      "owner": "Security Engineering",
+      "expiry": "2027-01-31"
+    },
+    {
+      "path": "docs/**",
+      "pattern": "SUPABASE_SERVICE_ROLE_KEY",
+      "reason": "Security documentation names the prohibited credential without containing its value.",
+      "owner": "Security Engineering",
+      "expiry": "2027-01-31"
+    },
+    {
+      "path": "scripts/harness/**",
+      "pattern": "SUPABASE_SERVICE_ROLE_KEY",
+      "reason": "Harness detector source must name the pattern it rejects.",
+      "owner": "Harness Engineering",
+      "expiry": "2027-01-31"
+    },
+    {
+      "path": "src/lib/__tests__/teamKpiApiContract.test.ts",
+      "pattern": "SUPABASE_SERVICE_ROLE_KEY",
+      "reason": "Contract test asserts the credential is absent from the API implementation.",
+      "owner": "Security Engineering",
+      "expiry": "2027-01-31"
+    },
+    {
+      "path": "tests/harness/fixtures/cases.json",
+      "pattern": "SUPABASE_SERVICE_ROLE_KEY",
+      "reason": "Negative self-test fixture proves the detector fails.",
+      "owner": "Harness Engineering",
+      "expiry": "2027-01-31"
+    },
+    {
+      "path": "tests/harness/fixtures/cases.json",
+      "pattern": "manual-env-parse",
+      "reason": "Negative self-test fixture proves manual environment parsing fails.",
+      "owner": "Harness Engineering",
+      "expiry": "2027-01-31"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "name": "authentication",
+  "purpose": "Login, session restoration, authorization, and logout durability.",
+  "entrypoints": ["src/context/AuthContext.tsx", "src/app/login/**", "src/app/api/admin/**"],
+  "sharedDependencies": ["src/lib/supabaseClient.ts", "src/lib/db.ts"],
+  "databaseObjects": ["users", "user_capabilities"],
+  "invariants": ["Authorization is server enforced.", "No client admin bypass.", "Logout never clears unsynchronized work.", "Bootstrap is user scoped."],
+  "forbiddenPatterns": ["isAdmin = true", "localStorage.clear("],
+  "allowedDefaultPaths": ["src/context/AuthContext.tsx", "src/app/login/**", "src/app/api/admin/**", "src/lib/supabaseClient.ts", "src/lib/__tests__/**", "tests/e2e/authorization.spec.ts", "tests/e2e/data-health.spec.ts", "docs/**", "harness/**", "scripts/harness/**", "tests/harness/**", "package.json", "package-lock.json", "AGENTS.md", ".github/**"],
+  "requiredTests": ["tests/e2e/authorization.spec.ts"],
+  "optionalTests": ["tests/e2e/data-health.spec.ts"],
+  "manualGates": ["credential changes", "service-role use"],
+  "relatedDocs": ["docs/data-platform-repair/09-security-and-rls.md"],
+  "riskLevel": "critical"
+}

@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "protected": [
+    {"path": "/api/team-kpi", "method": "GET", "role": "admin", "contractTest": "src/lib/__tests__/teamKpiApiContract.test.ts"},
+    {"path": "/api/admin/visits", "method": "GET", "role": "admin", "contractTest": "tests/e2e/authorization.spec.ts"},
+    {"path": "/api/admin/visits/evidence", "method": "GET", "role": "admin", "contractTest": "tests/e2e/authorization.spec.ts"},
+    {"path": "/api/admin/export-visits", "method": "GET", "role": "admin", "contractTest": "tests/e2e/field-visits-admin.spec.ts"}
+  ]
+}

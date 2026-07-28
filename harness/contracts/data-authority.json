@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "confirmedAuthority": "Supabase business tables",
+  "localRole": "IndexedDB user-scoped cache and durable outbox",
+  "entities": ["call_logs", "client_queries", "mapping_requests", "mappings", "tasks", "allocated_targets", "field_visits"],
+  "rules": ["Server confirmation is required for synced state.", "Pending local mutations win over stale bootstrap rows.", "Remote-empty never initiates upload.", "Realtime signals refresh."]
+}

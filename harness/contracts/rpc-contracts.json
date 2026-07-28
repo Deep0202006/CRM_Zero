@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "commands": ["log_call_v1", "resolve_client_query_v1", "complete_mapping_v1", "complete_task_v1", "complete_allocated_target_v1", "create_field_visit_v1"],
+  "reports": ["get_team_kpi_daily_v5", "get_admin_visit_report_v1", "get_admin_data_health_v1"],
+  "requirements": ["auth.uid actor", "active-user validation", "fixed search_path", "PUBLIC and anon revoked", "authenticated grant only", "confirmed row returned"]
+}

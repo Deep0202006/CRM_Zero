@@ -1,0 +1,15 @@
+{
+  "name": "admin-reporting",
+  "purpose": "Authorized metadata reports, exports, and operational health.",
+  "entrypoints": ["src/app/admin/**", "src/app/api/admin/**"],
+  "sharedDependencies": ["src/lib/fieldVisits/serverReport.ts", "src/lib/teamKpi/**"],
+  "databaseObjects": ["get_admin_visit_report_v1", "get_admin_data_health_v1"],
+  "invariants": ["Admin authorization is exact.", "Reports expose only required data.", "Totals use the same filters as rows.", "Private evidence is requested on demand."],
+  "forbiddenPatterns": ["createSignedUrl in list", "status: 200 on backend error"],
+  "allowedDefaultPaths": ["src/app/admin/**", "src/app/api/admin/**", "src/lib/fieldVisits/serverReport.ts", "src/lib/teamKpi/**", "src/lib/__tests__/**", "tests/e2e/**", "docs/**", "harness/**", "scripts/harness/**", "tests/harness/**", "package.json", "package-lock.json", "AGENTS.md", ".github/**"],
+  "requiredTests": ["tests/e2e/authorization.spec.ts", "tests/e2e/data-health.spec.ts"],
+  "optionalTests": ["tests/e2e/field-visits-admin.spec.ts"],
+  "manualGates": [],
+  "relatedDocs": ["docs/data-platform-repair/09-security-and-rls.md"],
+  "riskLevel": "high"
+}
