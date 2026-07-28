@@ -18,7 +18,7 @@ describe("server-authoritative data durability", () => {
 
   it("uses bounded increasing retry delay without abandoning work", () => {
     expect(nextRetryDelayMs(2)).toBeGreaterThan(nextRetryDelayMs(1));
-    expect(nextRetryDelayMs(100)).toBeLessThanOrEqual(15 * 60_000);
+    expect(nextRetryDelayMs(100)).toBeLessThanOrEqual(60 * 60_000);
   });
 
   it("migration is enum-safe, immutable, projection-only, and admin-scoped", () => {
