@@ -2,6 +2,18 @@
 - ID:
 - Area:
 
+<!-- zerodata-harness
+{
+  "taskId": "replace-me",
+  "area": "replace-me",
+  "riskLevel": "low",
+  "databaseChange": false,
+  "uiChange": false,
+  "allowedPaths": ["replace-me"],
+  "approvedExceptions": []
+}
+-->
+
 ## Problem and root cause
 ## Change boundary
 ## Invariants
@@ -14,7 +26,9 @@
 - Evidence artifact references:
 
 ## Full gates
-- Evidence artifact references:
+- GitHub Actions run URL:
+- Artifact: `zerodata-harness-evidence`
+- Compact exit-code summary:
 
 ## Skipped gates
 ## Screenshots (only when UI changed)

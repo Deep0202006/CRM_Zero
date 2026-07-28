@@ -2,6 +2,10 @@
   "name": "crm-zero",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=22.23.1 <23",
+    "npm": "10.9.8"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -13,7 +17,7 @@
     "harness:context": "node scripts/harness/context-pack.mjs",
     "harness:scope": "node scripts/harness/policy-check.mjs --scope",
     "harness:architecture": "node scripts/harness/policy-check.mjs --architecture",
-    "harness:security": "node scripts/harness/secret-check.mjs",
+    "harness:security": "node scripts/harness/secret-check.mjs && node scripts/harness/security-audit.mjs",
     "harness:migrations": "node scripts/harness/migration-check.mjs",
     "harness:sql": "node scripts/harness/manual-sql-check.mjs",
     "harness:tests": "node scripts/harness/affected-tests.mjs",
@@ -23,6 +27,13 @@
     "harness:handoff": "node scripts/harness/review-pack.mjs --handoff",
     "harness:release": "node scripts/harness/release-check.mjs",
     "harness:self-test": "node scripts/harness/self-test.mjs",
+    "harness:clean-room": "node scripts/harness/clean-room.mjs",
+    "harness:pr-metadata": "node scripts/harness/pr-metadata.mjs",
+    "harness:security-audit": "node scripts/harness/security-audit.mjs",
+    "harness:budgets": "node scripts/harness/performance-check.mjs",
+    "harness:evidence": "node scripts/harness/prepare-evidence.mjs",
+    "harness:ci": "node scripts/harness/verify.mjs --mode ci",
+    "harness:toolchain": "node scripts/harness/toolchain-check.mjs",
     "test:e2e": "playwright test",
     "test:e2e:list": "playwright test --list",
     "vercel-build": "npm run test && next build"

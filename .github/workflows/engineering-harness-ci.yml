@@ -8,62 +8,118 @@ concurrency:
   group: harness-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 jobs:
-  fast-policy:
+  verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
       - uses: actions/setup-node@v4
-        with: { node-version: 20, cache: npm }
+        with: { node-version-file: .node-version, cache: npm }
+      - run: node scripts/harness/toolchain-check.mjs --install-npm
+      - name: Toolchain
+        run: |
+          node --version
+          npm --version
       - run: npm ci
-      - run: npm run harness:architecture
-      - run: npm run harness:security
-      - run: npm run harness:migrations
-      - run: npm run harness:sql
-      - name: Scope metadata
-        run: npm run harness:scope
-        env: { CI: "true" }
-  test-build:
+      - name: Reconstruct strict PR scope metadata
+        if: github.event_name == 'pull_request'
+        run: npm run harness:pr-metadata
+      - name: Generate bounded context
+        if: github.event_name == 'pull_request'
+        run: npm run harness:context
+      - name: Verify with command evidence
+        if: github.event_name == 'pull_request'
+        run: npm run harness:ci
+      - name: Verify without PR scope
+        if: github.event_name != 'pull_request'
+        run: npm run harness:verify
+      - name: Generate portable review evidence
+        if: always() && github.event_name == 'pull_request'
+        run: |
+          npm run harness:review-pack
+          npm run harness:handoff
+          npm run harness:budgets
+          npm run harness:evidence
+      - name: Upload sanitized evidence
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: zerodata-harness-evidence
+          path: .codex-artifacts/ci-evidence/
+          retention-days: 7
+          if-no-files-found: error
+  changed-platform-files:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    outputs:
+      portability: ${{ steps.filter.outputs.portability }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            portability:
+              - 'scripts/harness/**'
+              - 'harness/**'
+              - '.github/workflows/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - '.node-version'
+  platform-portability:
+    needs: changed-platform-files
+    if: needs.changed-platform-files.outputs.portability == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
       - uses: actions/setup-node@v4
-        with: { node-version: 20, cache: npm }
+        with: { node-version-file: .node-version, cache: npm }
+      - run: node scripts/harness/toolchain-check.mjs --install-npm
+      - run: node --version
+      - run: npm --version
       - run: npm ci
-      - run: npm run lint
-      - run: npm test -- --runInBand
-      - run: npm run build
-      - run: git diff --check "$(git merge-base HEAD origin/${{ github.base_ref }})...HEAD"
+      - run: npm run harness:self-test
+      - run: npm run harness:clean-room
   e2e-acceptance:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
+      - name: Report credential status
+        id: credentials
+        env:
+          USER_EMAIL: ${{ secrets.PLAYWRIGHT_USER_EMAIL }}
+          USER_PASSWORD: ${{ secrets.PLAYWRIGHT_USER_PASSWORD }}
+          ADMIN_EMAIL: ${{ secrets.PLAYWRIGHT_ADMIN_EMAIL }}
+          ADMIN_PASSWORD: ${{ secrets.PLAYWRIGHT_ADMIN_PASSWORD }}
+        run: |
+          if [ -z "$USER_EMAIL" ] || [ -z "$USER_PASSWORD" ] || [ -z "$ADMIN_EMAIL" ] || [ -z "$ADMIN_PASSWORD" ]; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "## E2E acceptance: SKIPPED" >> "$GITHUB_STEP_SUMMARY"
+            echo "Required credential-backed acceptance secrets are unavailable." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          fi
       - uses: actions/checkout@v4
+        if: steps.credentials.outputs.available == 'true'
       - uses: actions/setup-node@v4
-        with: { node-version: 20, cache: npm }
+        if: steps.credentials.outputs.available == 'true'
+        with: { node-version-file: .node-version, cache: npm }
+      - run: node scripts/harness/toolchain-check.mjs --install-npm
+        if: steps.credentials.outputs.available == 'true'
       - run: npm ci
-      - name: Acceptance or explicit skip
+        if: steps.credentials.outputs.available == 'true'
+      - name: Run credential-backed acceptance
+        if: steps.credentials.outputs.available == 'true'
         env:
           PLAYWRIGHT_BASE_URL: ${{ secrets.PLAYWRIGHT_BASE_URL }}
           PLAYWRIGHT_USER_EMAIL: ${{ secrets.PLAYWRIGHT_USER_EMAIL }}
           PLAYWRIGHT_USER_PASSWORD: ${{ secrets.PLAYWRIGHT_USER_PASSWORD }}
           PLAYWRIGHT_ADMIN_EMAIL: ${{ secrets.PLAYWRIGHT_ADMIN_EMAIL }}
           PLAYWRIGHT_ADMIN_PASSWORD: ${{ secrets.PLAYWRIGHT_ADMIN_PASSWORD }}
-        run: |
-          if [ -z "$PLAYWRIGHT_USER_EMAIL" ]; then
-            echo "SKIPPED: credential-backed E2E secrets unavailable"
-          else
-            npm run test:e2e
-          fi
-  harness-self-test:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 20, cache: npm }
-      - run: npm ci
-      - run: npm run harness:self-test
+        run: npm run test:e2e

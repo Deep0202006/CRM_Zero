@@ -6,7 +6,7 @@
   "databaseObjects": ["command_receipts", "team_activity_events", "authenticated command RPCs"],
   "invariants": ["Supabase is cross-device authority.", "IndexedDB is cache and durable outbox.", "Operation IDs are stable and idempotency keys are semantic.", "Server confirmation precedes synced state.", "Pending work blocks logout.", "Empty remote results never cause mass local upload."],
   "forbiddenPatterns": ["idempotency_key: crypto.randomUUID", "Pushing local data to restore remote"],
-  "allowedDefaultPaths": ["src/lib/db.ts", "src/lib/syncPayload.ts", "src/lib/taskEngine.ts", "src/context/AuthContext.tsx", "src/lib/__tests__/**", "tests/e2e/offline-outbox.spec.ts", "tests/e2e/cross-device-data.spec.ts", "docs/data-platform-repair/**", "supabase/migrations/**", "harness/**", "scripts/harness/**", "docs/harness/**", "tests/harness/**", "package.json", "package-lock.json", "AGENTS.md", ".github/**"],
+  "allowedDefaultPaths": [".node-version", "src/lib/db.ts", "src/lib/syncPayload.ts", "src/lib/taskEngine.ts", "src/context/AuthContext.tsx", "src/lib/__tests__/**", "tests/e2e/offline-outbox.spec.ts", "tests/e2e/cross-device-data.spec.ts", "docs/data-platform-repair/**", "supabase/migrations/**", "harness/**", "scripts/harness/**", "docs/harness/**", "tests/harness/**", "package.json", "package-lock.json", "AGENTS.md", ".github/**"],
   "requiredTests": ["src/lib/__tests__/dataPlatformDurability.test.ts", "src/lib/__tests__/syncPayload.test.ts", "tests/e2e/offline-outbox.spec.ts", "tests/e2e/cross-device-data.spec.ts"],
   "optionalTests": ["src/lib/__tests__/teamKpiSyncDurability.test.ts"],
   "manualGates": ["Supabase migration execution", "production deployment"],

@@ -15,7 +15,18 @@ const commands = mode === "quick"
       npmInvocation("test", "--", "--runInBand"),
       npmInvocation("exec", "tsc", "--", "--noEmit")
     ]
-  : [
+  : mode === "ci" ? [
+      npmInvocation("run", "harness:self-test"),
+      npmInvocation("run", "harness:architecture"),
+      npmInvocation("run", "harness:security"),
+      npmInvocation("run", "harness:migrations"),
+      npmInvocation("run", "harness:sql"),
+      npmInvocation("run", "harness:scope"),
+      npmInvocation("run", "lint"),
+      npmInvocation("test", "--", "--runInBand"),
+      npmInvocation("run", "build"),
+      ["git", ["diff", "--check", `${task.baseCommit}...HEAD`]]
+    ] : [
       npmInvocation("run", "lint"),
       npmInvocation("run", "harness:architecture"),
       npmInvocation("run", "harness:security"),
@@ -37,4 +48,13 @@ for (let index = 0; index < commands.length; index += 1) {
 }
 fs.mkdirSync(runDirectory, { recursive: true });
 fs.writeFileSync(path.join(runDirectory, "evidence.json"), `${JSON.stringify(results, null, 2)}\n`);
+if (mode === "ci") {
+  const quickLabels = new Set(commands.slice(1, 6).map(([command, commandArgs]) => [command, ...commandArgs].join(" ")));
+  fs.writeFileSync(path.join(artifacts, "performance-evidence.json"), `${JSON.stringify({
+    node: process.version,
+    npm: process.env.npm_config_user_agent?.match(/npm\/([^\s]+)/)?.[1] ?? "unknown",
+    quickDurationMs: results.filter((item) => quickLabels.has(item.command)).reduce((sum, item) => sum + item.durationMs, 0),
+    fullDurationMs: results.reduce((sum, item) => sum + item.durationMs, 0)
+  }, null, 2)}\n`);
+}
 if (results.some((result) => result.exitCode !== 0)) process.exit(1);

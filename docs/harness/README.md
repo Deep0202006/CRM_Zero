@@ -14,6 +14,10 @@ npm run harness:release
 
 Generated state and evidence live only in `.codex-artifacts/`.
 
+Status vocabulary is strict: `LOCAL_COMPLETE` means local gates passed but required remote CI has not; `COMPLETE` requires both local and required remote CI green; `BLOCKED` means a required remote or human gate remains.
+
+PR review evidence is portable through the GitHub Actions artifact `zerodata-harness-evidence`. Local `.codex-artifacts` paths are never used as reviewer links.
+
 ## Area examples
 
 - Team KPI: `--area team-kpi --task "Add weekly comparison without changing daily calculations"`

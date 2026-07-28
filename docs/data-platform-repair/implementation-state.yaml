@@ -1,4 +1,8 @@
-status: repository_complete
+status: LOCAL_COMPLETE
+status_contract:
+  COMPLETE: local_and_required_remote_ci_green
+  LOCAL_COMPLETE: local_gates_green_remote_ci_not_yet_green
+  BLOCKED: required_remote_or_human_gate_remaining
 branch: fix/server-authoritative-crm-data
 sql_applied: false
 production_deployed: false
@@ -13,4 +17,4 @@ phases:
   kpi: complete
   recovery: complete
   tests: complete
-  release: local_gates_complete
+  release: remote_ci_pending
