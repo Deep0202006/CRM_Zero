@@ -23,7 +23,9 @@ export const args = (values = process.argv.slice(2)) => {
   return result;
 };
 export const git = (...values) => execFileSync("git", values, { cwd: root, encoding: "utf8" }).trim();
-export const sha256 = (file) => crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex");
+export const sha256 = (file) => crypto.createHash("sha256")
+  .update(fs.readFileSync(file, "utf8").replace(/\r\n/g, "\n"))
+  .digest("hex");
 export const listFiles = (directory = ".") => {
   const start = path.join(root, directory);
   if (!fs.existsSync(start)) return [];
