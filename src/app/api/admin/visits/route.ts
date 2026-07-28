@@ -1,40 +1,47 @@
-import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from "@supabase/supabase-js";
+import { NextResponse } from "next/server";
+import { loadVisitReport, visitReportFiltersSchema } from "@/lib/fieldVisits/serverReport";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+export const dynamic = "force-dynamic";
 
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: { persistSession: false, autoRefreshToken: false }
-});
+function errorResponse(status: number, code: string, message: string) {
+  return NextResponse.json({ code, message }, { status, headers: { "Cache-Control": "no-store" } });
+}
 
 export async function GET(request: Request) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const token = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "").trim();
+  if (!url || !anonKey) return errorResponse(500, "SUPABASE_NOT_CONFIGURED", "Visit reporting is not configured.");
+  if (!token) return errorResponse(401, "AUTHENTICATION_REQUIRED", "Sign in again.");
+
+  const client = createClient(url, anonKey, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    global: { headers: { Authorization: `Bearer ${token}` } },
+  });
+  const { data: userData, error: userError } = await client.auth.getUser(token);
+  if (userError || !userData.user) return errorResponse(401, "AUTHENTICATION_REQUIRED", "Your session has expired.");
+
+  const params = new URL(request.url).searchParams;
+  const parsed = visitReportFiltersSchema.safeParse({
+    from: params.get("from"),
+    to: params.get("to"),
+    representative: params.get("representative") || null,
+    segment: params.get("segment") || null,
+    outcomes: params.getAll("outcome"),
+    search: params.get("search") || null,
+    page: params.get("page") || 1,
+    pageSize: params.get("pageSize") || 50,
+    sortDesc: params.get("sort") !== "asc",
+  });
+  if (!parsed.success) return errorResponse(400, "INVALID_VISIT_FILTERS", "The visit report filters are invalid.");
+
   try {
-    const url = new URL(request.url);
-    const token = url.searchParams.get('token');
-    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-    if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-    const { data: caps, error: capsError } = await supabaseAdmin
-      .from('user_capabilities')
-      .select('capability_code')
-      .eq('user_id', user.id);
-    if (capsError) return NextResponse.json({ error: 'Failed to verify capabilities' }, { status: 500 });
-
-    const isAdmin = caps.some(c => c.capability_code === 'admin');
-    if (!isAdmin) return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
-
-    const { data: visits, error: dbError } = await supabaseAdmin
-      .from('field_visits')
-      .select("*, users:user_id ( name, email ), leads:lead_id ( business_name, contact_person, phone )")
-      .order('created_at', { ascending: false });
-
-    if (dbError) return NextResponse.json({ error: 'Database error' }, { status: 500 });
-
-    return NextResponse.json({ visits });
-  } catch (err) {
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    const report = await loadVisitReport(client, parsed.data);
+    return NextResponse.json(report, { headers: { "Cache-Control": "no-store" } });
+  } catch (error) {
+    const code = (error as { code?: string }).code ?? "VISIT_REPORT_FAILED";
+    const status = code === "42501" ? 403 : code === "PGRST202" ? 503 : 500;
+    return errorResponse(status, code, status === 403 ? "Administrator access is required." : "Visit reporting failed.");
   }
 }

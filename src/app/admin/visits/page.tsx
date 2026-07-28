@@ -1,170 +1,145 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { db, LocalFieldVisit, LocalUser, LocalLead } from "@/lib/db";
 import { getCurrentISTDate } from "@/lib/dateTime";
-import { MapPin, User, Download, Calendar } from "lucide-react";
+import type { VisitReport, VisitReportRow } from "@/lib/fieldVisits/serverReport";
+import { MapPin, User, Download, Calendar, AlertCircle, Image as ImageIcon } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { QueueList } from "@/components/QueueList";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { Button } from "@/components/ui/Button";
 import { supabase } from "@/lib/supabaseClient";
 
+const PAGE_SIZE = 50;
+
 export default function AdminVisitsPage() {
-  const { isAdmin } = useAuth();
-
-  const [loading, setLoading] = useState(true);
-  const [exporting, setExporting] = useState(false);
-  const [visits, setVisits] = useState<LocalFieldVisit[]>([]);
-  const [usersMap, setUsersMap] = useState<Map<string, LocalUser>>(new Map());
-  const [leadsMap, setLeadsMap] = useState<Map<string, LocalLead>>(new Map());
-
-  const loadData = async () => {
-    if (!isAdmin) return;
-    try {
-      type ReportVisit = LocalFieldVisit & {
-        users?: { name: string; email: string };
-        leads?: { business_name: string; phone: string };
-      };
-      let fetchedVisits: ReportVisit[] = [];
-      if (navigator.onLine) {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          const res = await fetch(`/api/admin/visits?token=${session.access_token}`);
-          if (res.ok) {
-            const data = await res.json();
-            fetchedVisits = Array.isArray(data.visits) ? data.visits as ReportVisit[] : [];
-          } else {
-            fetchedVisits = await db.field_visits.toArray();
-          }
-        } else {
-          fetchedVisits = await db.field_visits.toArray();
-        }
-      } else {
-        fetchedVisits = await db.field_visits.toArray();
-      }
-      fetchedVisits.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-
-      const allUsers = await db.users.toArray();
-      const uMap = new Map<string, LocalUser>();
-      allUsers.forEach(u => uMap.set(u.user_id, u));
-
-      const allLeads = await db.leads.toArray();
-      const lMap = new Map<string, LocalLead>();
-      allLeads.forEach(l => lMap.set(l.lead_id, l));
-
-      // Inject backend-provided names into the maps if missing or outdated locally
-      fetchedVisits.forEach((v) => {
-        if (v.users) {
-          uMap.set(v.user_id, { user_id: v.user_id, name: v.users.name, email: v.users.email } as LocalUser);
-        }
-        if (v.leads) {
-          lMap.set(v.lead_id, { lead_id: v.lead_id, business_name: v.leads.business_name, phone: v.leads.phone } as LocalLead);
-        }
-      });
-
-      setUsersMap(uMap);
-      setLeadsMap(lMap);
-      setVisits(fetchedVisits);
-    } catch (err) {
-      console.error("Failed to load admin visits:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadData();
-  }, [isAdmin]);
-
+  const { allUsers, isAdmin } = useAuth();
+  const today = getCurrentISTDate();
+  const [fromDate, setFromDate] = useState(today);
+  const [toDate, setToDate] = useState(today);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterOutcome, setFilterOutcome] = useState("ALL");
   const [filterAgent, setFilterAgent] = useState("ALL");
+  const [filterSegment, setFilterSegment] = useState("ALL");
+  const [page, setPage] = useState(1);
+  const [report, setReport] = useState<VisitReport | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const sequence = useRef(0);
+  const requestController = useRef<AbortController | null>(null);
+  const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const confirmedAt = useRef(0);
 
-  const getLeadDisplay = (lead_id: string) => {
-    if (lead_id.startsWith("EXCEL::")) {
-      const parts = lead_id.split("::");
-      if (parts.length === 3) return `${parts[2]} (@${parts[1]})`;
+  const loadData = useCallback(async (background = false) => {
+    if (!isAdmin) return;
+    const requestId = ++sequence.current;
+    requestController.current?.abort();
+    const controller = new AbortController();
+    requestController.current = controller;
+    if (background) setRefreshing(true);
+    else setLoading(true);
+    try {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (sessionError || !token) throw new Error("Your session has expired.");
+      const params = new URLSearchParams({
+        from: fromDate, to: toDate, page: String(page), pageSize: String(PAGE_SIZE),
+      });
+      if (filterAgent !== "ALL") params.set("representative", filterAgent);
+      if (filterSegment !== "ALL") params.set("segment", filterSegment);
+      if (filterOutcome !== "ALL") params.append("outcome", filterOutcome);
+      if (searchTerm.trim()) params.set("search", searchTerm.trim());
+      const response = await fetch(`/api/admin/visits?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      const body = await response.json();
+      if (!response.ok) throw body;
+      if (requestId !== sequence.current) return;
+      setReport(body as VisitReport);
+      confirmedAt.current = Date.now();
+      setError(null);
+    } catch (caught) {
+      if (requestId !== sequence.current) return;
+      if (caught instanceof DOMException && caught.name === "AbortError") return;
+      setError("Confirmed visits could not be refreshed. The last confirmed report remains visible.");
+    } finally {
+      if (requestId === sequence.current) {
+        setLoading(false);
+        setRefreshing(false);
+        requestController.current = null;
+      }
     }
-    const lead = leadsMap.get(lead_id);
-    if (lead) {
-      if (lead.business_name.includes("(@")) return lead.business_name;
-      return `${lead.business_name} - ${lead.phone || "N/A"}`;
-    }
-    return lead_id;
-  };
+  }, [filterAgent, filterOutcome, filterSegment, fromDate, isAdmin, page, searchTerm, toDate]);
 
-  const getAgentDisplay = (user_id: string) => {
-    const user = usersMap.get(user_id);
-    if (!user) return "Unknown Agent";
-    return `${user.name} (@${user.email})`;
-  };
+  useEffect(() => {
+    void loadData();
+    return () => requestController.current?.abort();
+  }, [loadData]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    const scheduleRefresh = () => {
+      if (refreshTimer.current) clearTimeout(refreshTimer.current);
+      refreshTimer.current = setTimeout(() => void loadData(true), 750);
+    };
+    const channel = supabase.channel("admin-confirmed-field-visits")
+      .on("postgres_changes", { event: "*", schema: "public", table: "field_visits" }, scheduleRefresh)
+      .subscribe();
+    const visibility = () => {
+      if (document.visibilityState === "visible" && Date.now() - confirmedAt.current > 60_000) scheduleRefresh();
+    };
+    document.addEventListener("visibilitychange", visibility);
+    return () => {
+      if (refreshTimer.current) clearTimeout(refreshTimer.current);
+      document.removeEventListener("visibilitychange", visibility);
+      void supabase.removeChannel(channel);
+    };
+  }, [isAdmin, loadData]);
 
   const handleExportExcel = async () => {
+    setExporting(true);
+    setError(null);
     try {
-      setExporting(true);
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("No session found");
-
-      // We pass the token in URL for simplicity since GET requests are standard for downloads,
-      // but if we fetch we can avoid URL logs. Let's fetch to keep token out of URL logs.
-      const url = new URL(window.location.origin + '/api/admin/export-visits');
-      url.searchParams.append('token', session.access_token);
-      if (filterOutcome !== "ALL") url.searchParams.append('outcome', filterOutcome);
-      if (filterAgent !== "ALL") url.searchParams.append('agent', filterAgent);
-
-      const response = await fetch(url.toString(), {
-        method: 'GET'
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) throw new Error("Authentication required.");
+      const params = new URLSearchParams({ from: fromDate, to: toDate });
+      if (filterAgent !== "ALL") params.set("representative", filterAgent);
+      if (filterSegment !== "ALL") params.set("segment", filterSegment);
+      if (filterOutcome !== "ALL") params.append("outcome", filterOutcome);
+      if (searchTerm.trim()) params.set("search", searchTerm.trim());
+      const response = await fetch(`/api/admin/export-visits?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
-
-      if (!response.ok) {
-        throw new Error('Export failed: ' + await response.text());
-      }
-
-      const blob = await response.blob();
-      const downloadUrl = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = downloadUrl;
-      a.download = `FieldVisitsExport_${new Date().toISOString().split('T')[0]}.xlsx`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
+      if (!response.ok) throw new Error("Export failed.");
+      const downloadUrl = URL.createObjectURL(await response.blob());
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      link.download = `FieldVisits_${fromDate}_${toDate}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
       URL.revokeObjectURL(downloadUrl);
-    } catch (err) {
-      console.error("Export error", err);
-      alert("Failed to export Excel. See console for details.");
+    } catch {
+      setError("The filtered visit workbook could not be exported.");
     } finally {
       setExporting(false);
     }
   };
 
   if (!isAdmin) {
-    return (
-      <div className="app-page">
-        <PageHeader eyebrow="Security" title="Access Denied" description="You do not have permission to view this page." />
-      </div>
-    );
+    return <div className="app-page"><PageHeader eyebrow="Security" title="Access Denied" description="You do not have permission to view this page." /></div>;
   }
 
-  const todayKey = getCurrentISTDate();
-  const visitsToday = visits.filter((v) => v.visit_date === todayKey).length;
-  const uniqueUsers = new Set(visits.map(v => v.user_id)).size;
-  const activeAgents = Array.from(uniqueUsers ? new Set(visits.map(v => v.user_id)) : []).map(id => ({ id, name: getAgentDisplay(id) }));
-
-  const filteredVisits = visits.filter((v) => {
-    if (filterOutcome !== "ALL" && v.visit_outcome !== filterOutcome) return false;
-    if (filterAgent !== "ALL" && v.user_id !== filterAgent) return false;
-    if (searchTerm) {
-      const q = searchTerm.toLowerCase();
-      const leadName = getLeadDisplay(v.lead_id).toLowerCase();
-      const agentName = getAgentDisplay(v.user_id).toLowerCase();
-      if (!leadName.includes(q) && !agentName.includes(q) && !(v.visit_notes || "").toLowerCase().includes(q)) {
-        return false;
-      }
-    }
-    return true;
-  });
+  const rows = report?.rows ?? [];
+  const totals = report?.totals ?? { total: 0, retailer: 0, distributor: 0 };
+  const totalPages = Math.max(1, Math.ceil(totals.total / PAGE_SIZE));
+  const activeAgents = allUsers.filter((user) => Boolean(user.is_active));
 
   return (
     <div className="app-page">
@@ -173,110 +148,105 @@ export default function AdminVisitsPage() {
         icon={<MapPin size={18} />}
         title="Team Field Visits"
         description="Monitor field visit compliance, check-ins, and outcomes across the organization."
-        actions={
-          <Button size="sm" variant="outline" icon={<Download size={14} />} onClick={handleExportExcel} isLoading={exporting}>
-            Export to Excel
-          </Button>
-        }
+        actions={<Button size="sm" variant="outline" icon={<Download size={14} />} onClick={handleExportExcel} isLoading={exporting}>Export to Excel</Button>}
       />
 
+      {error && <div className="alert-panel alert-panel--danger" role="alert"><AlertCircle size={16} /><span>{error}</span></div>}
+
       <div className="metric-grid">
-        <MetricCard label="Total Visits" value={visits.length} icon={<MapPin size={17} />} note="All recorded visits" />
-        <MetricCard label="Visits Today" value={visitsToday} icon={<Calendar size={17} />} tone="success" note="Recorded in the current calendar day" />
-        <MetricCard label="Active Field Reps" value={uniqueUsers} icon={<User size={17} />} tone="brand" note="Reps with at least one visit logged" />
+        <MetricCard label="Total Visits" value={totals.total} icon={<MapPin size={17} />} note="Complete filtered total" />
+        <MetricCard label="Retailer Visits" value={totals.retailer} icon={<Calendar size={17} />} tone="success" note="Complete filtered total" />
+        <MetricCard label="Distributor Visits" value={totals.distributor} icon={<User size={17} />} tone="brand" note="Complete filtered total" />
       </div>
 
-      <div className="mb-6 flex flex-wrap gap-4 items-center">
-         <input
-           type="text"
-           placeholder="Search business, agent, or notes..."
-           className="field-control max-w-sm"
-           value={searchTerm}
-           onChange={(e) => setSearchTerm(e.target.value)}
-         />
-         <select className="field-control max-w-xs" value={filterOutcome} onChange={(e) => setFilterOutcome(e.target.value)}>
-           <option value="ALL">All Outcomes</option>
-           <option value="Successful Pitch">Successful Pitch</option>
-           <option value="Follow-up Required">Follow-up Required</option>
-           <option value="Not Interested">Not Interested</option>
-           <option value="Store Closed">Store Closed</option>
-           <option value="Other">Other</option>
-         </select>
-         <select className="field-control max-w-xs" value={filterAgent} onChange={(e) => setFilterAgent(e.target.value)}>
-           <option value="ALL">All Agents</option>
-           {activeAgents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-         </select>
+      <div className="mb-6 flex flex-wrap items-center gap-3">
+        <input type="date" className="field-control max-w-[170px]" value={fromDate} onChange={(event) => { setPage(1); setFromDate(event.target.value); }} aria-label="From date" />
+        <input type="date" className="field-control max-w-[170px]" value={toDate} onChange={(event) => { setPage(1); setToDate(event.target.value); }} aria-label="To date" />
+        <input type="search" placeholder="Search business, agent, or person met..." className="field-control max-w-sm" value={searchTerm} onChange={(event) => { setPage(1); setSearchTerm(event.target.value); }} />
+        <select className="field-control max-w-xs" value={filterSegment} onChange={(event) => { setPage(1); setFilterSegment(event.target.value); }}>
+          <option value="ALL">All Segments</option><option value="Retailer">Retailer</option><option value="Distributor">Distributor</option>
+        </select>
+        <select className="field-control max-w-xs" value={filterOutcome} onChange={(event) => { setPage(1); setFilterOutcome(event.target.value); }}>
+          <option value="ALL">All Outcomes</option>
+          <option value="registered">Registered</option><option value="installed">Installed</option>
+          <option value="interested">Interested</option><option value="follow_up">Follow-up</option>
+          <option value="not_interested">Not interested</option>
+        </select>
+        <select className="field-control max-w-xs" value={filterAgent} onChange={(event) => { setPage(1); setFilterAgent(event.target.value); }}>
+          <option value="ALL">All Agents</option>
+          {activeAgents.map((agent) => <option key={agent.user_id} value={agent.user_id}>{agent.name}</option>)}
+        </select>
       </div>
 
       <div className="workspace-split">
         <QueueList
           title="Field Visit History"
-          items={filteredVisits.map((visit) => ({
-            id: visit.visit_id,
-            primaryNode: (
-              <div>
-                <p className="text-[13px] font-semibold leading-snug text-[var(--text-primary)]">
-                  {getLeadDisplay(visit.lead_id)}
-                  {visit.segment_type && <span className="ml-2 text-xs font-normal text-[var(--text-secondary)]">({visit.segment_type})</span>}
-                </p>
-                <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--text-muted)]">
-                  Rep · <span className="normal-case tracking-normal text-[var(--text-secondary)]">{getAgentDisplay(visit.user_id)}</span>
-                </p>
-                <div className="flex gap-2 text-xs text-[var(--text-secondary)] mt-2">
-                  <span className="font-medium bg-[var(--surface-secondary)] px-2 py-0.5 rounded border border-[var(--border-subtle)]">{visit.visit_outcome}</span>
-                  {visit.person_met && <span>Met: {visit.person_met}</span>}
-                </div>
-                <div className="mt-2 text-[11px] text-[var(--text-secondary)] flex gap-4">
-                  <span>Coordinates: {visit.check_in_lat ? `${visit.check_in_lat.toFixed(5)}, ${visit.check_in_lng?.toFixed(5)}` : "None"}</span>
-                  {visit.check_in_photo_url && (
-                    <PhotoViewerLink rawUrl={visit.check_in_photo_url} />
-                  )}
-                </div>
-                {visit.visit_notes && <p className="mt-2 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-2.5 text-[12px] leading-5 text-[var(--text-secondary)]">{visit.visit_notes}</p>}
-              </div>
-            ),
-            statusText: visit.visit_outcome,
-            statusVariant: "brand",
-            timestamp: new Date(visit.check_in_time).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }),
-          }))}
-          emptyMessage={loading ? "Loading visits…" : "No field visits found."}
-          onRefresh={loadData}
+          items={rows.map((visit) => visitItem(visit))}
+          emptyMessage={loading ? "Loading confirmed visits…" : "No confirmed field visits match these filters."}
+          onRefresh={() => void loadData(true)}
         />
+      </div>
+      <div className="mt-4 flex items-center justify-end gap-3 text-[12px] text-[var(--text-muted)]">
+        <span>Page {page} of {totalPages}{refreshing ? " · Refreshing…" : ""}</span>
+        <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage((value) => value - 1)}>Previous</Button>
+        <Button size="sm" variant="outline" disabled={page >= totalPages} onClick={() => setPage((value) => value + 1)}>Next</Button>
       </div>
     </div>
   );
 }
 
-function PhotoViewerLink({ rawUrl }: { rawUrl: string }) {
-  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+function visitItem(visit: VisitReportRow) {
+  return {
+    id: visit.visit_id,
+    primaryNode: (
+      <div>
+        <p className="text-[13px] font-semibold leading-snug text-[var(--text-primary)]">
+          {visit.business_name || visit.lead_id}
+          {visit.segment_type && <span className="ml-2 text-xs font-normal text-[var(--text-secondary)]">({visit.segment_type})</span>}
+        </p>
+        <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--text-muted)]">
+          Rep · <span className="normal-case tracking-normal text-[var(--text-secondary)]">{visit.representative_name}</span>
+        </p>
+        <div className="mt-2 flex gap-2 text-xs text-[var(--text-secondary)]">
+          <span className="rounded border border-[var(--border-subtle)] bg-[var(--surface-secondary)] px-2 py-0.5 font-medium">{visit.visit_outcome}</span>
+          {visit.person_met && <span>Met: {visit.person_met}</span>}
+        </div>
+        <div className="mt-2 flex gap-4 text-[11px] text-[var(--text-secondary)]">
+          <span>Coordinates: {visit.check_in_lat == null ? "None" : `${visit.check_in_lat.toFixed(5)}, ${visit.check_in_lng?.toFixed(5)}`}</span>
+          {visit.selfie_storage_path && <EvidenceButton visitId={visit.visit_id} />}
+        </div>
+        {visit.visit_notes && <p className="mt-2 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-2.5 text-[12px] leading-5 text-[var(--text-secondary)]">{visit.visit_notes}</p>}
+      </div>
+    ),
+    statusText: visit.visit_outcome,
+    statusVariant: "brand" as const,
+    timestamp: new Date(visit.check_in_time).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }),
+  };
+}
 
-  useEffect(() => {
-    async function load() {
-      // Extract file path from publicUrl format
-      // https://[ref].supabase.co/storage/v1/object/public/visits-evidence/uuid/file.jpg -> uuid/file.jpg
-      const match = rawUrl.match(/visits-evidence\/(.+)$/);
-      const filePath = match ? match[1] : rawUrl;
-
-      const { supabase } = await import('@/lib/supabaseClient');
-      const { data } = await supabase.storage.from("visits-evidence").createSignedUrl(filePath, 3600);
-      if (data?.signedUrl) {
-        setSignedUrl(data.signedUrl);
-      } else {
-        setSignedUrl(rawUrl); // fallback
-      }
+function EvidenceButton({ visitId }: { visitId: string }) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
+  const openEvidence = async () => {
+    setLoading(true);
+    setError(false);
+    try {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) throw new Error("Authentication required.");
+      const response = await fetch(`/api/admin/visits/evidence?visitId=${encodeURIComponent(visitId)}`, {
+        headers: { Authorization: `Bearer ${token}` }, cache: "no-store",
+      });
+      const body = await response.json();
+      if (!response.ok || typeof body.signedUrl !== "string") throw new Error("Evidence unavailable.");
+      window.open(body.signedUrl, "_blank", "noopener,noreferrer");
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
     }
-    load();
-  }, [rawUrl]);
-
-  return (
-    <a
-      href={signedUrl || "#"}
-      target={signedUrl ? "_blank" : undefined}
-      rel="noreferrer"
-      className={`text-brand-600 hover:underline ${!signedUrl ? "opacity-50 cursor-not-allowed" : ""}`}
-      onClick={(e) => { if (!signedUrl) e.preventDefault(); }}
-    >
-      View Photo
-    </a>
-  );
+  };
+  return <button type="button" className="text-[var(--brand-600)] hover:underline" onClick={openEvidence} disabled={loading}>
+    <span className="inline-flex items-center gap-1"><ImageIcon size={12} />{error ? "Retry evidence" : loading ? "Opening…" : "View selfie"}</span>
+  </button>;
 }
