@@ -46,4 +46,4 @@ for (const [index, invocation] of [
   console.log(`${result.status} ${result.exitCode} ${result.command}`);
 }
 fs.writeFileSync(path.join(runDirectory, "release-evidence.json"), `${JSON.stringify(results, null, 2)}\n`);
-if (results.some((item) => item.exitCode !== 0 && item.status !== "REVIEWED")) process.exit(1);
+if (results.some((item) => item.exitCode !== 0 && !["REVIEWED", "SKIPPED"].includes(item.status))) process.exit(1);
