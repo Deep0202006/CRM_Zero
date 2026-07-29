@@ -34,6 +34,7 @@
     "harness:evidence": "node scripts/harness/prepare-evidence.mjs",
     "harness:ci": "node scripts/harness/verify.mjs --mode ci",
     "harness:toolchain": "node scripts/harness/toolchain-check.mjs",
+    "harness:storage": "node scripts/harness/storage-report.mjs",
     "test:e2e": "playwright test",
     "test:e2e:list": "playwright test --list",
     "vercel-build": "npm run test && next build"
