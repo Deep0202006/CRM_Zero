@@ -2,6 +2,8 @@ import Dexie, { type Table } from "dexie";
 import { LeadSegment, LeadStatus } from "./validation";
 import { supabase, isSupabaseConfigured } from "./supabaseClient";
 import { prepareSyncPayload } from "./syncPayload";
+import { cleanupLocalStorage } from "./storageCleanup";
+import { DAY_MS, STORAGE_BUDGET } from "./storageBudget";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // INTERFACES — base system
@@ -187,7 +189,7 @@ export interface LocalFieldVisitMedia {
   media_id: string;
   visit_id: string;
   user_id: string;
-  media_data: string; // Base64 data URI
+  media_data: Blob;
   created_at: string;
 }
 
@@ -619,6 +621,19 @@ class CRMDatabase extends Dexie {
       field_visits: "visit_id, lead_id, user_id, visit_date, sync_status, [user_id+visit_date]",
       field_visit_media: "media_id, visit_id, user_id"
     });
+    // Version 14 — migrate legacy Base64 evidence to structured-clone Blobs.
+    this.version(14).stores({
+      field_visit_media: "media_id, visit_id, user_id"
+    }).upgrade(async (transaction) => {
+      const mediaTable = transaction.table("field_visit_media");
+      const records = await mediaTable.toArray() as Record<string, unknown>[];
+      for (const record of records) {
+        if (typeof record.media_data === "string" && record.media_data.startsWith("data:")) {
+          record.media_data = await (await fetch(record.media_data)).blob();
+          await mediaTable.put(record);
+        }
+      }
+    });
   }
 }
 
@@ -940,10 +955,9 @@ async function ensureVisitEvidenceUploaded(visitId: string, storagePath: string)
 
   const media = await db.field_visit_media.where("visit_id").equals(visitId).first();
   if (!media?.media_data) throw Object.assign(new Error("Visit evidence is unavailable locally."), { code: "VISIT_MEDIA_MISSING" });
-  const blob = await (await fetch(media.media_data)).blob();
   const { error: uploadError } = await supabase.storage
     .from("visits-evidence")
-    .upload(storagePath, blob, { upsert: false, contentType: "image/jpeg" });
+    .upload(storagePath, media.media_data, { upsert: false, contentType: "image/jpeg" });
   if (uploadError) {
     const duplicate = /already exists|duplicate/i.test(uploadError.message);
     if (!duplicate) throw Object.assign(new Error("Visit evidence upload failed."), { code: uploadError.statusCode });
@@ -1082,7 +1096,7 @@ async function processSyncQueueInternal(): Promise<void> {
             throw Object.assign(new Error(`${operation.command_name} returned no confirmed record.`), { code: "COMMAND_UNCONFIRMED" });
           }
           const table = dynamicTables[operation.table_name];
-          await table.put(toDynamicRow(confirmed));
+          await table.put({ ...toDynamicRow(confirmed), cache_confirmed_at: new Date().toISOString() });
           if (operation.command_name === "create_field_visit_v1") {
             const visitId = String(prepared.data.visit_id);
             await db.field_visits.update(visitId, { sync_status: "synced" });
@@ -1211,6 +1225,8 @@ async function processSyncQueueInternal(): Promise<void> {
   }
 
   console.log("Sync queue pass complete.");
+  const { data: authData } = await supabase.auth.getUser();
+  if (authData.user) await cleanupLocalStorage(db as unknown as import("./storageCleanup").CleanupDatabase, authData.user.id);
 }
 
 export function processSyncQueue(): Promise<void> {
@@ -1241,7 +1257,35 @@ export interface BootstrapStatus {
   errorCode?: string;
 }
 
-const BOOTSTRAP_WINDOW_DAYS = 90;
+export type HistoricalOperationalTable =
+  | "call_logs"
+  | "client_queries"
+  | "mapping_requests"
+  | "mappings"
+  | "tasks"
+  | "allocated_targets"
+  | "field_visits";
+
+export async function fetchHistoricalOperationalData(
+  table: HistoricalOperationalTable,
+  userId: string,
+  before: string,
+  limit = 50,
+): Promise<DynamicRow[]> {
+  if (!isUuid(userId)) throw new Error("A valid historical-data user is required.");
+  const boundedLimit = Math.max(1, Math.min(limit, 100));
+  let query = supabase.from(table).select("*");
+  if (table === "call_logs") query = query.eq("user_id", userId).lt("timestamp", before);
+  else if (table === "field_visits") query = query.eq("user_id", userId).lt("check_in_time", before);
+  else if (table === "tasks") query = query.eq("assigned_to", userId).lt("completed_at", before);
+  else if (table === "allocated_targets") query = query.eq("assigned_to_user_id", userId).lt("completed_at", before);
+  else if (table === "client_queries") query = query.or(`assigned_to.eq.${userId},resolved_by.eq.${userId}`).lt("resolved_at", before);
+  else if (table === "mapping_requests") query = query.or(`mapped_by.eq.${userId},requested_by.eq.${userId}`).lt("completed_at", before);
+  else query = query.eq("mapped_by", userId).lt("completion_timestamp", before);
+  const { data, error } = await query.limit(boundedLimit);
+  if (error) throw Object.assign(new Error("Historical data is unavailable."), { code: error.code });
+  return (data ?? []) as DynamicRow[];
+}
 
 export async function bootstrapOperationalData(userId: string): Promise<BootstrapStatus> {
   if (!isUuid(userId)) throw new Error("A valid bootstrap user is required.");
@@ -1255,7 +1299,7 @@ export async function bootstrapOperationalData(userId: string): Promise<Bootstra
     return { ...status, refreshing: false, errorCode: "BOOTSTRAP_OFFLINE" };
   }
 
-  const since = new Date(Date.now() - BOOTSTRAP_WINDOW_DAYS * 86_400_000).toISOString();
+  const since = new Date(Date.now() - STORAGE_BUDGET.recentOperationalWindowDays * DAY_MS).toISOString();
   const pending = await db.sync_queue.toArray();
   const protectedIds = new Map<string, Set<string>>();
   for (const operation of pending) {
@@ -1285,7 +1329,10 @@ export async function bootstrapOperationalData(userId: string): Promise<Bootstra
     }
     const primaryKey = TABLE_PK[source.table] ?? "id";
     const protectedForTable = protectedIds.get(source.table) ?? new Set<string>();
-    const safeRows = rows.filter((row) => !protectedForTable.has(String(row[primaryKey])));
+    const confirmedAt = new Date().toISOString();
+    const safeRows = rows
+      .filter((row) => !protectedForTable.has(String(row[primaryKey])))
+      .map((row) => ({ ...row, cache_confirmed_at: confirmedAt }));
     if (safeRows.length > 0) await dynamicTables[source.table].bulkPut(safeRows);
     const completedAt = new Date().toISOString();
     status.tables[source.table] = completedAt;
@@ -1298,6 +1345,7 @@ export async function bootstrapOperationalData(userId: string): Promise<Bootstra
     }
     status.completedAt = new Date().toISOString();
     localStorage.setItem(`bootstrap:${userId}:completed`, status.completedAt);
+    await cleanupLocalStorage(db as unknown as import("./storageCleanup").CleanupDatabase, userId);
     return { ...status, refreshing: false };
   } catch (error) {
     const code = (error as { code?: string }).code ?? "BOOTSTRAP_FAILED";
@@ -1375,7 +1423,7 @@ if (typeof window !== "undefined") {
             const pk = TABLE_PK[tableName] ?? "id";
 
             if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-              const record = payload.new;
+              const record: DynamicRow = { ...payload.new, cache_confirmed_at: new Date().toISOString() };
 
               // Skip if we have a pending offline mutation for this item (our local version is newer)
               const pendingMutation = await db.sync_queue
