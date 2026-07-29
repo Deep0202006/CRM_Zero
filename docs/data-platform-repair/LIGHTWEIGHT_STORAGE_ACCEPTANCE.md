@@ -2,6 +2,8 @@
 
 Use one synthetic user and two isolated browser profiles. Never copy real record content into evidence. Record counts, references, timestamps, and byte estimates only.
 
+Run this acceptance in GitHub Actions against a Vercel Preview connected to remote staging Supabase. Configure `PLAYWRIGHT_BASE_URL`, `PLAYWRIGHT_USER_EMAIL`, `PLAYWRIGHT_USER_PASSWORD`, `PLAYWRIGHT_ADMIN_EMAIL`, and `PLAYWRIGHT_ADMIN_PASSWORD` as repository or environment secrets. Never print their values. Docker, local Supabase, local PostgreSQL, database dumps, and downloaded evidence are not part of this procedure.
+
 ## Procedure
 
 1. Start with a new browser profile; record Data Health CRM usage and browser estimate.
