@@ -27,9 +27,10 @@ Permanent backups are remote. Employee PCs must never hold full database backups
 
 - Provider-managed backup is primary.
 - An encrypted remote logical backup is secondary.
+- Browser cache is not a backup. IndexedDB protects only unsynchronized work and the recent operational cache.
 - Backup and dump files must never be committed to Git or stored in repository folders.
-- Unencrypted backups must never be placed in Desktop or Downloads.
+- No backup, encrypted or otherwise, belongs in an employee Desktop or Downloads folder.
 - Selfies or other visit evidence must never be copied into GitHub Actions artifacts.
 - The browser must not expose a database-export backup feature.
-- Restore rehearsal is monthly and uses an isolated authorized environment.
+- Restore rehearsal is monthly and runs remotely or on an authorized isolated operator system.
 - Restore verification compares safe counts, stable IDs, command receipts, and references; it does not expose record content.
