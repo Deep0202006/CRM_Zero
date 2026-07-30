@@ -22,8 +22,28 @@ describe("visit evidence compression", () => {
   });
 
   it("never falls back to retaining the full-resolution original", async () => {
-    mockedCompression.mockRejectedValueOnce(new Error("decoder failed"));
-    const original = new File([new Uint8Array(900_000)], "original.jpg", { type: "image/jpeg" });
-    await expect(compressSelfie(original)).rejects.toThrow("capture the evidence again");
+    const consoleError = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+
+    try {
+      mockedCompression.mockRejectedValueOnce(new Error("decoder failed"));
+      const original = new File(
+        [new Uint8Array(900_000)],
+        "original.jpg",
+        { type: "image/jpeg" },
+      );
+
+      await expect(compressSelfie(original))
+        .rejects
+        .toThrow("capture the evidence again");
+
+      expect(consoleError).toHaveBeenCalledWith(
+        "Image compression failed; the original was not retained.",
+        "decoder failed",
+      );
+    } finally {
+      consoleError.mockRestore();
+    }
   });
 });
