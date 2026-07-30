@@ -7,6 +7,14 @@
   "maxInitialFiles": 20,
   "maxHandoffWords": 600,
   "maxReviewWords": 800,
+  "storagePolicy": {
+    "maxActiveWorktrees": 2,
+    "artifactRetentionDays": 7,
+    "artifactWarningBytes": 209715200,
+    "playwrightRetention": "failure-only",
+    "forbidCommittedArchives": true,
+    "forbidRepositoryProductionBackups": true
+  },
   "protectedWorkflowFiles": [
     "src/app/manager/kpi/page.tsx",
     "src/app/admin/visits/page.tsx",

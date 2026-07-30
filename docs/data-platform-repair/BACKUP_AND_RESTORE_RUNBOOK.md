@@ -21,3 +21,16 @@ Restore test:
 7. Record counts only. Destroy the isolated restore after approval.
 
 No automated backup workflow is enabled because repository backup credentials are not configured. Any future workflow must be manual, encrypted, secret-backed, and approved by an operator.
+# Backup location policy
+
+Permanent backups are remote. Employee PCs must never hold full database backups: they retain only the recent operational cache and unsynced work required for offline durability.
+
+- Provider-managed backup is primary.
+- An encrypted remote logical backup is secondary.
+- Browser cache is not a backup. IndexedDB protects only unsynchronized work and the recent operational cache.
+- Backup and dump files must never be committed to Git or stored in repository folders.
+- No backup, encrypted or otherwise, belongs in an employee Desktop or Downloads folder.
+- Selfies or other visit evidence must never be copied into GitHub Actions artifacts.
+- The browser must not expose a database-export backup feature.
+- Restore rehearsal is monthly and runs remotely or on an authorized isolated operator system.
+- Restore verification compares safe counts, stable IDs, command receipts, and references; it does not expose record content.

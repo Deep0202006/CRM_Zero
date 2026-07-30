@@ -14,15 +14,6 @@ import { CheckInGate } from "@/components/CheckInGate";
 import SelfieCapture from "@/components/visits/SelfieCapture";
 import { classifyLocationQuality, generateEvidencePath } from "@/lib/fieldVisits/contract";
 
-const blobToBase64 = (blob: Blob): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-};
-
 export default function NewDistributorVisitPage() {
   const { currentUser, capabilities } = useAuth();
   
@@ -145,7 +136,6 @@ export default function NewDistributorVisitPage() {
          throw new Error("You must check in for attendance today before logging visits.");
       }
 
-      const mediaBase64 = await blobToBase64(photoBlob);
       if (!accuracy || !locCapturedAt || !attendanceRec) throw new Error("Complete attendance and location evidence are required.");
       const locationQuality = classifyLocationQuality(accuracy);
 
@@ -176,7 +166,7 @@ export default function NewDistributorVisitPage() {
         updated_at: now
       };
 
-      await FieldVisitsRepository.saveVisitWithMedia(visitRecord, mediaBase64);
+      await FieldVisitsRepository.saveVisitWithMedia(visitRecord, photoBlob);
       
       setSuccess(true);
       setTimeout(() => {

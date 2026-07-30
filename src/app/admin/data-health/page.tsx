@@ -10,6 +10,8 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { getLocalStorageHealth, type LocalStorageHealth } from "@/lib/storageCleanup";
+import { MIB } from "@/lib/storageBudget";
 
 interface ServerHealth {
   latest_call_at: string | null;
@@ -31,6 +33,7 @@ export default function DataHealthPage() {
   const [error, setError] = useState<string | null>(null);
   const [online, setOnline] = useState(typeof navigator === "undefined" ? true : navigator.onLine);
   const [bootstrapCount, setBootstrapCount] = useState(0);
+  const [storage, setStorage] = useState<LocalStorageHealth | null>(null);
 
   useEffect(() => {
     const subscription = liveQuery(() => db.sync_queue.toArray()).subscribe(setQueue);
@@ -40,6 +43,10 @@ export default function DataHealthPage() {
     window.addEventListener("offline", handleOffline);
     if (currentUser) {
       setBootstrapCount(Object.keys(localStorage).filter((key) => key.startsWith(`bootstrap:${currentUser.user_id}:`)).length);
+      void getLocalStorageHealth(
+        db as unknown as import("@/lib/storageCleanup").CleanupDatabase,
+        currentUser.user_id,
+      ).then(setStorage);
     }
     return () => {
       subscription.unsubscribe();
@@ -99,6 +106,17 @@ export default function DataHealthPage() {
       <section className="surface-panel p-5">
         <h2 className="section-title">Current device</h2>
         <p className="mt-2 text-[12px] text-[var(--text-muted)]">Bootstrap sources completed: {bootstrapCount}</p>
+        {storage && (
+          <dl className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div><dt className="text-[11px] text-[var(--text-muted)]">Estimated CRM local storage</dt><dd className="text-[12px] font-semibold">{(storage.estimatedCrmBytes / MIB).toFixed(2)} MB</dd></div>
+            <div><dt className="text-[11px] text-[var(--text-muted)]">Browser quota estimate</dt><dd className="text-[12px] font-semibold">{storage.browserQuotaBytes === null ? "Unavailable" : `${(storage.browserQuotaBytes / MIB).toFixed(0)} MB`}</dd></div>
+            <div><dt className="text-[11px] text-[var(--text-muted)]">Pending media</dt><dd className="text-[12px] font-semibold">{(storage.pendingMediaBytes / MIB).toFixed(2)} MB</dd></div>
+            <div><dt className="text-[11px] text-[var(--text-muted)]">Storage status</dt><dd className="text-[12px] font-semibold">{storage.status}</dd></div>
+            <div><dt className="text-[11px] text-[var(--text-muted)]">Last cleanup</dt><dd className="text-[12px] font-semibold">{storage.lastCleanupAt ? new Date(storage.lastCleanupAt).toLocaleString() : "Not run"}</dd></div>
+            <div><dt className="text-[11px] text-[var(--text-muted)]">Last bootstrap</dt><dd className="text-[12px] font-semibold">{storage.lastBootstrapAt ? new Date(storage.lastBootstrapAt).toLocaleString() : "Not completed"}</dd></div>
+          </dl>
+        )}
+        {storage && <p className="mt-3 text-[11px] text-[var(--text-muted)]">IndexedDB table counts: {Object.entries(storage.tableCounts).map(([name, count]) => `${name} ${count}`).join(" · ")}</p>}
         {queue.length === 0 ? (
           <EmptyState icon={<CheckCircle2 size={20} />} title="No unsynchronized operations" description="This device has no pending or failed business commands." />
         ) : (
