@@ -352,23 +352,23 @@ export default function AdminPage() {
                   const highlighted = highlightRowId === user.user_id;
                   return (
                     <article key={user.user_id} className={`rounded-[var(--radius-lg)] border p-4 transition ${highlighted ? "border-[var(--status-success)] bg-[var(--status-success-soft)]" : "border-[var(--border-subtle)] bg-[var(--surface-primary)] hover:border-[var(--border-default)]"}`}>
-                      <div className="flex flex-col gap-4 xl:flex-row xl:items-start">
-                        <div className="flex min-w-[220px] items-center gap-3">
+                      <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,0.7fr)_minmax(0,2fr)] xl:grid-cols-[minmax(0,0.7fr)_minmax(0,2fr)_auto] xl:items-start">
+                        <div className="flex min-w-0 items-center gap-3">
                           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[var(--radius-md)] bg-[var(--brand-100)] text-[11px] font-bold text-[var(--brand-800)]">{user.name.slice(0, 2).toUpperCase()}</span>
-                          <div className="min-w-0"><p className="truncate text-[13px] font-semibold text-[var(--text-primary)]">{user.name}</p><p className="mt-0.5 truncate text-[11px] text-[var(--text-muted)]">{user.email}</p></div>
+                          <div className="min-w-0"><p className="whitespace-normal break-words text-[13px] font-semibold leading-5 text-[var(--text-primary)]">{user.name}</p><p className="mt-0.5 whitespace-normal break-all text-[11px] leading-5 text-[var(--text-muted)]">{user.email}</p></div>
                         </div>
-                        <div className="grid flex-1 gap-2 sm:grid-cols-2 2xl:grid-cols-3">
+                        <div className="grid min-w-0 gap-2 [grid-template-columns:repeat(auto-fit,minmax(min(100%,10rem),1fr))]">
                           {ALL_CAPABILITIES.map((capability) => {
                             const checked = userCaps.includes(capability.code);
                             return (
-                              <label key={capability.code} className={`flex min-h-9 cursor-pointer items-center gap-2 rounded-[var(--radius-md)] border px-3 text-[11px] font-semibold transition ${checked ? "border-[var(--brand-200)] bg-[var(--brand-50)] text-[var(--brand-700)]" : "border-[var(--border-subtle)] bg-[var(--surface-secondary)] text-[var(--text-secondary)] hover:border-[var(--border-default)]"}`}>
+                              <label key={capability.code} className={`flex min-h-9 min-w-0 cursor-pointer items-start gap-2 rounded-[var(--radius-md)] border px-3 py-2 text-[11px] font-semibold leading-5 transition ${checked ? "border-[var(--brand-200)] bg-[var(--brand-50)] text-[var(--brand-700)]" : "border-[var(--border-subtle)] bg-[var(--surface-secondary)] text-[var(--text-secondary)] hover:border-[var(--border-default)]"}`}>
                                 <input type="checkbox" checked={checked} onChange={() => handleToggleCapability(user.user_id, capability.code, checked)} className="h-4 w-4 rounded border-[var(--border-strong)] accent-[var(--brand-600)]" />
-                                <span>{capability.label}</span>
+                                <span className="min-w-0 whitespace-normal break-words">{capability.label}</span>
                               </label>
                             );
                           })}
                         </div>
-                        <div className="flex shrink-0 gap-2">
+                        <div className="flex min-w-0 flex-wrap gap-2 lg:col-span-2 xl:col-span-1">
                           <Button size="sm" variant="secondary" onClick={() => { setEditingUser(user); setEditUserForm({ name: user.name, email: user.email, phone: user.phone || "", is_active: String(user.is_active) === "1" || String(user.is_active) === "true" }); }} icon={<Edit2 size={13} />}>Edit</Button>
                           <Button size="sm" variant="outline" onClick={() => { setResetPasswordInput(""); setNewPasswordResult(null); setResettingPasswordFor(user.user_id); }} icon={<Key size={13} />}>Password</Button>
                           <Button size="sm" variant="danger" onClick={() => handleDeleteUser(user.user_id, user.name)} icon={<Trash2 size={13} />}>Delete</Button>
