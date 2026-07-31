@@ -7,6 +7,7 @@ describe("Team KPI server API contract", () => {
 
   it("validates the caller session and delegates authorization to the admin-only RPC", () => {
     expect(route).toContain("userClient.auth.getUser(accessToken)");
+    expect(route).toContain("await verifyAdmin(authorizationClient, userData.user.id)");
     expect(route).toContain('userClient.rpc("get_team_kpi_daily_v4"');
     expect(route).toContain("ADMIN_REQUIRED");
   });
@@ -15,7 +16,7 @@ describe("Team KPI server API contract", () => {
     expect(route).toContain("process.env.SUPABASE_SERVICE_ROLE_KEY");
     expect(route).toContain("createServiceClient");
     expect(route).toContain("loadTeamKpiServerReport(serviceClient");
-    expect(route).toContain("verifyAdmin(serviceClient");
+    expect(route).toContain("const authorizationClient = serviceClient ?? userClient");
     expect(route).toContain("isActiveUserValue");
     expect(route).not.toContain("loadTeamKpiServerReport(userClient");
   });

@@ -25,6 +25,7 @@ export default function FieldVisitsPage() {
   const [leadsMap, setLeadsMap] = useState<Map<string, LocalLead>>(new Map());
   const [remotePage, setRemotePage] = useState(0);
   const [hasMore, setHasMore] = useState(false);
+  const [retryingVisitId, setRetryingVisitId] = useState<string | null>(null);
 
   const loadLocal = useCallback(async () => {
     if (!currentUser) return [];
@@ -87,8 +88,13 @@ export default function FieldVisitsPage() {
   };
 
   const retryVisit = async (visitId: string) => {
-    await syncFieldVisits(visitId);
-    await loadData();
+    setRetryingVisitId(visitId);
+    try {
+      await syncFieldVisits(visitId);
+      await loadData();
+    } finally {
+      setRetryingVisitId(null);
+    }
   };
 
   const getLeadDisplay = (leadId: string) => {
@@ -117,7 +123,7 @@ export default function FieldVisitsPage() {
             const status = visit.sync_status === "synced"
               ? { text: "Synced", variant: "success" as const }
               : visit.sync_status === "sync_failed"
-                ? { text: navigator.onLine ? "Retrying" : "Needs attention", variant: "danger" as const }
+                ? { text: retryingVisitId === visit.visit_id ? "Retrying" : "Needs attention", variant: "danger" as const }
                 : { text: "Waiting to sync", variant: "warning" as const };
             return {
               id: visit.visit_id,

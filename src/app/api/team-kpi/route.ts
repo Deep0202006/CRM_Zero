@@ -204,6 +204,10 @@ export async function GET(request: NextRequest) {
     if (userError || !userData.user) {
       return jsonError(401, "AUTHENTICATION_REQUIRED", "Your session has expired. Sign in again.");
     }
+    const authorizationClient = serviceClient ?? userClient;
+    if (!(await verifyAdmin(authorizationClient, userData.user.id))) {
+      return jsonError(403, "ADMIN_REQUIRED", "Administrator access is required for Team KPI.");
+    }
 
     // Primary path: a narrowly scoped SECURITY DEFINER RPC. It validates the
     // authenticated admin itself and returns every active user, including zeros.
@@ -236,11 +240,6 @@ export async function GET(request: NextRequest) {
     // Controlled fallback: only a server-side service client may aggregate raw
     // source tables. Browser/RLS-limited aggregation is deliberately forbidden.
     if (serviceClient) {
-      const isAdmin = await verifyAdmin(serviceClient, userData.user.id);
-      if (!isAdmin) {
-        return jsonError(403, "ADMIN_REQUIRED", "Administrator access is required for Team KPI.");
-      }
-
       const warnings = [{
         source: "database RPC",
         message: isMissingRpc(rpcError)

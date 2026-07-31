@@ -15,11 +15,13 @@ export async function GET(request: Request) {
   const admin = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
   const { data: authData } = await admin.auth.getUser(token);
   if (!authData.user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
-  const { data: capabilities } = await admin
-    .from("user_capabilities")
-    .select("capability_code")
-    .eq("user_id", authData.user.id);
-  if (!(capabilities ?? []).some((capability) => capability.capability_code === "admin")) {
+  const [{ data: account, error: accountError }, { data: capabilities, error: capabilityError }] = await Promise.all([
+    admin.from("users").select("is_active").eq("user_id", authData.user.id).maybeSingle(),
+    admin.from("user_capabilities").select("capability_code").eq("user_id", authData.user.id),
+  ]);
+  const active = account?.is_active === true || account?.is_active === 1;
+  if (accountError || capabilityError || !active ||
+      !(capabilities ?? []).some((capability) => capability.capability_code === "admin")) {
     return NextResponse.json({ error: "Administrator access required." }, { status: 403 });
   }
 

@@ -3,6 +3,7 @@ import { supabase, isSupabaseConfigured } from "../supabaseClient";
 import { generateEvidencePath } from "./contract";
 
 let activeSync: Promise<void> | null = null;
+let rerunRequested = false;
 let listenersRegistered = false;
 
 async function mediaToBlob(media: Blob | string): Promise<Blob> {
@@ -12,13 +13,28 @@ async function mediaToBlob(media: Blob | string): Promise<Blob> {
   return response.blob();
 }
 
+function isAlreadyStored(error: { message?: string; statusCode?: string | number } | null): boolean {
+  if (!error) return false;
+  return Number(error.statusCode) === 409 || /already exists|duplicate/i.test(error.message ?? "");
+}
+
 /**
  * Synchronizes retryable visits through one process-wide cycle. A retry keeps
  * the same visit_id and evidence until Supabase confirms that exact visit_id.
  */
 export async function syncFieldVisits(onlyVisitId?: string): Promise<void> {
-  if (activeSync) return activeSync;
-  activeSync = runSyncCycle(onlyVisitId).finally(() => {
+  if (activeSync) {
+    rerunRequested = true;
+    return activeSync;
+  }
+  activeSync = (async () => {
+    let targetVisitId = onlyVisitId;
+    do {
+      rerunRequested = false;
+      await runSyncCycle(targetVisitId);
+      targetVisitId = undefined;
+    } while (rerunRequested);
+  })().finally(() => {
     activeSync = null;
   });
   return activeSync;
@@ -59,18 +75,34 @@ async function runSyncCycle(onlyVisitId?: string): Promise<void> {
         );
         const { error: uploadError } = await supabase.storage
           .from("visits-evidence")
-          .upload(selfieStoragePath, evidenceFile, { upsert: true });
-        if (uploadError) throw new Error(`Media upload failed: ${uploadError.message}`);
+          .upload(selfieStoragePath, evidenceFile, { upsert: false });
+        if (uploadError && !isAlreadyStored(uploadError)) {
+          throw new Error(`Media upload failed: ${uploadError.message}`);
+        }
       }
 
       const payload = { ...visit, selfie_storage_path: selfieStoragePath };
       delete payload.sync_status;
-      const { data: confirmedVisit, error: upsertError } = await supabase
+      const { data: insertedVisit, error: insertError } = await supabase
         .from("field_visits")
-        .upsert(payload, { onConflict: "visit_id" })
+        .insert(payload)
         .select("visit_id")
         .single();
-      if (upsertError) throw new Error(`Visit upsert failed: ${upsertError.message}`);
+      let confirmedVisit = insertedVisit;
+      if (insertError?.code === "23505") {
+        const { data: existingVisit, error: confirmationError } = await supabase
+          .from("field_visits")
+          .select("visit_id")
+          .eq("visit_id", visit.visit_id)
+          .eq("user_id", authenticatedUserId)
+          .maybeSingle();
+        if (confirmationError) {
+          throw new Error(`Visit confirmation failed: ${confirmationError.message}`);
+        }
+        confirmedVisit = existingVisit;
+      } else if (insertError) {
+        throw new Error(`Visit insert failed: ${insertError.message}`);
+      }
       if (confirmedVisit?.visit_id !== visit.visit_id) {
         throw new Error("Visit confirmation did not match the local visit ID.");
       }

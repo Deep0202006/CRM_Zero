@@ -49,7 +49,9 @@ describe("field visit stabilization", () => {
   it("retries failed visits without removing failed evidence", () => {
     const sync = read("src/lib/fieldVisits/sync.ts");
     expect(sync).toContain('.anyOf(["pending_sync", "sync_failed"])');
-    expect(sync).toContain("if (activeSync) return activeSync");
+    expect(sync).toContain("if (activeSync) {");
+    expect(sync).toContain("rerunRequested = true");
+    expect(sync).toContain("while (rerunRequested)");
     expect(sync).toContain("confirmedVisit?.visit_id !== visit.visit_id");
     const failureBlock = sync.slice(sync.indexOf("} catch (error)"));
     expect(failureBlock).toContain('sync_status: "sync_failed"');
@@ -61,7 +63,10 @@ describe("field visit stabilization", () => {
     expect(sync.indexOf("confirmedVisit?.visit_id")).toBeLessThan(sync.indexOf("field_visit_media.delete"));
     expect(sync).not.toContain('.from("field_visit_media")');
     expect(sync).toContain('.from("visits-evidence")');
-    expect(sync).toContain('.upsert(payload, { onConflict: "visit_id" })');
+    expect(sync).toContain(".insert(payload)");
+    expect(sync).toContain('insertError?.code === "23505"');
+    expect(sync).toContain('.eq("user_id", authenticatedUserId)');
+    expect(sync).toContain(".upload(selfieStoragePath, evidenceFile, { upsert: false })");
   });
 
   it("registers online and visibility listeners only once and uses no polling", () => {

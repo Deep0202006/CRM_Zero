@@ -77,6 +77,21 @@ export async function GET(request: Request) {
       }
     }
 
+    const { data: fieldCapabilities } = await admin
+      .from("user_capabilities")
+      .select("user_id")
+      .in("capability_code", ["field_ret", "field_dist"])
+      .limit(200);
+    const representativeIds = [...new Set((fieldCapabilities ?? []).map((row) => row.user_id))];
+    const { data: representatives } = representativeIds.length
+      ? await admin
+          .from("users")
+          .select("user_id,name,email")
+          .in("user_id", representativeIds)
+          .eq("is_active", true)
+          .limit(200)
+      : { data: [] };
+
     const { data: visits, error, count } = await query;
     if (error) return errorResponse(500, "Unable to load field visits.");
     return NextResponse.json(
@@ -87,6 +102,7 @@ export async function GET(request: Request) {
         total: count ?? 0,
         has_more: page * PAGE_SIZE < (count ?? 0),
         date,
+        representatives: representatives ?? [],
       },
       { headers: { "Cache-Control": "no-store, max-age=0" } },
     );

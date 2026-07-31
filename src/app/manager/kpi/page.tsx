@@ -380,7 +380,7 @@ export default function ManagerKpiPage() {
                           <p className="max-w-[220px] break-words font-semibold text-[var(--text-primary)]">{row.name}</p>
                         </td>
                         <td>
-                          <span className="block max-w-[220px] truncate text-[12px] font-medium text-[var(--text-muted)]" title={row.role}>{row.role}</span>
+                          <span className="block max-w-[220px] whitespace-normal break-words text-[12px] font-medium leading-5 text-[var(--text-muted)]">{row.role}</span>
                         </td>
                         <td className="font-semibold tabular-nums text-[var(--text-primary)]">{row.total_completed_work}</td>
                         <td className="font-semibold tabular-nums text-[var(--text-primary)]">{row.calls_made}</td>

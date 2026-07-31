@@ -23,7 +23,11 @@ describe("admin visit authorization and responsive layout", () => {
     expect(route).toContain(".range((page - 1) * PAGE_SIZE");
     expect(page).toContain("View Selfie");
     expect(evidence).toContain("createSignedUrl");
+    expect(evidence).toContain('select("is_active")');
+    expect(evidence).toContain("capabilityError");
     expect(route).not.toContain("createSignedUrl");
+    expect(route).toContain('in("capability_code", ["field_ret", "field_dist"])');
+    expect(route).toContain("representatives: representatives ?? []");
   });
 
   it("wraps identity, capability labels, and a separate action region", () => {
