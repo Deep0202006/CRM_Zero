@@ -1,10 +1,15 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { getCurrentISTDate } from "@/lib/dateTime";
+import { buildRepresentativeDirectory, type RepresentativeDirectoryRow } from "@/lib/fieldVisits/representatives";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const PAGE_SIZE = 50;
+const DIRECTORY_PAGE_SIZE = 1000;
+const DIRECTORY_CACHE_TTL_MS = 60_000;
+let directoryCache: { expiresAt: number; value: RepresentativeDirectoryRow[] } | null = null;
+let directoryLoadInFlight: Promise<RepresentativeDirectoryRow[]> | null = null;
 
 function errorResponse(status: number, message: string) {
   return NextResponse.json({ error: message }, { status, headers: { "Cache-Control": "no-store" } });
@@ -13,6 +18,68 @@ function errorResponse(status: number, message: string) {
 function getBearerToken(request: Request): string | null {
   const authorization = request.headers.get("authorization") ?? "";
   return authorization.startsWith("Bearer ") ? authorization.slice(7).trim() || null : null;
+}
+
+async function loadHistoricalRepresentativeIds(admin: SupabaseClient) {
+  const ids = new Set<string>();
+  for (let from = 0; ; from += DIRECTORY_PAGE_SIZE) {
+    const { data, error } = await admin
+      .from("field_visits")
+      .select("user_id")
+      .order("visit_id", { ascending: true })
+      .range(from, from + DIRECTORY_PAGE_SIZE - 1);
+    if (error) throw Object.assign(new Error("representative visits query failed"), { safeCode: error.code ?? "UNKNOWN" });
+    for (const row of (data ?? []) as Array<{ user_id: string }>) ids.add(row.user_id);
+    if (!data || data.length < DIRECTORY_PAGE_SIZE) return [...ids];
+  }
+}
+
+async function loadRepresentativeDirectoryUncached(admin: SupabaseClient) {
+  const [{ data: fieldCapabilities, error: capabilityError }, historicalIds] = await Promise.all([
+    admin
+      .from("user_capabilities")
+      .select("user_id,capability_code")
+      .in("capability_code", ["field_ret", "field_dist"]),
+    loadHistoricalRepresentativeIds(admin),
+  ]);
+  if (capabilityError) {
+    throw Object.assign(new Error("representative capability query failed"), { safeCode: capabilityError.code ?? "UNKNOWN" });
+  }
+  const capabilityRows = (fieldCapabilities ?? []) as Array<{ user_id: string; capability_code: string }>;
+  const directoryIds = [...new Set([...capabilityRows.map((row) => row.user_id), ...historicalIds])];
+  if (!directoryIds.length) return [];
+  const { data: users, error: usersError } = await admin
+    .from("users")
+    .select("user_id,name,email,is_active")
+    .in("user_id", directoryIds);
+  if (usersError) {
+    throw Object.assign(new Error("representative users query failed"), { safeCode: usersError.code ?? "UNKNOWN" });
+  }
+  return buildRepresentativeDirectory(
+    (users ?? []) as Array<{ user_id: string; name: string; email: string; is_active: boolean | number | string }>,
+    capabilityRows,
+    historicalIds,
+  );
+}
+
+async function loadRepresentativeDirectory(admin: SupabaseClient) {
+  const now = Date.now();
+  if (directoryCache && directoryCache.expiresAt > now) {
+    return directoryCache.value.map((row) => ({ ...row, capabilities: [...row.capabilities] }));
+  }
+  if (!directoryLoadInFlight) {
+    directoryLoadInFlight = loadRepresentativeDirectoryUncached(admin)
+      .then((rows) => rows.map((row) => ({ ...row, capabilities: [...row.capabilities] })))
+      .then((value) => {
+        directoryCache = { expiresAt: Date.now() + DIRECTORY_CACHE_TTL_MS, value };
+        return value;
+      })
+      .finally(() => {
+        directoryLoadInFlight = null;
+      });
+  }
+  const value = await directoryLoadInFlight;
+  return value.map((row) => ({ ...row, capabilities: [...row.capabilities] }));
 }
 
 export async function GET(request: Request) {
@@ -77,20 +144,14 @@ export async function GET(request: Request) {
       }
     }
 
-    const { data: fieldCapabilities } = await admin
-      .from("user_capabilities")
-      .select("user_id")
-      .in("capability_code", ["field_ret", "field_dist"])
-      .limit(200);
-    const representativeIds = [...new Set((fieldCapabilities ?? []).map((row) => row.user_id))];
-    const { data: representatives } = representativeIds.length
-      ? await admin
-          .from("users")
-          .select("user_id,name,email")
-          .in("user_id", representativeIds)
-          .eq("is_active", true)
-          .limit(200)
-      : { data: [] };
+    let representatives;
+    try {
+      representatives = await loadRepresentativeDirectory(admin);
+    } catch (directoryError) {
+      const safeCode = (directoryError as { safeCode?: string }).safeCode ?? "UNKNOWN";
+      console.error("Admin visit representative directory failed", { code: safeCode });
+      return errorResponse(503, "Representative directory is temporarily unavailable.");
+    }
 
     const { data: visits, error, count } = await query;
     if (error) return errorResponse(500, "Unable to load field visits.");
@@ -102,7 +163,7 @@ export async function GET(request: Request) {
         total: count ?? 0,
         has_more: page * PAGE_SIZE < (count ?? 0),
         date,
-        representatives: representatives ?? [],
+        representatives,
       },
       { headers: { "Cache-Control": "no-store, max-age=0" } },
     );

@@ -5,6 +5,7 @@
 // Dexie and queues for sync using the same sync_queue pattern as leads/attendance.
 
 import { db, transactionalMutation, type LocalTask, type LocalTaskTemplate } from "./db";
+import { isFollowUpLikeTemplate } from "./followUps";
 
 export type { LocalTask, LocalTaskTemplate };
 
@@ -26,15 +27,21 @@ export async function getOrGenerateTodayTasks(
     .equals([userId, today])
     .toArray();
 
-  const generated: LocalTask[] = [];
+  const existingTemplateIds = new Set(
+    existingToday
+      .map((task) => task.template_id)
+      .filter((templateId): templateId is string => Boolean(templateId)),
+  );
 
-  if (existingToday.length === 0) {
-
-    // No tasks yet today — generate from matching templates
-    const allTemplates: LocalTaskTemplate[] = await db.task_templates.toArray();
-    const matching = allTemplates.filter(
-      (tpl) => tpl.is_active === 1 && userCapabilities.includes(tpl.applies_to_capability)
-    );
+  // Generate only missing, eligible non-follow-up templates.
+  const allTemplates: LocalTaskTemplate[] = await db.task_templates.toArray();
+  const matching = allTemplates.filter(
+    (tpl) =>
+      tpl.is_active === 1 &&
+      userCapabilities.includes(tpl.applies_to_capability) &&
+      !isFollowUpLikeTemplate(tpl) &&
+      !existingTemplateIds.has(tpl.template_id),
+  );
 
   for (const tpl of matching) {
     const task: LocalTask = {
@@ -58,8 +65,6 @@ export async function getOrGenerateTodayTasks(
 
     await transactionalMutation("tasks", "INSERT", task);
 
-    generated.push(task);
-    }
   }
 
   // Fetch all tasks due today (completed or not) OR overdue and still open

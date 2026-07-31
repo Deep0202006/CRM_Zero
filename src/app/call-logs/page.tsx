@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { db, transactionalMutation, LocalCallLog, LocalUser, LocalLead } from "@/lib/db";
+import { db, processSyncQueue, LocalCallLog, LocalUser, LocalLead } from "@/lib/db";
 import { SearchableSelect, SearchableOption } from "@/components/SearchableSelect";
 import { PhoneCall, CheckCircle2, AlertCircle, Download } from "lucide-react";
 import excelUsers from "@/lib/excel_users.json";
@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/Input";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { getCurrentISTDate, getISTDateKey } from "@/lib/dateTime";
+import { buildSelfScheduledFollowUpTask, needsCallFollowUp } from "@/lib/followUps";
 
 export default function CallLogsPage() {
   const { currentUser, isAdmin } = useAuth();
@@ -50,16 +51,24 @@ export default function CallLogsPage() {
     return excelOptions.sort((a, b) => a.label.localeCompare(b.label));
   }, []);
 
-  const loadData = async () => {
+  const loadData = React.useCallback(async () => {
     try {
-      const fetchedLogs = await db.call_logs.toArray();
+      if (!currentUser) {
+        setLogs([]);
+        return;
+      }
+      const fetchedLogs = isAdmin
+        ? await db.call_logs.toArray()
+        : await db.call_logs.where("user_id").equals(currentUser.user_id).toArray();
       fetchedLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
-      const allUsers = await db.users.toArray();
+      const currentLocalUser = isAdmin ? null : await db.users.get(currentUser.user_id);
+      const allUsers = isAdmin ? await db.users.toArray() : currentLocalUser ? [currentLocalUser] : [];
       const uMap = new Map<string, LocalUser>();
       allUsers.forEach(u => uMap.set(u.user_id, u));
 
-      const allLeads = await db.leads.toArray();
+      const leadIds = [...new Set(fetchedLogs.map((log) => log.lead_id).filter((leadId): leadId is string => Boolean(leadId)))];
+      const allLeads = leadIds.length ? await db.leads.where("lead_id").anyOf(leadIds).toArray() : [];
       const lMap = new Map<string, LocalLead>();
       allLeads.forEach(l => lMap.set(l.lead_id, l));
 
@@ -71,11 +80,11 @@ export default function CallLogsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentUser, isAdmin]);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   const handleLogCall = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,52 +102,70 @@ export default function CallLogsPage() {
       setError("Please select a call outcome/response.");
       return;
     }
+    if (needsCallFollowUp(outcome) && !nextFollowup) {
+      setError("Select a next follow-up date before saving this follow-up outcome.");
+      return;
+    }
 
     setSubmitting(true);
     setError("");
     setSuccess(false);
 
     try {
-      const nextFollowupDate = (outcome === "No response (followup)" || outcome === "Requested more info") ? (nextFollowup || null) : null;
+      const nextFollowupDate = needsCallFollowUp(outcome) ? nextFollowup : null;
       const clientReference = parseCallClientReference(selectedLeadId);
+      const logId = crypto.randomUUID();
+      const taskId = nextFollowupDate ? crypto.randomUUID() : null;
+      const createdAt = new Date().toISOString();
 
       const log: LocalCallLog = {
-        log_id: crypto.randomUUID(),
+        log_id: logId,
         user_id: currentUser.user_id,
         lead_id: clientReference.leadId,
         client_username: clientReference.clientUsername,
         client_name: clientReference.clientName,
-        timestamp: new Date().toISOString(),
+        timestamp: createdAt,
         outcome: outcome,
         notes: notes.trim() || null,
         next_followup_date: nextFollowupDate,
       };
 
-      await transactionalMutation("call_logs", "INSERT", log);
+      const followupTask = taskId
+        ? buildSelfScheduledFollowUpTask({
+            outcome,
+            dueDate: nextFollowupDate,
+            authenticatedUserId: currentUser.user_id,
+            taskId,
+            clientDisplay: clientReference.displayName,
+            related_lead_id: clientReference.leadId,
+            notes: notes.trim(),
+            createdAt,
+          })
+        : null;
 
-      if (nextFollowupDate) {
-        const leadDisplay = clientReference.displayName;
-
-        const followupTask = {
-          task_id: crypto.randomUUID(),
-          assigned_to: currentUser.user_id,
-          assigned_by: currentUser.user_id,
-          title: "Follow-up Call",
-          description: `Scheduled follow-up for: ${leadDisplay}\nNotes: ${notes.trim() || "No notes"}`,
-          priority: "High" as const,
-          status: "Pending" as const,
-          source: "manual" as const,
-          template_id: null,
-          related_lead_id: clientReference.leadId,
-          due_date: nextFollowupDate,
-          started_at: null,
-          completed_at: null,
-          proof_note: null,
-          proof_photo_url: null,
-          created_at: new Date().toISOString(),
-        };
-        await transactionalMutation("tasks", "INSERT", followupTask);
-      }
+      await db.transaction("rw", [db.call_logs, db.tasks, db.sync_queue], async () => {
+        await db.call_logs.add(log);
+        await db.sync_queue.add({
+          idempotency_key: `call-log:${logId}`,
+          table_name: "call_logs",
+          action: "INSERT",
+          data: log,
+          timestamp: createdAt,
+          retry_count: 0,
+        });
+        if (followupTask) {
+          await db.tasks.add(followupTask);
+          await db.sync_queue.add({
+            idempotency_key: `call-followup-task:${logId}`,
+            table_name: "tasks",
+            action: "INSERT",
+            data: followupTask,
+            timestamp: createdAt,
+            retry_count: 0,
+          });
+        }
+      });
+      if (navigator.onLine) void processSyncQueue();
 
       setSuccess(true);
 
@@ -157,7 +184,7 @@ export default function CallLogsPage() {
     }
   };
 
-  const showFollowup = outcome === "No response (followup)" || outcome === "Requested more info";
+  const showFollowup = needsCallFollowUp(outcome);
 
   // Format identity standard: "{Name} (@{Username}) - {Phone}"
   const getLeadDisplay = (log: LocalCallLog) => {

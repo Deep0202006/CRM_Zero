@@ -27,7 +27,8 @@ describe("admin visit authorization and responsive layout", () => {
     expect(evidence).toContain("capabilityError");
     expect(route).not.toContain("createSignedUrl");
     expect(route).toContain('in("capability_code", ["field_ret", "field_dist"])');
-    expect(route).toContain("representatives: representatives ?? []");
+    expect(route).toContain("loadHistoricalRepresentativeIds");
+    expect(route).toContain("Representative directory is temporarily unavailable.");
   });
 
   it("wraps identity, capability labels, and a separate action region", () => {

@@ -29,7 +29,7 @@ export default function AdminVisitsPage() {
   const [representative, setRepresentative] = useState("ALL");
   const [segment, setSegment] = useState("ALL");
   const [outcome, setOutcome] = useState("ALL");
-  const [representatives, setRepresentatives] = useState<Array<{ user_id: string; name: string; email: string }>>([]);
+  const [representatives, setRepresentatives] = useState<Array<{ user_id: string; name: string; email: string; is_active: boolean; capabilities: string[]; historical_only: boolean }>>([]);
 
   const loadData = useCallback(async (targetPage = 1) => {
     if (!isAdmin) return;
@@ -118,7 +118,7 @@ export default function AdminVisitsPage() {
         <input aria-label="Visit date" type="date" className="field-control min-w-0" value={date} onChange={(event) => setDate(event.target.value)} />
         <select aria-label="Representative" className="field-control min-w-0" value={representative} onChange={(event) => setRepresentative(event.target.value)}>
           <option value="ALL">All representatives</option>
-          {representatives.map((user) => <option key={user.user_id} value={user.user_id}>{user.name} ({user.email})</option>)}
+          {representatives.map((user) => <option key={user.user_id} value={user.user_id}>{user.name}{user.email ? ` (${user.email})` : ""}{user.is_active ? "" : " — inactive"}</option>)}
         </select>
         <select aria-label="Segment" className="field-control min-w-0" value={segment} onChange={(event) => setSegment(event.target.value)}>
           <option value="ALL">All segments</option><option value="Retailer">Retailer</option><option value="Distributor">Distributor</option>

@@ -12,7 +12,7 @@ import {
 } from "@/lib/taskEngine";
 import { CONVERTED_STAGES } from "@/lib/pipelineStages";
 import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
-import { db, transactionalMutation, type LocalAllocatedTarget, type LocalUser } from "@/lib/db";
+import { db, processSyncQueue, transactionalMutation, type LocalAllocatedTarget, type LocalUser } from "@/lib/db";
 import { CheckCircle2, Clock, AlertCircle, ListTodo, PhoneCall, Trophy, CheckSquare, Target, Download, Trash2, MapPin, RefreshCw } from "lucide-react";
 import { exportPipelineToExcel } from "@/lib/pipelineExport";
 import { Button } from "@/components/ui/Button";
@@ -24,6 +24,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
+import { isValidSelfScheduledFollowUp } from "@/lib/followUps";
 
 interface WeeklyDigestTaskPerformance { assigned_to: string; completed_count: number; total_count: number; }
 interface WeeklyDigest { week_start: string; data: { stuck_leads: { id: string; name: string; status: string; days_in_stage: number; assigned_to: string }[]; task_performance: WeeklyDigestTaskPerformance[]; upcoming_renewals: { id: string; name: string; renewal_date: string }[]; }; }
@@ -37,6 +38,7 @@ export default function MyDayPage() {
   const [markingId, setMarkingId] = useState<string | null>(null);
   const [stats, setStats] = useState({ pendingToday: 0, scheduledLater: 0 });
   const [weeklyDigest, setWeeklyDigest] = useState<WeeklyDigest | null>(null);
+  const [weeklyDigestUnavailable, setWeeklyDigestUnavailable] = useState(false);
   const [allocatedTargets, setAllocatedTargets] = useState<LocalAllocatedTarget[]>([]);
   const [targetErrors, setTargetErrors] = useState<Record<string, string>>({});
   const [targetNotice, setTargetNotice] = useState<string | null>(null);
@@ -59,9 +61,6 @@ export default function MyDayPage() {
     if (error) { setTargetLoadError("Unable to refresh field targets. Please try again."); console.error("Allocated target refresh failed", error); return; }
     if (!data) return;
     await db.allocated_targets.bulkPut(data as LocalAllocatedTarget[]);
-    const remoteIds = new Set(data.map((target: LocalAllocatedTarget) => target.target_id));
-    const local = await db.allocated_targets.where("assigned_to_user_id").equals(currentUser.user_id).toArray();
-    await db.allocated_targets.bulkDelete(local.filter((target) => !Boolean(target.is_completed) && target.sync_status !== "pending" && !remoteIds.has(target.target_id)).map((target) => target.target_id));
   }, [currentUser]);
 
   useEffect(() => {
@@ -127,23 +126,25 @@ export default function MyDayPage() {
     if (!currentUser) return;
     if (isAdmin) {
       if (isSupabaseConfigured) {
+        setWeeklyDigestUnavailable(false);
         supabase
           .from('weekly_digest_log')
           .select('*')
           .order('week_start', { ascending: false })
           .limit(1)
-          .then(({ data }: { data: WeeklyDigest[] | null }) => {
-            if (data && data.length > 0) setWeeklyDigest(data[0]);
+          .then(({ data, error }: { data: WeeklyDigest[] | null; error: unknown }) => {
+            if (error) {
+              setWeeklyDigest(null);
+              setWeeklyDigestUnavailable(true);
+            } else if (data && data.length > 0) {
+              setWeeklyDigest(data[0]);
+            } else {
+              setWeeklyDigest(null);
+            }
           });
       } else {
-        setWeeklyDigest({
-          week_start: new Date().toISOString().slice(0, 10),
-          data: {
-            stuck_leads: [{ id: "1", name: "Acme Corp", status: "Interested", days_in_stage: 15, assigned_to: currentUser.user_id }],
-            task_performance: [{ assigned_to: currentUser.user_id, completed_count: 14, total_count: 15 }],
-            upcoming_renewals: [{ id: "2", name: "Global Tech", renewal_date: "2026-07-20" }]
-          }
-        });
+        setWeeklyDigest(null);
+        setWeeklyDigestUnavailable(true);
       }
     }
   }, [currentUser, isAdmin]);
@@ -154,37 +155,79 @@ export default function MyDayPage() {
     setMarkingId(task.task_id);
 
     try {
-      if (task.source === "manual" && task.related_lead_id) {
+      const isSelfScheduledFollowUp = isValidSelfScheduledFollowUp(task, currentUser.user_id);
+      if (isSelfScheduledFollowUp) {
         const verifiedOutcome = outcome?.trim();
         if (!verifiedOutcome) {
           setTaskActionMessage({ type: "error", text: "A call outcome is required before this follow-up can be completed." });
           return;
         }
 
-        const logId = crypto.randomUUID();
+        // The task UUID is also the semantic completion-operation UUID. Reusing it
+        // across tables makes a stale retry conflict instead of creating a second call.
+        const logId = task.task_id;
+        const historyId = task.task_id;
+        const completedAt = new Date().toISOString();
         const newLog = {
           log_id: logId,
           user_id: currentUser.user_id,
           lead_id: task.related_lead_id,
-          timestamp: new Date().toISOString(),
+          timestamp: completedAt,
           outcome: verifiedOutcome,
           notes: `Task completed: ${task.title}`,
         };
-
-        await db.transaction("rw", [db.call_logs, db.sync_queue], async () => {
+        const taskUpdate = { task_id: task.task_id, status: "Completed" as const, completed_at: completedAt };
+        await db.transaction("rw", [db.call_logs, db.tasks, db.task_status_history, db.sync_queue], async () => {
+          const currentTask = await db.tasks.get(task.task_id);
+          if (
+            !currentTask ||
+            currentTask.status === "Completed" ||
+            !isValidSelfScheduledFollowUp(currentTask, currentUser.user_id)
+          ) {
+            throw new Error("Follow-up task is no longer available for completion.");
+          }
+          const historyEntry = {
+            id: historyId,
+            task_id: task.task_id,
+            changed_by: currentUser.user_id,
+            old_status: currentTask.status,
+            new_status: "Completed",
+            changed_at: completedAt,
+          };
           await db.call_logs.add(newLog);
+          const updated = await db.tasks.update(task.task_id, taskUpdate);
+          if (updated !== 1) throw new Error("Follow-up task is no longer available.");
+          await db.task_status_history.add(historyEntry);
           await db.sync_queue.add({
             table_name: "call_logs",
             action: "INSERT",
             data: newLog,
-            timestamp: newLog.timestamp,
-            idempotency_key: `call-log-${logId}`,
+            timestamp: completedAt,
+            idempotency_key: `followup-completion-call:${task.task_id}`,
+            retry_count: 0,
+          });
+          await db.sync_queue.add({
+            table_name: "tasks",
+            action: "UPDATE",
+            data: taskUpdate,
+            timestamp: completedAt,
+            idempotency_key: `followup-completion-task:${task.task_id}`,
+            retry_count: 0,
+          });
+          await db.sync_queue.add({
+            table_name: "task_status_history",
+            action: "INSERT",
+            data: historyEntry,
+            timestamp: completedAt,
+            idempotency_key: `followup-completion-history:${task.task_id}`,
             retry_count: 0,
           });
         });
+        if (navigator.onLine) void processSyncQueue();
+      } else {
+        await updateTaskStatus(task, "Completed", currentUser.user_id);
       }
 
-      await updateTaskStatus(task, "Completed", currentUser.user_id);
       setTasks((previous) =>
         sortTasks(
           previous.map((currentTask) =>
@@ -207,7 +250,7 @@ export default function MyDayPage() {
   };
 
   const handleComplete = (task: LocalTask) => {
-    if (task.source === "manual" && task.related_lead_id) {
+    if (currentUser && isValidSelfScheduledFollowUp(task, currentUser.user_id)) {
       setCompletionOutcome("Follow-up completed");
       setCompletionDialogTask(task);
       return;
@@ -281,7 +324,9 @@ export default function MyDayPage() {
   const missed = tasks.filter((t) => t.status === "Missed");
   const progressPct = tasks.length === 0 ? 0 : Math.round((done.length / tasks.length) * 100);
 
-  const followUpsToday = pending.filter(t => t.source === "manual" && (t.title.includes("Follow-up") || t.title.includes("Re-engage")));
+  const followUpsToday = currentUser
+    ? pending.filter((task) => isValidSelfScheduledFollowUp(task, currentUser.user_id))
+    : [];
 
   const today = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
 
@@ -360,6 +405,13 @@ export default function MyDayPage() {
             </div>
           </div>
         </section>
+      )}
+
+      {isAdmin && weeklyDigestUnavailable && (
+        <EmptyState
+          title="Weekly intelligence unavailable"
+          description="Confirmed weekly digest data could not be loaded. No fallback data is shown."
+        />
       )}
 
       {!loading && (
