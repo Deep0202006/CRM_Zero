@@ -140,6 +140,7 @@ export default function CallLogsPage() {
             related_lead_id: clientReference.leadId,
             notes: notes.trim(),
             createdAt,
+            sourceCallId: logId,
           })
         : null;
 

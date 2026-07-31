@@ -24,7 +24,8 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
-import { isValidSelfScheduledFollowUp } from "@/lib/followUps";
+import { isValidSelfScheduledFollowUp, stripInternalFollowUpMarkers } from "@/lib/followUps";
+import { getCurrentISTDate, getISTDateKey } from "@/lib/dateTime";
 
 interface WeeklyDigestTaskPerformance { assigned_to: string; completed_count: number; total_count: number; }
 interface WeeklyDigest { week_start: string; data: { stuck_leads: { id: string; name: string; status: string; days_in_stage: number; assigned_to: string }[]; task_performance: WeeklyDigestTaskPerformance[]; upcoming_renewals: { id: string; name: string; renewal_date: string }[]; }; }
@@ -84,15 +85,15 @@ export default function MyDayPage() {
     setTasks(t);
 
     // 2. Load KPIs based on roles
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = getCurrentISTDate();
     
     try {
       const allMappings = await db.mapping_requests.toArray();
-      setMappedToday(allMappings.filter(m => m.mapped_by === currentUser.user_id && m.status === 'Completed' && m.completed_at?.startsWith(todayStr)).length);
+      setMappedToday(allMappings.filter(m => m.mapped_by === currentUser.user_id && m.status === 'Completed' && m.completed_at && getISTDateKey(m.completed_at) === todayStr).length);
 
       if (hasOnboarding) {
         const allCalls = await db.call_logs.where("user_id").equals(currentUser.user_id).toArray();
-        setCallsToday(allCalls.filter(c => c.timestamp.startsWith(todayStr) && !c.outcome.includes("→")).length);
+        setCallsToday(allCalls.filter(c => getISTDateKey(c.timestamp) === todayStr && !c.outcome.includes("→")).length);
         
         const allLeads = await db.leads.where("assigned_to").equals(currentUser.user_id).toArray();
         setLeadsConverted(allLeads.filter(l => CONVERTED_STAGES.includes(l.status as typeof CONVERTED_STAGES[number])).length);
@@ -100,7 +101,7 @@ export default function MyDayPage() {
       
       if (hasSupport) {
         const allQueries = await db.client_queries.where("assigned_to").equals(currentUser.user_id).toArray();
-        setQueriesResolvedToday(allQueries.filter(q => q.problem_status === "Resolved" && q.resolved_at?.startsWith(todayStr)).length);
+        setQueriesResolvedToday(allQueries.filter(q => q.problem_status === "Resolved" && q.resolved_at && getISTDateKey(q.resolved_at) === todayStr).length);
         setOpenQueries(allQueries.filter(q => q.problem_status !== "Resolved").length);
       }
 
@@ -194,19 +195,10 @@ export default function MyDayPage() {
             new_status: "Completed",
             changed_at: completedAt,
           };
-          await db.call_logs.add(newLog);
           const updated = await db.tasks.update(task.task_id, taskUpdate);
           if (updated !== 1) throw new Error("Follow-up task is no longer available.");
           await db.task_status_history.add(historyEntry);
-          await db.sync_queue.add({
-            table_name: "call_logs",
-            action: "INSERT",
-            owner_user_id: claimSyncQueueOwnership(),
-            data: newLog,
-            timestamp: completedAt,
-            idempotency_key: `followup-completion-call:${task.task_id}`,
-            retry_count: 0,
-          });
+          await db.call_logs.add(newLog);
           await db.sync_queue.add({
             table_name: "tasks",
             action: "UPDATE",
@@ -223,6 +215,15 @@ export default function MyDayPage() {
             data: historyEntry,
             timestamp: completedAt,
             idempotency_key: `followup-completion-history:${task.task_id}`,
+            retry_count: 0,
+          });
+          await db.sync_queue.add({
+            table_name: "call_logs",
+            action: "INSERT",
+            owner_user_id: claimSyncQueueOwnership(),
+            data: newLog,
+            timestamp: completedAt,
+            idempotency_key: `followup-completion-call:${task.task_id}`,
             retry_count: 0,
           });
         });
@@ -697,7 +698,7 @@ function TaskCardItem({
       <div className="flex-1 min-w-0">
         <p className="font-semibold text-sm text-[var(--text-primary)] leading-snug">{task.title}</p>
         {task.description && (
-          <p className="text-xs text-[var(--text-muted)] mt-1 leading-relaxed">{task.description}</p>
+          <p className="text-xs text-[var(--text-muted)] mt-1 leading-relaxed">{stripInternalFollowUpMarkers(task.description)}</p>
         )}
         <div className="flex items-center gap-2 mt-2">
           <Chip variant={priorityChipVariant} size="sm" dot>

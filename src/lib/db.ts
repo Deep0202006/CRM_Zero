@@ -867,6 +867,33 @@ async function processSyncQueueInternal(): Promise<void> {
       await db.sync_queue.update(item.id, { owner_user_id: itemOwnerId });
     }
 
+    if (
+      item.idempotency_key.startsWith("followup-completion-history:") ||
+      item.idempotency_key.startsWith("followup-completion-call:")
+    ) {
+      const taskId = item.idempotency_key.split(":").at(-1);
+      const prerequisitePrefixes = item.idempotency_key.startsWith("followup-completion-call:")
+        ? ["followup-completion-task:", "followup-completion-history:"]
+        : ["followup-completion-task:"];
+      const prerequisitePending = await db.sync_queue
+        .filter(
+          (candidate) =>
+            candidate.id !== item.id &&
+            prerequisitePrefixes.some((prefix) => candidate.idempotency_key === `${prefix}${taskId}`),
+        )
+        .first();
+      if (prerequisitePending) continue;
+      if (isSupabaseConfigured && taskId) {
+        const { data: confirmedTask, error: confirmationError } = await supabase
+          .from("tasks")
+          .select("task_id,status")
+          .eq("task_id", taskId)
+          .eq("assigned_to", authenticatedUserId)
+          .maybeSingle();
+        if (confirmationError || confirmedTask?.status !== "Completed") continue;
+      }
+    }
+
     const prepared = prepareSyncPayload(item.table_name, item.data);
     const effectiveRetryCount = prepared.changed ? 0 : (item.retry_count ?? 0);
 

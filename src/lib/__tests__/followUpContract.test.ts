@@ -3,6 +3,10 @@ import path from "path";
 import type { LocalTask } from "@/lib/db";
 import {
   buildSelfScheduledFollowUpTask,
+  createFollowUpSourceCallMarker,
+  deduplicateSelfScheduledFollowUps,
+  parseFollowUpSourceCallId,
+  stripInternalFollowUpMarkers,
   isFollowUpLikeTemplate,
   isValidSelfScheduledFollowUp,
 } from "@/lib/followUps";
@@ -48,6 +52,7 @@ describe("self-scheduled follow-up contract", () => {
       related_lead_id: "lead-1",
       notes: "",
       createdAt: "2026-07-31T00:00:00.000Z",
+      sourceCallId: "11111111-1111-4111-8111-111111111111",
     };
     expect(buildSelfScheduledFollowUpTask({ ...input, dueDate: null })).toBeNull();
     const task = buildSelfScheduledFollowUpTask({ ...input, dueDate: "2026-08-01" });
@@ -57,10 +62,12 @@ describe("self-scheduled follow-up contract", () => {
       assigned_by: "employee-1",
       source: "manual",
     });
+    expect(parseFollowUpSourceCallId(task?.description ?? null)).toBe(input.sourceCallId);
+    expect(stripInternalFollowUpMarkers(task?.description ?? null)).not.toContain("ZD_FOLLOWUP_SOURCE_CALL");
     expect(buildSelfScheduledFollowUpTask({ ...input, outcome: "Connected", dueDate: "2026-08-01" })).toBeNull();
   });
 
-  it("uses one atomic local transaction and adds no task deletion or cleanup", () => {
+  it("uses one atomic local transaction and limits cleanup to invalid pending template inserts", () => {
     const callPage = fs.readFileSync(path.join(process.cwd(), "src/app/call-logs/page.tsx"), "utf8");
     const myDay = fs.readFileSync(path.join(process.cwd(), "src/app/my-day/page.tsx"), "utf8");
     const taskEngine = fs.readFileSync(path.join(process.cwd(), "src/lib/taskEngine.ts"), "utf8");
@@ -72,7 +79,26 @@ describe("self-scheduled follow-up contract", () => {
     expect(myDay).toContain("[db.call_logs, db.tasks, db.task_status_history, db.sync_queue]");
     expect(myDay).not.toContain("db.allocated_targets.bulkDelete");
     expect(callPage).not.toContain('transactionalMutation("tasks", "DELETE"');
+    expect(taskEngine).toContain('item.action === "INSERT"');
+    expect(taskEngine).toContain('task.source === "template"');
     expect(taskEngine).not.toContain('transactionalMutation("tasks", "DELETE"');
+  });
+
+  it("deduplicates the same source call but preserves separate calls for the same client", () => {
+    const first = {
+      ...baseTask,
+      task_id: "task-a",
+      description: `${baseTask.description}\n${createFollowUpSourceCallMarker("11111111-1111-4111-8111-111111111111")}`,
+    };
+    const stale = { ...first, task_id: "task-b", created_at: "2026-07-31T00:00:30.000Z" };
+    const completed = { ...stale, task_id: "task-c", status: "Completed" as const };
+    const separate = {
+      ...first,
+      task_id: "task-d",
+      description: `${baseTask.description}\n${createFollowUpSourceCallMarker("22222222-2222-4222-8222-222222222222")}`,
+    };
+    const result = deduplicateSelfScheduledFollowUps([first, stale, completed, separate], "employee-1");
+    expect(result.map((task) => task.task_id)).toEqual(["task-c", "task-d"]);
   });
 
   it("removes fabricated weekly digest companies", () => {

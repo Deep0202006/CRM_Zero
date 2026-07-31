@@ -4,12 +4,106 @@
 // them from task_templates matching the user's active capabilities, writes to
 // Dexie and queues for sync using the same sync_queue pattern as leads/attendance.
 
-import { db, transactionalMutation, type LocalTask, type LocalTaskTemplate } from "./db";
-import { isFollowUpLikeTemplate } from "./followUps";
+import { claimSyncQueueOwnership, db, transactionalMutation, type LocalTask, type LocalTaskTemplate } from "./db";
+import {
+  deduplicateSelfScheduledFollowUps,
+  isFollowUpLikeTemplate,
+  isFollowUpLikeText,
+  isValidSelfScheduledFollowUp,
+  parseFollowUpSourceCallId,
+} from "./followUps";
+import { getCurrentISTDate } from "./dateTime";
+import { isSupabaseConfigured, supabase } from "./supabaseClient";
 
 export type { LocalTask, LocalTaskTemplate };
 
 const PRIORITY_ORDER: Record<string, number> = { High: 0, Medium: 1, Low: 2 };
+
+async function removeUnconfirmedInvalidTemplateFollowUps(userId: string): Promise<void> {
+  const invalid = await db.tasks
+    .where("assigned_to")
+    .equals(userId)
+    .filter(
+      (task) =>
+        task.source === "template" &&
+        task.status !== "Completed" &&
+        isFollowUpLikeText(task.title, task.description),
+    )
+    .toArray();
+  for (const task of invalid) {
+    const template = task.template_id ? await db.task_templates.get(task.template_id) : null;
+    if (!template || !isFollowUpLikeTemplate(template)) continue;
+    const [history, completionCall] = await Promise.all([
+      db.task_status_history.where("task_id").equals(task.task_id).first(),
+      db.call_logs.get(task.task_id),
+    ]);
+    if (history || completionCall) continue;
+    const insert = await db.sync_queue
+      .filter(
+        (item) =>
+          item.table_name === "tasks" &&
+          item.action === "INSERT" &&
+          (item.data as Partial<LocalTask>).task_id === task.task_id &&
+          (item.owner_user_id === userId || !item.owner_user_id),
+      )
+      .first();
+    if (!insert?.id) continue;
+    if (!isSupabaseConfigured || typeof navigator === "undefined" || !navigator.onLine) continue;
+    const { data: remoteTask, error: remoteCheckError } = await supabase
+      .from("tasks")
+      .select("task_id")
+      .eq("task_id", task.task_id)
+      .eq("assigned_to", userId)
+      .maybeSingle();
+    if (remoteCheckError || remoteTask) continue;
+    await db.transaction("rw", [db.tasks, db.sync_queue], async () => {
+      await db.sync_queue.delete(insert.id!);
+      await db.tasks.delete(task.task_id);
+    });
+  }
+}
+
+async function selfHealCompletedFollowUps(userId: string): Promise<void> {
+  const openTasks = await db.tasks
+    .where("assigned_to")
+    .equals(userId)
+    .filter((task) => task.status !== "Completed" && isValidSelfScheduledFollowUp(task, userId))
+    .toArray();
+  for (const task of openTasks) {
+    const [history, completionCall] = await Promise.all([
+      db.task_status_history
+        .where("task_id")
+        .equals(task.task_id)
+        .filter((row) => row.new_status === "Completed" && row.changed_by === userId)
+        .sortBy("changed_at"),
+      db.call_logs.get(task.task_id),
+    ]);
+    const markerBackedCompletionCall =
+      parseFollowUpSourceCallId(task.description) && completionCall?.user_id === userId
+        ? completionCall
+        : null;
+    const completionTimestamp = history[0]?.changed_at ?? markerBackedCompletionCall?.timestamp ?? null;
+    if (!completionTimestamp) continue;
+    const repair = { task_id: task.task_id, status: "Completed" as const, completed_at: completionTimestamp };
+    await db.transaction("rw", [db.tasks, db.sync_queue], async () => {
+      await db.tasks.update(task.task_id, repair);
+      const existingRepair = await db.sync_queue
+        .filter((item) => item.idempotency_key === `followup-self-heal:${task.task_id}`)
+        .first();
+      if (!existingRepair) {
+        await db.sync_queue.add({
+          table_name: "tasks",
+          action: "UPDATE",
+          owner_user_id: claimSyncQueueOwnership(),
+          data: repair,
+          timestamp: completionTimestamp,
+          idempotency_key: `followup-self-heal:${task.task_id}`,
+          retry_count: 0,
+        });
+      }
+    });
+  }
+}
 
 /**
  * Call once right after login (or right after clock-in on /attendance).
@@ -20,7 +114,9 @@ export async function getOrGenerateTodayTasks(
   userId: string,
   userCapabilities: string[]
 ): Promise<LocalTask[]> {
-  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const today = getCurrentISTDate();
+  await removeUnconfirmedInvalidTemplateFollowUps(userId);
+  await selfHealCompletedFollowUps(userId);
 
   const existingToday = await db.tasks
     .where("[assigned_to+due_date]")
@@ -78,11 +174,14 @@ export async function getOrGenerateTodayTasks(
     })
     .toArray();
 
-  return sortTasks(allRelevant);
+  const visibleRelevant = allRelevant.filter(
+    (task) => !(task.source === "template" && isFollowUpLikeText(task.title, task.description)),
+  );
+  return sortTasks(deduplicateSelfScheduledFollowUps(visibleRelevant, userId));
 }
 
 export async function getMyDayStats(userId: string) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getCurrentISTDate();
 
   const pendingToday = await db.tasks
     .where("assigned_to").equals(userId)
