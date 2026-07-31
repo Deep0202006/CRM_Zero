@@ -27,11 +27,18 @@ describe("Team KPI server API contract", () => {
   });
 
   it("keeps the existing page and uses one authenticated API request", () => {
-    expect(page).toContain("/api/team-kpi?date=");
+    expect(page).toContain('fetch("/api/team-kpi"');
     expect(page).not.toContain('supabase.rpc("get_team_kpi_daily');
-    expect(page).toContain("30_000");
+    expect(page).not.toContain("setInterval");
     for (const label of ["Calls", "Client queries", "Mappings", "Tasks done"]) {
       expect(page).toContain(label);
     }
+  });
+
+  it("always uses today's India business date and exposes no historical control", () => {
+    expect(route).toContain("const targetDate = getCurrentISTDate()");
+    expect(route).not.toContain('searchParams.get("date")');
+    expect(page).toContain("const todayDate = getCurrentISTDate()");
+    expect(page).not.toContain('type="date"');
   });
 });

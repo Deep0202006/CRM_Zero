@@ -8,7 +8,7 @@ describe("Team KPI page data path", () => {
   );
 
   it("uses one authenticated server API request instead of browser-side raw aggregation", () => {
-    expect(source).toContain("/api/team-kpi?date=");
+    expect(source).toContain('fetch("/api/team-kpi"');
     expect(source).toContain("supabase.auth.getSession()");
     for (const forbidden of [
       'supabase.rpc("get_team_kpi_daily',
@@ -41,7 +41,9 @@ describe("Team KPI page data path", () => {
     expect(source).not.toContain('"team_work_events"');
     expect(source).toContain("setTimeout");
     expect(source).toContain("750");
-    expect(source).toContain("30_000");
+    expect(source).not.toContain("setInterval");
+    expect(source).not.toContain('type="date"');
+    expect(source).not.toContain('aria-label="KPI date"');
   });
 
   it("keeps all four requested work metrics visible", () => {
