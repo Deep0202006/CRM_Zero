@@ -17,7 +17,8 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
-    const token = url.searchParams.get('token');
+    const authorization = request.headers.get('authorization') ?? '';
+    const token = authorization.startsWith('Bearer ') ? authorization.slice(7).trim() : '';
 
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -76,7 +77,6 @@ export async function GET(request: Request) {
         location_quality,
         selfie_captured_at,
         selfie_capture_method,
-        selfie_storage_path,
         visit_outcome,
         visit_notes,
         person_met,
@@ -119,7 +119,6 @@ export async function GET(request: Request) {
         location_accuracy_m: number;
         location_quality: string;
         selfie_captured_at: string;
-        selfie_storage_path: string;
         attendance_id: string;
       };
       return {
@@ -141,7 +140,6 @@ export async function GET(request: Request) {
       'Loc Accuracy (m)': visit.location_accuracy_m,
       'Loc Quality': visit.location_quality,
       'Selfie Captured At': visit.selfie_captured_at ? new Date(visit.selfie_captured_at).toLocaleString() : '',
-      'Selfie Path': visit.selfie_storage_path,
       'Attendance ID': visit.attendance_id,
     };
     });

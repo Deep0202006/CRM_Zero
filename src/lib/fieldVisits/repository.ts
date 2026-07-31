@@ -8,19 +8,19 @@ export class FieldVisitsRepository {
    */
   static async saveVisitWithMedia(
     visit: LocalFieldVisit,
-    mediaBase64: string | null
+    media: Blob | string | null
   ): Promise<void> {
     await db.transaction('rw', [db.field_visits, db.field_visit_media], async () => {
       // 1. Insert local visit
       await db.field_visits.add(visit);
 
       // 2. If media exists, insert it
-      if (mediaBase64) {
+      if (media) {
         const mediaRecord: LocalFieldVisitMedia = {
           media_id: crypto.randomUUID(),
           visit_id: visit.visit_id,
           user_id: visit.user_id,
-          media_data: mediaBase64,
+          media_data: media,
           created_at: new Date().toISOString()
         };
         await db.field_visit_media.add(mediaRecord);

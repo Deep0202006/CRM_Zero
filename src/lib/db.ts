@@ -187,7 +187,7 @@ export interface LocalFieldVisitMedia {
   media_id: string;
   visit_id: string;
   user_id: string;
-  media_data: string; // Base64 data URI
+  media_data: Blob | string; // Blob for new captures; legacy Base64 remains readable.
   created_at: string;
 }
 

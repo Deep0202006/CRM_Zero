@@ -1,13 +1,12 @@
 import imageCompression from "browser-image-compression";
 
 /**
- * Compresses an image file (e.g. attendance check-in selfie) to fit within a target limit of ~200KB.
- * Reduces dimension and quality appropriately while running in a background Web Worker.
+ * Compresses image evidence to a practical mobile storage budget.
  */
 export async function compressSelfie(file: File): Promise<File> {
   const options = {
-    maxSizeMB: 0.2,            // Target size: 200KB (0.2 MB)
-    maxWidthOrHeight: 800,      // Max width/height to preserve mobile rendering quality
+    maxSizeMB: 0.34,           // Target size: approximately 350KB
+    maxWidthOrHeight: 1280,
     useWebWorker: true,        // Offload work to avoid freezing the main UI thread
     fileType: "image/jpeg"     // Standardize format
   };

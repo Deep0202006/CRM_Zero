@@ -13,15 +13,6 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { CheckInGate } from "@/components/CheckInGate";
 import SelfieCapture from "@/components/visits/SelfieCapture";
 
-const blobToBase64 = (blob: Blob): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-};
-
 export default function NewRetailerVisitPage() {
   const { currentUser, capabilities } = useAuth();
   
@@ -144,7 +135,6 @@ export default function NewRetailerVisitPage() {
          throw new Error("You must check in for attendance today before logging visits.");
       }
 
-      const mediaBase64 = await blobToBase64(photoBlob);
       const locationQuality = accuracy && accuracy <= 50 ? "high" : accuracy && accuracy <= 200 ? "medium" : "low";
 
       const visitRecord = {
@@ -174,7 +164,7 @@ export default function NewRetailerVisitPage() {
         updated_at: now
       };
 
-      await FieldVisitsRepository.saveVisitWithMedia(visitRecord, mediaBase64);
+      await FieldVisitsRepository.saveVisitWithMedia(visitRecord, photoBlob);
       
       setSuccess(true);
       setTimeout(() => {
