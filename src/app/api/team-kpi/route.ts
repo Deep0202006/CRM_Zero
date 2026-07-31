@@ -6,6 +6,7 @@ import {
   type TeamKpiRow,
 } from "@/lib/teamKpi/contract";
 import { loadTeamKpiServerReport, TeamKpiServerError } from "@/lib/teamKpi/serverReport";
+import { getCurrentISTDate } from "@/lib/dateTime";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -189,10 +190,9 @@ export async function GET(request: NextRequest) {
     return jsonError(401, "AUTHENTICATION_REQUIRED", "Sign in again to view Team KPI.");
   }
 
-  const targetDate = request.nextUrl.searchParams.get("date") ?? "";
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(targetDate)) {
-    return jsonError(400, "INVALID_DATE", "A valid Team KPI date is required.");
-  }
+  // Team KPI is deliberately today-only. Ignore all client-supplied dates so
+  // an old bookmark or modified request cannot browse historical reports.
+  const targetDate = getCurrentISTDate();
 
   const userClient = createUserScopedClient(supabaseUrl, supabaseAnonKey, accessToken);
   const serviceClient = isConfiguredServiceKey(serviceRoleKey)

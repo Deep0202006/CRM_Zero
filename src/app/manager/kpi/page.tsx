@@ -24,7 +24,6 @@ import {
   Activity,
   AlertCircle,
   BarChart3,
-  Calendar,
   CheckCircle2,
   Layers,
   Link2,
@@ -38,7 +37,6 @@ import FunnelTab from "./FunnelTab";
 import { Chip } from "@/components/ui/Chip";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { MetricCard } from "@/components/ui/MetricCard";
-import { Input } from "@/components/ui/Input";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
 
@@ -100,7 +98,7 @@ function WorkMixRow({
 export default function ManagerKpiPage() {
   const { currentUser, isAdmin, isLoading: isAuthLoading } = useAuth();
   const [report, setReport] = useState<TeamKpiResponse | null>(null);
-  const [date, setDate] = useState(getCurrentISTDate());
+  const todayDate = getCurrentISTDate();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -127,7 +125,7 @@ export default function ManagerKpiPage() {
         throw { code: "28000", message: "Authentication required" };
       }
 
-      const response = await fetch(`/api/team-kpi?date=${encodeURIComponent(date)}`, {
+      const response = await fetch("/api/team-kpi", {
         method: "GET",
         headers: { Authorization: `Bearer ${accessToken}` },
         cache: "no-store",
@@ -144,7 +142,7 @@ export default function ManagerKpiPage() {
       if (!response.ok) throw data;
 
       const parsed = parseTeamKpiResponse(data);
-      if (parsed.target_date !== date) {
+      if (parsed.target_date !== todayDate) {
         throw new Error("Team KPI returned data for a different business date.");
       }
 
@@ -165,7 +163,7 @@ export default function ManagerKpiPage() {
         setRefreshing(false);
       }
     }
-  }, [currentUser, date, isAdmin]);
+  }, [currentUser, isAdmin, todayDate]);
 
   useEffect(() => {
     if (isAuthLoading || !currentUser || !isAdmin) return;
@@ -192,36 +190,17 @@ export default function ManagerKpiPage() {
     }
     channel.subscribe();
 
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") scheduleRefresh();
-    };
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    const refreshInterval = window.setInterval(() => {
-      if (document.visibilityState === "visible") scheduleRefresh();
-    }, 30_000);
-
     return () => {
       if (realtimeTimer.current) clearTimeout(realtimeTimer.current);
-      window.clearInterval(refreshInterval);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
       void supabase.removeChannel(channel);
     };
   }, [currentUser, isAdmin, loadTeamKpi]);
 
   const rows = report?.rows ?? [];
   const totals = report?.totals ?? EMPTY_TEAM_KPI_TOTALS;
-  const visibleReportMatchesDate = report?.target_date === date;
+  const visibleReportMatchesDate = report?.target_date === todayDate;
   const noActivityCount = rows.filter((row) => row.total_completed_work === 0).length;
   const chartRows = useMemo(() => rows.slice(0, 12), [rows]);
-
-  const handleDateChange = (nextDate: string) => {
-    requestSequence.current += 1;
-    setDate(nextDate);
-    setReport(null);
-    setError(null);
-    setWarning(null);
-    setLoading(true);
-  };
 
   if (!isAuthLoading && currentUser && !isAdmin) {
     return (
@@ -246,14 +225,6 @@ export default function ManagerKpiPage() {
         description="Review confirmed daily work across client calls, resolved queries, completed mappings, and completed tasks."
         actions={
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-            <Input
-              type="date"
-              value={date}
-              onChange={(event) => handleDateChange(event.target.value)}
-              leftIcon={<Calendar size={15} />}
-              containerClassName="w-full sm:w-[190px]"
-              aria-label="KPI date"
-            />
             <Button
               type="button"
               size="sm"
@@ -302,12 +273,12 @@ export default function ManagerKpiPage() {
           )}
 
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
-            <MetricCard label="Team members" value={totals.team_members} icon={<Users size={17} />} tone="neutral" note="Active people included" />
-            <MetricCard label="Total work" value={totals.total_completed_work} icon={<Activity size={17} />} tone="brand" note="All confirmed actions" />
-            <MetricCard label="Calls" value={totals.calls_made} icon={<PhoneCall size={17} />} tone="info" note="Real call records" />
-            <MetricCard label="Client queries" value={totals.queries_handled} icon={<MessageSquare size={17} />} tone="success" note="Resolved on this day" />
-            <MetricCard label="Mappings" value={totals.mappings_completed} icon={<Link2 size={17} />} tone="warning" note="Completed mappings" />
-            <MetricCard label="Tasks done" value={totals.tasks_completed} icon={<CheckCircle2 size={17} />} tone="success" note="Completed on this day" />
+            <MetricCard label="Team members" value={report ? totals.team_members : "—"} icon={<Users size={17} />} tone="neutral" note="Active people included" />
+            <MetricCard label="Total work" value={report ? totals.total_completed_work : "—"} icon={<Activity size={17} />} tone="brand" note="All confirmed actions" />
+            <MetricCard label="Calls" value={report ? totals.calls_made : "—"} icon={<PhoneCall size={17} />} tone="info" note="Real call records" />
+            <MetricCard label="Client queries" value={report ? totals.queries_handled : "—"} icon={<MessageSquare size={17} />} tone="success" note="Resolved today" />
+            <MetricCard label="Mappings" value={report ? totals.mappings_completed : "—"} icon={<Link2 size={17} />} tone="warning" note="Completed today" />
+            <MetricCard label="Tasks done" value={report ? totals.tasks_completed : "—"} icon={<CheckCircle2 size={17} />} tone="success" note="Tasks and allocated targets" />
           </div>
 
           {loading || !visibleReportMatchesDate ? (
@@ -357,7 +328,7 @@ export default function ManagerKpiPage() {
                   <WorkMixRow label="Mappings" value={totals.mappings_completed} total={totals.total_completed_work} icon={<Link2 size={14} />} barClassName="bg-[var(--status-warning)]" />
                   <WorkMixRow label="Tasks done" value={totals.tasks_completed} total={totals.total_completed_work} icon={<CheckCircle2 size={14} />} barClassName="bg-[var(--brand-500)]" />
                   <div className="rounded-[var(--radius-md)] bg-[var(--surface-secondary)] p-3 text-[11px] leading-5 text-[var(--text-muted)]">
-                    {noActivityCount === 0 ? "Every active team member has recorded completed work." : `${noActivityCount} active team member${noActivityCount === 1 ? " has" : "s have"} no confirmed completed work for this date.`}
+                    {noActivityCount === 0 ? "Every active team member has recorded completed work." : `${noActivityCount} active team member${noActivityCount === 1 ? " has" : "s have"} no confirmed completed work today.`}
                   </div>
                 </div>
               </aside>
@@ -380,12 +351,12 @@ export default function ManagerKpiPage() {
                   </p>
                 )}
               </div>
-              <Chip variant="neutral" size="sm">{date}</Chip>
+              <Chip variant="neutral" size="sm">{todayDate} · Asia/Kolkata</Chip>
             </div>
 
             {!loading && rows.length === 0 ? (
               <div className="p-5">
-                <EmptyState icon={<BarChart3 size={21} />} title="No KPI rows available" description={error || `No active team members are available for ${date}.`} />
+                <EmptyState icon={<BarChart3 size={21} />} title="No KPI rows available" description={error || `No active team members are available for ${todayDate}.`} />
               </div>
             ) : (
               <div className="overflow-x-auto" data-allow-overflow="horizontal">
