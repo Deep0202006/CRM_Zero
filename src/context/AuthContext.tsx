@@ -12,7 +12,7 @@ interface AuthContextType {
   allUsers: LocalUser[];
   isLoading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
-  logout: () => Promise<void>;
+  logout: (selfie?: File) => Promise<{ ok: boolean; error?: string; pendingRetained?: boolean }>;
   // Role flags
   isAdmin: boolean;
   isTechSupport: boolean;
@@ -139,10 +139,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (data.user) {
         const queuedOperations = await db.sync_queue.toArray();
-        if (queuedOperations.length > 0) {
+        const pendingLocalVisits = await db.field_visits
+          .where("sync_status")
+          .anyOf(["pending_sync", "sync_failed"])
+          .toArray();
+        if (queuedOperations.length > 0 || pendingLocalVisits.length > 0) {
           const explicitOwners = new Set(
-            queuedOperations
-              .map((item) => item.owner_user_id)
+            [
+              ...queuedOperations.map((item) => item.owner_user_id),
+              ...pendingLocalVisits.map((visit) => visit.user_id),
+            ]
               .filter((owner): owner is string => Boolean(owner)),
           );
           const storedOwner = localStorage.getItem("zerodata_outbox_owner_id");
@@ -223,40 +229,67 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const logout = async () => {
+  const logout = async (selfie?: File) => {
+    if (!currentUser) return { ok: false, error: "No authenticated user." };
     setIsLoading(true);
-    // A shared browser must never discard or reassign durable outbox work.
-    // Flush first and refuse logout while any operation remains unconfirmed.
+    let pendingRetained = false;
     try {
       if (typeof window !== 'undefined' && navigator.onLine) {
-        await Promise.all([processSyncQueue(), syncFieldVisits()]);
+        await Promise.allSettled([processSyncQueue(), syncFieldVisits()]);
       }
-      const pendingOperations = await db.sync_queue.count();
-      const pendingVisits = currentUser
-        ? await db.field_visits
-            .where("sync_status")
-            .anyOf(["pending_sync", "sync_failed"])
-            .and((visit) => visit.user_id === currentUser.user_id)
-            .count()
-        : 0;
-      if (pendingOperations > 0 || pendingVisits > 0) {
-        console.warn("Logout postponed because unsynchronized work remains.");
-        setIsLoading(false);
-        return;
+      const storedOwner = localStorage.getItem("zerodata_outbox_owner_id");
+      const queuedOperations = await db.sync_queue.toArray();
+      const ownedOperations = queuedOperations.filter(
+        (item) => item.owner_user_id === currentUser.user_id || (!item.owner_user_id && storedOwner === currentUser.user_id),
+      );
+      const pendingVisits = await db.field_visits
+        .where("sync_status")
+        .anyOf(["pending_sync", "sync_failed"])
+        .and((visit) => visit.user_id === currentUser.user_id)
+        .count();
+      pendingRetained = ownedOperations.length > 0 || pendingVisits > 0;
+      if (pendingRetained) {
+        localStorage.setItem("zerodata_outbox_owner_id", currentUser.user_id);
+        window.alert("Your unsynced work is safely retained on this device. Sign in with the same account later to complete synchronization.");
       }
-    } catch (e) {
-      console.warn("Failed to flush sync queue on logout", e);
-      setIsLoading(false);
-      return;
-    }
 
-    await supabase.auth.signOut();
-    setCurrentUser(null);
-    setCapabilities([]);
-    localStorage.removeItem("authenticated_user_id");
-    localStorage.removeItem("zerodata_outbox_owner_id");
-    setIsLoading(false);
-    if (typeof window !== "undefined") window.location.href = "/login";
+      if (!capabilities.includes("admin")) {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData.session?.access_token;
+        if (!token) throw new Error("Your session could not be verified.");
+        const body = new FormData();
+        if (selfie) body.append("selfie", selfie, "clockout.jpg");
+        const response = await fetch("/api/attendance/clock-out", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body,
+        });
+        const result = await response.json() as {
+          error?: string;
+          attendance_id?: string;
+          user_id?: string;
+          clock_out?: string;
+        };
+        if (!response.ok || !result.attendance_id || result.user_id !== currentUser.user_id || !result.clock_out) {
+          throw new Error(result.error || "Clock-out was not confirmed.");
+        }
+        await db.attendance.update(result.attendance_id, { clock_out: result.clock_out });
+      }
+
+      const { error: signOutError } = await supabase.auth.signOut();
+      if (signOutError) throw signOutError;
+      setCurrentUser(null);
+      setCapabilities([]);
+      localStorage.removeItem("authenticated_user_id");
+      if (!pendingRetained) localStorage.removeItem("zerodata_outbox_owner_id");
+      setIsLoading(false);
+      if (typeof window !== "undefined") window.location.href = "/login";
+      return { ok: true, pendingRetained };
+    } catch (error) {
+      console.warn("Verified logout failed", error);
+      setIsLoading(false);
+      return { ok: false, error: error instanceof Error ? error.message : "Logout failed. Please retry." };
+    }
   };
 
   // ─── Derived role flags ──────────────────────────────────────────────────

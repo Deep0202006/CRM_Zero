@@ -10,6 +10,16 @@ import { Input } from "@/components/ui/Input";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { getCurrentISTDate } from "@/lib/dateTime";
+
+function attendanceStatus(record?: LocalAttendance) {
+  if (!record) return "Absent";
+  return record.clock_out ? "Logged out" : "Working";
+}
+
+function csvCell(value: string) {
+  return `"${value.replaceAll('"', '""')}"`;
+}
 
 export default function AdminAttendancePage() {
   const { isAdmin } = useAuth();
@@ -18,7 +28,7 @@ export default function AdminAttendancePage() {
   const [users, setUsers] = useState<LocalUser[]>([]);
   const [userRoles, setUserRoles] = useState<Record<string, string>>({});
   const [activeTab, setActiveTab] = useState<"daily" | "weekly" | "monthly">("daily");
-  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [selectedDate, setSelectedDate] = useState<string>(getCurrentISTDate());
 
   const loadData = async () => {
     try {
@@ -28,7 +38,7 @@ export default function AdminAttendancePage() {
       
       const rolesMap: Record<string, string> = {};
       caps.forEach((c) => {
-        if (!rolesMap[c.user_id]) rolesMap[c.user_id] = c.capability_code;
+        rolesMap[c.user_id] = [rolesMap[c.user_id], c.capability_code].filter(Boolean).join(", ");
       });
 
       setAttendance(att);
@@ -54,11 +64,11 @@ export default function AdminAttendancePage() {
   }
 
   const exportCSV = () => {
-    let csv = "Date,User ID,Name,Role,Clock In,Clock Out,Selfie URL\n";
+    let csv = "Date,User ID,Name,Role,Clock In,Clock Out,Status,Clock-in Selfie Recorded\n";
     attendance.forEach((a) => {
       const u = users.find((usr) => usr.user_id === a.user_id);
       const role = userRoles[a.user_id] || "Unknown";
-      csv += `"${a.date}","${a.user_id}","${u?.name || "Unknown"}","${role}","${a.clock_in || ""}","${a.clock_out || ""}","${a.selfie_url || ""}"\n`;
+      csv += [a.date, a.user_id, u?.name || "Unknown", role, a.clock_in || "", a.clock_out || "", attendanceStatus(a), a.selfie_url ? "Yes" : "No"].map(csvCell).join(",") + "\n";
     });
     const blob = new Blob([csv], { type: "text/csv" });
     const url = window.URL.createObjectURL(blob);
@@ -69,7 +79,7 @@ export default function AdminAttendancePage() {
     window.URL.revokeObjectURL(url);
   };
 
-  const staffUsers = users.filter((u) => userRoles[u.user_id] !== "admin");
+  const staffUsers = users.filter((u) => !(userRoles[u.user_id] || "").split(", ").includes("admin"));
 
   const getFilteredRecords = () => {
     const today = new Date();
@@ -149,7 +159,7 @@ export default function AdminAttendancePage() {
             <table className="min-w-[760px]">
               <thead>
                 {activeTab === "daily" ? (
-                  <tr><th>Staff member</th><th>Role</th><th>Status</th><th>Clock-in</th><th>Verification</th></tr>
+                  <tr><th>Staff member</th><th>Role</th><th>Status</th><th>Clock-in</th><th>Clock-out</th><th>Clock-in verification</th></tr>
                 ) : (
                   <tr><th>Staff member</th><th>Role</th><th>Days present</th><th>Attendance rate</th><th>Last seen</th></tr>
                 )}
@@ -159,10 +169,11 @@ export default function AdminAttendancePage() {
                   const record = filteredRecords.find((attendanceRow) => attendanceRow.user_id === user.user_id);
                   return (
                     <tr key={user.user_id}>
-                      <td><p className="font-semibold text-[var(--text-primary)]">{user.name}</p></td>
-                      <td className="capitalize">{(userRoles[user.user_id] || "unassigned").replaceAll("_", " ")}</td>
-                      <td><Chip variant={record ? "success" : "danger"} size="sm" dot>{record ? "Present" : "Absent"}</Chip></td>
-                      <td className="font-mono text-[12px]">{record ? new Date(record.clock_in).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "—"}</td>
+                      <td><p className="min-w-0 whitespace-normal break-words font-semibold text-[var(--text-primary)]">{user.name}</p></td>
+                      <td className="whitespace-normal break-words capitalize">{(userRoles[user.user_id] || "unassigned").replaceAll("_", " ")}</td>
+                      <td><Chip variant={!record ? "danger" : record.clock_out ? "neutral" : "success"} size="sm" dot>{attendanceStatus(record)}</Chip></td>
+                      <td className="font-mono text-[12px]">{record ? new Date(record.clock_in).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" }) : "—"}</td>
+                      <td className="font-mono text-[12px]">{record?.clock_out ? new Date(record.clock_out).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" }) : "—"}</td>
                       <td>{record?.selfie_url ? <img src={record.selfie_url} alt={`Verification for ${user.name}`} className="h-9 w-9 rounded-[var(--radius-md)] object-cover ring-1 ring-[var(--border-default)]" /> : record ? <Chip variant="neutral" size="sm">System record</Chip> : <span className="text-[var(--text-disabled)]">—</span>}</td>
                     </tr>
                   );

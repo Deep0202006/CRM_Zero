@@ -9,10 +9,13 @@ describe("production consistency guards", () => {
   it("never clears IndexedDB during logout and retains an unconfirmed outbox", () => {
     const auth = source("src/context/AuthContext.tsx");
     expect(auth).not.toContain("db.tables.map(table => table.clear())");
-    expect(auth).toContain("const pendingOperations = await db.sync_queue.count()");
+    expect(auth).toContain("const queuedOperations = await db.sync_queue.toArray()");
+    expect(auth).toContain("item.owner_user_id === currentUser.user_id");
     expect(auth).toContain('anyOf(["pending_sync", "sync_failed"])');
-    expect(auth).toContain("await Promise.all([processSyncQueue(), syncFieldVisits()])");
-    expect(auth).toContain("if (pendingOperations > 0 || pendingVisits > 0)");
+    expect(auth).toContain("await Promise.allSettled([processSyncQueue(), syncFieldVisits()])");
+    expect(auth).toContain("if (pendingRetained)");
+    expect(auth).toContain('localStorage.setItem("zerodata_outbox_owner_id", currentUser.user_id)');
+    expect(auth).toContain('if (!pendingRetained) localStorage.removeItem("zerodata_outbox_owner_id")');
     expect(auth).toContain("(!storedOwner && hasUnownedItems)");
   });
 

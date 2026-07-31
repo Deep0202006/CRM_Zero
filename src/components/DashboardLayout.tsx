@@ -34,6 +34,7 @@ import { db } from "@/lib/db";
 import "@/lib/fieldVisits/sync";
 import { AppLogo } from "@/components/AppLogo";
 import { CommandItem, CommandPalette } from "@/components/CommandPalette";
+import { VerifiedLogoutModal } from "@/components/VerifiedLogoutModal";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -61,7 +62,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     hasOnboarding,
     hasSupport,
     isTaskAssigner,
-    logout,
   } = useAuth();
 
   const [isOnline, setIsOnline] = useState(true);
@@ -73,6 +73,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [profileOpen, setProfileOpen] = useState(false);
   const [syncOpen, setSyncOpen] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [logoutOpen, setLogoutOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
   const syncRef = useRef<HTMLDivElement>(null);
   const mobileDrawerRef = useRef<HTMLElement>(null);
@@ -631,12 +632,18 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   <button
                     type="button"
                     role="menuitem"
-                    onClick={() => logout()}
+                    onClick={() => {
+                      setProfileOpen(false);
+                      setLogoutOpen(true);
+                    }}
                     className="flex w-full items-center gap-3 rounded-[var(--radius-md)] px-3 py-2.5 text-left text-[12px] font-medium text-[var(--status-danger)] hover:bg-[var(--status-danger-soft)]"
                   >
                     <LogOut size={16} />
                     Sign out securely
                   </button>
+                  <p className="px-3 pb-2 text-[10px] leading-4 text-[var(--text-muted)]">
+                    Use Logout to record your clock-out. Closing the browser does not complete attendance.
+                  </p>
                 </div>
               </div>
             )}
@@ -649,6 +656,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       </div>
 
       <CommandPalette items={commandItems} open={commandOpen} onOpenChange={setCommandOpen} />
+      <VerifiedLogoutModal open={logoutOpen} onClose={() => setLogoutOpen(false)} />
     </div>
   );
 }
