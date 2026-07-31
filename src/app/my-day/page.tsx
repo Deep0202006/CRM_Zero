@@ -12,7 +12,7 @@ import {
 } from "@/lib/taskEngine";
 import { CONVERTED_STAGES } from "@/lib/pipelineStages";
 import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
-import { db, processSyncQueue, transactionalMutation, type LocalAllocatedTarget, type LocalUser } from "@/lib/db";
+import { claimSyncQueueOwnership, db, processSyncQueue, transactionalMutation, type LocalAllocatedTarget, type LocalUser } from "@/lib/db";
 import { CheckCircle2, Clock, AlertCircle, ListTodo, PhoneCall, Trophy, CheckSquare, Target, Download, Trash2, MapPin, RefreshCw } from "lucide-react";
 import { exportPipelineToExcel } from "@/lib/pipelineExport";
 import { Button } from "@/components/ui/Button";
@@ -201,6 +201,7 @@ export default function MyDayPage() {
           await db.sync_queue.add({
             table_name: "call_logs",
             action: "INSERT",
+            owner_user_id: claimSyncQueueOwnership(),
             data: newLog,
             timestamp: completedAt,
             idempotency_key: `followup-completion-call:${task.task_id}`,
@@ -209,6 +210,7 @@ export default function MyDayPage() {
           await db.sync_queue.add({
             table_name: "tasks",
             action: "UPDATE",
+            owner_user_id: claimSyncQueueOwnership(),
             data: taskUpdate,
             timestamp: completedAt,
             idempotency_key: `followup-completion-task:${task.task_id}`,
@@ -217,6 +219,7 @@ export default function MyDayPage() {
           await db.sync_queue.add({
             table_name: "task_status_history",
             action: "INSERT",
+            owner_user_id: claimSyncQueueOwnership(),
             data: historyEntry,
             timestamp: completedAt,
             idempotency_key: `followup-completion-history:${task.task_id}`,
@@ -305,7 +308,7 @@ export default function MyDayPage() {
       if (!navigator.onLine || !isSupabaseConfigured) {
         await db.transaction("rw", db.allocated_targets, db.sync_queue, async () => {
           await db.allocated_targets.update(targetId, { is_completed: true, completed_at: completedAt, sync_status: "pending" });
-          await db.sync_queue.add({ idempotency_key: `complete-target-${targetId}`, table_name: "allocated_targets", action: "UPDATE", data: { target_id: targetId, is_completed: true, completed_at: completedAt }, timestamp: completedAt, retry_count: 0 });
+          await db.sync_queue.add({ idempotency_key: `complete-target-${targetId}`, owner_user_id: claimSyncQueueOwnership(), table_name: "allocated_targets", action: "UPDATE", data: { target_id: targetId, is_completed: true, completed_at: completedAt }, timestamp: completedAt, retry_count: 0 });
         });
         setAllocatedTargets((current) => current.filter((target) => target.target_id !== targetId)); setTargetNotice("Saved offline. Completion is pending synchronization."); return;
       }

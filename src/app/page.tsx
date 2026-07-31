@@ -49,11 +49,25 @@ export default function HomePage() {
   useEffect(() => {
     async function loadStats() {
       try {
+        if (!currentUser) return;
+        const canViewTeamOperations = isAdmin || hasOnboarding || hasSupport;
+        const visibleCalls = isAdmin
+          ? db.call_logs.toArray()
+          : db.call_logs.where("user_id").equals(currentUser.user_id).toArray();
+        const visibleQueries = isAdmin || hasSupport
+          ? db.client_queries.toArray()
+          : db.client_queries.where("assigned_to").equals(currentUser.user_id).toArray();
+        const visibleLeads = canViewTeamOperations
+          ? db.leads.toArray()
+          : db.leads.where("assigned_to").equals(currentUser.user_id).toArray();
+        const visibleUsers = isAdmin || capabilities.includes("task_assigner")
+          ? db.users.toArray()
+          : db.users.where("user_id").equals(currentUser.user_id).toArray();
         const [leads, queries, calls, users] = await Promise.all([
-          db.leads.toArray(),
-          db.client_queries.toArray(),
-          db.call_logs.toArray(),
-          db.users.toArray(),
+          visibleLeads,
+          visibleQueries,
+          visibleCalls,
+          visibleUsers,
         ]);
 
         setTotalLeads(leads.length);
@@ -129,7 +143,7 @@ export default function HomePage() {
       }
     }
     loadStats();
-  }, [currentUser, isAdmin, capabilities]);
+  }, [currentUser, isAdmin, capabilities, hasOnboarding, hasSupport]);
 
   const greeting = useMemo(() => {
     const hour = new Date().getHours();

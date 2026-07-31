@@ -297,6 +297,7 @@ export interface LocalAllocatedTarget {
 export interface SyncQueueItem {
   id?: number;
   idempotency_key: string;
+  owner_user_id?: string;
   table_name: string;
   action: "INSERT" | "UPDATE" | "DELETE";
   data: object;
@@ -711,6 +712,7 @@ export async function transactionalMutation(
 
     const item: SyncQueueItem = {
       idempotency_key: crypto.randomUUID(),
+      owner_user_id: claimSyncQueueOwnership(),
       table_name: tableName,
       action,
       data,
@@ -732,6 +734,7 @@ export async function queueOfflineMutation(
 ) {
   const item: SyncQueueItem = {
     idempotency_key: crypto.randomUUID(),
+    owner_user_id: claimSyncQueueOwnership(),
     table_name: tableName,
     action,
     data,
@@ -771,9 +774,14 @@ async function verifyRemoteRowExists(
   return Boolean(data);
 }
 
-async function ensureLegacyKpiSourceRepairsQueued(): Promise<void> {
+async function ensureLegacyKpiSourceRepairsQueued(authenticatedUserId: string): Promise<void> {
   const legacyCalls = await db.call_logs
-    .filter((call) => typeof call.lead_id === "string" && call.lead_id.startsWith("EXCEL::"))
+    .filter(
+      (call) =>
+        call.user_id === authenticatedUserId &&
+        typeof call.lead_id === "string" &&
+        call.lead_id.startsWith("EXCEL::"),
+    )
     .toArray();
 
   for (const call of legacyCalls) {
@@ -787,6 +795,7 @@ async function ensureLegacyKpiSourceRepairsQueued(): Promise<void> {
       if (!alreadyQueued) {
         await db.sync_queue.add({
           idempotency_key: `legacy-repair:call_logs:${call.log_id}`,
+          owner_user_id: claimSyncQueueOwnership(),
           table_name: "call_logs",
           action: "INSERT",
           data: prepared.data,
@@ -798,7 +807,13 @@ async function ensureLegacyKpiSourceRepairsQueued(): Promise<void> {
   }
 
   const legacyTasks = await db.tasks
-    .filter((task) => typeof task.related_lead_id === "string" && task.related_lead_id.startsWith("EXCEL::"))
+    .filter(
+      (task) =>
+        task.assigned_to === authenticatedUserId &&
+        (!task.assigned_by || task.assigned_by === authenticatedUserId) &&
+        typeof task.related_lead_id === "string" &&
+        task.related_lead_id.startsWith("EXCEL::"),
+    )
     .toArray();
 
   for (const task of legacyTasks) {
@@ -812,6 +827,7 @@ async function ensureLegacyKpiSourceRepairsQueued(): Promise<void> {
       if (!alreadyQueued) {
         await db.sync_queue.add({
           idempotency_key: `legacy-repair:tasks:${task.task_id}`,
+          owner_user_id: claimSyncQueueOwnership(),
           table_name: "tasks",
           action: "INSERT",
           data: prepared.data,
@@ -826,15 +842,30 @@ async function ensureLegacyKpiSourceRepairsQueued(): Promise<void> {
 async function processSyncQueueInternal(): Promise<void> {
   if (typeof navigator === "undefined" || !navigator.onLine) return;
 
-  await ensureLegacyKpiSourceRepairsQueued();
+  const { data: authenticated, error: authenticationError } = await supabase.auth.getUser();
+  const authenticatedUserId = authenticated.user?.id;
+  if (authenticationError || !authenticatedUserId) return;
+
+  await ensureLegacyKpiSourceRepairsQueued(authenticatedUserId);
 
   const items = await db.sync_queue.orderBy("id").toArray();
-  if (items.length === 0) return;
+  if (items.length === 0) {
+    localStorage.removeItem(OUTBOX_OWNER_KEY);
+    return;
+  }
+  const legacyOwnerId =
+    localStorage.getItem(OUTBOX_OWNER_KEY) ??
+    localStorage.getItem("authenticated_user_id");
 
   console.log(`Processing ${items.length} sync item(s)...`);
 
   for (const item of items) {
     if (!item.id) continue;
+    const itemOwnerId = item.owner_user_id ?? legacyOwnerId;
+    if (!itemOwnerId || itemOwnerId !== authenticatedUserId) continue;
+    if (!item.owner_user_id) {
+      await db.sync_queue.update(item.id, { owner_user_id: itemOwnerId });
+    }
 
     const prepared = prepareSyncPayload(item.table_name, item.data);
     const effectiveRetryCount = prepared.changed ? 0 : (item.retry_count ?? 0);
@@ -960,6 +991,9 @@ async function processSyncQueueInternal(): Promise<void> {
     }
   }
 
+  if ((await db.sync_queue.count()) === 0) {
+    localStorage.removeItem(OUTBOX_OWNER_KEY);
+  }
   console.log("Sync queue pass complete.");
 }
 
@@ -1012,13 +1046,18 @@ export async function pullDownSync() {
 
     for (const remoteTableName of tables) {
       const localTableName = REMOTE_TO_LOCAL_TABLE[remoteTableName] || remoteTableName;
+      const pk = TABLE_PK[localTableName] ?? "id";
       let allData: DynamicRow[] = [];
       let from = 0;
       const limit = 1000;
       let fetchError = null;
 
       while (true) {
-        const { data, error } = await supabase.from(remoteTableName).select("*").range(from, from + limit - 1);
+        const { data, error } = await supabase
+          .from(remoteTableName)
+          .select("*")
+          .order(pk, { ascending: true })
+          .range(from, from + limit - 1);
         if (error) {
           fetchError = error;
           break;
@@ -1041,7 +1080,6 @@ export async function pullDownSync() {
 
       if (data && data.length > 0) {
         const table = dynamicTables[localTableName];
-        const pk = TABLE_PK[localTableName] ?? "id";
 
         // Find local items
         const localItems = await table.toArray();
@@ -1065,7 +1103,11 @@ export async function pullDownSync() {
           .toArray();
         const pendingMutationIds = new Set(pendingMutations.map(item => getDynamicField(item.data, pk)));
 
-        const safeDataToPut = data.filter((d: DynamicRow) => !pendingMutationIds.has(d[pk]));
+        const safeDataToPut = data.filter(
+          (d: DynamicRow) =>
+            !pendingInsertIds.has(d[pk]) &&
+            !pendingMutationIds.has(d[pk]),
+        );
 
         await db.transaction('rw', table, async () => {
           if (safeIdsToDelete.length > 0) {
@@ -1165,6 +1207,11 @@ if (typeof window !== "undefined") {
             } else if (payload.eventType === 'DELETE') {
               const oldRecord = payload.old;
               if (oldRecord && oldRecord[pk]) {
+                const pendingMutation = await db.sync_queue
+                  .where("table_name").equals(tableName)
+                  .and(item => getDynamicField(item.data, pk) === oldRecord[pk])
+                  .first();
+                if (pendingMutation) return;
                 await db.transaction('rw', table, async () => {
                   await table.delete(oldRecord[pk]);
                 });
@@ -1179,4 +1226,18 @@ if (typeof window !== "undefined") {
         console.log("Supabase Realtime status:", status);
       });
   }
+}
+
+const OUTBOX_OWNER_KEY = "zerodata_outbox_owner_id";
+
+export function claimSyncQueueOwnership(): string | undefined {
+  if (typeof window === "undefined") return undefined;
+  const currentUserId = localStorage.getItem("authenticated_user_id") ?? undefined;
+  if (!currentUserId) return undefined;
+  const existingOwner = localStorage.getItem(OUTBOX_OWNER_KEY);
+  if (existingOwner && existingOwner !== currentUserId) {
+    throw new Error("Unsynchronized work belongs to another signed-in user.");
+  }
+  localStorage.setItem(OUTBOX_OWNER_KEY, currentUserId);
+  return currentUserId;
 }

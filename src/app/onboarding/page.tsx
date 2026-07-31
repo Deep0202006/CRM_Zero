@@ -106,7 +106,11 @@ export default function OnboardingPage() {
     setSelectedLead(lead);
     setErrorMsg(null);
     setSuccessMsg(null);
-    const logs = await db.call_logs.where("lead_id").equals(lead.lead_id).toArray();
+    const logs = await db.call_logs
+      .where("lead_id")
+      .equals(lead.lead_id)
+      .and((log) => isAdmin || log.user_id === currentUser?.user_id)
+      .toArray();
     setCallLogs(logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
   };
 
@@ -161,7 +165,11 @@ export default function OnboardingPage() {
       await loadLeads();
       if (selectedLead?.lead_id === lead.lead_id) {
         setSelectedLead({ ...lead, status: targetStatus });
-        const logs = await db.call_logs.where("lead_id").equals(lead.lead_id).toArray();
+        const logs = await db.call_logs
+          .where("lead_id")
+          .equals(lead.lead_id)
+          .and((log) => isAdmin || log.user_id === currentUser?.user_id)
+          .toArray();
         setCallLogs(logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
       }
       setSuccessMsg(`Lead moved to "${targetStatus}".`);

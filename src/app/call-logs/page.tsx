@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { db, processSyncQueue, LocalCallLog, LocalUser, LocalLead } from "@/lib/db";
+import { claimSyncQueueOwnership, db, processSyncQueue, LocalCallLog, LocalUser, LocalLead } from "@/lib/db";
 import { SearchableSelect, SearchableOption } from "@/components/SearchableSelect";
 import { PhoneCall, CheckCircle2, AlertCircle, Download } from "lucide-react";
 import excelUsers from "@/lib/excel_users.json";
@@ -147,6 +147,7 @@ export default function CallLogsPage() {
         await db.call_logs.add(log);
         await db.sync_queue.add({
           idempotency_key: `call-log:${logId}`,
+          owner_user_id: claimSyncQueueOwnership(),
           table_name: "call_logs",
           action: "INSERT",
           data: log,
@@ -157,6 +158,7 @@ export default function CallLogsPage() {
           await db.tasks.add(followupTask);
           await db.sync_queue.add({
             idempotency_key: `call-followup-task:${logId}`,
+            owner_user_id: claimSyncQueueOwnership(),
             table_name: "tasks",
             action: "INSERT",
             data: followupTask,

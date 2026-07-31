@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { db, transactionalMutation, LocalUser, pullDownSync, processSyncQueue } from "@/lib/db";
 import { supabase } from "@/lib/supabaseClient";
 import { getCurrentISTDate } from "@/lib/dateTime";
+import { syncFieldVisits } from "@/lib/fieldVisits/sync";
 
 interface AuthContextType {
   currentUser: LocalUser | null;
@@ -59,6 +60,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         if (sessionError || !session || session.user.id !== savedUserId) {
           if (savedUserId) {
+            const queuedOperations = await db.sync_queue.count();
+            if (queuedOperations > 0 && !localStorage.getItem("zerodata_outbox_owner_id")) {
+              localStorage.setItem("zerodata_outbox_owner_id", savedUserId);
+            }
             console.warn("Local storage session spoofing detected or session expired. Clearing local auth.");
             localStorage.removeItem("authenticated_user_id");
             setCurrentUser(null);
@@ -133,6 +138,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (data.user) {
+        const queuedOperations = await db.sync_queue.toArray();
+        if (queuedOperations.length > 0) {
+          const explicitOwners = new Set(
+            queuedOperations
+              .map((item) => item.owner_user_id)
+              .filter((owner): owner is string => Boolean(owner)),
+          );
+          const storedOwner = localStorage.getItem("zerodata_outbox_owner_id");
+          const derivedOwner = explicitOwners.size === 1 ? [...explicitOwners][0] : null;
+          const hasUnownedItems = queuedOperations.some((item) => !item.owner_user_id);
+          const effectiveOwner = storedOwner ?? derivedOwner;
+          const ambiguous =
+            explicitOwners.size > 1 ||
+            (storedOwner && derivedOwner && storedOwner !== derivedOwner) ||
+            (!storedOwner && hasUnownedItems) ||
+            !effectiveOwner;
+          if (ambiguous || effectiveOwner !== data.user.id) {
+            console.warn("Login blocked because unsynchronized work belongs to another user or has ambiguous ownership.");
+            await supabase.auth.signOut();
+            setIsLoading(false);
+            return false;
+          }
+          localStorage.setItem("zerodata_outbox_owner_id", effectiveOwner);
+        }
+
         // Find matching local user by exact UUID
         let user = await db.users.where("user_id").equals(data.user.id).first();
         
@@ -195,27 +225,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     setIsLoading(true);
+    // A shared browser must never discard or reassign durable outbox work.
+    // Flush first and refuse logout while any operation remains unconfirmed.
+    try {
+      if (typeof window !== 'undefined' && navigator.onLine) {
+        await Promise.all([processSyncQueue(), syncFieldVisits()]);
+      }
+      const pendingOperations = await db.sync_queue.count();
+      const pendingVisits = currentUser
+        ? await db.field_visits
+            .where("sync_status")
+            .anyOf(["pending_sync", "sync_failed"])
+            .and((visit) => visit.user_id === currentUser.user_id)
+            .count()
+        : 0;
+      if (pendingOperations > 0 || pendingVisits > 0) {
+        console.warn("Logout postponed because unsynchronized work remains.");
+        setIsLoading(false);
+        return;
+      }
+    } catch (e) {
+      console.warn("Failed to flush sync queue on logout", e);
+      setIsLoading(false);
+      return;
+    }
+
     await supabase.auth.signOut();
     setCurrentUser(null);
     setCapabilities([]);
     localStorage.removeItem("authenticated_user_id");
-
-    // Ensure any pending offline data is pushed before we wipe
-    try {
-      if (typeof window !== 'undefined' && navigator.onLine) {
-        await processSyncQueue();
-      }
-    } catch (e) {
-      console.warn("Failed to flush sync queue on logout", e);
-    }
-
-    // Wipe local IndexedDB to prevent cross-user data contamination
-    try {
-      await Promise.all(db.tables.map(table => table.clear()));
-    } catch (err) {
-      console.error("Failed to clear local DB on logout:", err);
-    }
-
+    localStorage.removeItem("zerodata_outbox_owner_id");
     setIsLoading(false);
     if (typeof window !== "undefined") window.location.href = "/login";
   };
