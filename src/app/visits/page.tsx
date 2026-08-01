@@ -7,6 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { db, type LocalFieldVisit, type LocalLead } from "@/lib/db";
 import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
 import { mergeOwnVisits } from "@/lib/fieldVisits/merge";
+import { calculateOwnVisitMetrics, type OwnVisitMetrics } from "@/lib/fieldVisits/metrics";
 import { syncFieldVisits } from "@/lib/fieldVisits/sync";
 import { getCurrentISTDate } from "@/lib/dateTime";
 import { Button } from "@/components/ui/Button";
@@ -26,6 +27,8 @@ export default function FieldVisitsPage() {
   const [remotePage, setRemotePage] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [retryingVisitId, setRetryingVisitId] = useState<string | null>(null);
+  const [metrics, setMetrics] = useState<OwnVisitMetrics>({ totalVisits: 0, visitsToday: 0, waitingToSync: 0 });
+  const [metricsError, setMetricsError] = useState("");
 
   const loadLocal = useCallback(async () => {
     if (!currentUser) return [];
@@ -62,15 +65,45 @@ export default function FieldVisitsPage() {
     setLoading(true);
     try {
       const ownLocal = await loadLocal();
+      let reconciledLocal = ownLocal;
       let confirmedRemote: LocalFieldVisit[] = [];
       if (navigator.onLine && isSupabaseConfigured) {
+        const today = getCurrentISTDate();
+        const retryable = ownLocal.filter((visit) => visit.sync_status === "pending_sync" || visit.sync_status === "sync_failed");
+        const localIds = [...new Set(retryable.map((visit) => visit.visit_id))];
         confirmedRemote = await loadRemotePage(0, false);
+        const [totalResult, todayResult, reconciliationResult] = await Promise.all([
+          supabase.from("field_visits").select("visit_id", { count: "exact", head: true }).eq("user_id", currentUser.user_id),
+          supabase.from("field_visits").select("visit_id", { count: "exact", head: true }).eq("user_id", currentUser.user_id).eq("visit_date", today),
+          localIds.length
+            ? supabase.from("field_visits").select("visit_id").eq("user_id", currentUser.user_id).in("visit_id", localIds)
+            : Promise.resolve({ data: [], error: null }),
+        ]);
+        if (totalResult.error || todayResult.error || reconciliationResult.error) {
+          console.error("Failed to load authoritative visit metrics");
+          setMetricsError("Authoritative visit totals are temporarily unavailable. Refresh to retry.");
+        } else {
+          const confirmedLocalIds = new Set((reconciliationResult.data ?? []).map((visit) => visit.visit_id));
+          reconciledLocal = ownLocal.map((visit) => confirmedLocalIds.has(visit.visit_id) ? { ...visit, sync_status: "synced" as const } : visit);
+          setMetrics(calculateOwnVisitMetrics(
+            currentUser.user_id,
+            today,
+            totalResult.count ?? 0,
+            todayResult.count ?? 0,
+            ownLocal,
+            (reconciliationResult.data ?? []).map((visit) => visit.visit_id),
+          ));
+          setMetricsError("");
+        }
+      } else {
+        setMetrics(calculateOwnVisitMetrics(currentUser.user_id, getCurrentISTDate(), 0, 0, ownLocal, []));
       }
-      setVisits(mergeOwnVisits(currentUser.user_id, ownLocal, confirmedRemote));
+      setVisits(mergeOwnVisits(currentUser.user_id, reconciledLocal, confirmedRemote));
     } catch (error) {
       console.error("Failed to load visits:", error);
       const ownLocal = await loadLocal();
       setVisits(mergeOwnVisits(currentUser.user_id, ownLocal, []));
+      setMetricsError("Authoritative visit totals are temporarily unavailable. Refresh to retry.");
     } finally {
       setLoading(false);
     }
@@ -102,7 +135,6 @@ export default function FieldVisitsPage() {
     return lead ? `${lead.business_name} - ${lead.phone || "N/A"}` : `Unavailable business (${leadId.slice(0, 8)})`;
   };
 
-  const today = getCurrentISTDate();
   return (
     <CheckInGate>
       <div className="app-page min-w-0">
@@ -114,9 +146,11 @@ export default function FieldVisitsPage() {
           actions={<Link href="/visits/new"><Button size="sm" icon={<Plus size={14} />}>Log new visit</Button></Link>}
         />
         <div className="metric-grid">
-          <MetricCard label="Visits today" value={visits.filter((visit) => visit.visit_date === today).length} icon={<MapPin size={17} />} note="Your visits today" />
-          <MetricCard label="Loaded visits" value={visits.length} icon={<CheckCircle2 size={17} />} tone="neutral" note="Local work plus bounded remote history" />
+          <MetricCard label="Total visits" value={metrics.totalVisits} icon={<CheckCircle2 size={17} />} note="Confirmed plus local-only work" />
+          <MetricCard label="Visits today" value={metrics.visitsToday} icon={<MapPin size={17} />} note="Your visits today" />
+          <MetricCard label="Waiting to sync" value={metrics.waitingToSync} icon={<RotateCw size={17} />} tone={metrics.waitingToSync ? "warning" : "neutral"} note="Pending or needs attention" />
         </div>
+        {metricsError && <div role="alert" className="mb-4 rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">{metricsError}</div>}
         <QueueList
           title="My field visits"
           items={visits.map((visit) => {

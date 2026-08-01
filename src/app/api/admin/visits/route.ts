@@ -35,28 +35,34 @@ async function loadHistoricalRepresentativeIds(admin: SupabaseClient) {
 }
 
 async function loadRepresentativeDirectoryUncached(admin: SupabaseClient) {
-  const [{ data: fieldCapabilities, error: capabilityError }, historicalIds] = await Promise.all([
-    admin
-      .from("user_capabilities")
+  const historicalIdsPromise = loadHistoricalRepresentativeIds(admin);
+  const capabilityRows: Array<{ user_id: string; capability_code: string }> = [];
+  for (let from = 0; ; from += DIRECTORY_PAGE_SIZE) {
+    const { data, error } = await admin.from("user_capabilities")
       .select("user_id,capability_code")
-      .in("capability_code", ["field_ret", "field_dist"]),
-    loadHistoricalRepresentativeIds(admin),
-  ]);
-  if (capabilityError) {
-    throw Object.assign(new Error("representative capability query failed"), { safeCode: capabilityError.code ?? "UNKNOWN" });
+      .in("capability_code", ["field_ret", "field_dist"])
+      .order("user_id", { ascending: true })
+      .range(from, from + DIRECTORY_PAGE_SIZE - 1);
+    if (error) throw Object.assign(new Error("representative capability query failed"), { safeCode: error.code ?? "UNKNOWN" });
+    capabilityRows.push(...((data ?? []) as typeof capabilityRows));
+    if (!data || data.length < DIRECTORY_PAGE_SIZE) break;
   }
-  const capabilityRows = (fieldCapabilities ?? []) as Array<{ user_id: string; capability_code: string }>;
+  const historicalIds = await historicalIdsPromise;
   const directoryIds = [...new Set([...capabilityRows.map((row) => row.user_id), ...historicalIds])];
   if (!directoryIds.length) return [];
-  const { data: users, error: usersError } = await admin
-    .from("users")
-    .select("user_id,name,email,is_active")
-    .in("user_id", directoryIds);
-  if (usersError) {
-    throw Object.assign(new Error("representative users query failed"), { safeCode: usersError.code ?? "UNKNOWN" });
+  const users: Array<{ user_id: string; name: string; email: string; is_active: boolean | number | string }> = [];
+  for (let index = 0; index < directoryIds.length; index += 100) {
+    const { data, error } = await admin
+      .from("users")
+      .select("user_id,name,email,is_active")
+      .in("user_id", directoryIds.slice(index, index + 100));
+    if (error) {
+      throw Object.assign(new Error("representative users query failed"), { safeCode: error.code ?? "UNKNOWN" });
+    }
+    users.push(...((data ?? []) as typeof users));
   }
   return buildRepresentativeDirectory(
-    (users ?? []) as Array<{ user_id: string; name: string; email: string; is_active: boolean | number | string }>,
+    users,
     capabilityRows,
     historicalIds,
   );
@@ -110,9 +116,8 @@ export async function GET(request: Request) {
 
     const url = new URL(request.url);
     const page = Math.max(1, Number.parseInt(url.searchParams.get("page") ?? "1", 10) || 1);
-    const date = /^\d{4}-\d{2}-\d{2}$/.test(url.searchParams.get("date") ?? "")
-      ? url.searchParams.get("date")!
-      : getCurrentISTDate();
+    const requestedDate = url.searchParams.get("date") ?? "";
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(requestedDate) ? requestedDate : "";
     const representative = url.searchParams.get("representative");
     const segment = url.searchParams.get("segment");
     const outcome = url.searchParams.get("outcome");
@@ -120,10 +125,10 @@ export async function GET(request: Request) {
 
     let query = admin
       .from("field_visits")
-      .select("*, users:user_id(name,email), leads:lead_id(business_name,contact_person,phone)", { count: "exact" })
-      .eq("visit_date", date)
+      .select("visit_id,user_id,lead_id,visit_date,check_in_time,selfie_storage_path,visit_outcome,visit_notes,person_met,segment_type,created_at,updated_at", { count: "exact" })
       .order("created_at", { ascending: false })
       .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
+    if (date) query = query.eq("visit_date", date);
     if (representative && representative !== "ALL") query = query.eq("user_id", representative);
     if (segment && segment !== "ALL") query = query.eq("segment_type", segment);
     if (outcome && outcome !== "ALL") query = query.eq("visit_outcome", outcome);
@@ -153,14 +158,57 @@ export async function GET(request: Request) {
       return errorResponse(503, "Representative directory is temporarily unavailable.");
     }
 
-    const { data: visits, error, count } = await query;
+    const { data: rawVisits, error, count } = await query;
     if (error) return errorResponse(500, "Unable to load field visits.");
+    const visitsPage = (rawVisits ?? []) as Array<Record<string, unknown> & { user_id: string; lead_id: string }>;
+    const userIds = [...new Set(visitsPage.map((visit) => visit.user_id).filter(Boolean))];
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const leadIds = [...new Set(visitsPage.map((visit) => visit.lead_id).filter((id) => uuidPattern.test(id)))];
+    const [{ data: visitUsers, error: visitUsersError }, { data: visitLeads, error: visitLeadsError }] = await Promise.all([
+      userIds.length ? admin.from("users").select("user_id,name,email").in("user_id", userIds) : Promise.resolve({ data: [], error: null }),
+      leadIds.length ? admin.from("leads").select("lead_id,business_name,contact_person").in("lead_id", leadIds) : Promise.resolve({ data: [], error: null }),
+    ]);
+    if (visitUsersError) return errorResponse(500, "Unable to load representative identities.");
+    if (visitLeadsError) console.error("Admin visit lead directory failed", { code: visitLeadsError.code ?? "UNKNOWN" });
+    const usersById = new Map((visitUsers ?? []).map((user) => [user.user_id, user]));
+    const leadsById = new Map((visitLeads ?? []).map((lead) => [lead.lead_id, lead]));
+    const visits = visitsPage.map((visit) => ({
+      visit_id: visit.visit_id,
+      user_id: visit.user_id,
+      lead_id: visit.lead_id,
+      visit_date: visit.visit_date,
+      check_in_time: visit.check_in_time,
+      visit_outcome: visit.visit_outcome,
+      visit_notes: visit.visit_notes,
+      person_met: visit.person_met,
+      segment_type: visit.segment_type,
+      created_at: visit.created_at,
+      updated_at: visit.updated_at,
+      has_selfie_evidence: Boolean(visit.selfie_storage_path),
+      users: usersById.get(visit.user_id) ?? null,
+      leads: leadsById.get(visit.lead_id) ?? null,
+    }));
+
+    let allTimeCountQuery = admin.from("field_visits").select("visit_id", { count: "exact", head: true });
+    let todayCountQuery = admin.from("field_visits").select("visit_id", { count: "exact", head: true }).eq("visit_date", getCurrentISTDate());
+    for (const apply of [
+      (q: typeof allTimeCountQuery) => representative && representative !== "ALL" ? q.eq("user_id", representative) : q,
+      (q: typeof allTimeCountQuery) => segment && segment !== "ALL" ? q.eq("segment_type", segment) : q,
+      (q: typeof allTimeCountQuery) => outcome && outcome !== "ALL" ? q.eq("visit_outcome", outcome) : q,
+    ]) {
+      allTimeCountQuery = apply(allTimeCountQuery);
+      todayCountQuery = apply(todayCountQuery);
+    }
+    const [{ count: allTimeTotal, error: allTimeError }, { count: todayTotal, error: todayError }] = await Promise.all([allTimeCountQuery, todayCountQuery]);
+    if (allTimeError || todayError) return errorResponse(500, "Unable to load visit metrics.");
     return NextResponse.json(
       {
         visits: visits ?? [],
         page,
         page_size: PAGE_SIZE,
         total: count ?? 0,
+        all_time_total: allTimeTotal ?? 0,
+        today_total: todayTotal ?? 0,
         has_more: page * PAGE_SIZE < (count ?? 0),
         date,
         representatives,

@@ -39,12 +39,11 @@ export function buildRepresentativeDirectory(
     capabilitiesByUser.set(assignment.user_id, current.sort());
   }
 
-  const activeFieldUserIds = users
-    .filter((user) => isActive(user.is_active))
+  const fieldUserIds = users
     .filter((user) => (capabilitiesByUser.get(user.user_id) ?? []).some((code) => FIELD_CAPABILITIES.has(code)))
     .map((user) => user.user_id);
   const historicalIds = new Set(historicalVisitUserIds);
-  const directoryIds = new Set([...activeFieldUserIds, ...historicalIds]);
+  const directoryIds = new Set([...fieldUserIds, ...historicalIds]);
 
   return [...directoryIds]
     .map((userId): RepresentativeDirectoryRow => {
@@ -53,7 +52,7 @@ export function buildRepresentativeDirectory(
         .filter((code) => FIELD_CAPABILITIES.has(code));
       return {
         user_id: userId,
-        name: user?.name ?? "Unavailable representative",
+        name: user?.name ?? `Unknown representative · ${userId.slice(0, 8)}`,
         email: user?.email ?? "",
         is_active: user ? isActive(user.is_active) : false,
         capabilities: fieldCapabilities,
