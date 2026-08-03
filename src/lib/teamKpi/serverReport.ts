@@ -179,7 +179,7 @@ async function fetchTaskRowsByIds(
   for (const taskIdChunk of chunks(uniqueTaskIds, UUID_CHUNK_SIZE)) {
     const response = await client
       .from("tasks")
-      .select("task_id,assigned_to,completed_at,status")
+      .select("task_id,assigned_to,assigned_by,completed_at,status,source,template_id,description")
       .in("task_id", taskIdChunk);
     if (response.error) {
       warnings.push({ source: "task attribution", message: conciseSourceMessage("task attribution", response.error) });
@@ -263,7 +263,7 @@ export async function loadTeamKpiServerReport(
       loadPage: async (from, to) => {
         const result = await client
           .from("call_logs")
-          .select("log_id,user_id,timestamp,outcome")
+          .select("log_id,user_id,timestamp,outcome,next_followup_date")
           .gte("timestamp", startsAt)
           .lt("timestamp", endsAt)
           .order("timestamp", { ascending: true })
@@ -367,7 +367,7 @@ export async function loadTeamKpiServerReport(
       loadPage: async (from, to) => {
         const result = await client
           .from("tasks")
-          .select("task_id,assigned_to,completed_at,status")
+          .select("task_id,assigned_to,assigned_by,completed_at,status,source,template_id,description")
           .eq("status", "Completed")
           .gte("completed_at", startsAt)
           .lt("completed_at", endsAt)

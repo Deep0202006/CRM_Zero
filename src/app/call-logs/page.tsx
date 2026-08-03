@@ -15,14 +15,21 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { getCurrentISTDate, getISTDateKey } from "@/lib/dateTime";
 import { buildSelfScheduledFollowUpTask, needsCallFollowUp } from "@/lib/followUps";
+import { CALL_LOGS_CHANGED_EVENT, fetchCallLogSnapshot } from "@/lib/callLogs/repository";
+import { isGenuineCallLog, isSyntheticAuditCall } from "@/lib/workMetrics/canonical";
 
 export default function CallLogsPage() {
   const { currentUser, isAdmin } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [logs, setLogs] = useState<LocalCallLog[]>([]);
+  const [confirmedLogs, setConfirmedLogs] = useState<LocalCallLog[]>([]);
+  const [confirmedCount, setConfirmedCount] = useState(0);
+  const [pendingCount, setPendingCount] = useState(0);
+  const [authoritative, setAuthoritative] = useState(false);
   const [usersMap, setUsersMap] = useState<Map<string, LocalUser>>(new Map());
   const [leadsMap, setLeadsMap] = useState<Map<string, LocalLead>>(new Map());
+  const [followUpTaskIds, setFollowUpTaskIds] = useState<Set<string>>(new Set());
 
   const [selectedLeadId, setSelectedLeadId] = useState("");
   const [outcome, setOutcome] = useState("");
@@ -57,10 +64,9 @@ export default function CallLogsPage() {
         setLogs([]);
         return;
       }
-      const fetchedLogs = isAdmin
-        ? await db.call_logs.toArray()
-        : await db.call_logs.where("user_id").equals(currentUser.user_id).toArray();
-      fetchedLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      if (navigator.onLine) await processSyncQueue();
+      const snapshot = await fetchCallLogSnapshot(currentUser.user_id, isAdmin);
+      const fetchedLogs = snapshot.logs;
 
       const currentLocalUser = isAdmin ? null : await db.users.get(currentUser.user_id);
       const allUsers = isAdmin ? await db.users.toArray() : currentLocalUser ? [currentLocalUser] : [];
@@ -71,10 +77,16 @@ export default function CallLogsPage() {
       const allLeads = leadIds.length ? await db.leads.where("lead_id").anyOf(leadIds).toArray() : [];
       const lMap = new Map<string, LocalLead>();
       allLeads.forEach(l => lMap.set(l.lead_id, l));
+      const matchingTasks = await db.tasks.bulkGet(fetchedLogs.map((log) => log.log_id));
+      setFollowUpTaskIds(new Set(matchingTasks.filter((task): task is NonNullable<typeof task> => Boolean(task)).filter((task) => task.source === "manual" && task.template_id === null).map((task) => task.task_id)));
 
       setUsersMap(uMap);
       setLeadsMap(lMap);
       setLogs(fetchedLogs);
+      setConfirmedLogs(snapshot.confirmedLogs);
+      setConfirmedCount(snapshot.confirmedCount);
+      setPendingCount(snapshot.pendingCount);
+      setAuthoritative(snapshot.authoritative);
     } catch (err) {
       console.error("Failed to load logs:", err);
     } finally {
@@ -84,6 +96,16 @@ export default function CallLogsPage() {
 
   useEffect(() => {
     loadData();
+  }, [loadData]);
+
+  useEffect(() => {
+    const refresh = () => void loadData();
+    window.addEventListener(CALL_LOGS_CHANGED_EVENT, refresh);
+    window.addEventListener("focus", refresh);
+    return () => {
+      window.removeEventListener(CALL_LOGS_CHANGED_EVENT, refresh);
+      window.removeEventListener("focus", refresh);
+    };
   }, [loadData]);
 
   const handleLogCall = async (e: React.FormEvent) => {
@@ -195,7 +217,7 @@ export default function CallLogsPage() {
       const name = log.client_name || log.client_username || "Unknown client";
       return log.client_username ? `${name} (@${log.client_username})` : name;
     }
-    if (!log.lead_id) return "Unknown client";
+    if (!log.lead_id) return "Client reference unavailable";
     const lead = leadsMap.get(log.lead_id);
     if (lead) {
       if (lead.business_name.includes("(@")) return lead.business_name;
@@ -212,9 +234,11 @@ export default function CallLogsPage() {
   };
 
   const todayKey = getCurrentISTDate();
-  const callsToday = logs.filter((log) => getISTDateKey(log.timestamp) === todayKey).length;
-  const followupsScheduled = logs.filter((log) => Boolean(log.next_followup_date)).length;
-  const reachedClients = logs.filter((log) => !log.outcome.toLowerCase().includes("no response")).length;
+  const confirmedToday = confirmedLogs.filter((log) => getISTDateKey(log.timestamp) === todayKey && isGenuineCallLog(log));
+  const callsToday = confirmedToday.length;
+  const followupsScheduled = confirmedToday.filter((log) => Boolean(log.next_followup_date)).length;
+  const reachedClients = confirmedToday.filter((log) => !log.outcome.toLowerCase().includes("no response")).length;
+  const unknownAuditLike = confirmedLogs.filter((log) => !isSyntheticAuditCall(log) && /\b(?:pipeline|stage|transition|audit|system[- ]generated)\b/i.test(log.outcome)).length;
 
   return (
     <div className="app-page">
@@ -231,11 +255,19 @@ export default function CallLogsPage() {
       />
 
       <div className="metric-grid">
-        <MetricCard label="Calls today" value={callsToday} icon={<PhoneCall size={17} />} note="Recorded in the current calendar day" />
-        <MetricCard label="Total records" value={logs.length} icon={<CheckCircle2 size={17} />} tone="neutral" note="All locally available call outcomes" />
-        <MetricCard label="Follow-ups planned" value={followupsScheduled} icon={<AlertCircle size={17} />} tone="warning" note="Calls with a scheduled next step" />
+        <MetricCard label={authoritative ? "Confirmed calls today" : "Cached calls today"} value={callsToday} icon={<PhoneCall size={17} />} note={authoritative ? "Server-confirmed genuine client calls" : "Offline cache; confirmation unavailable"} />
+        <MetricCard
+          label="Waiting to sync"
+          value={pendingCount}
+          icon={<CheckCircle2 size={17} />}
+          tone="neutral"
+          note={authoritative ? `${confirmedCount} records confirmed by server` : "Local queue shown separately from confirmed calls"}
+        />
+        <MetricCard label="Follow-ups scheduled" value={followupsScheduled} icon={<AlertCircle size={17} />} tone="warning" note="Calls with a scheduled next step" />
         <MetricCard label="Clients reached" value={reachedClients} icon={<CheckCircle2 size={17} />} tone="success" note="Outcomes other than no response" />
       </div>
+
+      {isAdmin && unknownAuditLike > 0 && <div className="alert-panel alert-panel--warning" role="alert"><AlertCircle size={16} /><span>{unknownAuditLike} unknown audit-like call outcome(s) require classification review.</span></div>}
 
       <div className="workspace-split">
         <section className="surface-panel overflow-hidden" aria-labelledby="log-call-title">
@@ -288,8 +320,8 @@ export default function CallLogsPage() {
                 {log.notes && <p className="mt-2 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-2.5 text-[12px] leading-5 text-[var(--text-secondary)]">{log.notes}</p>}
               </div>
             ),
-            statusText: log.outcome,
-            statusVariant: "brand",
+            statusText: isSyntheticAuditCall(log) ? "Pipeline audit" : followUpTaskIds.has(log.log_id) ? "Follow-up call" : log.outcome,
+            statusVariant: isSyntheticAuditCall(log) ? "neutral" : "brand",
             timestamp: new Date(log.timestamp).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }),
           }))}
           emptyMessage={loading ? "Loading call activity…" : "No calls have been recorded yet."}

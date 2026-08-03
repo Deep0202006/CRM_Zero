@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx';
 import { db } from './db';
+import { isFollowUpCompletionCall, isSyntheticAuditCall } from './workMetrics/canonical';
 
 const formatIsoDate = (dateString?: string | null) => {
   if (!dateString) return '';
@@ -87,8 +88,11 @@ export async function exportCallLogs(userId: string, isAdmin: boolean) {
   // Need users array to map user_id to name if admin
   const usersArray = await db.users.toArray();
   const userMap = new Map(usersArray.map(u => [u.user_id, u.name || u.email]));
+  const tasks = await db.tasks.bulkGet(logs.map((log) => log.log_id));
+  const taskMap = new Map(tasks.filter(Boolean).map((task) => [task!.task_id, task!]));
 
   const data = logs.map(l => ({
+    'Type': isSyntheticAuditCall(l) ? 'Pipeline audit' : isFollowUpCompletionCall(l, taskMap.get(l.log_id)) ? 'Follow-up call' : 'Client call',
     'Log ID': l.log_id,
     'User Name': userMap.get(l.user_id || '') || l.user_id || 'Unknown',
     'Lead/Contact': l.lead_id,

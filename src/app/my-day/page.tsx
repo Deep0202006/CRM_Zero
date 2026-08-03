@@ -24,11 +24,12 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
-import { isValidSelfScheduledFollowUp, stripInternalFollowUpMarkers } from "@/lib/followUps";
+import { isValidSelfScheduledFollowUp, parseFollowUpSourceCallId, stripInternalFollowUpMarkers } from "@/lib/followUps";
 import { getCurrentISTDate, getISTDateKey } from "@/lib/dateTime";
 
 interface WeeklyDigestTaskPerformance { assigned_to: string; completed_count: number; total_count: number; }
 interface WeeklyDigest { week_start: string; data: { stuck_leads: { id: string; name: string; status: string; days_in_stage: number; assigned_to: string }[]; task_performance: WeeklyDigestTaskPerformance[]; upcoming_renewals: { id: string; name: string; renewal_date: string }[]; }; }
+interface DailySummary { genuine_calls_today: number; normal_tasks_completed_today: number; followup_tasks_completed_today: number; total_tasks_completed_today: number; pending_followups: number; unique_completed_work: number; generated_at: string; }
 
 export default function MyDayPage() {
   const { currentUser, capabilities, hasOnboarding, hasSupport, isFieldStaff, isAdmin } = useAuth();
@@ -48,9 +49,25 @@ export default function MyDayPage() {
   const [completionDialogTask, setCompletionDialogTask] = useState<LocalTask | null>(null);
   const [completionOutcome, setCompletionOutcome] = useState("Follow-up completed");
   const [deleteDialogTask, setDeleteDialogTask] = useState<LocalTask | null>(null);
+  const [dailySummary, setDailySummary] = useState<DailySummary | null>(null);
+  const [waitingToSync, setWaitingToSync] = useState(0);
+
+  const refreshDailySummary = useCallback(async () => {
+    if (!currentUser) return;
+    const pending = await db.sync_queue.filter((item) => item.owner_user_id === currentUser.user_id).count();
+    setWaitingToSync(pending);
+    if (!navigator.onLine || !isSupabaseConfigured) return;
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) return;
+    const response = await fetch("/api/my-day/daily-summary", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+    if (!response.ok) throw new Error("Confirmed My Day summary is unavailable.");
+    setDailySummary(await response.json() as DailySummary);
+  }, [currentUser]);
+
+  useEffect(() => { void refreshDailySummary(); }, [refreshDailySummary]);
 
   // Scoped KPIs
-  const [callsToday, setCallsToday] = useState(0);
   const [leadsConverted, setLeadsConverted] = useState(0);
   const [queriesResolvedToday, setQueriesResolvedToday] = useState(0);
   const [openQueries, setOpenQueries] = useState(0);
@@ -92,9 +109,6 @@ export default function MyDayPage() {
       setMappedToday(allMappings.filter(m => m.mapped_by === currentUser.user_id && m.status === 'Completed' && m.completed_at && getISTDateKey(m.completed_at) === todayStr).length);
 
       if (hasOnboarding) {
-        const allCalls = await db.call_logs.where("user_id").equals(currentUser.user_id).toArray();
-        setCallsToday(allCalls.filter(c => getISTDateKey(c.timestamp) === todayStr && !c.outcome.includes("→")).length);
-        
         const allLeads = await db.leads.where("assigned_to").equals(currentUser.user_id).toArray();
         setLeadsConverted(allLeads.filter(l => CONVERTED_STAGES.includes(l.status as typeof CONVERTED_STAGES[number])).length);
       }
@@ -169,10 +183,21 @@ export default function MyDayPage() {
         const logId = task.task_id;
         const historyId = task.task_id;
         const completedAt = new Date().toISOString();
+        const sourceCallId = parseFollowUpSourceCallId(task.description);
+        let sourceCall = sourceCallId ? await db.call_logs.get(sourceCallId) : null;
+        if (!sourceCall && sourceCallId && navigator.onLine && isSupabaseConfigured) {
+          const remoteSource = await supabase.from("call_logs").select("*").eq("log_id", sourceCallId).eq("user_id", currentUser.user_id).maybeSingle();
+          if (!remoteSource.error && remoteSource.data) {
+            sourceCall = remoteSource.data;
+            await db.call_logs.put(remoteSource.data);
+          }
+        }
         const newLog = {
           log_id: logId,
           user_id: currentUser.user_id,
-          lead_id: task.related_lead_id,
+          lead_id: sourceCall?.lead_id ?? task.related_lead_id ?? null,
+          client_username: sourceCall?.client_username ?? null,
+          client_name: sourceCall?.client_name ?? null,
           timestamp: completedAt,
           outcome: verifiedOutcome,
           notes: `Task completed: ${task.title}`,
@@ -227,7 +252,7 @@ export default function MyDayPage() {
             retry_count: 0,
           });
         });
-        if (navigator.onLine) void processSyncQueue();
+        if (navigator.onLine) await processSyncQueue();
       } else {
         await updateTaskStatus(task, "Completed", currentUser.user_id);
       }
@@ -242,6 +267,7 @@ export default function MyDayPage() {
         )
       );
       await getMyDayStats(currentUser.user_id).then(setStats);
+      await refreshDailySummary();
       setTaskActionMessage({ type: "success", text: `“${task.title}” was marked complete.` });
       setCompletionDialogTask(null);
       setCompletionOutcome("Follow-up completed");
@@ -295,6 +321,7 @@ export default function MyDayPage() {
     try {
       await refreshAllocatedTargets();
       await loadTasksAndKpis();
+      await refreshDailySummary();
     } finally {
       setIsSyncing(false);
     }
@@ -420,9 +447,11 @@ export default function MyDayPage() {
 
       {!loading && (
         <div className="metric-grid">
-          <MetricCard label="Completed today" value={done.length} icon={<CheckSquare size={17} />} note="Tasks finished in the current daily queue" tone="success" />
+          <MetricCard label="Tasks done" value={dailySummary?.total_tasks_completed_today ?? "—"} icon={<CheckSquare size={17} />} note="Server-confirmed completed tasks and targets" tone="success" />
           <MetricCard label="Mapped today" value={mappedToday} icon={<Target size={17} />} note="Distributor-retailer mapping work completed" />
-          {hasOnboarding && <MetricCard label="Calls today" value={callsToday} icon={<PhoneCall size={17} />} note="Recorded client conversations" tone="info" />}
+          {hasOnboarding && <MetricCard label="Calls today" value={dailySummary?.genuine_calls_today ?? "—"} icon={<PhoneCall size={17} />} note="Server-confirmed genuine client calls" tone="info" />}
+          <MetricCard label="Unique completed work" value={dailySummary?.unique_completed_work ?? "—"} icon={<CheckCircle2 size={17} />} note="Linked follow-up call and task count once here" tone="success" />
+          <MetricCard label="Waiting to sync" value={waitingToSync} icon={<RefreshCw size={17} />} note="Owned local queue entries, excluded from confirmed totals" tone={waitingToSync ? "warning" : "neutral"} />
           {hasOnboarding && <MetricCard label="Converted leads" value={leadsConverted} icon={<Trophy size={17} />} note="Leads reaching a converted pipeline stage" tone="warning" />}
           {hasSupport && <MetricCard label="Resolved today" value={queriesResolvedToday} icon={<CheckCircle2 size={17} />} note="Client queries closed today" tone="success" />}
           {hasSupport && <MetricCard label="Open queries" value={openQueries} icon={<AlertCircle size={17} />} note="Service requests still requiring action" tone={openQueries ? "warning" : "success"} />}

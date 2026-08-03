@@ -774,79 +774,12 @@ async function verifyRemoteRowExists(
   return Boolean(data);
 }
 
-async function ensureLegacyKpiSourceRepairsQueued(authenticatedUserId: string): Promise<void> {
-  const legacyCalls = await db.call_logs
-    .filter(
-      (call) =>
-        call.user_id === authenticatedUserId &&
-        typeof call.lead_id === "string" &&
-        call.lead_id.startsWith("EXCEL::"),
-    )
-    .toArray();
-
-  for (const call of legacyCalls) {
-    const prepared = prepareSyncPayload("call_logs", call);
-    if (!prepared.changed) continue;
-    await db.transaction("rw", [db.call_logs, db.sync_queue], async () => {
-      await db.call_logs.put(prepared.data as unknown as LocalCallLog);
-      const alreadyQueued = await db.sync_queue
-        .filter((entry) => entry.table_name === "call_logs" && getDynamicField(entry.data, "log_id") === call.log_id)
-        .first();
-      if (!alreadyQueued) {
-        await db.sync_queue.add({
-          idempotency_key: `legacy-repair:call_logs:${call.log_id}`,
-          owner_user_id: claimSyncQueueOwnership(),
-          table_name: "call_logs",
-          action: "INSERT",
-          data: prepared.data,
-          timestamp: new Date().toISOString(),
-          retry_count: 0,
-        });
-      }
-    });
-  }
-
-  const legacyTasks = await db.tasks
-    .filter(
-      (task) =>
-        task.assigned_to === authenticatedUserId &&
-        (!task.assigned_by || task.assigned_by === authenticatedUserId) &&
-        typeof task.related_lead_id === "string" &&
-        task.related_lead_id.startsWith("EXCEL::"),
-    )
-    .toArray();
-
-  for (const task of legacyTasks) {
-    const prepared = prepareSyncPayload("tasks", task);
-    if (!prepared.changed) continue;
-    await db.transaction("rw", [db.tasks, db.sync_queue], async () => {
-      await db.tasks.put(prepared.data as unknown as LocalTask);
-      const alreadyQueued = await db.sync_queue
-        .filter((entry) => entry.table_name === "tasks" && getDynamicField(entry.data, "task_id") === task.task_id)
-        .first();
-      if (!alreadyQueued) {
-        await db.sync_queue.add({
-          idempotency_key: `legacy-repair:tasks:${task.task_id}`,
-          owner_user_id: claimSyncQueueOwnership(),
-          table_name: "tasks",
-          action: "INSERT",
-          data: prepared.data,
-          timestamp: new Date().toISOString(),
-          retry_count: 0,
-        });
-      }
-    });
-  }
-}
-
 async function processSyncQueueInternal(): Promise<void> {
   if (typeof navigator === "undefined" || !navigator.onLine) return;
 
   const { data: authenticated, error: authenticationError } = await supabase.auth.getUser();
   const authenticatedUserId = authenticated.user?.id;
   if (authenticationError || !authenticatedUserId) return;
-
-  await ensureLegacyKpiSourceRepairsQueued(authenticatedUserId);
 
   const items = await db.sync_queue.orderBy("id").toArray();
   if (items.length === 0) {
@@ -984,6 +917,10 @@ async function processSyncQueueInternal(): Promise<void> {
       }
 
       await db.sync_queue.delete(item.id);
+
+      if (item.table_name === "call_logs" && typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("zerodata:call-logs-changed"));
+      }
 
       if (item.table_name === "field_visits") {
         const visitId = prepared.data.visit_id;
@@ -1230,6 +1167,9 @@ if (typeof window !== "undefined") {
                 await db.transaction('rw', table, async () => {
                   await table.put(record);
                 });
+                if (tableName === "call_logs") {
+                  window.dispatchEvent(new CustomEvent("zerodata:call-logs-changed"));
+                }
               }
             } else if (payload.eventType === 'DELETE') {
               const oldRecord = payload.old;
@@ -1242,6 +1182,9 @@ if (typeof window !== "undefined") {
                 await db.transaction('rw', table, async () => {
                   await table.delete(oldRecord[pk]);
                 });
+                if (tableName === "call_logs") {
+                  window.dispatchEvent(new CustomEvent("zerodata:call-logs-changed"));
+                }
               }
             }
           } catch (err) {

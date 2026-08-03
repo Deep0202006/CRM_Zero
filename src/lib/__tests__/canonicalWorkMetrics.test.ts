@@ -1,0 +1,18 @@
+import { getCanonicalDailyUserMetrics, isGenuineCallLog, isSyntheticAuditCall } from "../workMetrics/canonical";
+
+const user = "11111111-1111-4111-8111-111111111111";
+const at = "2026-08-03T06:00:00.000Z";
+const baseTask = { assigned_to: user, assigned_by: user, completed_at: at, status: "Completed", source: "manual", template_id: null, description: "Scheduled follow-up for: Client" };
+const calculate = (overrides: Record<string, unknown> = {}) => getCanonicalDailyUserMetrics({ userId: user, calls: [], tasks: [], taskHistory: [], ...overrides });
+
+describe("canonical daily work metrics", () => {
+  it("counts an ordinary call once", () => { const result = calculate({ calls: [{ log_id: "call-1", user_id: user, timestamp: at, outcome: "Happy call" }] }); expect([result.genuine_call_ids.size, result.completed_task_ids.size, result.unique_work_keys.size]).toEqual([1, 0, 1]); });
+  it("counts a call scheduling a follow-up once", () => { const result = calculate({ calls: [{ log_id: "call-1", user_id: user, timestamp: at, outcome: "Requested more info", next_followup_date: "2026-08-04" }] }); expect([result.genuine_call_ids.size, result.completed_task_ids.size, result.unique_work_keys.size]).toEqual([1, 0, 1]); });
+  it("deduplicates a linked follow-up completion", () => { const task = { task_id: "follow-1", ...baseTask }; const result = calculate({ calls: [{ log_id: "follow-1", user_id: user, timestamp: at, outcome: "Follow-up completed" }], tasks: [task] }); expect([result.genuine_call_ids.size, result.followup_task_ids.size, result.unique_work_keys.size]).toEqual([1, 1, 1]); });
+  it("counts a normal task once", () => { const result = calculate({ tasks: [{ task_id: "task-1", assigned_to: user, completed_at: at, status: "Completed" }] }); expect([result.genuine_call_ids.size, result.completed_task_ids.size, result.unique_work_keys.size]).toEqual([0, 1, 1]); });
+  it("counts a completed target as task work once", () => { const result = calculate({ targets: [{ target_id: "target-1", assigned_to_user_id: user, completed_at: at, is_completed: true }] }); expect([result.target_ids.size, result.unique_work_keys.size]).toEqual([1, 1]); });
+  it("excludes synthetic pipeline audit calls", () => { const call = { log_id: "audit-1", user_id: user, timestamp: at, outcome: "[Stage note] Prospect → Contacted" }; expect(isSyntheticAuditCall(call)).toBe(true); expect(isGenuineCallLog(call)).toBe(false); const result = calculate({ calls: [call] }); expect([result.genuine_call_ids.size, result.unique_work_keys.size]).toEqual([0, 0]); });
+  it("counts two distinct follow-ups separately", () => { const tasks = ["a", "b"].map((id) => ({ task_id: id, ...baseTask })); const calls = tasks.map((task) => ({ log_id: task.task_id, user_id: user, timestamp: at, outcome: "Follow-up completed" })); const result = calculate({ calls, tasks }); expect(result.unique_work_keys.size).toBe(2); });
+  it("credits assigned_to and only warns about changed_by", () => { const result = calculate({ tasks: [{ task_id: "task-1", assigned_to: user, completed_at: at, status: "Completed" }], taskHistory: [{ id: "h", task_id: "task-1", changed_by: "22222222-2222-4222-8222-222222222222", changed_at: at, new_status: "Completed" }] }); expect(result.completed_task_ids.size).toBe(1); expect(result.warnings.some((warning) => warning.source === "task attribution")).toBe(true); });
+  it("does not link a cross-user follow-up pair", () => { const result = calculate({ calls: [{ log_id: "follow-1", user_id: user, timestamp: at, outcome: "Follow-up completed" }], tasks: [{ task_id: "follow-1", ...baseTask, assigned_by: "22222222-2222-4222-8222-222222222222" }] }); expect(result.unique_work_keys.size).toBe(2); expect(result.warnings).toHaveLength(1); });
+});

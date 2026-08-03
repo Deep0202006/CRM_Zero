@@ -47,8 +47,8 @@ describe("Team KPI live server aggregation", () => {
       calls_made: 1,
       queries_handled: 1,
       mappings_completed: 1,
-      tasks_completed: 2,
-      total_completed_work: 5,
+      tasks_completed: 1,
+      total_completed_work: 4,
       latest_activity_time: "2026-07-27T10:00:00.000Z",
     });
     expect(report.rows[1]).toMatchObject({
@@ -56,8 +56,8 @@ describe("Team KPI live server aggregation", () => {
       calls_made: 0,
       queries_handled: 0,
       mappings_completed: 0,
-      tasks_completed: 1,
-      total_completed_work: 1,
+      tasks_completed: 2,
+      total_completed_work: 2,
     });
     expect(report.totals).toEqual({
       team_members: 2,

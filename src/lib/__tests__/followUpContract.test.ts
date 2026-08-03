@@ -74,7 +74,7 @@ describe("self-scheduled follow-up contract", () => {
     expect(callPage).toContain('db.transaction("rw", [db.call_logs, db.tasks, db.sync_queue]');
     expect(callPage).toContain("call-followup-task:${logId}");
     expect(callPage).toContain("needsCallFollowUp(outcome) && !nextFollowup");
-    expect(callPage).toContain('db.call_logs.where("user_id").equals(currentUser.user_id)');
+    expect(callPage).toContain("fetchCallLogSnapshot(currentUser.user_id, isAdmin)");
     expect(myDay).toContain("const isSelfScheduledFollowUp = isValidSelfScheduledFollowUp(task, currentUser.user_id)");
     expect(myDay).toContain("[db.call_logs, db.tasks, db.task_status_history, db.sync_queue]");
     expect(myDay).not.toContain("db.allocated_targets.bulkDelete");

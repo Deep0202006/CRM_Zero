@@ -27,7 +27,25 @@ describe("production consistency guards", () => {
     expect(dashboard).toContain('db.leads.where("assigned_to").equals(currentUser.user_id)');
     expect(dashboard).toContain('db.users.where("user_id").equals(currentUser.user_id)');
     expect(onboarding).toContain("isAdmin || log.user_id === currentUser?.user_id");
-    expect(callLogs).toContain('db.call_logs.where("user_id").equals(currentUser.user_id)');
+    expect(callLogs).toContain("fetchCallLogSnapshot(currentUser.user_id, isAdmin)");
+  });
+
+  it("uses the server as the online call-log authority and separates pending device rows", () => {
+    const repository = source("src/lib/callLogs/repository.ts");
+    const callLogs = source("src/app/call-logs/page.tsx");
+    const database = source("src/lib/db.ts");
+
+    expect(repository).toContain('.from("call_logs")');
+    expect(repository).toContain('.eq("user_id", userId)');
+    expect(repository).toContain("confirmedCount: confirmedLogs.length");
+    expect(repository).toContain("confirmedLogs: sortNewestFirst(confirmedLogs)");
+    expect(repository).toContain("pendingCount: unsyncedLogs.length");
+    expect(callLogs).toContain("await processSyncQueue()");
+    expect(callLogs).toContain("fetchCallLogSnapshot(currentUser.user_id, isAdmin)");
+    expect(callLogs).toContain("Server-confirmed genuine client calls");
+    expect(callLogs).toContain("const confirmedToday = confirmedLogs.filter");
+    expect(callLogs).not.toContain('label="Total records" value={logs.length}');
+    expect(database.match(/zerodata:call-logs-changed/g)?.length).toBeGreaterThanOrEqual(3);
   });
 
   it("keeps remote confirmation ahead of queue removal and preserves empty pulls", () => {
@@ -41,8 +59,8 @@ describe("production consistency guards", () => {
     expect(database).toContain(".order(pk, { ascending: true })");
     expect(database).toContain("item.owner_user_id ?? legacyOwnerId");
     expect(database).toContain("itemOwnerId !== authenticatedUserId");
-    expect(database).toContain("call.user_id === authenticatedUserId");
-    expect(database).toContain("task.assigned_to === authenticatedUserId");
+    expect(database).not.toContain("ensureLegacyKpiSourceRepairsQueued");
+    expect(database).not.toContain("legacy-repair:call_logs");
     expect(database).toContain("if (pendingMutation) return");
     expect(database).not.toMatch(/^[ \t]*await table\.bulkDelete\(safeIdsToDelete\)/m);
   });

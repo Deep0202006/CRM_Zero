@@ -51,7 +51,7 @@ describe("Team KPI response contract", () => {
   });
 
 
-  it("rejects row totals that do not equal their metric components", () => {
+  it("accepts a unique total below category sums for a linked follow-up", () => {
     expect(() => parseTeamKpiResponse({
       target_date: "2026-07-27",
       generated_at: "2026-07-27T10:00:00+00:00",
@@ -75,7 +75,7 @@ describe("Team KPI response contract", () => {
         tasks_completed: 1,
         total_completed_work: 3,
       },
-    })).toThrow();
+    })).not.toThrow();
   });
 
   it("rejects summary totals that do not equal the returned rows", () => {

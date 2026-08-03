@@ -18,15 +18,6 @@ export const teamKpiRowSchema = z.object({
   tasks_completed: nonNegativeInteger,
   total_completed_work: nonNegativeInteger,
   latest_activity_time: z.string().datetime({ offset: true }).nullable(),
-}).superRefine((row, context) => {
-  const expectedTotal = row.calls_made + row.queries_handled + row.mappings_completed + row.tasks_completed;
-  if (row.total_completed_work !== expectedTotal) {
-    context.addIssue({
-      code: "custom",
-      path: ["total_completed_work"],
-      message: "Team KPI row total does not match its metric components.",
-    });
-  }
 });
 
 export const teamKpiTotalsSchema = z.object({
