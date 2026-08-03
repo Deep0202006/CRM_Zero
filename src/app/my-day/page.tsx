@@ -50,12 +50,8 @@ export default function MyDayPage() {
   const [completionOutcome, setCompletionOutcome] = useState("Follow-up completed");
   const [deleteDialogTask, setDeleteDialogTask] = useState<LocalTask | null>(null);
   const [dailySummary, setDailySummary] = useState<DailySummary | null>(null);
-  const [waitingToSync, setWaitingToSync] = useState(0);
-
   const refreshDailySummary = useCallback(async () => {
     if (!currentUser) return;
-    const pending = await db.sync_queue.filter((item) => item.owner_user_id === currentUser.user_id).count();
-    setWaitingToSync(pending);
     if (!navigator.onLine || !isSupabaseConfigured) return;
     const { data } = await supabase.auth.getSession();
     const token = data.session?.access_token;
@@ -451,7 +447,6 @@ export default function MyDayPage() {
           <MetricCard label="Mapped today" value={mappedToday} icon={<Target size={17} />} note="Distributor-retailer mapping work completed" />
           {hasOnboarding && <MetricCard label="Calls today" value={dailySummary?.genuine_calls_today ?? "—"} icon={<PhoneCall size={17} />} note="Server-confirmed genuine client calls" tone="info" />}
           <MetricCard label="Unique completed work" value={dailySummary?.unique_completed_work ?? "—"} icon={<CheckCircle2 size={17} />} note="Linked follow-up call and task count once here" tone="success" />
-          <MetricCard label="Waiting to sync" value={waitingToSync} icon={<RefreshCw size={17} />} note="Owned local queue entries, excluded from confirmed totals" tone={waitingToSync ? "warning" : "neutral"} />
           {hasOnboarding && <MetricCard label="Converted leads" value={leadsConverted} icon={<Trophy size={17} />} note="Leads reaching a converted pipeline stage" tone="warning" />}
           {hasSupport && <MetricCard label="Resolved today" value={queriesResolvedToday} icon={<CheckCircle2 size={17} />} note="Client queries closed today" tone="success" />}
           {hasSupport && <MetricCard label="Open queries" value={openQueries} icon={<AlertCircle size={17} />} note="Service requests still requiring action" tone={openQueries ? "warning" : "success"} />}

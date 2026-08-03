@@ -82,4 +82,23 @@ describe("production consistency guards", () => {
     expect(myDay).not.toContain("Global Tech");
     expect(taskEngine).toContain("!isFollowUpLikeTemplate(tpl)");
   });
+
+  it("removes only the employee My Day waiting-to-sync presentation", () => {
+    const myDay = source("src/app/my-day/page.tsx");
+    const database = source("src/lib/db.ts");
+    const auth = source("src/context/AuthContext.tsx");
+
+    expect(myDay).not.toContain("Waiting to sync");
+    expect(myDay).not.toContain("waitingToSync");
+    expect(myDay).not.toContain("setWaitingToSync");
+    expect(myDay).toContain("processSyncQueue");
+    expect(myDay).toContain("claimSyncQueueOwnership");
+    expect(myDay).toContain('/api/my-day/daily-summary');
+    for (const label of ["Calls today", "Tasks done", "Unique completed work"]) {
+      expect(myDay).toContain(label);
+    }
+    expect(auth).toContain("pendingRetained");
+    expect(database).not.toContain("deleteDatabase(");
+    expect(auth).not.toContain("db.tables.map(table => table.clear())");
+  });
 });
