@@ -1,10 +1,10 @@
 import { db, LocalFieldVisit, LocalFieldVisitMedia } from "../db";
-import { syncFieldVisits } from "./sync";
 
 export class FieldVisitsRepository {
   /**
    * Transactionally saves a new field visit and its associated media to local Dexie.
-   * Then triggers the specialized field visits sync process.
+   * Remote confirmation is deliberately owned by the caller so UI success can
+   * never precede the exact server-confirmed visit.
    */
   static async saveVisitWithMedia(
     visit: LocalFieldVisit,
@@ -26,10 +26,5 @@ export class FieldVisitsRepository {
         await db.field_visit_media.add(mediaRecord);
       }
     });
-
-    // 3. Trigger dedicated sync asynchronously if online
-    if (typeof navigator !== "undefined" && navigator.onLine) {
-      syncFieldVisits().catch(console.error);
-    }
   }
 }

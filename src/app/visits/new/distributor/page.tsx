@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { db, LocalLead } from "@/lib/db";
+import { db, LocalLead, processSyncQueue } from "@/lib/db";
 import { FieldVisitsRepository } from "@/lib/fieldVisits/repository";
+import { syncFieldVisits } from "@/lib/fieldVisits/sync";
 import { getCurrentISTDate, isValidISTDateKey } from "@/lib/dateTime";
 import { SearchableSelect, SearchableOption } from "@/components/SearchableSelect";
 import { MapPin, Navigation, CheckCircle2, AlertCircle, ArrowLeft } from "lucide-react";
@@ -32,7 +33,9 @@ export default function NewDistributorVisitPage() {
   const [locating, setLocating] = useState(false);
   
   const [submitting, setSubmitting] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const [statusMessage, setStatusMessage] = useState("");
+  const [pendingVisitId, setPendingVisitId] = useState<string | null>(null);
+  const [offlineAcknowledgementRequired, setOfflineAcknowledgementRequired] = useState(false);
   const [error, setError] = useState("");
 
   const outcomes = [
@@ -127,10 +130,10 @@ export default function NewDistributorVisitPage() {
 
     setSubmitting(true);
     setError("");
-    setSuccess(false);
+    setStatusMessage("");
 
     try {
-      const visitId = crypto.randomUUID();
+      const visitId = pendingVisitId ?? crypto.randomUUID();
       const now = new Date().toISOString();
       const visit_date = getCurrentISTDate();
       
@@ -165,16 +168,38 @@ export default function NewDistributorVisitPage() {
         follow_up_date: outcome === "follow_up" || outcome === "payment_follow_up" ? followUpDate || null : null,
         attendance_id: attendanceRec?.attendance_id || null,
         sync_status: "pending_sync" as const,
+        sync_stage: "pending_visit" as const,
         created_at: now,
         updated_at: now
       };
 
-      await FieldVisitsRepository.saveVisitWithMedia(visitRecord, photoBlob);
-      
-      setSuccess(true);
-      setTimeout(() => {
-        window.location.href = "/visits";
-      }, 1500);
+      if (!pendingVisitId) {
+        await FieldVisitsRepository.saveVisitWithMedia(visitRecord, photoBlob);
+        setPendingVisitId(visitId);
+      }
+
+      if (!navigator.onLine) {
+        setStatusMessage("Saved offline — not yet confirmed.");
+        setOfflineAcknowledgementRequired(true);
+        setSubmitting(false);
+        return;
+      }
+
+      await processSyncQueue();
+      await syncFieldVisits(visitId);
+      const confirmed = await db.field_visits.get(visitId);
+      if (confirmed?.sync_stage === "synced") {
+        setStatusMessage("Visit confirmed successfully.");
+        window.setTimeout(() => { window.location.href = "/visits"; }, 500);
+        return;
+      }
+      if (confirmed?.sync_stage === "visit_confirmed_evidence_pending") {
+        setStatusMessage("Visit confirmed. Selfie evidence will retry automatically.");
+        window.setTimeout(() => { window.location.href = "/visits"; }, 500);
+        return;
+      }
+      setError(confirmed?.sync_error_message ?? "The visit is saved locally but not yet remotely confirmed.");
+      setSubmitting(false);
       
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to record visit.");
@@ -264,10 +289,11 @@ export default function NewDistributorVisitPage() {
             </div>
 
             {error && <div className="alert-panel alert-panel--danger" role="alert"><AlertCircle size={16} className="mt-0.5 shrink-0" /><span>{error}</span></div>}
-            {success && <div className="alert-panel alert-panel--success" role="status"><CheckCircle2 size={16} className="mt-0.5 shrink-0" /><span>Distributor visit saved locally. Syncing in background...</span></div>}
+            {statusMessage && <div className={`alert-panel ${offlineAcknowledgementRequired ? "alert-panel--warning" : "alert-panel--success"}`} role="status">{offlineAcknowledgementRequired ? <AlertCircle size={16} className="mt-0.5 shrink-0" /> : <CheckCircle2 size={16} className="mt-0.5 shrink-0" />}<span>{statusMessage}</span></div>}
 
-            <div className="flex justify-end border-t border-[var(--border-subtle)] pt-5">
-              <Button type="submit" isLoading={submitting} icon={<CheckCircle2 size={15} />} disabled={!selectedLeadId || !outcome || !personMet || !photoBlob || !lat || !lng}>Save Visit</Button>
+            <div className="flex justify-end gap-2 border-t border-[var(--border-subtle)] pt-5">
+              {offlineAcknowledgementRequired && <Button type="button" variant="outline" onClick={() => { window.location.href = "/visits"; }}>I understand — open My Visits</Button>}
+              {!offlineAcknowledgementRequired && <Button type="submit" isLoading={submitting} icon={<CheckCircle2 size={15} />} disabled={!selectedLeadId || !outcome || !personMet || !photoBlob || !lat || !lng}>{pendingVisitId ? "Retry confirmation" : "Save Visit"}</Button>}
             </div>
           </form>
         </section>

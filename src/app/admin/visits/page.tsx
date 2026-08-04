@@ -14,6 +14,7 @@ import { getOutcomeLabel } from "@/lib/fieldVisits/contract";
 
 interface AdminVisit extends LocalFieldVisit {
   has_selfie_evidence?: boolean;
+  confirmation_status?: "Confirmed" | "Evidence pending";
   users?: { name?: string | null; email?: string | null } | null;
   leads?: { business_name?: string | null; contact_person?: string | null; phone?: string | null } | null;
 }
@@ -161,8 +162,8 @@ export default function AdminVisitsPage() {
               {visit.visit_notes && <p className="mt-2 break-words text-[12px] leading-5 text-[var(--text-secondary)]">{visit.visit_notes}</p>}
             </div>
           ),
-          statusText: getOutcomeLabel(visit.visit_outcome),
-          statusVariant: "brand",
+          statusText: visit.confirmation_status ?? (visit.has_selfie_evidence ? "Confirmed" : "Evidence pending"),
+          statusVariant: visit.has_selfie_evidence ? "success" : "warning",
           timestamp: new Date(visit.check_in_time).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }),
           actions: visit.has_selfie_evidence ? <EvidenceButton visitId={visit.visit_id} /> : undefined,
         }))}

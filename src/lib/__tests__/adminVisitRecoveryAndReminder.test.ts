@@ -64,9 +64,9 @@ describe("My Day reminder authorization and safety", () => {
   });
 
   it("retries pending and failed local visits with stable IDs and exact confirmation", () => {
-    expect(sync).toContain('.anyOf(["pending_sync", "sync_failed"])');
-    expect(sync).toContain('.eq("visit_id", visit.visit_id)');
-    expect(sync).toContain("confirmedVisit?.visit_id !== visit.visit_id");
+    expect(sync).toContain('visit.sync_status === "pending_sync"');
+    expect(sync).toContain('fetch("/api/field-visits/confirm"');
+    expect(sync).toContain("result.visit_id !== visit.visit_id");
     expect(sync.indexOf('sync_status: "synced"')).toBeLessThan(sync.indexOf("field_visit_media.delete"));
     expect(sync).toContain("rerunRequested = true");
   });

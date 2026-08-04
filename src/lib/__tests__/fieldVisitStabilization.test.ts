@@ -48,11 +48,11 @@ describe("field visit stabilization", () => {
 
   it("retries failed visits without removing failed evidence", () => {
     const sync = read("src/lib/fieldVisits/sync.ts");
-    expect(sync).toContain('.anyOf(["pending_sync", "sync_failed"])');
+    expect(sync).toContain('visit.sync_status === "pending_sync"');
     expect(sync).toContain("if (activeSync) {");
     expect(sync).toContain("rerunRequested = true");
     expect(sync).toContain("while (rerunRequested)");
-    expect(sync).toContain("confirmedVisit?.visit_id !== visit.visit_id");
+    expect(sync).toContain("result.visit_id !== visit.visit_id");
     const failureBlock = sync.slice(sync.indexOf("} catch (error)"));
     expect(failureBlock).toContain('sync_status: "sync_failed"');
     expect(failureBlock).not.toContain("field_visit_media.delete");
@@ -60,13 +60,12 @@ describe("field visit stabilization", () => {
 
   it("removes temporary evidence only after exact remote confirmation", () => {
     const sync = read("src/lib/fieldVisits/sync.ts");
-    expect(sync.indexOf("confirmedVisit?.visit_id")).toBeLessThan(sync.indexOf("field_visit_media.delete"));
+    expect(sync.indexOf("result.visit_id !== visit.visit_id")).toBeLessThan(sync.indexOf("field_visit_media.delete"));
     expect(sync).not.toContain('.from("field_visit_media")');
-    expect(sync).toContain('.from("visits-evidence")');
-    expect(sync).toContain(".insert(payload)");
-    expect(sync).toContain('insertError?.code === "23505"');
-    expect(sync).toContain('.eq("user_id", authenticatedUserId)');
-    expect(sync).toContain(".upload(selfieStoragePath, evidenceFile, { upsert: false })");
+    expect(sync).not.toContain('.from("visits-evidence")');
+    expect(sync).not.toContain('.from("field_visits")');
+    expect(sync).toContain('fetch("/api/field-visits/confirm"');
+    expect(sync).toContain("result.evidence_confirmed && mediaRecord");
   });
 
   it("registers online and visibility listeners only once and uses no polling", () => {

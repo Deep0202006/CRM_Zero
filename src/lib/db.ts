@@ -179,6 +179,11 @@ export interface LocalFieldVisit {
   segment_type?: string | null;
   follow_up_date?: string | null;
   sync_status?: 'pending_sync' | 'synced' | 'sync_failed';
+  sync_stage?: 'pending_visit' | 'visit_confirmed_evidence_pending' | 'synced' | 'sync_failed';
+  sync_error_code?: string;
+  sync_error_message?: string;
+  sync_attempt_count?: number;
+  last_sync_attempt_at?: string;
   created_at: string;
   updated_at: string;
 }
@@ -799,6 +804,11 @@ async function processSyncQueueInternal(): Promise<void> {
     if (!item.owner_user_id) {
       await db.sync_queue.update(item.id, { owner_user_id: itemOwnerId });
     }
+
+    // Field visits are confirmed only through /api/field-visits/confirm. Keep
+    // any legacy queue item intact for recovery, but never replay its browser
+    // Supabase insert through this generic writer.
+    if (item.table_name === "field_visits") continue;
 
     if (
       item.idempotency_key.startsWith("followup-completion-history:") ||

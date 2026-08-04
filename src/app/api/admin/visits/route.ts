@@ -188,6 +188,7 @@ export async function GET(request: Request) {
       created_at: visit.created_at,
       updated_at: visit.updated_at,
       has_selfie_evidence: Boolean(visit.selfie_storage_path),
+      confirmation_status: visit.selfie_storage_path ? "Confirmed" : "Evidence pending",
       users: usersById.get(visit.user_id) ?? null,
       leads: leadsById.get(visit.lead_id) ?? null,
     }));
@@ -220,7 +221,7 @@ export async function GET(request: Request) {
     if (allTimeError || todayError || legacyResult.error) return errorResponse(500, "Unable to load visit metrics.");
     return NextResponse.json(
       {
-        visits: visits ?? [],
+        visits: [...new Map((visits ?? []).map((visit) => [visit.visit_id, visit])).values()],
         page,
         page_size: PAGE_SIZE,
         total: count ?? 0,
