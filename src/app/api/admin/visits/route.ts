@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { getCurrentISTDate } from "@/lib/dateTime";
+import { getCurrentISTDate, getISTBusinessDayBounds, isValidISTDateKey } from "@/lib/dateTime";
 import { buildRepresentativeDirectory, type RepresentativeDirectoryRow } from "@/lib/fieldVisits/representatives";
 
 export const runtime = "nodejs";
@@ -117,18 +117,20 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const page = Math.max(1, Number.parseInt(url.searchParams.get("page") ?? "1", 10) || 1);
     const requestedDate = url.searchParams.get("date") ?? "";
-    const date = /^\d{4}-\d{2}-\d{2}$/.test(requestedDate) ? requestedDate : "";
+    const date = isValidISTDateKey(requestedDate) ? requestedDate : "";
     const representative = url.searchParams.get("representative");
     const segment = url.searchParams.get("segment");
     const outcome = url.searchParams.get("outcome");
     const search = (url.searchParams.get("search") ?? "").trim();
+    const selectedBounds = date ? getISTBusinessDayBounds(date) : null;
+    let searchClauses: string[] = [];
 
     let query = admin
       .from("field_visits")
-      .select("visit_id,user_id,lead_id,visit_date,check_in_time,selfie_storage_path,visit_outcome,visit_notes,person_met,segment_type,created_at,updated_at", { count: "exact" })
+      .select("visit_id,user_id,lead_id,visit_date,check_in_time,selfie_storage_path,visit_outcome,visit_notes,person_met,segment_type,follow_up_date,created_at,updated_at", { count: "exact" })
       .order("created_at", { ascending: false })
       .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
-    if (date) query = query.eq("visit_date", date);
+    if (date && selectedBounds) query = query.or(`visit_date.eq.${date},and(check_in_time.gte.${selectedBounds.startsAt},check_in_time.lt.${selectedBounds.endsAt})`);
     if (representative && representative !== "ALL") query = query.eq("user_id", representative);
     if (segment && segment !== "ALL") query = query.eq("segment_type", segment);
     if (outcome && outcome !== "ALL") query = query.eq("visit_outcome", outcome);
@@ -139,13 +141,13 @@ export async function GET(request: Request) {
           admin.from("users").select("user_id").or(`name.ilike.%${safeSearch}%,email.ilike.%${safeSearch}%`).limit(50),
           admin.from("leads").select("lead_id").or(`business_name.ilike.%${safeSearch}%,contact_person.ilike.%${safeSearch}%,phone.ilike.%${safeSearch}%`).limit(50),
         ]);
-        const clauses = [
+        searchClauses = [
           `visit_notes.ilike.%${safeSearch}%`,
           `person_met.ilike.%${safeSearch}%`,
           ...(matchingUsers?.length ? [`user_id.in.(${matchingUsers.map((row) => row.user_id).join(",")})`] : []),
           ...(matchingLeads?.length ? [`lead_id.in.(${matchingLeads.map((row) => `"${row.lead_id}"`).join(",")})`] : []),
         ];
-        query = query.or(clauses.join(","));
+        query = query.or(searchClauses.join(","));
       }
     }
 
@@ -159,7 +161,7 @@ export async function GET(request: Request) {
     }
 
     const { data: rawVisits, error, count } = await query;
-    if (error) return errorResponse(500, "Unable to load field visits.");
+    if (error) return errorResponse(500, `Unable to load field visits (${error.code ?? "UNKNOWN"}).`);
     const visitsPage = (rawVisits ?? []) as Array<Record<string, unknown> & { user_id: string; lead_id: string }>;
     const userIds = [...new Set(visitsPage.map((visit) => visit.user_id).filter(Boolean))];
     const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -182,6 +184,7 @@ export async function GET(request: Request) {
       visit_notes: visit.visit_notes,
       person_met: visit.person_met,
       segment_type: visit.segment_type,
+      follow_up_date: visit.follow_up_date,
       created_at: visit.created_at,
       updated_at: visit.updated_at,
       has_selfie_evidence: Boolean(visit.selfie_storage_path),
@@ -190,7 +193,9 @@ export async function GET(request: Request) {
     }));
 
     let allTimeCountQuery = admin.from("field_visits").select("visit_id", { count: "exact", head: true });
-    let todayCountQuery = admin.from("field_visits").select("visit_id", { count: "exact", head: true }).eq("visit_date", getCurrentISTDate());
+    const today = getCurrentISTDate();
+    const todayBounds = getISTBusinessDayBounds(today);
+    let todayCountQuery = admin.from("field_visits").select("visit_id", { count: "exact", head: true }).or(`visit_date.eq.${today},and(check_in_time.gte.${todayBounds.startsAt},check_in_time.lt.${todayBounds.endsAt})`);
     for (const apply of [
       (q: typeof allTimeCountQuery) => representative && representative !== "ALL" ? q.eq("user_id", representative) : q,
       (q: typeof allTimeCountQuery) => segment && segment !== "ALL" ? q.eq("segment_type", segment) : q,
@@ -199,8 +204,20 @@ export async function GET(request: Request) {
       allTimeCountQuery = apply(allTimeCountQuery);
       todayCountQuery = apply(todayCountQuery);
     }
-    const [{ count: allTimeTotal, error: allTimeError }, { count: todayTotal, error: todayError }] = await Promise.all([allTimeCountQuery, todayCountQuery]);
-    if (allTimeError || todayError) return errorResponse(500, "Unable to load visit metrics.");
+    let legacyMismatchQuery = admin.from("field_visits").select("visit_id", { count: "exact", head: true });
+    if (date && selectedBounds) {
+      legacyMismatchQuery = legacyMismatchQuery.or(`visit_date.is.null,visit_date.neq.${date}`).gte("check_in_time", selectedBounds.startsAt).lt("check_in_time", selectedBounds.endsAt);
+      if (representative && representative !== "ALL") legacyMismatchQuery = legacyMismatchQuery.eq("user_id", representative);
+      if (segment && segment !== "ALL") legacyMismatchQuery = legacyMismatchQuery.eq("segment_type", segment);
+      if (outcome && outcome !== "ALL") legacyMismatchQuery = legacyMismatchQuery.eq("visit_outcome", outcome);
+      if (searchClauses.length) legacyMismatchQuery = legacyMismatchQuery.or(searchClauses.join(","));
+    }
+    const [{ count: allTimeTotal, error: allTimeError }, { count: todayTotal, error: todayError }, legacyResult] = await Promise.all([
+      allTimeCountQuery,
+      todayCountQuery,
+      date ? legacyMismatchQuery : Promise.resolve({ count: 0, error: null }),
+    ]);
+    if (allTimeError || todayError || legacyResult.error) return errorResponse(500, "Unable to load visit metrics.");
     return NextResponse.json(
       {
         visits: visits ?? [],
@@ -211,6 +228,7 @@ export async function GET(request: Request) {
         today_total: todayTotal ?? 0,
         has_more: page * PAGE_SIZE < (count ?? 0),
         date,
+        legacy_date_mismatch_count: legacyResult.count ?? 0,
         representatives,
       },
       { headers: { "Cache-Control": "no-store, max-age=0" } },

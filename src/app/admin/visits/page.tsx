@@ -10,6 +10,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { QueueList } from "@/components/QueueList";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { Button } from "@/components/ui/Button";
+import { getOutcomeLabel } from "@/lib/fieldVisits/contract";
 
 interface AdminVisit extends LocalFieldVisit {
   has_selfie_evidence?: boolean;
@@ -26,6 +27,7 @@ export default function AdminVisitsPage() {
   const [hasMore, setHasMore] = useState(false);
   const [allTimeTotal, setAllTimeTotal] = useState(0);
   const [todayTotal, setTodayTotal] = useState(0);
+  const [legacyMismatchCount, setLegacyMismatchCount] = useState(0);
   const [date, setDate] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [search, setSearch] = useState("");
@@ -54,8 +56,8 @@ export default function AdminVisitsPage() {
         headers: { Authorization: `Bearer ${token}` },
         cache: "no-store",
       });
-      if (!response.ok) throw new Error("Unable to load field visits");
       const result = await response.json();
+      if (!response.ok) throw new Error(typeof result.error === "string" ? result.error : "Unable to load field visits");
       if (sequence !== requestSequence.current) return;
       setVisits(result.visits ?? []);
       setPage(result.page ?? targetPage);
@@ -63,6 +65,7 @@ export default function AdminVisitsPage() {
       setAllTimeTotal(result.all_time_total ?? 0);
       setTodayTotal(result.today_total ?? 0);
       setRepresentatives(result.representatives ?? []);
+      setLegacyMismatchCount(result.legacy_date_mismatch_count ?? 0);
     } catch (error) {
       if (sequence !== requestSequence.current) return;
       console.error("Failed to load admin visits:", error);
@@ -84,6 +87,7 @@ export default function AdminVisitsPage() {
       if (!token) throw new Error("Authentication required");
       const params = new URLSearchParams();
       if (date) params.set("date", date);
+      if (search.trim()) params.set("search", search.trim());
       if (representative !== "ALL") params.set("agent", representative);
       if (segment !== "ALL") params.set("segment", segment);
       if (outcome !== "ALL") params.set("outcome", outcome);
@@ -125,23 +129,24 @@ export default function AdminVisitsPage() {
         <MetricCard label="Loaded rows" value={visits.length} icon={<CheckCircle2 size={17} />} />
       </div>
       <div className="mb-3 flex flex-wrap gap-2">
-        <Button size="sm" variant={date ? "outline" : "primary"} onClick={() => setDate("")}>All visits</Button>
-        <Button size="sm" variant={date === getCurrentISTDate() ? "primary" : "outline"} onClick={() => setDate(getCurrentISTDate())}>Today</Button>
+        <Button size="sm" variant={date ? "outline" : "primary"} onClick={() => { setPage(1); setDate(""); }}>All visits</Button>
+        <Button size="sm" variant={date === getCurrentISTDate() ? "primary" : "outline"} onClick={() => { setPage(1); setDate(getCurrentISTDate()); }}>Today</Button>
       </div>
+      {legacyMismatchCount > 0 && <div role="status" className="mb-4 rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">Included {legacyMismatchCount} confirmed visit{legacyMismatchCount === 1 ? "" : "s"} whose stored date differs from the selected India check-in date.</div>}
       {errorMessage && <div role="alert" className="mb-4 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800">{errorMessage} <Button size="sm" variant="outline" onClick={() => void loadData(page)}>Refresh</Button></div>}
       <div className="mb-6 grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-5">
-        <input aria-label="Search visits" className="field-control min-w-0" placeholder="Business, rep, phone, notes…" value={search} onChange={(event) => setSearch(event.target.value)} />
-        <input aria-label="Visit date" type="date" className="field-control min-w-0" value={date} onChange={(event) => setDate(event.target.value)} />
-        <select aria-label="Representative" className="field-control min-w-0" value={representative} onChange={(event) => setRepresentative(event.target.value)}>
+        <input aria-label="Search visits" className="field-control min-w-0" placeholder="Business, representative, or notes" value={search} onChange={(event) => { setPage(1); setSearch(event.target.value); }} />
+        <input aria-label="Visit date" type="date" className="field-control min-w-0" value={date} onChange={(event) => { setPage(1); setDate(event.target.value); }} />
+        <select aria-label="Representative" className="field-control min-w-0" value={representative} onChange={(event) => { setPage(1); setRepresentative(event.target.value); }}>
           <option value="ALL">All representatives</option>
           {representatives.map((user) => <option key={user.user_id} value={user.user_id}>{user.name}{user.email ? ` (${user.email})` : ""}{user.is_active ? "" : " — inactive"}{user.historical_only ? " — historical" : ""}</option>)}
         </select>
-        <select aria-label="Segment" className="field-control min-w-0" value={segment} onChange={(event) => setSegment(event.target.value)}>
+        <select aria-label="Segment" className="field-control min-w-0" value={segment} onChange={(event) => { setPage(1); setSegment(event.target.value); }}>
           <option value="ALL">All segments</option><option value="Retailer">Retailer</option><option value="Distributor">Distributor</option>
         </select>
-        <select aria-label="Outcome" className="field-control min-w-0" value={outcome} onChange={(event) => setOutcome(event.target.value)}>
+        <select aria-label="Outcome" className="field-control min-w-0" value={outcome} onChange={(event) => { setPage(1); setOutcome(event.target.value); }}>
           <option value="ALL">All outcomes</option>
-          {["registered", "installed", "interested", "follow_up", "not_interested"].map((value) => <option key={value} value={value}>{value.replace("_", " ")}</option>)}
+          {["registered", "installed", "interested", "follow_up", "payment_follow_up", "not_interested"].map((value) => <option key={value} value={value}>{getOutcomeLabel(value)}</option>)}
         </select>
       </div>
       <QueueList
@@ -152,11 +157,11 @@ export default function AdminVisitsPage() {
             <div className="min-w-0 whitespace-normal break-words">
               <p className="break-words text-[13px] font-semibold leading-snug text-[var(--text-primary)]">{visit.leads?.business_name || "Unavailable business"} <span className="font-normal text-[var(--text-secondary)]">({visit.segment_type})</span></p>
               <p className="mt-1 break-all text-[11px] leading-5 text-[var(--text-muted)]">Rep · {visit.users?.name || "Unknown"} · {visit.users?.email || "Unavailable"}</p>
-              <p className="mt-1 text-[12px] text-[var(--text-secondary)]">Person met: {visit.person_met || "Unavailable"} · Outcome: {visit.visit_outcome} · Synchronization confirmed</p>
+              <p className="mt-1 text-[12px] text-[var(--text-secondary)]">Person met: {visit.person_met || "Unavailable"} · Outcome: {getOutcomeLabel(visit.visit_outcome)}{visit.follow_up_date ? ` · Follow-up: ${visit.follow_up_date}` : ""} · Synchronization confirmed</p>
               {visit.visit_notes && <p className="mt-2 break-words text-[12px] leading-5 text-[var(--text-secondary)]">{visit.visit_notes}</p>}
             </div>
           ),
-          statusText: visit.visit_outcome,
+          statusText: getOutcomeLabel(visit.visit_outcome),
           statusVariant: "brand",
           timestamp: new Date(visit.check_in_time).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }),
           actions: visit.has_selfie_evidence ? <EvidenceButton visitId={visit.visit_id} /> : undefined,

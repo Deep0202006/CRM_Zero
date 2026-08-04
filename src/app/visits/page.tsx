@@ -10,6 +10,7 @@ import { mergeOwnVisits } from "@/lib/fieldVisits/merge";
 import { calculateOwnVisitMetrics, type OwnVisitMetrics } from "@/lib/fieldVisits/metrics";
 import { syncFieldVisits } from "@/lib/fieldVisits/sync";
 import { getCurrentISTDate } from "@/lib/dateTime";
+import { getOutcomeLabel } from "@/lib/fieldVisits/contract";
 import { Button } from "@/components/ui/Button";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { QueueList } from "@/components/QueueList";
@@ -130,6 +131,17 @@ export default function FieldVisitsPage() {
     }
   };
 
+  const failedVisits = visits.filter((visit) => visit.user_id === currentUser?.user_id && visit.sync_status === "sync_failed");
+  const retryFailedVisits = async () => {
+    setRetryingVisitId("ALL");
+    try {
+      await syncFieldVisits();
+      await loadData();
+    } finally {
+      setRetryingVisitId(null);
+    }
+  };
+
   const getLeadDisplay = (leadId: string) => {
     const lead = leadsMap.get(leadId);
     return lead ? `${lead.business_name} - ${lead.phone || "N/A"}` : `Unavailable business (${leadId.slice(0, 8)})`;
@@ -143,7 +155,7 @@ export default function FieldVisitsPage() {
           icon={<MapPin size={18} />}
           title="My Visits"
           description="Log and track your own retailer and distributor visits."
-          actions={<Link href="/visits/new"><Button size="sm" icon={<Plus size={14} />}>Log new visit</Button></Link>}
+          actions={<div className="flex flex-wrap gap-2">{failedVisits.length > 0 && <Button size="sm" variant="outline" icon={<RotateCw size={14} />} isLoading={retryingVisitId === "ALL"} onClick={() => void retryFailedVisits()}>Retry unsynced visits</Button>}<Link href="/visits/new"><Button size="sm" icon={<Plus size={14} />}>Log new visit</Button></Link></div>}
         />
         <div className="metric-grid">
           <MetricCard label="Total visits" value={metrics.totalVisits} icon={<CheckCircle2 size={17} />} note="Confirmed plus local-only work" />
@@ -168,9 +180,10 @@ export default function FieldVisitsPage() {
                     {visit.segment_type && <span className="ml-2 whitespace-normal break-words text-xs font-normal text-[var(--text-secondary)]">({visit.segment_type})</span>}
                   </p>
                   <div className="mt-1 flex flex-wrap gap-2 text-xs text-[var(--text-secondary)]">
-                    <span className="break-words rounded border border-[var(--border-subtle)] bg-[var(--surface-secondary)] px-2 py-0.5 font-medium">{visit.visit_outcome}</span>
+                    <span className="break-words rounded border border-[var(--border-subtle)] bg-[var(--surface-secondary)] px-2 py-0.5 font-medium">{getOutcomeLabel(visit.visit_outcome)}</span>
                     {visit.person_met && <span className="break-words">Met: {visit.person_met}</span>}
                   </div>
+                  {visit.follow_up_date && <p className="mt-1 text-[12px] text-[var(--text-secondary)]">Follow-up: {visit.follow_up_date}</p>}
                   {visit.visit_notes && <p className="mt-2 whitespace-normal break-words rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-2.5 text-[12px] leading-5 text-[var(--text-secondary)]">{visit.visit_notes}</p>}
                 </div>
               ),

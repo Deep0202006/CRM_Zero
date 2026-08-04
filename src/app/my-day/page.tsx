@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { liveQuery } from "dexie";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -25,7 +25,8 @@ import { MetricCard } from "@/components/ui/MetricCard";
 import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
 import { isValidSelfScheduledFollowUp, parseFollowUpSourceCallId, stripInternalFollowUpMarkers } from "@/lib/followUps";
-import { getCurrentISTDate, getISTDateKey } from "@/lib/dateTime";
+import { getCurrentISTDate, getISTBusinessDayBounds, getISTDateKey } from "@/lib/dateTime";
+import { mergePaymentFollowUps, type PaymentFollowUpIdentity } from "@/lib/fieldVisits/paymentFollowUps";
 
 interface WeeklyDigestTaskPerformance { assigned_to: string; completed_count: number; total_count: number; }
 interface WeeklyDigest { week_start: string; data: { stuck_leads: { id: string; name: string; status: string; days_in_stage: number; assigned_to: string }[]; task_performance: WeeklyDigestTaskPerformance[]; upcoming_renewals: { id: string; name: string; renewal_date: string }[]; }; }
@@ -50,6 +51,8 @@ export default function MyDayPage() {
   const [completionOutcome, setCompletionOutcome] = useState("Follow-up completed");
   const [deleteDialogTask, setDeleteDialogTask] = useState<LocalTask | null>(null);
   const [dailySummary, setDailySummary] = useState<DailySummary | null>(null);
+  const [paymentFollowUps, setPaymentFollowUps] = useState<PaymentFollowUpIdentity[]>([]);
+  const confirmedPaymentFollowUps = useRef<{ date: string; rows: PaymentFollowUpIdentity[] }>({ date: "", rows: [] });
   const refreshDailySummary = useCallback(async () => {
     if (!currentUser) return;
     if (!navigator.onLine || !isSupabaseConfigured) return;
@@ -62,6 +65,60 @@ export default function MyDayPage() {
   }, [currentUser]);
 
   useEffect(() => { void refreshDailySummary(); }, [refreshDailySummary]);
+
+  const refreshPaymentFollowUps = useCallback(async () => {
+    if (!currentUser) return;
+    const currentDate = getCurrentISTDate();
+    const localVisits = await db.field_visits
+      .where("user_id")
+      .equals(currentUser.user_id)
+      .filter((visit) =>
+        visit.segment_type === "Distributor" &&
+        visit.visit_outcome === "payment_follow_up" &&
+        visit.follow_up_date === currentDate &&
+        (visit.sync_status === "pending_sync" || visit.sync_status === "sync_failed"),
+      )
+      .toArray();
+    const localLeads = await db.leads.bulkGet([...new Set(localVisits.map((visit) => visit.lead_id))]);
+    const leadsById = new Map(localLeads.filter(Boolean).map((lead) => [lead!.lead_id, lead!]));
+    let remote = confirmedPaymentFollowUps.current.date === currentDate ? confirmedPaymentFollowUps.current.rows : [];
+    if (navigator.onLine && isSupabaseConfigured) {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (token) {
+        const response = await fetch("/api/my-day/payment-followups", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+        if (response.ok) {
+          const result = await response.json() as { reminders?: PaymentFollowUpIdentity[] };
+          remote = result.reminders ?? [];
+          confirmedPaymentFollowUps.current = { date: currentDate, rows: remote };
+        }
+      }
+    }
+    setPaymentFollowUps(mergePaymentFollowUps(
+      currentUser.user_id,
+      currentDate,
+      remote,
+      localVisits.map((visit) => ({ ...visit, lead: leadsById.get(visit.lead_id) ?? null })),
+    ));
+  }, [currentUser]);
+
+  useEffect(() => {
+    void refreshPaymentFollowUps();
+    const localSubscription = liveQuery(() => db.field_visits.where("user_id").equals(currentUser?.user_id ?? "").toArray())
+      .subscribe({ next: () => void refreshPaymentFollowUps(), error: (error) => console.error("Payment follow-up local refresh failed:", error) });
+    const refreshWhenAvailable = () => void refreshPaymentFollowUps();
+    const refreshWhenVisible = () => { if (document.visibilityState === "visible") void refreshPaymentFollowUps(); };
+    window.addEventListener("online", refreshWhenAvailable);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    const todayBounds = getISTBusinessDayBounds(getCurrentISTDate());
+    const rolloverTimer = window.setTimeout(refreshWhenAvailable, Math.max(1_000, new Date(todayBounds.endsAt).getTime() - Date.now() + 250));
+    return () => {
+      localSubscription.unsubscribe();
+      window.removeEventListener("online", refreshWhenAvailable);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+      window.clearTimeout(rolloverTimer);
+    };
+  }, [currentUser?.user_id, refreshPaymentFollowUps]);
 
   // Scoped KPIs
   const [leadsConverted, setLeadsConverted] = useState(0);
@@ -393,6 +450,26 @@ export default function MyDayPage() {
           </>
         }
       />
+
+      {paymentFollowUps.length > 0 && (
+        <section className="mb-4 rounded-[var(--radius-lg)] border border-amber-300 bg-amber-50 p-4 shadow-[var(--shadow-raised)]" aria-labelledby="payment-followups-title">
+          <div className="flex items-start gap-3">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--radius-md)] bg-white text-amber-700"><AlertCircle size={17} /></span>
+            <div className="min-w-0 flex-1">
+              <h2 id="payment-followups-title" className="text-[14px] font-semibold text-amber-950">Payment follow-ups due today</h2>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                {paymentFollowUps.map((item) => (
+                  <article key={item.visit_id} className="rounded-[var(--radius-md)] border border-amber-200 bg-white p-3 text-[12px] text-[var(--text-secondary)]">
+                    <p><span className="font-semibold text-[var(--text-primary)]">Username:</span> {item.username}</p>
+                    <p className="mt-1"><span className="font-semibold text-[var(--text-primary)]">Party:</span> {item.party_name}</p>
+                    <div className="mt-2 flex flex-wrap gap-2"><Chip variant="warning" size="sm">Due today</Chip><Chip variant="neutral" size="sm">Payment follow-up</Chip></div>
+                  </article>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       {taskActionMessage && (
         <div className={`alert-panel ${taskActionMessage.type === "success" ? "alert-panel--success" : "alert-panel--danger"}`} role={taskActionMessage.type === "success" ? "status" : "alert"}>

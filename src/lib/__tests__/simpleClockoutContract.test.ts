@@ -75,7 +75,7 @@ describe("simple verified clock-out contract", () => {
     const migrationFiles = fs.existsSync(path.join(process.cwd(), "supabase", "migrations"))
       ? fs.readdirSync(path.join(process.cwd(), "supabase", "migrations"))
       : [];
-    expect(migrationFiles.some((file) => /^030/.test(file))).toBe(false);
+    expect(migrationFiles.some((file) => /clock.?out|verified.?logout/i.test(file))).toBe(false);
     expect(route).not.toMatch(/\b(delete|truncate)\b/i);
   });
 });

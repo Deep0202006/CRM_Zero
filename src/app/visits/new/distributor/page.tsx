@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { db, LocalLead } from "@/lib/db";
 import { FieldVisitsRepository } from "@/lib/fieldVisits/repository";
-import { getCurrentISTDate } from "@/lib/dateTime";
+import { getCurrentISTDate, isValidISTDateKey } from "@/lib/dateTime";
 import { SearchableSelect, SearchableOption } from "@/components/SearchableSelect";
 import { MapPin, Navigation, CheckCircle2, AlertCircle, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -39,6 +39,7 @@ export default function NewDistributorVisitPage() {
     { label: "New Installation", value: "installed" },
     { label: "Interested (Payment/Training/Discussion)", value: "interested" },
     { label: "Follow-up Required (Not Available/Issue)", value: "follow_up" },
+    { label: "Payment follow-up", value: "payment_follow_up" },
     { label: "Not Interested / Price Issue", value: "not_interested" }
   ];
 
@@ -118,6 +119,11 @@ export default function NewDistributorVisitPage() {
       setError("Location is required for field visits.");
       return;
     }
+    const today = getCurrentISTDate();
+    if (outcome === "payment_follow_up" && (!isValidISTDateKey(followUpDate) || followUpDate < today)) {
+      setError("Payment follow-up requires a valid date that is not earlier than today.");
+      return;
+    }
 
     setSubmitting(true);
     setError("");
@@ -128,7 +134,6 @@ export default function NewDistributorVisitPage() {
       const now = new Date().toISOString();
       const visit_date = getCurrentISTDate();
       
-      const today = getCurrentISTDate();
       const attendanceRec = await db.attendance.where({ user_id: currentUser.user_id, date: today }).first();
       
       if (!attendanceRec && !capabilities.includes("admin")) {
@@ -157,7 +162,7 @@ export default function NewDistributorVisitPage() {
         visit_notes: notes.trim() || null,
         person_met: personMet.trim() || null,
         segment_type: "Distributor",
-        follow_up_date: followUpDate || null,
+        follow_up_date: outcome === "follow_up" || outcome === "payment_follow_up" ? followUpDate || null : null,
         attendance_id: attendanceRec?.attendance_id || null,
         sync_status: "pending_sync" as const,
         created_at: now,
@@ -235,15 +240,15 @@ export default function NewDistributorVisitPage() {
 
             <div>
               <label htmlFor="visit-outcome" className="field-label">Visit Outcome <span className="text-[var(--status-danger)]">*</span></label>
-              <select id="visit-outcome" value={outcome} onChange={(event) => setOutcome(event.target.value)} className="field-control" required>
+              <select id="visit-outcome" value={outcome} onChange={(event) => { const next = event.target.value; setOutcome(next); if (next !== "follow_up" && next !== "payment_follow_up") setFollowUpDate(""); }} className="field-control" required>
                 <option value="" disabled>Select an outcome</option>
                 {outcomes.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
               </select>
             </div>
 
-            {outcome === "follow_up" && (
+            {(outcome === "follow_up" || outcome === "payment_follow_up") && (
                <div>
-                 <label htmlFor="follow-up" className="field-label">Follow-up Date <span className="text-[var(--status-danger)]">*</span></label>
+                 <label htmlFor="follow-up" className="field-label">{outcome === "payment_follow_up" ? "Payment Follow-up Date" : "Follow-up Date"} <span className="text-[var(--status-danger)]">*</span></label>
                  <input type="date" id="follow-up" value={followUpDate} onChange={(e) => setFollowUpDate(e.target.value)} min={getCurrentISTDate()} className="field-control" required />
                </div>
             )}

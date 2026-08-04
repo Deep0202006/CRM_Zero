@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isValidISTDateKey } from "@/lib/dateTime";
 
 export const FIELD_VISIT_SEGMENTS = [
   "Retailer",
@@ -12,6 +13,7 @@ export const FIELD_VISIT_OUTCOMES = [
   "installed",
   "interested",
   "follow_up",
+  "payment_follow_up",
   "not_interested"
 ] as const;
 
@@ -23,13 +25,14 @@ export function getOutcomeLabel(outcome: FieldVisitOutcome | string): string {
     case "installed": return "Installed";
     case "interested": return "Interested";
     case "follow_up": return "Follow-up";
+    case "payment_follow_up": return "Payment follow-up";
     case "not_interested": return "Not interested";
     default: return outcome; // Legacy fallback
   }
 }
 
 export function isFollowUpRequired(outcome: FieldVisitOutcome): boolean {
-  return outcome === "follow_up";
+  return outcome === "follow_up" || outcome === "payment_follow_up";
 }
 
 export function areNotesRequired(outcome: FieldVisitOutcome): boolean {
@@ -62,13 +65,13 @@ export const FieldVisitSchema = z.object({
   visit_id: z.string().uuid(),
   lead_id: z.string().min(1),
   user_id: z.string().uuid(),
-  visit_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  visit_date: z.string().refine(isValidISTDateKey, "Invalid India business date"),
   check_in_time: z.string().datetime(),
   person_met: z.string().trim().min(2).max(120).optional().nullable(),
   visit_notes: z.string().max(2000).optional().nullable(),
   segment_type: z.enum(FIELD_VISIT_SEGMENTS),
   visit_outcome: z.enum(FIELD_VISIT_OUTCOMES),
-  follow_up_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+  follow_up_date: z.string().refine(isValidISTDateKey, "Invalid follow-up date").optional().nullable(),
   check_in_lat: z.number().finite().nullable(),
   check_in_lng: z.number().finite().nullable(),
   location_accuracy_m: z.number().finite().positive().nullable(),
@@ -80,7 +83,15 @@ export const FieldVisitSchema = z.object({
   selfie_storage_path: z.string().nullable(),
   attendance_id: z.string().uuid().nullable().optional()
 }).superRefine((data, ctx) => {
-  if (data.visit_outcome === "follow_up") {
+  if (data.visit_outcome === "payment_follow_up" && data.segment_type !== "Distributor") {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Payment follow-up is available only for Distributor visits",
+      path: ["visit_outcome"]
+    });
+  }
+
+  if (data.visit_outcome === "follow_up" || data.visit_outcome === "payment_follow_up") {
     if (!data.follow_up_date) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import * as xlsx from "xlsx";
+import { getISTBusinessDayBounds, isValidISTDateKey } from "@/lib/dateTime";
+import { getOutcomeLabel } from "@/lib/fieldVisits/contract";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -33,21 +35,39 @@ export async function GET(request: Request) {
   if (authorizationStatus !== 200) return jsonError(authorizationStatus, authorizationStatus === 401 ? "Authentication required." : "Administrator access required.");
 
   const url = new URL(request.url);
-  const date = /^\d{4}-\d{2}-\d{2}$/.test(url.searchParams.get("date") ?? "") ? url.searchParams.get("date")! : "";
+  const requestedDate = url.searchParams.get("date") ?? "";
+  const date = isValidISTDateKey(requestedDate) ? requestedDate : "";
   const representative = url.searchParams.get("agent");
   const segment = url.searchParams.get("segment");
   const outcome = url.searchParams.get("outcome");
+  const search = (url.searchParams.get("search") ?? "").trim();
+  const selectedBounds = date ? getISTBusinessDayBounds(date) : null;
+  let searchClauses: string[] = [];
+  const safeSearch = search.replace(/[%_,().]/g, " ").trim();
+  if (safeSearch) {
+    const [{ data: matchingUsers }, { data: matchingLeads }] = await Promise.all([
+      admin.from("users").select("user_id").or(`name.ilike.%${safeSearch}%,email.ilike.%${safeSearch}%`).limit(50),
+      admin.from("leads").select("lead_id").or(`business_name.ilike.%${safeSearch}%,contact_person.ilike.%${safeSearch}%,phone.ilike.%${safeSearch}%`).limit(50),
+    ]);
+    searchClauses = [
+      `visit_notes.ilike.%${safeSearch}%`,
+      `person_met.ilike.%${safeSearch}%`,
+      ...(matchingUsers?.length ? [`user_id.in.(${matchingUsers.map((row) => row.user_id).join(",")})`] : []),
+      ...(matchingLeads?.length ? [`lead_id.in.(${matchingLeads.map((row) => `"${row.lead_id}"`).join(",")})`] : []),
+    ];
+  }
   const visits: Array<Record<string, unknown> & { visit_id: string; user_id: string; lead_id: string }> = [];
   for (let from = 0; ; from += EXPORT_PAGE_SIZE) {
     let query = admin.from("field_visits")
-      .select("visit_id,user_id,lead_id,visit_date,check_in_time,segment_type,person_met,visit_outcome,visit_notes,created_at")
+      .select("visit_id,user_id,lead_id,visit_date,check_in_time,segment_type,person_met,visit_outcome,visit_notes,follow_up_date,created_at")
       .order("created_at", { ascending: false })
       .order("visit_id", { ascending: false })
       .range(from, from + EXPORT_PAGE_SIZE - 1);
-    if (date) query = query.eq("visit_date", date);
+    if (date && selectedBounds) query = query.or(`visit_date.eq.${date},and(check_in_time.gte.${selectedBounds.startsAt},check_in_time.lt.${selectedBounds.endsAt})`);
     if (representative && representative !== "ALL") query = query.eq("user_id", representative);
     if (segment && segment !== "ALL") query = query.eq("segment_type", segment);
     if (outcome && outcome !== "ALL") query = query.eq("visit_outcome", outcome);
+    if (searchClauses.length) query = query.or(searchClauses.join(","));
     const { data, error } = await query;
     if (error) return jsonError(500, "Unable to export field visits.");
     visits.push(...((data ?? []) as typeof visits));
@@ -85,7 +105,8 @@ export async function GET(request: Request) {
       Segment: visit.segment_type,
       Business: lead?.business_name ?? "Unavailable business",
       "Person met": visit.person_met ?? "",
-      Outcome: visit.visit_outcome,
+      Outcome: getOutcomeLabel(String(visit.visit_outcome)),
+      "Follow-up date": visit.follow_up_date ?? "",
       Notes: visit.visit_notes ?? "",
     };
   });

@@ -18,6 +18,21 @@ export function getCurrentISTDate(): string {
   return formatter.format(new Date());
 }
 
+export function isValidISTDateKey(dateKey: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) return false;
+  const value = new Date(`${dateKey}T00:00:00+05:30`);
+  return !Number.isNaN(value.getTime()) && getISTDateKey(value) === dateKey;
+}
+
+/** Returns inclusive/exclusive UTC bounds for an Asia/Kolkata business date. */
+export function getISTBusinessDayBounds(dateKey: string): { startsAt: string; endsAt: string } {
+  if (!isValidISTDateKey(dateKey)) throw new Error("Invalid India business date");
+  const start = new Date(`${dateKey}T00:00:00+05:30`);
+  if (Number.isNaN(start.getTime())) throw new Error("Invalid India business date");
+  const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+  return { startsAt: start.toISOString(), endsAt: end.toISOString() };
+}
+
 
 /** Returns the Asia/Kolkata business-date key for an arbitrary timestamp. */
 export function getISTDateKey(value: string | Date): string {

@@ -53,7 +53,7 @@ describe("authoritative admin visit contracts", () => {
   it("defaults to all visits and keeps the directory independent of date", () => {
     expect(page).toContain('useState("")');
     expect(page).toContain("All visits");
-    expect(route).toContain('const date = /^\\d{4}-\\d{2}-\\d{2}$/.test(requestedDate) ? requestedDate : ""');
+    expect(route).toContain('const date = isValidISTDateKey(requestedDate) ? requestedDate : ""');
     expect(route.indexOf("loadRepresentativeDirectory(admin)")).toBeLessThan(route.indexOf("const { data: rawVisits"));
   });
 
