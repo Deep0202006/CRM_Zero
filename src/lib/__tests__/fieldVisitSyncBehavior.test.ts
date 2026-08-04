@@ -27,6 +27,7 @@ jest.mock("@/lib/db", () => ({
     field_visits: {
       where: () => ({ equals: () => ({ toArray: mockOwnRows }) }),
       update: mockVisitUpdate,
+      get: jest.fn(async () => mockVisit),
     },
     field_visit_media: {
       where: () => ({ equals: () => ({ toArray: mockMediaRows }) }),

@@ -1,32 +1,33 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { FIELD_VISIT_OUTCOMES, FIELD_VISIT_SEGMENTS, generateEvidencePath } from "@/lib/fieldVisits/contract";
-import { getISTDateKey, isValidISTDateKey } from "@/lib/dateTime";
+import { getCurrentISTDate, getISTDateKey, isValidISTDateKey } from "@/lib/dateTime";
 
 export const runtime = "nodejs";
 
 const MAX_EVIDENCE_BYTES = 8 * 1024 * 1024;
 const uuid = z.string().uuid();
 const nullableDateTime = z.string().datetime({ offset: true }).nullable();
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-const VisitConfirmationSchema = z.object({
+export const VisitConfirmationSchema = z.object({
   visit_id: uuid,
-  lead_id: uuid,
+  lead_id: z.string().trim().min(1).max(250),
   user_id: uuid,
   visit_date: z.string().refine(isValidISTDateKey),
   check_in_time: z.string().datetime({ offset: true }),
-  check_in_lat: z.number().finite().min(-90).max(90).nullable(),
-  check_in_lng: z.number().finite().min(-180).max(180).nullable(),
+  check_in_lat: z.number().finite().min(-90).max(90).nullable().optional(),
+  check_in_lng: z.number().finite().min(-180).max(180).nullable().optional(),
   location_accuracy_m: z.number().finite().positive().max(10000).nullable().optional(),
   location_captured_at: nullableDateTime.optional(),
   location_acquisition_mode: z.enum(["gps", "high_accuracy", "balanced_fallback"]).nullable().optional(),
   location_quality: z.enum(["high", "medium", "good", "acceptable", "low"]).nullable().optional(),
-  check_in_photo_url: z.string().max(1000).nullable(),
+  check_in_photo_url: z.string().max(1000).nullable().optional(),
   selfie_captured_at: nullableDateTime.optional(),
   selfie_capture_method: z.enum(["camera_or_upload", "live_camera", "file_fallback"]).nullable().optional(),
   selfie_storage_path: z.string().max(500).nullable().optional(),
   visit_outcome: z.enum(FIELD_VISIT_OUTCOMES),
-  visit_notes: z.string().trim().max(2000).nullable(),
+  visit_notes: z.string().trim().max(2000).nullable().optional(),
   attendance_id: uuid.nullable().optional(),
   person_met: z.string().trim().min(2).max(120).nullable().optional(),
   segment_type: z.enum(FIELD_VISIT_SEGMENTS),
@@ -46,20 +47,24 @@ const VisitConfirmationSchema = z.object({
   if (visit.visit_outcome === "payment_follow_up" && visit.segment_type !== "Distributor") {
     ctx.addIssue({ code: "custom", path: ["visit_outcome"], message: "Payment follow-up requires Distributor segment" });
   }
-  const hasLocation = visit.check_in_lat !== null && visit.check_in_lng !== null;
-  if (!hasLocation || !visit.location_accuracy_m || !visit.location_captured_at || !visit.location_acquisition_mode || !visit.location_quality) {
-    ctx.addIssue({ code: "custom", path: ["location_captured_at"], message: "Complete location evidence is required" });
-  }
 });
 
 type VisitPayload = z.infer<typeof VisitConfirmationSchema>;
+type ConfirmationMode = "new" | "recovery";
 type SafeCode =
   | "AUTH_REQUIRED" | "ACCOUNT_INACTIVE" | "CAPABILITY_MISMATCH"
-  | "ATTENDANCE_NOT_CONFIRMED" | "VISIT_VALIDATION_FAILED"
-  | "VISIT_INSERT_FAILED" | "VISIT_CONFIRMATION_FAILED" | "EVIDENCE_UPLOAD_FAILED";
+  | "ATTENDANCE_NOT_CONFIRMED" | "ATTENDANCE_INTEGRITY_ERROR" | "VISIT_VALIDATION_FAILED"
+  | "VISIT_INSERT_FAILED" | "VISIT_CONFIRMATION_FAILED" | "EVIDENCE_UPLOAD_FAILED"
+  | "REFERENCE_CONSTRAINT_FAILED" | "VISIT_CONSTRAINT_FAILED" | "OPTIONAL_SCHEMA_MISMATCH"
+  | "SERVER_AUTHORIZATION_FAILED" | "NETWORK_OR_SERVER_RESPONSE_FAILED";
+type SafeWarning = "BUSINESS_REFERENCE_WARNING" | "OPTIONAL_SCHEMA_MISMATCH";
 
 function response(status: number, code: SafeCode, message: string, extra: Record<string, unknown> = {}) {
   return Response.json({ ok: false, code, message, ...extra }, { status, headers: { "Cache-Control": "no-store" } });
+}
+
+function success(body: Record<string, unknown>) {
+  return Response.json({ ok: true, ...body }, { headers: { "Cache-Control": "no-store" } });
 }
 
 function configuredAdmin(): SupabaseClient | null {
@@ -78,32 +83,77 @@ function active(value: unknown): boolean {
   return value === true || value === 1 || value === "1" || value === "true";
 }
 
-function remotePayload(visit: VisitPayload) {
+export function validateNewVisit(visit: VisitPayload): boolean {
+  return visit.visit_date === getCurrentISTDate()
+    && Boolean(visit.person_met?.trim())
+    && visit.check_in_lat !== null && visit.check_in_lat !== undefined
+    && visit.check_in_lng !== null && visit.check_in_lng !== undefined
+    && Boolean(visit.location_accuracy_m)
+    && Boolean(visit.location_captured_at)
+    && Boolean(visit.location_acquisition_mode)
+    && Boolean(visit.location_quality);
+}
+
+export function validateLeadCompatibility(
+  mode: ConfirmationMode,
+  leadId: string,
+  segment: string,
+  lead: { lead_id: string; segment_type: string } | null,
+): { allowed: boolean; warning?: SafeWarning } {
+  if (lead && lead.segment_type !== segment) return { allowed: false };
+  if (lead) return { allowed: true };
+  if (mode === "new") return { allowed: false };
+  return { allowed: Boolean(leadId.trim()), warning: "BUSINESS_REFERENCE_WARNING" };
+}
+
+export function resolveAttendanceId(
+  rows: Array<{ attendance_id: string; user_id: string; date: string }>,
+  submittedAttendanceId?: string | null,
+): { attendanceId: string | null; integrityError: boolean } {
+  if (rows.length > 1) return { attendanceId: null, integrityError: true };
+  const submittedMatch = rows.find((row) => row.attendance_id === submittedAttendanceId);
+  return { attendanceId: submittedMatch?.attendance_id ?? rows[0]?.attendance_id ?? null, integrityError: false };
+}
+
+export function coreRemotePayload(visit: VisitPayload, attendanceId: string | null) {
   return {
     visit_id: visit.visit_id,
     lead_id: visit.lead_id,
     user_id: visit.user_id,
     visit_date: visit.visit_date,
     check_in_time: visit.check_in_time,
-    check_in_lat: visit.check_in_lat,
-    check_in_lng: visit.check_in_lng,
-    location_accuracy_m: visit.location_accuracy_m ?? null,
-    location_captured_at: visit.location_captured_at ?? null,
-    location_acquisition_mode: visit.location_acquisition_mode ?? null,
-    location_quality: visit.location_quality ?? null,
-    check_in_photo_url: visit.check_in_photo_url,
-    selfie_captured_at: visit.selfie_captured_at ?? null,
-    selfie_capture_method: visit.selfie_capture_method ?? null,
-    selfie_storage_path: null,
+    check_in_lat: visit.check_in_lat ?? null,
+    check_in_lng: visit.check_in_lng ?? null,
+    check_in_photo_url: visit.check_in_photo_url ?? null,
     visit_outcome: visit.visit_outcome,
-    visit_notes: visit.visit_notes,
-    attendance_id: visit.attendance_id ?? null,
+    visit_notes: visit.visit_notes ?? null,
+    attendance_id: attendanceId,
     person_met: visit.person_met ?? null,
     segment_type: visit.segment_type,
     follow_up_date: visit.follow_up_date ?? null,
     created_at: visit.created_at,
     updated_at: visit.updated_at,
   };
+}
+
+export function optionalRemotePayload(visit: VisitPayload) {
+  return {
+    location_accuracy_m: visit.location_accuracy_m ?? null,
+    location_captured_at: visit.location_captured_at ?? null,
+    location_acquisition_mode: visit.location_acquisition_mode ?? null,
+    location_quality: visit.location_quality ?? null,
+    selfie_captured_at: visit.selfie_captured_at ?? null,
+    selfie_capture_method: visit.selfie_capture_method ?? null,
+    selfie_storage_path: null,
+  };
+}
+
+function mapInsertError(code: string | undefined): SafeCode {
+  if (code === "23503") return "REFERENCE_CONSTRAINT_FAILED";
+  if (code === "23514") return "VISIT_CONSTRAINT_FAILED";
+  if (code === "42703" || code === "PGRST204") return "OPTIONAL_SCHEMA_MISMATCH";
+  if (code === "42501") return "SERVER_AUTHORIZATION_FAILED";
+  return "VISIT_INSERT_FAILED";
 }
 
 async function equalEvidence(admin: SupabaseClient, path: string, incoming: Blob): Promise<boolean> {
@@ -133,67 +183,89 @@ export async function POST(request: Request) {
 
   let form: FormData;
   try { form = await request.formData(); }
-  catch { return response(400, "VISIT_VALIDATION_FAILED", "The visit submission could not be read."); }
+  catch { return response(400, "NETWORK_OR_SERVER_RESPONSE_FAILED", "The visit submission could not be read."); }
+  const modeValue = form.get("mode");
+  const mode: ConfirmationMode = modeValue === "new" ? "new" : modeValue === "recovery" ? "recovery" : "recovery";
   const rawVisit = form.get("visit");
   if (typeof rawVisit !== "string") return response(400, "VISIT_VALIDATION_FAILED", "Visit details are required.");
   let parsedJson: unknown;
   try { parsedJson = JSON.parse(rawVisit); }
-  catch { return response(400, "VISIT_VALIDATION_FAILED", "Visit details are invalid."); }
+  catch { return response(400, "NETWORK_OR_SERVER_RESPONSE_FAILED", "Visit details could not be read."); }
   const parsed = VisitConfirmationSchema.safeParse(parsedJson);
   if (!parsed.success) return response(400, "VISIT_VALIDATION_FAILED", "Review the visit details and retry.");
   const visit = parsed.data;
   if (visit.user_id !== auth.user.id) return response(403, "CAPABILITY_MISMATCH", "This visit belongs to a different account.");
+  if (mode === "new" && !validateNewVisit(visit)) return response(400, "VISIT_VALIDATION_FAILED", "Current visits require complete person and location details.");
 
   const capabilities = new Set((capabilityRows ?? []).map((row) => row.capability_code));
-  const allowed = capabilities.has("admin") || (visit.segment_type === "Retailer" ? capabilities.has("field_ret") : capabilities.has("field_dist"));
+  const isAdmin = capabilities.has("admin");
+  const allowed = isAdmin || (visit.segment_type === "Retailer" ? capabilities.has("field_ret") : capabilities.has("field_dist"));
   if (!allowed) return response(403, "CAPABILITY_MISMATCH", "Your account is not permitted to confirm this visit segment.");
 
-  const { data: lead, error: leadError } = await admin.from("leads").select("lead_id,segment_type").eq("lead_id", visit.lead_id).maybeSingle();
-  if (leadError || !lead || lead.segment_type !== visit.segment_type) return response(400, "VISIT_VALIDATION_FAILED", "The selected business reference is invalid for this segment.");
-
-  if (!capabilities.has("admin")) {
-    if (!visit.attendance_id) return response(409, "ATTENDANCE_NOT_CONFIRMED", "Attendance is not yet confirmed. Retry synchronization.");
-    const { data: attendance, error: attendanceError } = await admin.from("attendance")
-      .select("attendance_id,user_id,date").eq("attendance_id", visit.attendance_id).maybeSingle();
-    if (attendanceError || !attendance || attendance.user_id !== auth.user.id || attendance.date !== visit.visit_date) {
-      return response(409, "ATTENDANCE_NOT_CONFIRMED", "Attendance is not yet confirmed. Retry synchronization.");
-    }
+  const warningCodes: SafeWarning[] = [];
+  let lead: { lead_id: string; segment_type: string } | null = null;
+  if (UUID_PATTERN.test(visit.lead_id)) {
+    const leadResult = await admin.from("leads").select("lead_id,segment_type").eq("lead_id", visit.lead_id).maybeSingle();
+    if (leadResult.error) console.error("Field visit lead lookup failed", { code: leadResult.error.code ?? "UNKNOWN" });
+    lead = leadResult.data;
   }
+  const leadCompatibility = validateLeadCompatibility(mode, visit.lead_id, visit.segment_type, lead);
+  if (!leadCompatibility.allowed) return response(400, "VISIT_VALIDATION_FAILED", "The selected business reference is not valid for this visit.");
+  if (leadCompatibility.warning) warningCodes.push(leadCompatibility.warning);
+
+  const attendanceResult = await admin.from("attendance").select("attendance_id,user_id,date")
+    .eq("user_id", auth.user.id).eq("date", visit.visit_date);
+  if (attendanceResult.error) {
+    console.error("Field visit attendance lookup failed", { code: attendanceResult.error.code ?? "UNKNOWN" });
+    return response(409, "ATTENDANCE_NOT_CONFIRMED", "Attendance is not yet confirmed. Retry synchronization.");
+  }
+  const attendanceRows = attendanceResult.data ?? [];
+  const attendanceResolution = resolveAttendanceId(attendanceRows, visit.attendance_id);
+  if (attendanceResolution.integrityError) return response(409, "ATTENDANCE_INTEGRITY_ERROR", "Multiple attendance records require administrator review.");
+  const resolvedAttendanceId = attendanceResolution.attendanceId;
+  if (!isAdmin && !resolvedAttendanceId) return response(409, "ATTENDANCE_NOT_CONFIRMED", "Attendance is not yet confirmed. Retry synchronization.");
 
   const select = "visit_id,user_id,lead_id,segment_type,selfie_storage_path";
-  const insertResult = await admin.from("field_visits").insert(remotePayload(visit)).select(select).maybeSingle();
-  let confirmed = insertResult.data;
-  const insertError = insertResult.error;
+  let insertError = (await admin.from("field_visits").insert({ ...coreRemotePayload(visit, resolvedAttendanceId), ...optionalRemotePayload(visit) })).error;
+  if (insertError && (insertError.code === "42703" || insertError.code === "PGRST204" || insertError.code === "23514")) {
+    console.error("Field visit optional schema mismatch", { code: insertError.code });
+    warningCodes.push("OPTIONAL_SCHEMA_MISMATCH");
+    insertError = (await admin.from("field_visits").insert(coreRemotePayload(visit, resolvedAttendanceId))).error;
+  }
+
   let alreadyConfirmed = false;
   if (insertError?.code === "23505") {
     alreadyConfirmed = true;
-    const existing = await admin.from("field_visits").select(select).eq("visit_id", visit.visit_id).maybeSingle();
-    if (existing.error) return response(500, "VISIT_CONFIRMATION_FAILED", "The exact visit could not be confirmed.");
-    confirmed = existing.data;
   } else if (insertError) {
+    const safeCode = mapInsertError(insertError.code);
     console.error("Field visit insert failed", { code: insertError.code ?? "UNKNOWN" });
-    return response(500, "VISIT_INSERT_FAILED", "The visit was retained locally and will retry.");
+    return response(safeCode === "SERVER_AUTHORIZATION_FAILED" ? 403 : 500, safeCode, "The visit was retained locally and will retry.");
   }
+
+  const existing = await admin.from("field_visits").select(select).eq("visit_id", visit.visit_id).eq("user_id", auth.user.id).maybeSingle();
+  if (existing.error) {
+    console.error("Field visit confirmation read failed", { code: existing.error.code ?? "UNKNOWN" });
+    return response(500, "VISIT_CONFIRMATION_FAILED", "The exact visit could not be confirmed.");
+  }
+  const confirmed = existing.data;
   if (!confirmed || confirmed.visit_id !== visit.visit_id) return response(500, "VISIT_CONFIRMATION_FAILED", "The exact visit could not be confirmed.");
   if (confirmed.user_id !== auth.user.id || confirmed.lead_id !== visit.lead_id || confirmed.segment_type !== visit.segment_type) {
     return response(409, "VISIT_CONFIRMATION_FAILED", "The visit ID is already owned by incompatible visit data.");
   }
 
   const selfie = form.get("selfie");
-  if (!(selfie instanceof Blob) || selfie.size === 0) {
+  if (!(selfie instanceof Blob) || selfie.size === 0 || warningCodes.includes("OPTIONAL_SCHEMA_MISMATCH")) {
     const evidenceConfirmed = Boolean(confirmed.selfie_storage_path);
-    return Response.json({
-      ok: true,
+    return success({
       code: evidenceConfirmed ? "VISIT_CONFIRMED" : "VISIT_CONFIRMED_EVIDENCE_PENDING",
       message: evidenceConfirmed ? "Visit confirmed successfully." : "Visit confirmed. Selfie evidence will retry automatically.",
-      visit_id: visit.visit_id,
-      already_confirmed: alreadyConfirmed,
-      evidence_confirmed: evidenceConfirmed,
+      visit_id: visit.visit_id, already_confirmed: alreadyConfirmed, evidence_confirmed: evidenceConfirmed,
+      warning_codes: warningCodes,
       ...(evidenceConfirmed ? { selfie_storage_path: confirmed.selfie_storage_path } : {}),
     });
   }
   if (selfie.size > MAX_EVIDENCE_BYTES || !selfie.type.startsWith("image/")) {
-    return Response.json({ ok: true, code: "VISIT_CONFIRMED_EVIDENCE_PENDING", message: "Visit confirmed. Selfie evidence will retry automatically.", visit_id: visit.visit_id, already_confirmed: alreadyConfirmed, evidence_confirmed: false });
+    return success({ code: "VISIT_CONFIRMED_EVIDENCE_PENDING", message: "Visit confirmed. Selfie evidence will retry automatically.", visit_id: visit.visit_id, already_confirmed: alreadyConfirmed, evidence_confirmed: false, warning_codes: warningCodes });
   }
 
   const evidencePath = generateEvidencePath(auth.user.id, visit.visit_date, visit.visit_id);
@@ -202,7 +274,7 @@ export async function POST(request: Request) {
     const duplicate = Number(upload.error.statusCode) === 409 || /already exists|duplicate/i.test(upload.error.message);
     if (!duplicate || !(await equalEvidence(admin, evidencePath, selfie))) {
       console.error("Field visit evidence upload failed", { code: upload.error.statusCode ?? "UNKNOWN" });
-      return Response.json({ ok: true, code: "VISIT_CONFIRMED_EVIDENCE_PENDING", message: "Visit confirmed. Selfie evidence will retry automatically.", visit_id: visit.visit_id, already_confirmed: alreadyConfirmed, evidence_confirmed: false });
+      return success({ code: "VISIT_CONFIRMED_EVIDENCE_PENDING", message: "Visit confirmed. Selfie evidence will retry automatically.", visit_id: visit.visit_id, already_confirmed: alreadyConfirmed, evidence_confirmed: false, warning_codes: warningCodes });
     }
   }
 
@@ -211,7 +283,7 @@ export async function POST(request: Request) {
     .eq("visit_id", visit.visit_id).eq("user_id", auth.user.id).select("visit_id,selfie_storage_path").maybeSingle();
   if (updateError || updated?.visit_id !== visit.visit_id || updated.selfie_storage_path !== evidencePath) {
     console.error("Field visit evidence link failed", { code: updateError?.code ?? "CONFIRMATION_MISSING" });
-    return Response.json({ ok: true, code: "VISIT_CONFIRMED_EVIDENCE_PENDING", message: "Visit confirmed. Selfie evidence will retry automatically.", visit_id: visit.visit_id, already_confirmed: alreadyConfirmed, evidence_confirmed: false });
+    return success({ code: "VISIT_CONFIRMED_EVIDENCE_PENDING", message: "Visit confirmed. Selfie evidence will retry automatically.", visit_id: visit.visit_id, already_confirmed: alreadyConfirmed, evidence_confirmed: false, warning_codes: warningCodes });
   }
-  return Response.json({ ok: true, code: "VISIT_CONFIRMED", message: "Visit confirmed successfully.", visit_id: visit.visit_id, already_confirmed: alreadyConfirmed, evidence_confirmed: true, selfie_storage_path: evidencePath });
+  return success({ code: "VISIT_CONFIRMED", message: "Visit confirmed successfully.", visit_id: visit.visit_id, already_confirmed: alreadyConfirmed, evidence_confirmed: true, selfie_storage_path: evidencePath, warning_codes: warningCodes });
 }

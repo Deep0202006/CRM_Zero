@@ -14,8 +14,8 @@ const adminRoute = read("src/app/api/admin/visits/route.ts");
 
 describe("field visit zero-loss contract", () => {
   it("never lets evidence block the business-row insertion", () => {
-    expect(route.indexOf('.from("field_visits").insert(remotePayload(visit))')).toBeGreaterThan(0);
-    expect(route.indexOf('.from("field_visits").insert(remotePayload(visit))')).toBeLessThan(route.indexOf('.from("visits-evidence").upload'));
+    expect(route.indexOf('.from("field_visits").insert({ ...coreRemotePayload(visit, resolvedAttendanceId), ...optionalRemotePayload(visit) })')).toBeGreaterThan(0);
+    expect(route.indexOf('.from("field_visits").insert({ ...coreRemotePayload(visit, resolvedAttendanceId), ...optionalRemotePayload(visit) })')).toBeLessThan(route.indexOf('.from("visits-evidence").upload'));
     expect(route).toContain("VISIT_CONFIRMED_EVIDENCE_PENDING");
   });
 
@@ -29,8 +29,8 @@ describe("field visit zero-loss contract", () => {
     expect(route).toContain('"ATTENDANCE_NOT_CONFIRMED"');
     expect(route).toContain('confirmed.user_id !== auth.user.id');
     expect(route).toContain('confirmed.visit_id !== visit.visit_id');
-    expect(route).toContain('lead_id: uuid');
-    expect(route).toContain('lead.segment_type !== visit.segment_type');
+    expect(route).toContain('lead_id: z.string().trim().min(1).max(250)');
+    expect(route).toContain('lead && lead.segment_type !== segment');
   });
 
   it("uses service role only in the server route and handles duplicate requests idempotently", () => {
@@ -66,7 +66,7 @@ describe("field visit zero-loss contract", () => {
   it("makes online success conditional, reuses visit IDs, and labels offline work unconfirmed", () => {
     for (const form of [retailer, distributor]) {
       expect(form).toContain("pendingVisitId ?? crypto.randomUUID()");
-      expect(form).toContain("await syncFieldVisits(visitId)");
+      expect(form).toContain('await syncFieldVisits(visitId, currentUser.user_id, "new")');
       expect(form).toContain("await db.field_visits.get(visitId)");
       expect(form).toContain('confirmed?.sync_stage === "synced"');
       expect(form).toContain("Saved offline — not yet confirmed.");
@@ -78,7 +78,7 @@ describe("field visit zero-loss contract", () => {
     expect(visitsPage).toContain("Recover unsynced visits");
     expect(visitsPage).toContain("await processSyncQueue()");
     expect(visitsPage).toContain("Safe failure codes:");
-    expect(visitsPage).toContain("syncFieldVisits(undefined, currentUser?.user_id)");
+    expect(visitsPage).toContain('syncFieldVisits(undefined, currentUser?.user_id, "recovery")');
     expect(sync).toContain('visit.sync_stage === "visit_confirmed_evidence_pending"');
     expect(sync).toContain("result.evidence_confirmed && mediaRecord");
     expect(sync).toContain('result.code === "VISIT_CONFIRMED" && (!mediaRecord || result.evidence_confirmed)');

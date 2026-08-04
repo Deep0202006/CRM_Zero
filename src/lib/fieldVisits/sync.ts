@@ -3,14 +3,19 @@ import { supabase, isSupabaseConfigured } from "../supabaseClient";
 
 export type FieldVisitSafeCode =
   | "AUTH_REQUIRED" | "ACCOUNT_INACTIVE" | "CAPABILITY_MISMATCH"
-  | "ATTENDANCE_NOT_CONFIRMED" | "VISIT_VALIDATION_FAILED"
+  | "ATTENDANCE_NOT_CONFIRMED" | "ATTENDANCE_INTEGRITY_ERROR" | "VISIT_VALIDATION_FAILED"
   | "VISIT_INSERT_FAILED" | "VISIT_CONFIRMATION_FAILED"
-  | "EVIDENCE_UPLOAD_FAILED" | "NETWORK_UNAVAILABLE" | "UNKNOWN_SYNC_FAILURE";
+  | "EVIDENCE_UPLOAD_FAILED" | "NETWORK_UNAVAILABLE" | "NETWORK_OR_SERVER_RESPONSE_FAILED"
+  | "REFERENCE_CONSTRAINT_FAILED" | "VISIT_CONSTRAINT_FAILED" | "OPTIONAL_SCHEMA_MISMATCH"
+  | "SERVER_AUTHORIZATION_FAILED" | "BUSINESS_REFERENCE_WARNING" | "UNKNOWN_SYNC_FAILURE";
 
 export interface FieldVisitSyncSummary {
+  locallyFound: number;
   confirmed: number;
   alreadyConfirmed: number;
   evidencePending: number;
+  attendanceBlocked: number;
+  referenceCompatibleRecoveries: number;
   failed: number;
   failureCodes: FieldVisitSafeCode[];
 }
@@ -23,6 +28,7 @@ interface ConfirmResponse {
   already_confirmed?: boolean;
   evidence_confirmed?: boolean;
   selfie_storage_path?: string;
+  warning_codes?: FieldVisitSafeCode[];
 }
 
 const SAFE_MESSAGES: Record<FieldVisitSafeCode, string> = {
@@ -30,11 +36,18 @@ const SAFE_MESSAGES: Record<FieldVisitSafeCode, string> = {
   ACCOUNT_INACTIVE: "Your account is inactive. Contact an administrator.",
   CAPABILITY_MISMATCH: "Your account is not permitted to confirm this visit.",
   ATTENDANCE_NOT_CONFIRMED: "Attendance is not yet confirmed. Retry synchronization.",
+  ATTENDANCE_INTEGRITY_ERROR: "Multiple attendance records require administrator review.",
   VISIT_VALIDATION_FAILED: "Review the visit details and retry.",
   VISIT_INSERT_FAILED: "The visit was retained locally and will retry.",
   VISIT_CONFIRMATION_FAILED: "The exact visit could not be confirmed.",
   EVIDENCE_UPLOAD_FAILED: "The visit is confirmed; selfie evidence will retry automatically.",
   NETWORK_UNAVAILABLE: "No network connection. The visit remains saved offline.",
+  NETWORK_OR_SERVER_RESPONSE_FAILED: "The server response could not be confirmed. The visit remains saved locally.",
+  REFERENCE_CONSTRAINT_FAILED: "A required database reference could not be confirmed.",
+  VISIT_CONSTRAINT_FAILED: "The visit does not match the current database rules.",
+  OPTIONAL_SCHEMA_MISMATCH: "The visit is confirmed; optional evidence fields require compatibility review.",
+  SERVER_AUTHORIZATION_FAILED: "The server could not authorize this write.",
+  BUSINESS_REFERENCE_WARNING: "Visit confirmed with its original historical business reference.",
   UNKNOWN_SYNC_FAILURE: "The visit remains saved locally and will retry.",
 };
 
@@ -43,13 +56,16 @@ let rerunRequested = false;
 let listenersRegistered = false;
 
 function emptySummary(): FieldVisitSyncSummary {
-  return { confirmed: 0, alreadyConfirmed: 0, evidencePending: 0, failed: 0, failureCodes: [] };
+  return { locallyFound: 0, confirmed: 0, alreadyConfirmed: 0, evidencePending: 0, attendanceBlocked: 0, referenceCompatibleRecoveries: 0, failed: 0, failureCodes: [] };
 }
 
 function mergeSummary(target: FieldVisitSyncSummary, next: FieldVisitSyncSummary) {
+  target.locallyFound += next.locallyFound;
   target.confirmed += next.confirmed;
   target.alreadyConfirmed += next.alreadyConfirmed;
   target.evidencePending += next.evidencePending;
+  target.attendanceBlocked += next.attendanceBlocked;
+  target.referenceCompatibleRecoveries += next.referenceCompatibleRecoveries;
   target.failed += next.failed;
   target.failureCodes = [...new Set([...target.failureCodes, ...next.failureCodes])];
 }
@@ -94,7 +110,7 @@ export function buildFieldVisitConfirmPayload(visit: LocalFieldVisit) {
   };
 }
 
-export async function syncFieldVisits(onlyVisitId?: string, ownerUserId?: string): Promise<FieldVisitSyncSummary> {
+export async function syncFieldVisits(onlyVisitId?: string, ownerUserId?: string, mode: "new" | "recovery" = "recovery"): Promise<FieldVisitSyncSummary> {
   if (activeSync) {
     rerunRequested = true;
     return activeSync;
@@ -105,7 +121,7 @@ export async function syncFieldVisits(onlyVisitId?: string, ownerUserId?: string
     let targetOwnerUserId = ownerUserId;
     do {
       rerunRequested = false;
-      mergeSummary(total, await runSyncCycle(targetVisitId, targetOwnerUserId));
+      mergeSummary(total, await runSyncCycle(targetVisitId, targetOwnerUserId, mode));
       targetVisitId = undefined;
       targetOwnerUserId = undefined;
     } while (rerunRequested);
@@ -114,10 +130,11 @@ export async function syncFieldVisits(onlyVisitId?: string, ownerUserId?: string
   return activeSync;
 }
 
-async function runSyncCycle(onlyVisitId?: string, ownerUserId?: string): Promise<FieldVisitSyncSummary> {
+async function runSyncCycle(onlyVisitId?: string, ownerUserId?: string, mode: "new" | "recovery" = "recovery"): Promise<FieldVisitSyncSummary> {
   const summary = emptySummary();
   if (typeof navigator === "undefined" || !navigator.onLine || !isSupabaseConfigured) {
     summary.failed = await markKnownUserFailures(onlyVisitId, ownerUserId, "NETWORK_UNAVAILABLE");
+    summary.locallyFound = summary.failed;
     summary.failureCodes.push("NETWORK_UNAVAILABLE");
     return summary;
   }
@@ -128,6 +145,7 @@ async function runSyncCycle(onlyVisitId?: string, ownerUserId?: string): Promise
   const authenticatedUserId = sessionData.session?.user.id;
   if (!token || !authenticatedUserId) {
     summary.failed = await markKnownUserFailures(onlyVisitId, ownerUserId, "AUTH_REQUIRED");
+    summary.locallyFound = summary.failed;
     summary.failureCodes.push("AUTH_REQUIRED");
     return summary;
   }
@@ -138,6 +156,7 @@ async function runSyncCycle(onlyVisitId?: string, ownerUserId?: string): Promise
     (visit.sync_status === "pending_sync" || visit.sync_status === "sync_failed" || visit.sync_stage === "pending_visit" || visit.sync_stage === "sync_failed" || visit.sync_stage === "visit_confirmed_evidence_pending") &&
     rows.findIndex((candidate) => candidate.visit_id === visit.visit_id) === index,
   );
+  summary.locallyFound = visits.length;
 
   for (const visit of visits) {
     const attemptedAt = new Date().toISOString();
@@ -150,6 +169,7 @@ async function runSyncCycle(onlyVisitId?: string, ownerUserId?: string): Promise
     try {
       const mediaRecord = (await db.field_visit_media.where("visit_id").equals(visit.visit_id).toArray())[0] ?? null;
       const form = new FormData();
+      form.set("mode", mode);
       form.set("visit", JSON.stringify(buildFieldVisitConfirmPayload(visit)));
       if (mediaRecord?.media_data) {
         const evidence = await mediaToBlob(mediaRecord.media_data);
@@ -163,14 +183,18 @@ async function runSyncCycle(onlyVisitId?: string, ownerUserId?: string): Promise
       });
       let result: ConfirmResponse;
       try { result = await response.json() as ConfirmResponse; }
-      catch { throw new Error("UNKNOWN_SYNC_FAILURE"); }
+      catch { throw new Error("NETWORK_OR_SERVER_RESPONSE_FAILED"); }
 
       if (result.visit_id && result.visit_id !== visit.visit_id) throw new Error("VISIT_CONFIRMATION_FAILED");
+      const warnings = (result.warning_codes ?? []).map(safeCode);
+      if (warnings.includes("BUSINESS_REFERENCE_WARNING")) summary.referenceCompatibleRecoveries++;
       if (result.ok && result.code === "VISIT_CONFIRMED" && (!mediaRecord || result.evidence_confirmed)) {
+        const retainedWarning = warnings[0];
         await db.field_visits.update(visit.visit_id, {
           sync_status: "synced", sync_stage: "synced",
           selfie_storage_path: result.selfie_storage_path ?? visit.selfie_storage_path,
-          sync_error_code: undefined, sync_error_message: undefined,
+          sync_error_code: retainedWarning,
+          sync_error_message: retainedWarning ? SAFE_MESSAGES[retainedWarning] : undefined,
         });
         if (result.evidence_confirmed && mediaRecord) await db.field_visit_media.delete(mediaRecord.media_id);
         if (result.already_confirmed) summary.alreadyConfirmed++;
@@ -186,11 +210,14 @@ async function runSyncCycle(onlyVisitId?: string, ownerUserId?: string): Promise
       } else {
         const code = safeCode(result.code);
         await markFailure(visit.visit_id, code);
+        if (code === "ATTENDANCE_NOT_CONFIRMED" || code === "ATTENDANCE_INTEGRITY_ERROR") summary.attendanceBlocked++;
         summary.failed++;
         summary.failureCodes = [...new Set([...summary.failureCodes, code])];
       }
     } catch (error) {
-      const code = error instanceof Error ? safeCode(error.message) : "UNKNOWN_SYNC_FAILURE";
+      const code = error instanceof TypeError
+        ? "NETWORK_OR_SERVER_RESPONSE_FAILED"
+        : error instanceof Error ? safeCode(error.message) : "UNKNOWN_SYNC_FAILURE";
       await markFailure(visit.visit_id, code);
       summary.failed++;
       summary.failureCodes = [...new Set([...summary.failureCodes, code])];
@@ -200,6 +227,16 @@ async function runSyncCycle(onlyVisitId?: string, ownerUserId?: string): Promise
 }
 
 async function markFailure(visitId: string, code: FieldVisitSafeCode) {
+  const current = await db.field_visits.get(visitId);
+  if (current?.sync_stage === "visit_confirmed_evidence_pending") {
+    await db.field_visits.update(visitId, {
+      sync_status: "pending_sync",
+      sync_stage: "visit_confirmed_evidence_pending",
+      sync_error_code: code,
+      sync_error_message: SAFE_MESSAGES[code],
+    });
+    return;
+  }
   await db.field_visits.update(visitId, {
     sync_status: "sync_failed",
     sync_stage: "sync_failed",

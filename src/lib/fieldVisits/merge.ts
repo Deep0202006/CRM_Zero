@@ -11,7 +11,16 @@ export function mergeOwnVisits(
   }
   for (const visit of remoteVisits) {
     if (visit.user_id === userId) {
-      merged.set(visit.visit_id, { ...visit, sync_status: "synced" });
+      const local = merged.get(visit.visit_id);
+      merged.set(visit.visit_id, {
+        ...visit,
+        sync_status: local?.sync_stage === "visit_confirmed_evidence_pending" ? "pending_sync" : "synced",
+        sync_stage: local?.sync_stage === "visit_confirmed_evidence_pending" ? "visit_confirmed_evidence_pending" : "synced",
+        sync_error_code: local?.sync_error_code,
+        sync_error_message: local?.sync_error_message,
+        sync_attempt_count: local?.sync_attempt_count,
+        last_sync_attempt_at: local?.last_sync_attempt_at,
+      });
     }
   }
   return [...merged.values()].sort(

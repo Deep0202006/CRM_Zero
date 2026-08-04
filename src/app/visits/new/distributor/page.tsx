@@ -186,7 +186,7 @@ export default function NewDistributorVisitPage() {
       }
 
       await processSyncQueue();
-      await syncFieldVisits(visitId);
+      await syncFieldVisits(visitId, currentUser.user_id, "new");
       const confirmed = await db.field_visits.get(visitId);
       if (confirmed?.sync_stage === "synced") {
         setStatusMessage("Visit confirmed successfully.");

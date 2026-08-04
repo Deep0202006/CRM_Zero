@@ -112,8 +112,14 @@ export default function FieldVisitsPage() {
   }, [currentUser, loadLocal, loadRemotePage]);
 
   useEffect(() => {
-    queueMicrotask(() => void loadData());
-  }, [loadData]);
+    queueMicrotask(() => void (async () => {
+      if (currentUser && navigator.onLine) {
+        await processSyncQueue();
+        await syncFieldVisits(undefined, currentUser.user_id, "recovery");
+      }
+      await loadData();
+    })());
+  }, [currentUser, loadData]);
 
   const loadMore = async () => {
     if (!currentUser) return;
@@ -125,7 +131,8 @@ export default function FieldVisitsPage() {
   const retryVisit = async (visitId: string) => {
     setRetryingVisitId(visitId);
     try {
-      await syncFieldVisits(visitId);
+      await processSyncQueue();
+      await syncFieldVisits(visitId, currentUser?.user_id, "recovery");
       await loadData();
     } finally {
       setRetryingVisitId(null);
@@ -137,8 +144,8 @@ export default function FieldVisitsPage() {
     setRetryingVisitId("ALL");
     try {
       await processSyncQueue();
-      const result = await syncFieldVisits(undefined, currentUser?.user_id);
-      setRecoveryResult(`Visits confirmed: ${result.confirmed}. Already confirmed: ${result.alreadyConfirmed}. Evidence pending: ${result.evidencePending}. Still failed: ${result.failed}.${result.failureCodes.length ? ` Safe failure codes: ${result.failureCodes.join(", ")}.` : ""}`);
+      const result = await syncFieldVisits(undefined, currentUser?.user_id, "recovery");
+      setRecoveryResult(`Locally found: ${result.locallyFound}. Remotely confirmed now: ${result.confirmed}. Already confirmed: ${result.alreadyConfirmed}. Evidence pending: ${result.evidencePending}. Attendance blocked: ${result.attendanceBlocked}. Reference-compatible recoveries: ${result.referenceCompatibleRecoveries}. Still failed: ${result.failed}.${result.failureCodes.length ? ` Safe failure codes: ${result.failureCodes.join(", ")}.` : ""}`);
       await loadData();
     } finally {
       setRetryingVisitId(null);
@@ -170,13 +177,18 @@ export default function FieldVisitsPage() {
         <QueueList
           title="My field visits"
           items={visits.map((visit) => {
+            const retryable = visit.sync_status === "pending_sync" || visit.sync_status === "sync_failed" || visit.sync_stage === "pending_visit" || visit.sync_stage === "sync_failed" || visit.sync_stage === "visit_confirmed_evidence_pending";
             const status = visit.sync_stage === "visit_confirmed_evidence_pending"
               ? { text: "Confirmed — evidence pending", variant: "warning" as const }
+              : visit.sync_error_code === "BUSINESS_REFERENCE_WARNING" && (visit.sync_status === "synced" || visit.sync_stage === "synced")
+                ? { text: "Business reference warning", variant: "warning" as const }
               : visit.sync_status === "synced" || visit.sync_stage === "synced"
-              ? { text: "Synced", variant: "success" as const }
-              : visit.sync_status === "sync_failed"
-                ? { text: retryingVisitId === visit.visit_id ? "Retrying" : "Needs attention", variant: "danger" as const }
-                : { text: "Waiting to sync", variant: "warning" as const };
+                ? { text: "Confirmed", variant: "success" as const }
+                : visit.sync_error_code === "ATTENDANCE_NOT_CONFIRMED" || visit.sync_error_code === "ATTENDANCE_INTEGRITY_ERROR"
+                  ? { text: "Attendance confirmation pending", variant: "warning" as const }
+                  : visit.sync_error_code === "NETWORK_UNAVAILABLE"
+                    ? { text: "Saved offline", variant: "warning" as const }
+                    : { text: retryingVisitId === visit.visit_id ? "Retrying" : "Needs retry", variant: "danger" as const };
             return {
               id: visit.visit_id,
               primaryNode: (
@@ -196,7 +208,7 @@ export default function FieldVisitsPage() {
               statusText: status.text,
               statusVariant: status.variant,
               timestamp: new Date(visit.created_at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }),
-              actions: visit.sync_status === "sync_failed" || visit.sync_stage === "sync_failed"
+              actions: retryable
                 ? <Button size="sm" variant="outline" icon={<RotateCw size={13} />} onClick={() => void retryVisit(visit.visit_id)}>Retry</Button>
                 : undefined,
             };
