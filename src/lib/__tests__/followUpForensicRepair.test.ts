@@ -31,7 +31,6 @@ describe("follow-up forensic recurrence guards", () => {
     expect(database).toContain('item.idempotency_key.startsWith("followup-completion-history:")');
     expect(database).toContain('item.idempotency_key.startsWith("followup-completion-call:")');
     expect(database).toContain("if (prerequisitePending) continue");
-    expect(database).toContain('confirmedTask?.status !== "Completed"');
   });
 
   test("one scheduling call has one stable task and source-call idempotency", () => {

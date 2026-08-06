@@ -826,15 +826,6 @@ async function processSyncQueueInternal(): Promise<void> {
         )
         .first();
       if (prerequisitePending) continue;
-      if (isSupabaseConfigured && taskId) {
-        const { data: confirmedTask, error: confirmationError } = await supabase
-          .from("tasks")
-          .select("task_id,status")
-          .eq("task_id", taskId)
-          .eq("assigned_to", authenticatedUserId)
-          .maybeSingle();
-        if (confirmationError || confirmedTask?.status !== "Completed") continue;
-      }
     }
 
     const prepared = prepareSyncPayload(item.table_name, item.data);
