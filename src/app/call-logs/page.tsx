@@ -234,11 +234,11 @@ export default function CallLogsPage() {
   };
 
   const todayKey = getCurrentISTDate();
-  const localGenuineToday = logs.filter((log) => getISTDateKey(log.timestamp) === todayKey && isGenuineCallLog(log));
-  const callsToday = localGenuineToday.length;
-  const followupsScheduled = localGenuineToday.filter((log) => Boolean(log.next_followup_date)).length;
-  const reachedClients = localGenuineToday.filter((log) => !log.outcome.toLowerCase().includes("no response")).length;
-  const unknownAuditLike = logs.filter((log) => !isSyntheticAuditCall(log) && /\b(?:pipeline|stage|transition|audit|system[- ]generated)\b/i.test(log.outcome)).length;
+  const confirmedToday = confirmedLogs.filter((log) => getISTDateKey(log.timestamp) === todayKey && isGenuineCallLog(log));
+  const callsToday = confirmedToday.length;
+  const followupsScheduled = confirmedToday.filter((log) => Boolean(log.next_followup_date)).length;
+  const reachedClients = confirmedToday.filter((log) => !log.outcome.toLowerCase().includes("no response")).length;
+  const unknownAuditLike = confirmedLogs.filter((log) => !isSyntheticAuditCall(log) && /\b(?:pipeline|stage|transition|audit|system[- ]generated)\b/i.test(log.outcome)).length;
 
   return (
     <div className="app-page">
@@ -255,7 +255,7 @@ export default function CallLogsPage() {
       />
 
       <div className="metric-grid">
-        <MetricCard label={authoritative ? "Calls today" : "Calls today (offline)"} value={callsToday} icon={<PhoneCall size={17} />} note={authoritative ? "Includes both synced and pending genuine calls" : "Offline cache; confirmation unavailable"} />
+        <MetricCard label={authoritative ? "Confirmed calls today" : "Cached calls today"} value={callsToday} icon={<PhoneCall size={17} />} note={authoritative ? "Server-confirmed genuine client calls" : "Offline cache; confirmation unavailable"} />
         <MetricCard
           label="Waiting to sync"
           value={pendingCount}
