@@ -47,6 +47,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       genuine_calls_today: metric.genuine_call_ids.size,
       confirmed_genuine_call_ids: [...metric.genuine_call_ids],
+      confirmed_followup_call_ids: [...metric.followup_call_ids],
+      followup_calls_today: metric.followup_call_ids.size,
       normal_tasks_completed_today: metric.completed_task_ids.size - metric.followup_task_ids.size,
       followup_tasks_completed_today: metric.followup_task_ids.size,
       total_tasks_completed_today: (row?.tasks_completed ?? metric.completed_task_ids.size),

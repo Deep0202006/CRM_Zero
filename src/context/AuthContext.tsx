@@ -79,6 +79,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setCurrentUser(matchedUser);
             const caps = await db.user_capabilities.where("user_id").equals(matchedUser.user_id).toArray();
             setCapabilities(caps.map(c => c.capability_code));
+            if (navigator.onLine) void Promise.allSettled([processSyncQueue(), syncFieldVisits(undefined, matchedUser.user_id, "recovery")]);
             // Background pull down to hydrate robust offline DB for 10-person team
             pullDownSync().then(async () => {
               const updatedCaps = await db.user_capabilities.where("user_id").equals(matchedUser.user_id).toArray();
@@ -207,6 +208,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setCurrentUser(user);
           localStorage.setItem("authenticated_user_id", user.user_id);
           await loadUserCapabilities(user.user_id);
+          if (navigator.onLine) void Promise.allSettled([processSyncQueue(), syncFieldVisits(undefined, user.user_id, "recovery")]);
           setIsLoading(false);
           
           // Trigger downward sync to populate the local DB with team data

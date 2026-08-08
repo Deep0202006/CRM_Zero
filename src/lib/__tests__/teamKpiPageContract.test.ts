@@ -26,22 +26,17 @@ describe("Team KPI page data path", () => {
 
   it("refreshes from the actual confirmed work sources with one debounced API reload", () => {
     for (const table of [
-      "users",
-      "user_capabilities",
       "call_logs",
-      "client_queries",
-      "mapping_requests",
-      "mappings",
       "tasks",
       "task_status_history",
-      "allocated_targets",
     ]) {
       expect(source).toContain(`"${table}"`);
     }
     expect(source).not.toContain('"team_work_events"');
     expect(source).toContain("setTimeout");
-    expect(source).toContain("750");
-    expect(source).not.toContain("setInterval");
+    expect(source).toContain("350");
+    expect(source).toContain("setInterval");
+    expect(source).toContain('document.visibilityState === "visible"');
     expect(source).not.toContain('type="date"');
     expect(source).not.toContain('aria-label="KPI date"');
   });

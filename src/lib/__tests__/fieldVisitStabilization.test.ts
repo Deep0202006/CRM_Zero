@@ -40,18 +40,24 @@ describe("field visit stabilization", () => {
 
   it("queries remote visits by the authenticated UUID and bounds each page to 50", () => {
     const page = read("src/app/visits/page.tsx");
-    expect(page).toContain('.eq("user_id", currentUser.user_id)');
-    expect(page).toContain("const REMOTE_PAGE_SIZE = 50");
-    expect(page).toContain(".range(from, to)");
+    const route = read("src/app/api/field-visits/mine/route.ts");
+    expect(page).toContain('fetch(`/api/field-visits/mine?${query}`');
+    expect(route).toContain('.eq("user_id", auth.user.id)');
+    expect(route).toContain("const PAGE_SIZE = 50");
+    expect(route).toContain("confirmed_requested_visit_ids");
     expect(page).toContain("Load More");
   });
 
   it("retries failed visits without removing failed evidence", () => {
     const sync = read("src/lib/fieldVisits/sync.ts");
     expect(sync).toContain('visit.sync_status === "pending_sync"');
-    expect(sync).toContain("if (activeSync) {");
-    expect(sync).toContain("rerunRequested = true");
-    expect(sync).toContain("while (rerunRequested)");
+    expect(sync).toContain("const syncRequests: SyncRequest[] = []");
+    expect(sync).toContain("while (syncRequests.length)");
+    expect(sync).toContain('if (mode === "new") duplicate.mode = "new"');
+    expect(sync).toContain("activeRequest");
+    expect(sync).toContain('visit.confirmation_mode === "new" ? "new" : mode');
+    expect(read("src/app/visits/new/retailer/page.tsx")).toContain('confirmation_mode: "new"');
+    expect(read("src/app/visits/new/distributor/page.tsx")).toContain('confirmation_mode: "new"');
     expect(sync).toContain("result.visit_id !== visit.visit_id");
     const failureBlock = sync.slice(sync.indexOf("} catch (error)"));
     expect(failureBlock).toContain('sync_status: "sync_failed"');

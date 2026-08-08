@@ -15,6 +15,7 @@ describe("Team KPI response contract", () => {
           role: "Field Retail",
           capabilities: ["field_ret"],
           calls_made: "0",
+          followup_calls: "0",
           queries_handled: 0,
           mappings_completed: 0,
           tasks_completed: 0,
@@ -27,6 +28,7 @@ describe("Team KPI response contract", () => {
           role: "Retailer Support",
           capabilities: ["ret_support"],
           calls_made: "2",
+          followup_calls: "1",
           queries_handled: "1",
           mappings_completed: 0,
           tasks_completed: 3,
@@ -37,6 +39,7 @@ describe("Team KPI response contract", () => {
       totals: {
         team_members: "2",
         calls_made: "2",
+        followup_calls: "1",
         queries_handled: 1,
         mappings_completed: 0,
         tasks_completed: 3,
@@ -61,6 +64,7 @@ describe("Team KPI response contract", () => {
         role: "Team member",
         capabilities: [],
         calls_made: 1,
+        followup_calls: 1,
         queries_handled: 1,
         mappings_completed: 1,
         tasks_completed: 1,
@@ -70,6 +74,7 @@ describe("Team KPI response contract", () => {
       totals: {
         team_members: 1,
         calls_made: 1,
+        followup_calls: 1,
         queries_handled: 1,
         mappings_completed: 1,
         tasks_completed: 1,
@@ -86,6 +91,7 @@ describe("Team KPI response contract", () => {
       totals: {
         team_members: 1,
         calls_made: 0,
+        followup_calls: 0,
         queries_handled: 0,
         mappings_completed: 0,
         tasks_completed: 0,
@@ -102,6 +108,7 @@ describe("Team KPI response contract", () => {
       totals: {
         team_members: 1,
         calls_made: -1,
+        followup_calls: 0,
         queries_handled: 0,
         mappings_completed: 0,
         tasks_completed: 0,

@@ -42,11 +42,11 @@ export function buildTeamKpiReport(input: BuildTeamKpiReportInput): TeamKpiRespo
     const codes = [...(codesByUser.get(user.user_id) ?? [])].sort();
     return {
       user_id: user.user_id, name: user.name.trim() || "Unnamed team member", role: codes.map((code) => labels.get(code) ?? humanize(code)).join(" · ") || "Team member", capabilities: codes,
-      calls_made: metric.genuine_call_ids.size, queries_handled: metric.query_ids.size, mappings_completed: metric.mapping_ids.size,
+      calls_made: metric.genuine_call_ids.size, followup_calls: metric.followup_call_ids.size, queries_handled: metric.query_ids.size, mappings_completed: metric.mapping_ids.size,
       tasks_completed: metric.completed_task_ids.size + metric.target_ids.size, total_completed_work: metric.unique_work_keys.size,
       latest_activity_time: metric.latest_activity_at,
     };
   }).sort((a, b) => b.total_completed_work - a.total_completed_work || a.name.localeCompare(b.name) || a.user_id.localeCompare(b.user_id));
-  const totals = rows.reduce((sum, row) => ({ team_members: sum.team_members + 1, calls_made: sum.calls_made + row.calls_made, queries_handled: sum.queries_handled + row.queries_handled, mappings_completed: sum.mappings_completed + row.mappings_completed, tasks_completed: sum.tasks_completed + row.tasks_completed, total_completed_work: sum.total_completed_work + row.total_completed_work }), { team_members: 0, calls_made: 0, queries_handled: 0, mappings_completed: 0, tasks_completed: 0, total_completed_work: 0 });
+  const totals = rows.reduce((sum, row) => ({ team_members: sum.team_members + 1, calls_made: sum.calls_made + row.calls_made, followup_calls: sum.followup_calls + row.followup_calls, queries_handled: sum.queries_handled + row.queries_handled, mappings_completed: sum.mappings_completed + row.mappings_completed, tasks_completed: sum.tasks_completed + row.tasks_completed, total_completed_work: sum.total_completed_work + row.total_completed_work }), { team_members: 0, calls_made: 0, followup_calls: 0, queries_handled: 0, mappings_completed: 0, tasks_completed: 0, total_completed_work: 0 });
   return { target_date: input.targetDate, generated_at: input.generatedAt ?? new Date().toISOString(), rows, totals, source: input.source ?? "server-aggregation", warnings };
 }

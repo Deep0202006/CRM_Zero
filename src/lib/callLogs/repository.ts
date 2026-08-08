@@ -9,6 +9,11 @@ export interface CallLogSnapshot {
   confirmedCount: number;
   pendingCount: number;
   authoritative: boolean;
+  confirmedGenuineCallIds: string[];
+  confirmedFollowupCallIds: string[];
+  confirmedReachedCallIds: string[];
+  page: number;
+  hasMore: boolean;
 }
 
 function belongsToUser(log: LocalCallLog, userId: string, isAdmin: boolean): boolean {
@@ -39,10 +44,15 @@ async function localSnapshot(userId: string, isAdmin: boolean): Promise<CallLogS
     confirmedCount: localLogs.filter((log) => !pendingIds.has(log.log_id)).length,
     pendingCount: pendingIds.size,
     authoritative: false,
+    confirmedGenuineCallIds: [],
+    confirmedFollowupCallIds: [],
+    confirmedReachedCallIds: [],
+    page: 1,
+    hasMore: false,
   };
 }
 
-export async function fetchCallLogSnapshot(userId: string, isAdmin: boolean): Promise<CallLogSnapshot> {
+export async function fetchCallLogSnapshot(userId: string, isAdmin: boolean, page = 1): Promise<CallLogSnapshot> {
   if (typeof navigator === "undefined" || !navigator.onLine || !isSupabaseConfigured) {
     return localSnapshot(userId, isAdmin);
   }
@@ -55,23 +65,13 @@ export async function fetchCallLogSnapshot(userId: string, isAdmin: boolean): Pr
     .filter((log) => belongsToUser(log, userId, isAdmin));
 
   try {
-    const confirmedLogs: LocalCallLog[] = [];
-    const pageSize = 1000;
-
-    for (let from = 0; ; from += pageSize) {
-      let query = supabase
-        .from("call_logs")
-        .select("*")
-        .order("log_id", { ascending: true })
-        .range(from, from + pageSize - 1);
-      if (!isAdmin) query = query.eq("user_id", userId);
-
-      const { data, error } = await query;
-      if (error) throw new Error(error.message);
-      const page = (data ?? []) as LocalCallLog[];
-      confirmedLogs.push(...page);
-      if (page.length < pageSize) break;
-    }
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData.session?.access_token;
+    if (!token) throw new Error("Authentication required");
+    const response = await fetch(`/api/call-logs/history?page=${page}${isAdmin ? "&scope=admin" : ""}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+    const result = await response.json() as { calls?: LocalCallLog[]; confirmed_genuine_call_ids?: string[]; confirmed_followup_call_ids?: string[]; confirmed_reached_call_ids?: string[]; has_more?: boolean };
+    if (!response.ok) throw new Error("Call history could not be confirmed.");
+    const confirmedLogs = result.calls ?? [];
 
     if (confirmedLogs.length > 0) await db.call_logs.bulkPut(confirmedLogs);
 
@@ -84,6 +84,11 @@ export async function fetchCallLogSnapshot(userId: string, isAdmin: boolean): Pr
       confirmedCount: confirmedLogs.length,
       pendingCount: unsyncedLogs.length,
       authoritative: true,
+      confirmedGenuineCallIds: result.confirmed_genuine_call_ids ?? [],
+      confirmedFollowupCallIds: result.confirmed_followup_call_ids ?? [],
+      confirmedReachedCallIds: result.confirmed_reached_call_ids ?? [],
+      page,
+      hasMore: Boolean(result.has_more),
     };
   } catch (error) {
     console.warn("Authoritative call-log refresh failed; using the offline snapshot:", error);

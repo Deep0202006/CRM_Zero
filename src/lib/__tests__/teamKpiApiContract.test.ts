@@ -7,6 +7,6 @@ describe("Team KPI server API contract", () => {
   it("authenticates an active administrator", () => { expect(route).toContain("userClient.auth.getUser(token)"); expect(route).toContain("await isAdmin(service, data.user.id)"); expect(route).toContain("ADMIN_REQUIRED"); });
   it("uses only canonical service-side aggregation", () => { expect(route).toContain("process.env.SUPABASE_SERVICE_ROLE_KEY"); expect(route).toContain("loadTeamKpiServerReport(service"); expect(route).not.toContain('.rpc("get_team_kpi_daily'); });
   it("fails explicitly instead of returning fake zeros", () => { expect(route).toContain("SUPABASE_NOT_CONFIGURED"); expect(route).toContain("TEAM_KPI_SERVER_ERROR"); expect(route).toContain("TEAM_KPI_NO_ACTIVE_USERS"); });
-  it("keeps one authenticated page request", () => { expect(page).toContain('fetch("/api/team-kpi"'); expect(page).not.toContain('supabase.rpc("get_team_kpi_daily'); expect(page).not.toContain("setInterval"); });
+  it("keeps one authenticated page request and a visible-only realtime fallback", () => { expect(page).toContain('fetch("/api/team-kpi"'); expect(page).not.toContain('supabase.rpc("get_team_kpi_daily'); expect(page).toContain("setInterval"); expect(page).toContain('document.visibilityState === "visible"'); });
   it("is today-only", () => { expect(route).toContain("const targetDate = getCurrentISTDate()"); expect(route).not.toContain('searchParams.get("date")'); expect(page).not.toContain('type="date"'); });
 });

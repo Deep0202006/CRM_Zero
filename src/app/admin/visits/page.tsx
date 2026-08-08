@@ -37,6 +37,9 @@ export default function AdminVisitsPage() {
   const [outcome, setOutcome] = useState("ALL");
   const [representatives, setRepresentatives] = useState<Array<{ user_id: string; name: string; email: string; is_active: boolean; capabilities: string[]; historical_only: boolean }>>([]);
   const requestSequence = useRef(0);
+  const realtimeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fallbackTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [realtimeSubscribed, setRealtimeSubscribed] = useState(false);
 
   const loadData = useCallback(async (targetPage = 1) => {
     if (!isAdmin) return;
@@ -79,6 +82,32 @@ export default function AdminVisitsPage() {
   useEffect(() => {
     queueMicrotask(() => void loadData(1));
   }, [loadData]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    const scheduleRefresh = () => {
+      if (realtimeTimer.current) clearTimeout(realtimeTimer.current);
+      realtimeTimer.current = setTimeout(() => void loadData(page), 350);
+    };
+    const channel = supabase.channel("admin-field-visits-authoritative")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "field_visits" }, scheduleRefresh)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "field_visits" }, scheduleRefresh)
+      .subscribe((status) => setRealtimeSubscribed(status === "SUBSCRIBED"));
+    return () => {
+      if (realtimeTimer.current) clearTimeout(realtimeTimer.current);
+      void supabase.removeChannel(channel);
+    };
+  }, [isAdmin, loadData, page]);
+
+  useEffect(() => {
+    const stopFallback = () => { if (fallbackTimer.current) clearInterval(fallbackTimer.current); fallbackTimer.current = null; };
+    const updateFallback = () => {
+      stopFallback();
+      if (!realtimeSubscribed && document.visibilityState === "visible") fallbackTimer.current = setInterval(() => void loadData(page), 10_000);
+    };
+    updateFallback(); document.addEventListener("visibilitychange", updateFallback);
+    return () => { document.removeEventListener("visibilitychange", updateFallback); stopFallback(); };
+  }, [loadData, page, realtimeSubscribed]);
 
   const handleExport = async () => {
     setExporting(true);

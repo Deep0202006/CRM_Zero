@@ -16,8 +16,7 @@ import { MetricCard } from "@/components/ui/MetricCard";
 import { getCurrentISTDate, getISTDateKey } from "@/lib/dateTime";
 import { buildSelfScheduledFollowUpTask, needsCallFollowUp } from "@/lib/followUps";
 import { CALL_LOGS_CHANGED_EVENT, fetchCallLogSnapshot } from "@/lib/callLogs/repository";
-import { isGenuineCallLog, isSyntheticAuditCall } from "@/lib/workMetrics/canonical";
-import { supabase } from "@/lib/supabaseClient";
+import { getCanonicalDailyUserMetrics, isGenuineCallLog, isSyntheticAuditCall } from "@/lib/workMetrics/canonical";
 
 export default function CallLogsPage() {
   const { currentUser, isAdmin } = useAuth();
@@ -28,6 +27,9 @@ export default function CallLogsPage() {
   const [usersMap, setUsersMap] = useState<Map<string, LocalUser>>(new Map());
   const [leadsMap, setLeadsMap] = useState<Map<string, LocalLead>>(new Map());
   const [followUpTaskIds, setFollowUpTaskIds] = useState<Set<string>>(new Set());
+  const [genuineCallIdsToday, setGenuineCallIdsToday] = useState<Set<string>>(new Set());
+  const [followupCallIdsToday, setFollowupCallIdsToday] = useState<Set<string>>(new Set());
+  const [reachedCallIdsToday, setReachedCallIdsToday] = useState<Set<string>>(new Set());
 
   const [selectedLeadId, setSelectedLeadId] = useState("");
   const [outcome, setOutcome] = useState("");
@@ -77,6 +79,14 @@ export default function CallLogsPage() {
       allLeads.forEach(l => lMap.set(l.lead_id, l));
       const matchingTasks = await db.tasks.bulkGet(fetchedLogs.map((log) => log.log_id));
       setFollowUpTaskIds(new Set(matchingTasks.filter((task): task is NonNullable<typeof task> => Boolean(task)).filter((task) => task.source === "manual" && task.template_id === null).map((task) => task.task_id)));
+      const today = getCurrentISTDate();
+      const ownLocalCalls = await db.call_logs.where("user_id").equals(currentUser.user_id).filter((log) => getISTDateKey(log.timestamp) === today).toArray();
+      const localTasks = (await db.tasks.bulkGet(ownLocalCalls.map((log) => log.log_id))).filter((task): task is NonNullable<typeof task> => Boolean(task));
+      const localMetric = getCanonicalDailyUserMetrics({ userId: currentUser.user_id, calls: ownLocalCalls, tasks: localTasks, taskHistory: [] });
+      setGenuineCallIdsToday(new Set([...snapshot.confirmedGenuineCallIds, ...localMetric.genuine_call_ids]));
+      setFollowupCallIdsToday(new Set([...snapshot.confirmedFollowupCallIds, ...localMetric.followup_call_ids]));
+      const localReachedIds = ownLocalCalls.filter((log) => localMetric.genuine_call_ids.has(log.log_id) && !log.outcome.toLowerCase().includes("no response")).map((log) => log.log_id);
+      setReachedCallIdsToday(new Set([...snapshot.confirmedReachedCallIds, ...localReachedIds]));
 
       setUsersMap(uMap);
       setLeadsMap(lMap);
@@ -188,8 +198,7 @@ export default function CallLogsPage() {
       let remotelyConfirmed = false;
       if (navigator.onLine) {
         await processSyncQueue();
-        const verification = await supabase.from("call_logs").select("log_id").eq("log_id", logId).eq("user_id", currentUser.user_id).maybeSingle();
-        remotelyConfirmed = !verification.error && verification.data?.log_id === logId;
+        remotelyConfirmed = !(await db.sync_queue.where("idempotency_key").equals(`call-log:${logId}`).first());
       }
 
       setSuccess(remotelyConfirmed);
@@ -237,9 +246,9 @@ export default function CallLogsPage() {
 
   const todayKey = getCurrentISTDate();
   const todayLogs = [...new Map(logs.filter((log) => log.user_id === currentUser?.user_id && getISTDateKey(log.timestamp) === todayKey && isGenuineCallLog(log)).map((log) => [log.log_id, log])).values()];
-  const callsToday = todayLogs.length;
-  const followupsScheduled = todayLogs.filter((log) => Boolean(log.next_followup_date)).length;
-  const reachedClients = todayLogs.filter((log) => !log.outcome.toLowerCase().includes("no response")).length;
+  const callsToday = genuineCallIdsToday.size;
+  const followupCallsToday = followupCallIdsToday.size;
+  const reachedClients = reachedCallIdsToday.size;
   const unknownAuditLike = confirmedLogs.filter((log) => !isSyntheticAuditCall(log) && /\b(?:pipeline|stage|transition|audit|system[- ]generated)\b/i.test(log.outcome)).length;
 
   return (
@@ -258,7 +267,7 @@ export default function CallLogsPage() {
 
       <div className="metric-grid">
         <MetricCard label="Calls today" value={callsToday} icon={<PhoneCall size={17} />} note="Genuine calls recorded today" />
-        <MetricCard label="Follow-ups scheduled" value={followupsScheduled} icon={<AlertCircle size={17} />} tone="warning" note="Calls with a scheduled next step" />
+        <MetricCard label="Follow-up calls today" value={followupCallsToday} icon={<AlertCircle size={17} />} tone="warning" note="Included in Calls today" />
         <MetricCard label="Clients reached" value={reachedClients} icon={<CheckCircle2 size={17} />} tone="success" note="Outcomes other than no response" />
       </div>
 

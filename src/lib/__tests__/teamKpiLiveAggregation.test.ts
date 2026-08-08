@@ -45,6 +45,7 @@ describe("Team KPI live server aggregation", () => {
       name: "User A",
       role: "Retail Support",
       calls_made: 1,
+      followup_calls: 0,
       queries_handled: 1,
       mappings_completed: 1,
       tasks_completed: 1,
@@ -54,6 +55,7 @@ describe("Team KPI live server aggregation", () => {
     expect(report.rows[1]).toMatchObject({
       name: "User B",
       calls_made: 0,
+      followup_calls: 0,
       queries_handled: 0,
       mappings_completed: 0,
       tasks_completed: 2,
@@ -62,6 +64,7 @@ describe("Team KPI live server aggregation", () => {
     expect(report.totals).toEqual({
       team_members: 2,
       calls_made: 1,
+      followup_calls: 0,
       queries_handled: 1,
       mappings_completed: 1,
       tasks_completed: 3,

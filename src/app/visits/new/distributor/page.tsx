@@ -169,6 +169,7 @@ export default function NewDistributorVisitPage() {
         attendance_id: attendanceRec?.attendance_id || null,
         sync_status: "pending_sync" as const,
         sync_stage: "pending_visit" as const,
+        confirmation_mode: "new" as const,
         created_at: now,
         updated_at: now
       };

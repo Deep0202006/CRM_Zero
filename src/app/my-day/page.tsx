@@ -27,11 +27,11 @@ import { Input } from "@/components/ui/Input";
 import { isValidSelfScheduledFollowUp, parseFollowUpSourceCallId, stripInternalFollowUpMarkers } from "@/lib/followUps";
 import { getCurrentISTDate, getISTBusinessDayBounds, getISTDateKey } from "@/lib/dateTime";
 import { mergePaymentFollowUps, type PaymentFollowUpIdentity } from "@/lib/fieldVisits/paymentFollowUps";
-import { isGenuineCallLog } from "@/lib/workMetrics/canonical";
+import { getCanonicalDailyUserMetrics } from "@/lib/workMetrics/canonical";
 
 interface WeeklyDigestTaskPerformance { assigned_to: string; completed_count: number; total_count: number; }
 interface WeeklyDigest { week_start: string; data: { stuck_leads: { id: string; name: string; status: string; days_in_stage: number; assigned_to: string }[]; task_performance: WeeklyDigestTaskPerformance[]; upcoming_renewals: { id: string; name: string; renewal_date: string }[]; }; }
-interface DailySummary { genuine_calls_today: number; confirmed_genuine_call_ids: string[]; normal_tasks_completed_today: number; followup_tasks_completed_today: number; total_tasks_completed_today: number; pending_followups: number; unique_completed_work: number; generated_at: string; }
+interface DailySummary { genuine_calls_today: number; followup_calls_today: number; confirmed_genuine_call_ids: string[]; confirmed_followup_call_ids: string[]; normal_tasks_completed_today: number; followup_tasks_completed_today: number; total_tasks_completed_today: number; pending_followups: number; unique_completed_work: number; generated_at: string; }
 
 export default function MyDayPage() {
   const { currentUser, capabilities, hasOnboarding, hasSupport, isFieldStaff, isAdmin } = useAuth();
@@ -53,14 +53,17 @@ export default function MyDayPage() {
   const [deleteDialogTask, setDeleteDialogTask] = useState<LocalTask | null>(null);
   const [dailySummary, setDailySummary] = useState<DailySummary | null>(null);
   const [localCallsToday, setLocalCallsToday] = useState(0);
+  const [localFollowupCallsToday, setLocalFollowupCallsToday] = useState(0);
   const [paymentFollowUps, setPaymentFollowUps] = useState<PaymentFollowUpIdentity[]>([]);
   const confirmedPaymentFollowUps = useRef<{ date: string; rows: PaymentFollowUpIdentity[] }>({ date: "", rows: [] });
   const refreshDailySummary = useCallback(async () => {
     if (!currentUser) return;
     const today = getCurrentISTDate();
-    const localCalls = await db.call_logs.where("user_id").equals(currentUser.user_id).toArray();
-    const localIds = localCalls.filter((call) => getISTDateKey(call.timestamp) === today && isGenuineCallLog(call)).map((call) => call.log_id);
-    setLocalCallsToday(new Set(localIds).size);
+    const localCalls = await db.call_logs.where("user_id").equals(currentUser.user_id).filter((call) => getISTDateKey(call.timestamp) === today).toArray();
+    const localTasks = (await db.tasks.bulkGet(localCalls.map((call) => call.log_id))).filter((task): task is NonNullable<typeof task> => Boolean(task));
+    const localMetric = getCanonicalDailyUserMetrics({ userId: currentUser.user_id, calls: localCalls, tasks: localTasks, taskHistory: [] });
+    setLocalCallsToday(localMetric.genuine_call_ids.size);
+    setLocalFollowupCallsToday(localMetric.followup_call_ids.size);
     if (!navigator.onLine || !isSupabaseConfigured) return;
     await processSyncQueue();
     const { data } = await supabase.auth.getSession();
@@ -69,7 +72,8 @@ export default function MyDayPage() {
     const response = await fetch("/api/my-day/daily-summary", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
     if (!response.ok) throw new Error("Confirmed My Day summary is unavailable.");
     const summary = await response.json() as DailySummary;
-    summary.genuine_calls_today = new Set([...(summary.confirmed_genuine_call_ids ?? []), ...localIds]).size;
+    summary.genuine_calls_today = new Set([...(summary.confirmed_genuine_call_ids ?? []), ...localMetric.genuine_call_ids]).size;
+    summary.followup_calls_today = new Set([...(summary.confirmed_followup_call_ids ?? []), ...localMetric.followup_call_ids]).size;
     setDailySummary(summary);
   }, [currentUser]);
 
@@ -233,6 +237,7 @@ export default function MyDayPage() {
 
     try {
       const isSelfScheduledFollowUp = isValidSelfScheduledFollowUp(task, currentUser.user_id);
+      let followUpCallConfirmed = !isSelfScheduledFollowUp;
       if (isSelfScheduledFollowUp) {
         const verifiedOutcome = outcome?.trim();
         if (!verifiedOutcome) {
@@ -314,7 +319,10 @@ export default function MyDayPage() {
             retry_count: 0,
           });
         });
-        if (navigator.onLine) await processSyncQueue();
+        if (navigator.onLine) {
+          await processSyncQueue();
+          followUpCallConfirmed = !(await db.sync_queue.where("idempotency_key").equals(`followup-completion-call:${task.task_id}`).first());
+        }
       } else {
         await updateTaskStatus(task, "Completed", currentUser.user_id);
       }
@@ -330,7 +338,9 @@ export default function MyDayPage() {
       );
       await getMyDayStats(currentUser.user_id).then(setStats);
       await refreshDailySummary();
-      setTaskActionMessage({ type: "success", text: `“${task.title}” was marked complete.` });
+      setTaskActionMessage(followUpCallConfirmed
+        ? { type: "success", text: `“${task.title}” was marked complete.` }
+        : { type: "error", text: "The follow-up is saved safely and will confirm automatically when the connection is available." });
       setCompletionDialogTask(null);
       setCompletionOutcome("Follow-up completed");
     } catch (error) {
@@ -532,6 +542,7 @@ export default function MyDayPage() {
           <MetricCard label="Tasks done" value={dailySummary?.total_tasks_completed_today ?? "—"} icon={<CheckSquare size={17} />} note="Server-confirmed completed tasks and targets" tone="success" />
           <MetricCard label="Mapped today" value={mappedToday} icon={<Target size={17} />} note="Distributor-retailer mapping work completed" />
           {hasOnboarding && <MetricCard label="Calls today" value={dailySummary?.genuine_calls_today ?? localCallsToday} icon={<PhoneCall size={17} />} note="Genuine calls recorded today" tone="info" />}
+          {hasOnboarding && <MetricCard label="Follow-up calls today" value={dailySummary?.followup_calls_today ?? localFollowupCallsToday} icon={<PhoneCall size={17} />} note="Included in Calls today" tone="info" />}
           <MetricCard label="Unique completed work" value={dailySummary?.unique_completed_work ?? "—"} icon={<CheckCircle2 size={17} />} note="Linked follow-up call and task count once here" tone="success" />
           {hasOnboarding && <MetricCard label="Converted leads" value={leadsConverted} icon={<Trophy size={17} />} note="Leads reaching a converted pipeline stage" tone="warning" />}
           {hasSupport && <MetricCard label="Resolved today" value={queriesResolvedToday} icon={<CheckCircle2 size={17} />} note="Client queries closed today" tone="success" />}

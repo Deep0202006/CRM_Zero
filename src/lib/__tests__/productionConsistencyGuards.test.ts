@@ -35,14 +35,15 @@ describe("production consistency guards", () => {
     const callLogs = source("src/app/call-logs/page.tsx");
     const database = source("src/lib/db.ts");
 
-    expect(repository).toContain('.from("call_logs")');
-    expect(repository).toContain('.eq("user_id", userId)');
+    expect(repository).toContain('/api/call-logs/history?page=${page}');
+    expect(repository).not.toContain('.from("call_logs")');
     expect(repository).toContain("confirmedCount: confirmedLogs.length");
     expect(repository).toContain("confirmedLogs: sortNewestFirst(confirmedLogs)");
     expect(repository).toContain("pendingCount: unsyncedLogs.length");
     expect(callLogs).toContain("await processSyncQueue()");
     expect(callLogs).toContain("fetchCallLogSnapshot(currentUser.user_id, isAdmin)");
     expect(callLogs).toContain('label="Calls today"');
+    expect(callLogs).toContain('label="Follow-up calls today"');
     expect(callLogs).toContain("const todayLogs = [...new Map(logs.filter");
     expect(callLogs).not.toContain('label="Waiting to sync"');
     expect(callLogs).not.toContain('label="Total records" value={logs.length}');

@@ -43,6 +43,13 @@ describe("authoritative personal visit metrics", () => {
     expect(calculateOwnVisitMetrics("user-1", "2026-08-01", 4, 0, local, []))
       .toEqual(calculateOwnVisitMetrics("user-1", "2026-08-01", 4, 0, local, []));
   });
+
+  it("keeps cached confirmed visits in offline totals without marking them pending", () => {
+    const metrics = calculateOwnVisitMetrics("user-1", "2026-08-01", 0, 0, [
+      visit({ visit_id: "confirmed", sync_status: "synced", sync_stage: "synced" }),
+    ], []);
+    expect(metrics).toEqual({ totalVisits: 1, visitsToday: 1, waitingToSync: 0 });
+  });
 });
 
 describe("authoritative admin visit contracts", () => {

@@ -180,6 +180,7 @@ export interface LocalFieldVisit {
   follow_up_date?: string | null;
   sync_status?: 'pending_sync' | 'synced' | 'sync_failed';
   sync_stage?: 'pending_visit' | 'visit_confirmed_evidence_pending' | 'visit_confirmed_link_pending' | 'synced' | 'sync_failed';
+  confirmation_mode?: 'new' | 'recovery';
   sync_error_code?: string;
   sync_error_message?: string;
   sync_attempt_count?: number;
@@ -789,12 +790,28 @@ async function verifyRemoteRowExists(
   return Boolean(data);
 }
 
+async function confirmCallLog(payload: Record<string, unknown>, accessToken: string): Promise<void> {
+  const response = await fetch("/api/call-logs/confirm", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+    cache: "no-store",
+  });
+  let result: { ok?: boolean; code?: string; log_id?: string };
+  try { result = await response.json() as typeof result; }
+  catch { throw new Error("Call confirmation returned an unreadable response."); }
+  if (!response.ok || !result.ok || !["CALL_CONFIRMED", "CALL_ALREADY_CONFIRMED"].includes(result.code ?? "") || result.log_id !== payload.log_id) {
+    throw new Error(`Call confirmation failed (${result.code ?? response.status}).`);
+  }
+}
+
 async function processSyncQueueInternal(): Promise<void> {
   if (typeof navigator === "undefined" || !navigator.onLine) return;
 
-  const { data: authenticated, error: authenticationError } = await supabase.auth.getUser();
+  const [{ data: authenticated, error: authenticationError }, { data: sessionData }] = await Promise.all([supabase.auth.getUser(), supabase.auth.getSession()]);
   const authenticatedUserId = authenticated.user?.id;
-  if (authenticationError || !authenticatedUserId) return;
+  const accessToken = sessionData.session?.access_token;
+  if (authenticationError || !authenticatedUserId || !accessToken) return;
 
   const items = await db.sync_queue.orderBy("id").toArray();
   if (items.length === 0) {
@@ -864,13 +881,17 @@ async function processSyncQueueInternal(): Promise<void> {
         const primaryKeyValue = prepared.data[primaryKey];
 
         if (item.action === "INSERT") {
-          const { error } = await client.insert(prepared.data);
-          if (error) {
-            if (!isDuplicateKeyError(error) || !(await verifyRemoteRowExists(remoteTableName, primaryKey, primaryKeyValue, authenticatedUserId))) {
-              throw new Error(`Supabase insert failed for ${remoteTableName}: ${error.message}`);
+          if (item.table_name === "call_logs") {
+            await confirmCallLog(prepared.data, accessToken);
+          } else {
+            const { error } = await client.insert(prepared.data);
+            if (error) {
+              if (!isDuplicateKeyError(error) || !(await verifyRemoteRowExists(remoteTableName, primaryKey, primaryKeyValue, authenticatedUserId))) {
+                throw new Error(`Supabase insert failed for ${remoteTableName}: ${error.message}`);
+              }
+            } else if (!(await verifyRemoteRowExists(remoteTableName, primaryKey, primaryKeyValue, authenticatedUserId))) {
+              throw new Error(`Supabase inserted no verifiable ${remoteTableName} row.`);
             }
-          } else if (!(await verifyRemoteRowExists(remoteTableName, primaryKey, primaryKeyValue, authenticatedUserId))) {
-            throw new Error(`Supabase inserted no verifiable ${remoteTableName} row.`);
           }
         } else if (item.action === "UPDATE") {
           if (primaryKeyValue === undefined || primaryKeyValue === null || primaryKeyValue === "") {
@@ -924,6 +945,9 @@ async function processSyncQueueInternal(): Promise<void> {
           if (error) throw new Error(`Supabase delete failed for ${remoteTableName}: ${error.message}`);
         }
       } else {
+        if (item.table_name === "call_logs" && item.action === "INSERT") {
+          throw new Error("Call confirmation is unavailable until Supabase is configured.");
+        }
         await new Promise((resolve) => setTimeout(resolve, 200));
       }
 

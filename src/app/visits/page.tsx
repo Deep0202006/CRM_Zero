@@ -5,7 +5,7 @@ import Link from "next/link";
 import { CheckCircle2, MapPin, Plus, RotateCw } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { db, processSyncQueue, type LocalFieldVisit, type LocalLead } from "@/lib/db";
-import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
+import { supabase } from "@/lib/supabaseClient";
 import { mergeOwnVisits } from "@/lib/fieldVisits/merge";
 import { calculateOwnVisitMetrics, type OwnVisitMetrics } from "@/lib/fieldVisits/metrics";
 import { syncFieldVisits } from "@/lib/fieldVisits/sync";
@@ -16,8 +16,6 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { QueueList } from "@/components/QueueList";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { CheckInGate } from "@/components/CheckInGate";
-
-const REMOTE_PAGE_SIZE = 50;
 
 export default function FieldVisitsPage() {
   const { currentUser } = useAuth();
@@ -44,23 +42,38 @@ export default function FieldVisitsPage() {
     return ownVisits;
   }, [currentUser]);
 
-  const loadRemotePage = useCallback(async (page: number, append: boolean) => {
-    if (!currentUser || !navigator.onLine || !isSupabaseConfigured) return [] as LocalFieldVisit[];
-    const from = page * REMOTE_PAGE_SIZE;
-    const to = from + REMOTE_PAGE_SIZE - 1;
-    const { data, error } = await supabase
-      .from("field_visits")
-      .select("*")
-      .eq("user_id", currentUser.user_id)
-      .order("created_at", { ascending: false })
-      .range(from, to);
-    if (error) throw error;
-    const pageRows = (data ?? []) as LocalFieldVisit[];
+  const loadRemotePage = useCallback(async (page: number, append: boolean, requestedIds: string[] = []) => {
+    if (!currentUser || !navigator.onLine) return { rows: [] as LocalFieldVisit[], total: 0, visitsToday: 0, confirmedIds: [] as string[] };
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData.session?.access_token;
+    if (!token) throw new Error("Authentication required");
+    const query = new URLSearchParams({ page: String(page + 1) });
+    if (requestedIds.length) query.set("ids", requestedIds.join(","));
+    const response = await fetch(`/api/field-visits/mine?${query}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+    const result = await response.json() as { visits?: LocalFieldVisit[]; total?: number; visits_today?: number; has_more?: boolean; confirmed_requested_visit_ids?: string[] };
+    if (!response.ok) throw new Error("Confirmed visits could not be loaded.");
+    const pageRows = result.visits ?? [];
     setRemoteVisits((existing) => append ? [...existing, ...pageRows] : pageRows);
     setRemotePage(page);
-    setHasMore(pageRows.length === REMOTE_PAGE_SIZE);
-    return pageRows;
+    setHasMore(Boolean(result.has_more));
+    return { rows: pageRows, total: result.total ?? 0, visitsToday: result.visits_today ?? 0, confirmedIds: result.confirmed_requested_visit_ids ?? [] };
   }, [currentUser]);
+
+  const reconcileRemoteIds = useCallback(async (visitIds: string[]) => {
+    if (!visitIds.length) return [] as string[];
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData.session?.access_token;
+    if (!token) throw new Error("Authentication required");
+    const confirmed: string[] = [];
+    for (let index = 0; index < visitIds.length; index += 100) {
+      const query = new URLSearchParams({ reconcile_only: "true", ids: visitIds.slice(index, index + 100).join(",") });
+      const response = await fetch(`/api/field-visits/mine?${query}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+      const result = await response.json() as { confirmed_requested_visit_ids?: string[] };
+      if (!response.ok) throw new Error("Confirmed visits could not be reconciled.");
+      confirmed.push(...(result.confirmed_requested_visit_ids ?? []));
+    }
+    return [...new Set(confirmed)];
+  }, []);
 
   const loadData = useCallback(async () => {
     if (!currentUser) return;
@@ -69,31 +82,22 @@ export default function FieldVisitsPage() {
       const ownLocal = await loadLocal();
       let reconciledLocal = ownLocal;
       let confirmedRemote: LocalFieldVisit[] = [];
-      if (navigator.onLine && isSupabaseConfigured) {
+      if (navigator.onLine) {
         const today = getCurrentISTDate();
-        const retryable = ownLocal.filter((visit) => visit.sync_status === "pending_sync" || visit.sync_status === "sync_failed" || visit.sync_stage === "pending_visit" || visit.sync_stage === "sync_failed" || visit.sync_stage === "visit_confirmed_evidence_pending" || visit.sync_stage === "visit_confirmed_link_pending");
-        const localIds = [...new Set(retryable.map((visit) => visit.visit_id))];
-        confirmedRemote = await loadRemotePage(0, false);
-        const [totalResult, todayResult, reconciliationResult] = await Promise.all([
-          supabase.from("field_visits").select("visit_id", { count: "exact", head: true }).eq("user_id", currentUser.user_id),
-          supabase.from("field_visits").select("visit_id", { count: "exact", head: true }).eq("user_id", currentUser.user_id).eq("visit_date", today),
-          localIds.length
-            ? supabase.from("field_visits").select("visit_id").eq("user_id", currentUser.user_id).in("visit_id", localIds)
-            : Promise.resolve({ data: [], error: null }),
-        ]);
-        if (totalResult.error || todayResult.error || reconciliationResult.error) {
-          console.error("Failed to load authoritative visit metrics");
-          setMetricsError("Authoritative visit totals are temporarily unavailable. Refresh to retry.");
-        } else {
-          const confirmedLocalIds = new Set((reconciliationResult.data ?? []).map((visit) => visit.visit_id));
+        const localIds = [...new Set(ownLocal.map((visit) => visit.visit_id))];
+        const remote = await loadRemotePage(0, false, localIds.slice(0, 100));
+        const confirmedIds = localIds.length > 100 ? await reconcileRemoteIds(localIds) : remote.confirmedIds;
+        confirmedRemote = remote.rows;
+        {
+          const confirmedLocalIds = new Set(confirmedIds);
           reconciledLocal = ownLocal.map((visit) => confirmedLocalIds.has(visit.visit_id) && !["visit_confirmed_evidence_pending", "visit_confirmed_link_pending"].includes(visit.sync_stage ?? "") ? { ...visit, sync_status: "synced" as const, sync_stage: "synced" as const } : visit);
           setMetrics(calculateOwnVisitMetrics(
             currentUser.user_id,
             today,
-            totalResult.count ?? 0,
-            todayResult.count ?? 0,
+            remote.total,
+            remote.visitsToday,
             ownLocal,
-            (reconciliationResult.data ?? []).map((visit) => visit.visit_id),
+            confirmedIds,
           ));
           setMetricsError("");
         }
@@ -109,7 +113,7 @@ export default function FieldVisitsPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentUser, loadLocal, loadRemotePage]);
+  }, [currentUser, loadLocal, loadRemotePage, reconcileRemoteIds]);
 
   useEffect(() => {
     queueMicrotask(() => void (async () => {
@@ -125,7 +129,7 @@ export default function FieldVisitsPage() {
     if (!currentUser) return;
     const nextRows = await loadRemotePage(remotePage + 1, true);
     const ownLocal = await loadLocal();
-    setVisits(mergeOwnVisits(currentUser.user_id, ownLocal, [...remoteVisits, ...nextRows]));
+    setVisits(mergeOwnVisits(currentUser.user_id, ownLocal, [...remoteVisits, ...nextRows.rows]));
   };
 
   const retryVisit = async (visitId: string) => {
@@ -181,13 +185,13 @@ export default function FieldVisitsPage() {
             const status = visit.sync_stage === "visit_confirmed_evidence_pending"
               ? { text: "Confirmed — evidence pending", variant: "warning" as const }
               : visit.sync_stage === "visit_confirmed_link_pending"
-                ? { text: "Confirmed — attendance link pending", variant: "warning" as const }
+                ? { text: "Confirmed", variant: "success" as const }
               : visit.sync_error_code === "BUSINESS_REFERENCE_WARNING" && (visit.sync_status === "synced" || visit.sync_stage === "synced")
-                ? { text: "Business reference warning", variant: "warning" as const }
+                ? { text: "Confirmed", variant: "success" as const }
               : visit.sync_status === "synced" || visit.sync_stage === "synced"
                 ? { text: "Confirmed", variant: "success" as const }
                 : visit.sync_error_code === "ATTENDANCE_NOT_CONFIRMED" || visit.sync_error_code === "ATTENDANCE_INTEGRITY_ERROR"
-                  ? { text: "Attendance confirmation pending", variant: "warning" as const }
+                  ? { text: "Needs retry", variant: "danger" as const }
                   : visit.sync_error_code === "NETWORK_UNAVAILABLE"
                     ? { text: "Saved offline", variant: "warning" as const }
                     : { text: retryingVisitId === visit.visit_id ? "Retrying" : "Needs retry", variant: "danger" as const };

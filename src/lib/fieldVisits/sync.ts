@@ -54,23 +54,39 @@ const SAFE_MESSAGES: Record<FieldVisitSafeCode, string> = {
   UNKNOWN_SYNC_FAILURE: "The visit remains saved locally and will retry.",
 };
 
-let activeSync: Promise<FieldVisitSyncSummary> | null = null;
-let rerunRequested = false;
+interface SyncRequest {
+  onlyVisitId?: string;
+  ownerUserId?: string;
+  mode: "new" | "recovery";
+  resolve: Array<(summary: FieldVisitSyncSummary) => void>;
+  reject: Array<(error: unknown) => void>;
+}
+const syncRequests: SyncRequest[] = [];
+let activeSync: Promise<void> | null = null;
+let activeRequest: SyncRequest | null = null;
+
+function startSyncDrain(): void {
+  if (activeSync) return;
+  activeSync = (async () => {
+    while (syncRequests.length) {
+      const request = syncRequests.shift()!;
+      activeRequest = request;
+      try {
+        const summary = await runSyncCycle(request.onlyVisitId, request.ownerUserId, request.mode);
+        request.resolve.forEach((resolve) => resolve(summary));
+      } catch (error) {
+        request.reject.forEach((reject) => reject(error));
+      } finally { activeRequest = null; }
+    }
+  })().finally(() => {
+    activeSync = null;
+    if (syncRequests.length) startSyncDrain();
+  });
+}
 let listenersRegistered = false;
 
 function emptySummary(): FieldVisitSyncSummary {
   return { locallyFound: 0, confirmed: 0, alreadyConfirmed: 0, evidencePending: 0, attendanceBlocked: 0, referenceCompatibleRecoveries: 0, failed: 0, failureCodes: [] };
-}
-
-function mergeSummary(target: FieldVisitSyncSummary, next: FieldVisitSyncSummary) {
-  target.locallyFound += next.locallyFound;
-  target.confirmed += next.confirmed;
-  target.alreadyConfirmed += next.alreadyConfirmed;
-  target.evidencePending += next.evidencePending;
-  target.attendanceBlocked += next.attendanceBlocked;
-  target.referenceCompatibleRecoveries += next.referenceCompatibleRecoveries;
-  target.failed += next.failed;
-  target.failureCodes = [...new Set([...target.failureCodes, ...next.failureCodes])];
 }
 
 function safeCode(value: unknown): FieldVisitSafeCode {
@@ -114,23 +130,15 @@ export function buildFieldVisitConfirmPayload(visit: LocalFieldVisit) {
 }
 
 export async function syncFieldVisits(onlyVisitId?: string, ownerUserId?: string, mode: "new" | "recovery" = "recovery"): Promise<FieldVisitSyncSummary> {
-  if (activeSync) {
-    rerunRequested = true;
-    return activeSync;
-  }
-  activeSync = (async () => {
-    const total = emptySummary();
-    let targetVisitId = onlyVisitId;
-    let targetOwnerUserId = ownerUserId;
-    do {
-      rerunRequested = false;
-      mergeSummary(total, await runSyncCycle(targetVisitId, targetOwnerUserId, mode));
-      targetVisitId = undefined;
-      targetOwnerUserId = undefined;
-    } while (rerunRequested);
-    return total;
-  })().finally(() => { activeSync = null; });
-  return activeSync;
+  const result = new Promise<FieldVisitSyncSummary>((resolve, reject) => {
+    const duplicate = [activeRequest, ...syncRequests].find((request) => request && (onlyVisitId ? request.onlyVisitId === onlyVisitId : !request.onlyVisitId && request.ownerUserId === ownerUserId));
+    if (duplicate) {
+      if (mode === "new") duplicate.mode = "new";
+      duplicate.resolve.push(resolve); duplicate.reject.push(reject);
+    } else syncRequests.push({ onlyVisitId, ownerUserId, mode, resolve: [resolve], reject: [reject] });
+  });
+  startSyncDrain();
+  return result;
 }
 
 async function runSyncCycle(onlyVisitId?: string, ownerUserId?: string, mode: "new" | "recovery" = "recovery"): Promise<FieldVisitSyncSummary> {
@@ -171,8 +179,9 @@ async function runSyncCycle(onlyVisitId?: string, ownerUserId?: string, mode: "n
     });
     try {
       const mediaRecord = (await db.field_visit_media.where("visit_id").equals(visit.visit_id).toArray())[0] ?? null;
+      const effectiveMode = visit.confirmation_mode === "new" ? "new" : mode;
       const form = new FormData();
-      form.set("mode", mode);
+      form.set("mode", effectiveMode);
       form.set("visit", JSON.stringify(buildFieldVisitConfirmPayload(visit)));
       if (mediaRecord?.media_data) {
         const evidence = await mediaToBlob(mediaRecord.media_data);
@@ -195,7 +204,8 @@ async function runSyncCycle(onlyVisitId?: string, ownerUserId?: string, mode: "n
         const retainedWarning = warnings[0];
         const attendanceLinkPending = warnings.includes("ATTENDANCE_LINK_PENDING");
         await db.field_visits.update(visit.visit_id, {
-          sync_status: "synced", sync_stage: attendanceLinkPending ? "visit_confirmed_link_pending" : "synced",
+              sync_status: "synced", sync_stage: attendanceLinkPending ? "visit_confirmed_link_pending" : "synced",
+              confirmation_mode: "recovery",
           selfie_storage_path: result.selfie_storage_path ?? visit.selfie_storage_path,
           sync_error_code: retainedWarning,
           sync_error_message: retainedWarning ? SAFE_MESSAGES[retainedWarning] : undefined,
@@ -204,7 +214,8 @@ async function runSyncCycle(onlyVisitId?: string, ownerUserId?: string, mode: "n
         else summary.confirmed++;
       } else if (result.ok && (result.code === "VISIT_CONFIRMED_EVIDENCE_PENDING" || (result.code === "VISIT_CONFIRMED" && Boolean(mediaRecord) && !result.evidence_confirmed))) {
         await db.field_visits.update(visit.visit_id, {
-          sync_status: "synced", sync_stage: "visit_confirmed_evidence_pending",
+              sync_status: "synced", sync_stage: "visit_confirmed_evidence_pending",
+              confirmation_mode: "recovery",
           sync_error_code: "EVIDENCE_UPLOAD_FAILED",
           sync_error_message: SAFE_MESSAGES.EVIDENCE_UPLOAD_FAILED,
         });

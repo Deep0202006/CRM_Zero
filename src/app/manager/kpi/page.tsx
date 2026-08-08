@@ -41,15 +41,9 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
 
 const REALTIME_TABLES = [
-  "users",
-  "user_capabilities",
   "call_logs",
-  "client_queries",
-  "mapping_requests",
-  "mappings",
   "tasks",
   "task_status_history",
-  "allocated_targets",
 ] as const;
 
 function formatActivityTime(value: string | null): string {
@@ -106,6 +100,8 @@ export default function ManagerKpiPage() {
   const [activeTab, setActiveTab] = useState<"Team" | "Funnel">("Team");
   const requestSequence = useRef(0);
   const realtimeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fallbackTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [realtimeSubscribed, setRealtimeSubscribed] = useState(false);
 
   const loadTeamKpi = useCallback(async (background = false) => {
     if (!currentUser || !isAdmin) return;
@@ -177,24 +173,32 @@ export default function ManagerKpiPage() {
       if (realtimeTimer.current) clearTimeout(realtimeTimer.current);
       realtimeTimer.current = setTimeout(() => {
         void loadTeamKpi(true);
-      }, 750);
+      }, 350);
     };
 
     let channel = supabase.channel(`team-kpi-${currentUser.user_id}`);
     for (const table of REALTIME_TABLES) {
-      channel = channel.on(
-        "postgres_changes",
-        { event: "*", schema: "public", table },
-        scheduleRefresh,
-      );
+      channel = channel
+        .on("postgres_changes", { event: "INSERT", schema: "public", table }, scheduleRefresh)
+        .on("postgres_changes", { event: "UPDATE", schema: "public", table }, scheduleRefresh);
     }
-    channel.subscribe();
+    channel.subscribe((status) => setRealtimeSubscribed(status === "SUBSCRIBED"));
 
     return () => {
       if (realtimeTimer.current) clearTimeout(realtimeTimer.current);
       void supabase.removeChannel(channel);
     };
   }, [currentUser, isAdmin, loadTeamKpi]);
+
+  useEffect(() => {
+    const stopFallback = () => { if (fallbackTimer.current) clearInterval(fallbackTimer.current); fallbackTimer.current = null; };
+    const updateFallback = () => {
+      stopFallback();
+      if (!realtimeSubscribed && document.visibilityState === "visible") fallbackTimer.current = setInterval(() => void loadTeamKpi(true), 10_000);
+    };
+    updateFallback(); document.addEventListener("visibilitychange", updateFallback);
+    return () => { document.removeEventListener("visibilitychange", updateFallback); stopFallback(); };
+  }, [loadTeamKpi, realtimeSubscribed]);
 
   const rows = report?.rows ?? [];
   const totals = report?.totals ?? EMPTY_TEAM_KPI_TOTALS;
@@ -272,10 +276,11 @@ export default function ManagerKpiPage() {
             </div>
           )}
 
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-7">
             <MetricCard label="Team members" value={report ? totals.team_members : "—"} icon={<Users size={17} />} tone="neutral" note="Active people included" />
             <MetricCard label="Unique completed work" value={report ? totals.total_completed_work : "—"} icon={<Activity size={17} />} tone="brand" note="Linked follow-up call and task count once here" />
             <MetricCard label="Calls today" value={report ? totals.calls_made : "—"} icon={<PhoneCall size={17} />} tone="info" note="Real call records" />
+            <MetricCard label="Follow-up calls" value={report ? totals.followup_calls : "—"} icon={<PhoneCall size={17} />} tone="info" note="Included in Calls today" />
             <MetricCard label="Client queries" value={report ? totals.queries_handled : "—"} icon={<MessageSquare size={17} />} tone="success" note="Resolved today" />
             <MetricCard label="Mappings" value={report ? totals.mappings_completed : "—"} icon={<Link2 size={17} />} tone="warning" note="Completed today" />
             <MetricCard label="Tasks done" value={report ? totals.tasks_completed : "—"} icon={<CheckCircle2 size={17} />} tone="success" note="Tasks and allocated targets" />
@@ -367,6 +372,7 @@ export default function ManagerKpiPage() {
                       <th>Role</th>
                       <th>Unique completed work</th>
                       <th>Calls today</th>
+                      <th>Follow-up calls</th>
                       <th>Client queries</th>
                       <th>Mappings</th>
                       <th>Tasks done</th>
@@ -384,6 +390,7 @@ export default function ManagerKpiPage() {
                         </td>
                         <td className="font-semibold tabular-nums text-[var(--text-primary)]">{row.total_completed_work}</td>
                         <td className="font-semibold tabular-nums text-[var(--text-primary)]">{row.calls_made}</td>
+                        <td className="font-semibold tabular-nums text-[var(--text-primary)]">{row.followup_calls}</td>
                         <td className="font-semibold tabular-nums text-[var(--text-primary)]">{row.queries_handled}</td>
                         <td className="font-semibold tabular-nums text-[var(--text-primary)]">{row.mappings_completed}</td>
                         <td className="font-semibold tabular-nums text-[var(--text-primary)]">{row.tasks_completed}</td>

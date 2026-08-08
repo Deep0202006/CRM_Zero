@@ -45,6 +45,8 @@ describe("core reliability release contracts", () => {
     expect(database).toContain("while (syncQueueRerunRequested)");
     expect(database).toContain("isEventuallyRetryableBusinessItem");
     expect(database).toContain('item.table_name === "call_logs" && item.action === "INSERT"');
+    expect(database).toContain("Call confirmation is unavailable until Supabase is configured.");
+    expect(database).toContain('fetch("/api/call-logs/confirm"');
     expect(database).toContain('remoteTableName === "call_logs" && authenticatedUserId');
     expect(read("src/app/call-logs/page.tsx")).toContain('idempotency_key: `call-log:${logId}`');
   });
@@ -70,7 +72,12 @@ describe("core reliability release contracts", () => {
     expect(calls).toContain('label="Calls today"');
     expect(kpi).toContain("Calls today");
     expect(summary).toContain("confirmed_genuine_call_ids");
-    expect(myDay).toContain("new Set([...(summary.confirmed_genuine_call_ids ?? []), ...localIds]).size");
+    expect(summary).toContain("confirmed_followup_call_ids");
+    expect(myDay).toContain("...localMetric.genuine_call_ids");
+    expect(myDay).toContain("...localMetric.followup_call_ids");
     expect(myDay).toContain("dailySummary?.genuine_calls_today ?? localCallsToday");
+    expect(myDay).toContain("dailySummary?.followup_calls_today ?? localFollowupCallsToday");
+    expect(calls).toContain('label="Follow-up calls today"');
+    expect(calls).toContain('note="Included in Calls today"');
   });
 });

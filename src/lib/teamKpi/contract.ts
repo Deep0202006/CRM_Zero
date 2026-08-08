@@ -13,6 +13,7 @@ export const teamKpiRowSchema = z.object({
   role: z.string().min(1).default("Team member"),
   capabilities: z.array(z.string()).default([]),
   calls_made: nonNegativeInteger,
+  followup_calls: nonNegativeInteger,
   queries_handled: nonNegativeInteger,
   mappings_completed: nonNegativeInteger,
   tasks_completed: nonNegativeInteger,
@@ -23,6 +24,7 @@ export const teamKpiRowSchema = z.object({
 export const teamKpiTotalsSchema = z.object({
   team_members: nonNegativeInteger,
   calls_made: nonNegativeInteger,
+  followup_calls: nonNegativeInteger,
   queries_handled: nonNegativeInteger,
   mappings_completed: nonNegativeInteger,
   tasks_completed: nonNegativeInteger,
@@ -42,6 +44,7 @@ export const teamKpiResponseSchema = z.object({
     (totals, row) => ({
       team_members: totals.team_members + 1,
       calls_made: totals.calls_made + row.calls_made,
+      followup_calls: totals.followup_calls + row.followup_calls,
       queries_handled: totals.queries_handled + row.queries_handled,
       mappings_completed: totals.mappings_completed + row.mappings_completed,
       tasks_completed: totals.tasks_completed + row.tasks_completed,
@@ -50,6 +53,7 @@ export const teamKpiResponseSchema = z.object({
     {
       team_members: 0,
       calls_made: 0,
+      followup_calls: 0,
       queries_handled: 0,
       mappings_completed: 0,
       tasks_completed: 0,
@@ -77,6 +81,7 @@ export type TeamKpiSourceWarning = z.infer<typeof teamKpiSourceWarningSchema>;
 export const EMPTY_TEAM_KPI_TOTALS: TeamKpiTotals = {
   team_members: 0,
   calls_made: 0,
+  followup_calls: 0,
   queries_handled: 0,
   mappings_completed: 0,
   tasks_completed: 0,
