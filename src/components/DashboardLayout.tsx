@@ -30,11 +30,12 @@ import {
   X,
   Activity,
 } from "lucide-react";
-import { db } from "@/lib/db";
-import "@/lib/fieldVisits/sync";
+import { db, processSyncQueue } from "@/lib/db";
+import { syncFieldVisits } from "@/lib/fieldVisits/sync";
 import { AppLogo } from "@/components/AppLogo";
 import { CommandItem, CommandPalette } from "@/components/CommandPalette";
 import { VerifiedLogoutModal } from "@/components/VerifiedLogoutModal";
+import { FormEnterNavigator } from "@/components/FormEnterNavigator";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -90,10 +91,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   useEffect(() => {
     if (typeof window === "undefined" || pathname === "/login") return;
     setIsOnline(navigator.onLine);
-    const handleOnline = () => setIsOnline(true);
+    const drainWork = () => { void Promise.allSettled([processSyncQueue(), syncFieldVisits()]); };
+    const handleOnline = () => { setIsOnline(true); drainWork(); };
     const handleOffline = () => setIsOnline(false);
+    const handleVisibility = () => { if (document.visibilityState === "visible" && navigator.onLine) drainWork(); };
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
+    document.addEventListener("visibilitychange", handleVisibility);
+    if (navigator.onLine) drainWork();
 
     const refreshSyncState = async () => {
       try {
@@ -111,6 +116,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     return () => {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
+      document.removeEventListener("visibilitychange", handleVisibility);
       window.clearInterval(interval);
     };
   }, [pathname]);
@@ -452,6 +458,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   return (
     <div className="flex h-dvh min-w-0 overflow-hidden bg-[var(--surface-canvas)] text-[var(--text-primary)]">
+      <FormEnterNavigator />
       <a
         href="#main-content"
         className="fixed left-4 top-3 z-[110] -translate-y-20 rounded-[var(--radius-md)] bg-[var(--brand-600)] px-4 py-2 text-sm font-semibold text-white transition-transform focus:translate-y-0"

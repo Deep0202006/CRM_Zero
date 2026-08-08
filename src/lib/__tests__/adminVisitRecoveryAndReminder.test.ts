@@ -67,7 +67,7 @@ describe("My Day reminder authorization and safety", () => {
     expect(sync).toContain('visit.sync_status === "pending_sync"');
     expect(sync).toContain('fetch("/api/field-visits/confirm"');
     expect(sync).toContain("result.visit_id !== visit.visit_id");
-    expect(sync.indexOf('sync_status: "synced"')).toBeLessThan(sync.indexOf("field_visit_media.delete"));
+    expect(sync).not.toContain("field_visit_media.delete");
     expect(sync).toContain("rerunRequested = true");
   });
 

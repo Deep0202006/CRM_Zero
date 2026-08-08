@@ -74,13 +74,13 @@ describe("field visit zero-loss contract", () => {
     }
   });
 
-  it("keeps pending/failed/evidence work recoverable and retains media until evidence confirmation", () => {
+  it("keeps pending/failed/evidence work recoverable and permanently retains emergency media", () => {
     expect(visitsPage).toContain("Recover unsynced visits");
     expect(visitsPage).toContain("await processSyncQueue()");
     expect(visitsPage).toContain("Safe failure codes:");
     expect(visitsPage).toContain('syncFieldVisits(undefined, currentUser?.user_id, "recovery")');
     expect(sync).toContain('visit.sync_stage === "visit_confirmed_evidence_pending"');
-    expect(sync).toContain("result.evidence_confirmed && mediaRecord");
+    expect(sync).not.toContain("field_visit_media.delete");
     expect(sync).toContain('result.code === "VISIT_CONFIRMED" && (!mediaRecord || result.evidence_confirmed)');
     expect(sync).not.toMatch(/field_visit_media\.clear|field_visit_media\.bulkDelete/);
     expect(route).toContain('code: evidenceConfirmed ? "VISIT_CONFIRMED" : "VISIT_CONFIRMED_EVIDENCE_PENDING"');

@@ -71,7 +71,7 @@ export default function FieldVisitsPage() {
       let confirmedRemote: LocalFieldVisit[] = [];
       if (navigator.onLine && isSupabaseConfigured) {
         const today = getCurrentISTDate();
-        const retryable = ownLocal.filter((visit) => visit.sync_status === "pending_sync" || visit.sync_status === "sync_failed" || visit.sync_stage === "pending_visit" || visit.sync_stage === "sync_failed" || visit.sync_stage === "visit_confirmed_evidence_pending");
+        const retryable = ownLocal.filter((visit) => visit.sync_status === "pending_sync" || visit.sync_status === "sync_failed" || visit.sync_stage === "pending_visit" || visit.sync_stage === "sync_failed" || visit.sync_stage === "visit_confirmed_evidence_pending" || visit.sync_stage === "visit_confirmed_link_pending");
         const localIds = [...new Set(retryable.map((visit) => visit.visit_id))];
         confirmedRemote = await loadRemotePage(0, false);
         const [totalResult, todayResult, reconciliationResult] = await Promise.all([
@@ -86,7 +86,7 @@ export default function FieldVisitsPage() {
           setMetricsError("Authoritative visit totals are temporarily unavailable. Refresh to retry.");
         } else {
           const confirmedLocalIds = new Set((reconciliationResult.data ?? []).map((visit) => visit.visit_id));
-          reconciledLocal = ownLocal.map((visit) => confirmedLocalIds.has(visit.visit_id) && visit.sync_stage !== "visit_confirmed_evidence_pending" ? { ...visit, sync_status: "synced" as const, sync_stage: "synced" as const } : visit);
+          reconciledLocal = ownLocal.map((visit) => confirmedLocalIds.has(visit.visit_id) && !["visit_confirmed_evidence_pending", "visit_confirmed_link_pending"].includes(visit.sync_stage ?? "") ? { ...visit, sync_status: "synced" as const, sync_stage: "synced" as const } : visit);
           setMetrics(calculateOwnVisitMetrics(
             currentUser.user_id,
             today,
@@ -139,7 +139,7 @@ export default function FieldVisitsPage() {
     }
   };
 
-  const recoverableVisits = visits.filter((visit) => visit.user_id === currentUser?.user_id && (visit.sync_status === "pending_sync" || visit.sync_status === "sync_failed" || visit.sync_stage === "pending_visit" || visit.sync_stage === "sync_failed" || visit.sync_stage === "visit_confirmed_evidence_pending"));
+  const recoverableVisits = visits.filter((visit) => visit.user_id === currentUser?.user_id && (visit.sync_status === "pending_sync" || visit.sync_status === "sync_failed" || visit.sync_stage === "pending_visit" || visit.sync_stage === "sync_failed" || visit.sync_stage === "visit_confirmed_evidence_pending" || visit.sync_stage === "visit_confirmed_link_pending"));
   const recoverUnsyncedVisits = async () => {
     setRetryingVisitId("ALL");
     try {
@@ -177,9 +177,11 @@ export default function FieldVisitsPage() {
         <QueueList
           title="My field visits"
           items={visits.map((visit) => {
-            const retryable = visit.sync_status === "pending_sync" || visit.sync_status === "sync_failed" || visit.sync_stage === "pending_visit" || visit.sync_stage === "sync_failed" || visit.sync_stage === "visit_confirmed_evidence_pending";
+            const retryable = visit.sync_status === "pending_sync" || visit.sync_status === "sync_failed" || visit.sync_stage === "pending_visit" || visit.sync_stage === "sync_failed" || visit.sync_stage === "visit_confirmed_evidence_pending" || visit.sync_stage === "visit_confirmed_link_pending";
             const status = visit.sync_stage === "visit_confirmed_evidence_pending"
               ? { text: "Confirmed — evidence pending", variant: "warning" as const }
+              : visit.sync_stage === "visit_confirmed_link_pending"
+                ? { text: "Confirmed — attendance link pending", variant: "warning" as const }
               : visit.sync_error_code === "BUSINESS_REFERENCE_WARNING" && (visit.sync_status === "synced" || visit.sync_stage === "synced")
                 ? { text: "Business reference warning", variant: "warning" as const }
               : visit.sync_status === "synced" || visit.sync_stage === "synced"

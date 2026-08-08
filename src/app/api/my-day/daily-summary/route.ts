@@ -46,6 +46,7 @@ export async function GET(request: NextRequest) {
     const row = report.rows.find((item) => item.user_id === auth.user.id);
     return NextResponse.json({
       genuine_calls_today: metric.genuine_call_ids.size,
+      confirmed_genuine_call_ids: [...metric.genuine_call_ids],
       normal_tasks_completed_today: metric.completed_task_ids.size - metric.followup_task_ids.size,
       followup_tasks_completed_today: metric.followup_task_ids.size,
       total_tasks_completed_today: (row?.tasks_completed ?? metric.completed_task_ids.size),

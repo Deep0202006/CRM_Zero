@@ -179,7 +179,7 @@ export interface LocalFieldVisit {
   segment_type?: string | null;
   follow_up_date?: string | null;
   sync_status?: 'pending_sync' | 'synced' | 'sync_failed';
-  sync_stage?: 'pending_visit' | 'visit_confirmed_evidence_pending' | 'synced' | 'sync_failed';
+  sync_stage?: 'pending_visit' | 'visit_confirmed_evidence_pending' | 'visit_confirmed_link_pending' | 'synced' | 'sync_failed';
   sync_error_code?: string;
   sync_error_message?: string;
   sync_attempt_count?: number;
@@ -759,6 +759,14 @@ export async function queueOfflineMutation(
 export function omitPrimaryKeyFromUpdate(data: Record<string, unknown>, primaryKey: string): Record<string, unknown> { const updateData = { ...data }; delete updateData[primaryKey]; return updateData; }
 
 let activeSyncQueueRun: Promise<void> | null = null;
+let syncQueueRerunRequested = false;
+
+function isEventuallyRetryableBusinessItem(item: SyncQueueItem): boolean {
+  return (item.table_name === "call_logs" && item.action === "INSERT") ||
+    item.idempotency_key.startsWith("followup-completion-task:") ||
+    item.idempotency_key.startsWith("followup-completion-history:") ||
+    item.idempotency_key.startsWith("followup-completion-call:");
+}
 
 function isDuplicateKeyError(error: { code?: string; message?: string } | null | undefined): boolean {
   return Boolean(error && (error.code === "23505" || /duplicate key|already exists/i.test(error.message ?? "")));
@@ -768,13 +776,15 @@ async function verifyRemoteRowExists(
   remoteTableName: string,
   primaryKey: string,
   primaryKeyValue: unknown,
+  authenticatedUserId?: string,
 ): Promise<boolean> {
   if (primaryKeyValue === undefined || primaryKeyValue === null || primaryKeyValue === "") return false;
-  const { data, error } = await supabase
+  let query = supabase
     .from(remoteTableName)
     .select(primaryKey)
-    .eq(primaryKey, primaryKeyValue)
-    .maybeSingle();
+    .eq(primaryKey, primaryKeyValue);
+  if (remoteTableName === "call_logs" && authenticatedUserId) query = query.eq("user_id", authenticatedUserId);
+  const { data, error } = await query.maybeSingle();
   if (error) throw new Error(`Supabase verification failed for ${remoteTableName}: ${error.message}`);
   return Boolean(data);
 }
@@ -841,7 +851,7 @@ async function processSyncQueueInternal(): Promise<void> {
           ? `Payload repaired: ${prepared.repairReason}`
           : undefined,
       });
-    } else if (effectiveRetryCount >= 5) {
+    } else if (effectiveRetryCount >= 5 && !isEventuallyRetryableBusinessItem(item)) {
       continue;
     }
 
@@ -856,10 +866,10 @@ async function processSyncQueueInternal(): Promise<void> {
         if (item.action === "INSERT") {
           const { error } = await client.insert(prepared.data);
           if (error) {
-            if (!isDuplicateKeyError(error) || !(await verifyRemoteRowExists(remoteTableName, primaryKey, primaryKeyValue))) {
+            if (!isDuplicateKeyError(error) || !(await verifyRemoteRowExists(remoteTableName, primaryKey, primaryKeyValue, authenticatedUserId))) {
               throw new Error(`Supabase insert failed for ${remoteTableName}: ${error.message}`);
             }
-          } else if (!(await verifyRemoteRowExists(remoteTableName, primaryKey, primaryKeyValue))) {
+          } else if (!(await verifyRemoteRowExists(remoteTableName, primaryKey, primaryKeyValue, authenticatedUserId))) {
             throw new Error(`Supabase inserted no verifiable ${remoteTableName} row.`);
           }
         } else if (item.action === "UPDATE") {
@@ -894,7 +904,7 @@ async function processSyncQueueInternal(): Promise<void> {
                 .maybeSingle();
               if (error) throw new Error(`Supabase update failed for ${remoteTableName}: ${error.message}`);
               if (!data) throw new Error(`No ${remoteTableName} row was updated.`);
-            } else if (!(await verifyRemoteRowExists(remoteTableName, primaryKey, primaryKeyValue))) {
+            } else if (!(await verifyRemoteRowExists(remoteTableName, primaryKey, primaryKeyValue, authenticatedUserId))) {
               throw new Error(`Lead transition returned without a verifiable lead row.`);
             }
           } else {
@@ -964,9 +974,17 @@ async function processSyncQueueInternal(): Promise<void> {
 
 export function processSyncQueue(): Promise<void> {
   if (typeof navigator === "undefined" || !navigator.onLine) return Promise.resolve();
-  if (activeSyncQueueRun) return activeSyncQueueRun;
+  if (activeSyncQueueRun) {
+    syncQueueRerunRequested = true;
+    return activeSyncQueueRun;
+  }
 
-  activeSyncQueueRun = processSyncQueueInternal().finally(() => {
+  activeSyncQueueRun = (async () => {
+    do {
+      syncQueueRerunRequested = false;
+      await processSyncQueueInternal();
+    } while (syncQueueRerunRequested);
+  })().finally(() => {
     activeSyncQueueRun = null;
   });
   return activeSyncQueueRun;

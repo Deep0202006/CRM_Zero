@@ -156,7 +156,7 @@ export default function AdminVisitsPage() {
           id: visit.visit_id,
           primaryNode: (
             <div className="min-w-0 whitespace-normal break-words">
-              <p className="break-words text-[13px] font-semibold leading-snug text-[var(--text-primary)]">{visit.leads?.business_name || "Unavailable business"} <span className="font-normal text-[var(--text-secondary)]">({visit.segment_type})</span></p>
+              <p className="break-words text-[13px] font-semibold leading-snug text-[var(--text-primary)]">{visit.leads?.business_name?.trim() || visit.lead_id?.trim() || "Unavailable business"} <span className="font-normal text-[var(--text-secondary)]">({visit.segment_type})</span></p>
               <p className="mt-1 break-all text-[11px] leading-5 text-[var(--text-muted)]">Rep · {visit.users?.name || "Unknown"} · {visit.users?.email || "Unavailable"}</p>
               <p className="mt-1 text-[12px] text-[var(--text-secondary)]">Person met: {visit.person_met || "Unavailable"} · Outcome: {getOutcomeLabel(visit.visit_outcome)}{visit.follow_up_date ? ` · Follow-up: ${visit.follow_up_date}` : ""} · Synchronization confirmed</p>
               {visit.visit_notes && <p className="mt-2 break-words text-[12px] leading-5 text-[var(--text-secondary)]">{visit.visit_notes}</p>}

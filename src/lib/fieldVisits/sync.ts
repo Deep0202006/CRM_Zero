@@ -7,7 +7,8 @@ export type FieldVisitSafeCode =
   | "VISIT_INSERT_FAILED" | "VISIT_CONFIRMATION_FAILED"
   | "EVIDENCE_UPLOAD_FAILED" | "NETWORK_UNAVAILABLE" | "NETWORK_OR_SERVER_RESPONSE_FAILED"
   | "REFERENCE_CONSTRAINT_FAILED" | "VISIT_CONSTRAINT_FAILED" | "OPTIONAL_SCHEMA_MISMATCH"
-  | "SERVER_AUTHORIZATION_FAILED" | "BUSINESS_REFERENCE_WARNING" | "UNKNOWN_SYNC_FAILURE";
+  | "SERVER_AUTHORIZATION_FAILED" | "BUSINESS_REFERENCE_WARNING" | "ATTENDANCE_LINK_PENDING"
+  | "VISIT_ID_OWNERSHIP_COLLISION" | "UNKNOWN_SYNC_FAILURE";
 
 export interface FieldVisitSyncSummary {
   locallyFound: number;
@@ -48,6 +49,8 @@ const SAFE_MESSAGES: Record<FieldVisitSafeCode, string> = {
   OPTIONAL_SCHEMA_MISMATCH: "The visit is confirmed; optional evidence fields require compatibility review.",
   SERVER_AUTHORIZATION_FAILED: "The server could not authorize this write.",
   BUSINESS_REFERENCE_WARNING: "Visit confirmed with its original historical business reference.",
+  ATTENDANCE_LINK_PENDING: "Visit confirmed; attendance will link automatically when available.",
+  VISIT_ID_OWNERSHIP_COLLISION: "This visit ID belongs to another account.",
   UNKNOWN_SYNC_FAILURE: "The visit remains saved locally and will retry.",
 };
 
@@ -153,7 +156,7 @@ async function runSyncCycle(onlyVisitId?: string, ownerUserId?: string, mode: "n
   const ownVisits = await db.field_visits.where("user_id").equals(authenticatedUserId).toArray();
   const visits = ownVisits.filter((visit, index, rows) =>
     (!onlyVisitId || visit.visit_id === onlyVisitId) &&
-    (visit.sync_status === "pending_sync" || visit.sync_status === "sync_failed" || visit.sync_stage === "pending_visit" || visit.sync_stage === "sync_failed" || visit.sync_stage === "visit_confirmed_evidence_pending") &&
+    (visit.sync_status === "pending_sync" || visit.sync_status === "sync_failed" || visit.sync_stage === "pending_visit" || visit.sync_stage === "sync_failed" || visit.sync_stage === "visit_confirmed_evidence_pending" || visit.sync_stage === "visit_confirmed_link_pending") &&
     rows.findIndex((candidate) => candidate.visit_id === visit.visit_id) === index,
   );
   summary.locallyFound = visits.length;
@@ -190,18 +193,18 @@ async function runSyncCycle(onlyVisitId?: string, ownerUserId?: string, mode: "n
       if (warnings.includes("BUSINESS_REFERENCE_WARNING")) summary.referenceCompatibleRecoveries++;
       if (result.ok && result.code === "VISIT_CONFIRMED" && (!mediaRecord || result.evidence_confirmed)) {
         const retainedWarning = warnings[0];
+        const attendanceLinkPending = warnings.includes("ATTENDANCE_LINK_PENDING");
         await db.field_visits.update(visit.visit_id, {
-          sync_status: "synced", sync_stage: "synced",
+          sync_status: "synced", sync_stage: attendanceLinkPending ? "visit_confirmed_link_pending" : "synced",
           selfie_storage_path: result.selfie_storage_path ?? visit.selfie_storage_path,
           sync_error_code: retainedWarning,
           sync_error_message: retainedWarning ? SAFE_MESSAGES[retainedWarning] : undefined,
         });
-        if (result.evidence_confirmed && mediaRecord) await db.field_visit_media.delete(mediaRecord.media_id);
         if (result.already_confirmed) summary.alreadyConfirmed++;
         else summary.confirmed++;
       } else if (result.ok && (result.code === "VISIT_CONFIRMED_EVIDENCE_PENDING" || (result.code === "VISIT_CONFIRMED" && Boolean(mediaRecord) && !result.evidence_confirmed))) {
         await db.field_visits.update(visit.visit_id, {
-          sync_status: "pending_sync", sync_stage: "visit_confirmed_evidence_pending",
+          sync_status: "synced", sync_stage: "visit_confirmed_evidence_pending",
           sync_error_code: "EVIDENCE_UPLOAD_FAILED",
           sync_error_message: SAFE_MESSAGES.EVIDENCE_UPLOAD_FAILED,
         });
@@ -228,10 +231,10 @@ async function runSyncCycle(onlyVisitId?: string, ownerUserId?: string, mode: "n
 
 async function markFailure(visitId: string, code: FieldVisitSafeCode) {
   const current = await db.field_visits.get(visitId);
-  if (current?.sync_stage === "visit_confirmed_evidence_pending") {
+  if (current?.sync_stage === "visit_confirmed_evidence_pending" || current?.sync_stage === "visit_confirmed_link_pending") {
     await db.field_visits.update(visitId, {
-      sync_status: "pending_sync",
-      sync_stage: "visit_confirmed_evidence_pending",
+      sync_status: "synced",
+      sync_stage: current.sync_stage,
       sync_error_code: code,
       sync_error_message: SAFE_MESSAGES[code],
     });
@@ -253,7 +256,7 @@ async function markKnownUserFailures(onlyVisitId: string | undefined, ownerUserI
   const knownOwner = ownerUserId ?? (typeof localStorage !== "undefined" ? localStorage.getItem("authenticated_user_id") ?? undefined : undefined);
   if (!knownOwner) return 0;
   const rows = await db.field_visits.where("user_id").equals(knownOwner).toArray();
-  const retryable = rows.filter((visit) => visit.sync_status === "pending_sync" || visit.sync_status === "sync_failed" || visit.sync_stage === "pending_visit" || visit.sync_stage === "sync_failed" || visit.sync_stage === "visit_confirmed_evidence_pending");
+  const retryable = rows.filter((visit) => visit.sync_status === "pending_sync" || visit.sync_status === "sync_failed" || visit.sync_stage === "pending_visit" || visit.sync_stage === "sync_failed" || visit.sync_stage === "visit_confirmed_evidence_pending" || visit.sync_stage === "visit_confirmed_link_pending");
   await Promise.all(retryable.map((visit) => markFailure(visit.visit_id, code)));
   return retryable.length;
 }

@@ -30,7 +30,7 @@ describe("production consistency guards", () => {
     expect(callLogs).toContain("fetchCallLogSnapshot(currentUser.user_id, isAdmin)");
   });
 
-  it("uses the server as the online call-log authority and separates pending device rows", () => {
+  it("unions confirmed and local call IDs while preserving server confirmation", () => {
     const repository = source("src/lib/callLogs/repository.ts");
     const callLogs = source("src/app/call-logs/page.tsx");
     const database = source("src/lib/db.ts");
@@ -42,8 +42,9 @@ describe("production consistency guards", () => {
     expect(repository).toContain("pendingCount: unsyncedLogs.length");
     expect(callLogs).toContain("await processSyncQueue()");
     expect(callLogs).toContain("fetchCallLogSnapshot(currentUser.user_id, isAdmin)");
-    expect(callLogs).toContain("Server-confirmed genuine client calls");
-    expect(callLogs).toContain("const confirmedToday = confirmedLogs.filter");
+    expect(callLogs).toContain('label="Calls today"');
+    expect(callLogs).toContain("const todayLogs = [...new Map(logs.filter");
+    expect(callLogs).not.toContain('label="Waiting to sync"');
     expect(callLogs).not.toContain('label="Total records" value={logs.length}');
     expect(database.match(/zerodata:call-logs-changed/g)?.length).toBeGreaterThanOrEqual(3);
   });

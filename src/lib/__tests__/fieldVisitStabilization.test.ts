@@ -58,14 +58,14 @@ describe("field visit stabilization", () => {
     expect(failureBlock).not.toContain("field_visit_media.delete");
   });
 
-  it("removes temporary evidence only after exact remote confirmation", () => {
+  it("retains emergency evidence after exact remote confirmation", () => {
     const sync = read("src/lib/fieldVisits/sync.ts");
-    expect(sync.indexOf("result.visit_id !== visit.visit_id")).toBeLessThan(sync.indexOf("field_visit_media.delete"));
+    expect(sync).not.toContain("field_visit_media.delete");
     expect(sync).not.toContain('.from("field_visit_media")');
     expect(sync).not.toContain('.from("visits-evidence")');
     expect(sync).not.toContain('.from("field_visits")');
     expect(sync).toContain('fetch("/api/field-visits/confirm"');
-    expect(sync).toContain("result.evidence_confirmed && mediaRecord");
+    expect(sync).toContain("result.visit_id !== visit.visit_id");
   });
 
   it("registers online and visibility listeners only once and uses no polling", () => {

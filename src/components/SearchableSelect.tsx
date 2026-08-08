@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, Search } from "lucide-react";
+import { focusNextEligibleControl } from "@/lib/formNavigation";
 
 export interface SearchableOption {
   value: string;
@@ -72,12 +73,13 @@ export function SearchableSelect({
     document.getElementById(`${listId}-${activeIndex}`)?.scrollIntoView({ block: "nearest" });
   }, [activeIndex, isOpen, listId]);
 
-  const selectOption = (option: SearchableOption) => {
+  const selectOption = (option: SearchableOption, advance = false) => {
     onChange(option.value);
     setDisplayValue(option.label);
     setIsOpen(false);
     setActiveIndex(-1);
     inputRef.current?.focus();
+    if (advance) requestAnimationFrame(() => inputRef.current && focusNextEligibleControl(inputRef.current));
   };
 
   return (
@@ -107,7 +109,10 @@ export function SearchableSelect({
             setIsOpen(true);
             setActiveIndex(0);
           }}
-          onFocus={() => setIsOpen(true)}
+          onFocus={() => {
+            setIsOpen(true);
+            setActiveIndex((index) => index >= 0 ? index : Math.max(0, filteredOptions.findIndex((option) => option.value === value)));
+          }}
           onKeyDown={(event) => {
             if (event.key === "ArrowDown") {
               event.preventDefault();
@@ -116,9 +121,11 @@ export function SearchableSelect({
             } else if (event.key === "ArrowUp") {
               event.preventDefault();
               setActiveIndex((index) => Math.max(index - 1, 0));
-            } else if (event.key === "Enter" && isOpen && activeIndex >= 0 && filteredOptions[activeIndex]) {
+            } else if (event.key === "Enter" && isOpen) {
               event.preventDefault();
-              selectOption(filteredOptions[activeIndex]);
+              event.stopPropagation();
+              const option = filteredOptions[activeIndex];
+              if (option) selectOption(option, true);
             } else if (event.key === "Escape") {
               setIsOpen(false);
               setActiveIndex(-1);
@@ -134,6 +141,7 @@ export function SearchableSelect({
           aria-invalid={Boolean(error) || undefined}
           aria-required={required || undefined}
           aria-describedby={[descriptionId, errorId].filter(Boolean).join(" ") || undefined}
+          data-enter-navigation={isOpen ? "native" : undefined}
           className="h-full w-full bg-transparent pl-9 pr-10 text-[13px] font-medium text-[var(--text-primary)] outline-none"
         />
         <button

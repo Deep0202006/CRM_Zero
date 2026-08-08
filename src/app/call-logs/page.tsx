@@ -17,6 +17,7 @@ import { getCurrentISTDate, getISTDateKey } from "@/lib/dateTime";
 import { buildSelfScheduledFollowUpTask, needsCallFollowUp } from "@/lib/followUps";
 import { CALL_LOGS_CHANGED_EVENT, fetchCallLogSnapshot } from "@/lib/callLogs/repository";
 import { isGenuineCallLog, isSyntheticAuditCall } from "@/lib/workMetrics/canonical";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function CallLogsPage() {
   const { currentUser, isAdmin } = useAuth();
@@ -24,9 +25,6 @@ export default function CallLogsPage() {
   const [loading, setLoading] = useState(true);
   const [logs, setLogs] = useState<LocalCallLog[]>([]);
   const [confirmedLogs, setConfirmedLogs] = useState<LocalCallLog[]>([]);
-  const [confirmedCount, setConfirmedCount] = useState(0);
-  const [pendingCount, setPendingCount] = useState(0);
-  const [authoritative, setAuthoritative] = useState(false);
   const [usersMap, setUsersMap] = useState<Map<string, LocalUser>>(new Map());
   const [leadsMap, setLeadsMap] = useState<Map<string, LocalLead>>(new Map());
   const [followUpTaskIds, setFollowUpTaskIds] = useState<Set<string>>(new Set());
@@ -84,9 +82,6 @@ export default function CallLogsPage() {
       setLeadsMap(lMap);
       setLogs(fetchedLogs);
       setConfirmedLogs(snapshot.confirmedLogs);
-      setConfirmedCount(snapshot.confirmedCount);
-      setPendingCount(snapshot.pendingCount);
-      setAuthoritative(snapshot.authoritative);
     } catch (err) {
       console.error("Failed to load logs:", err);
     } finally {
@@ -190,9 +185,16 @@ export default function CallLogsPage() {
           });
         }
       });
-      if (navigator.onLine) void processSyncQueue();
+      let remotelyConfirmed = false;
+      if (navigator.onLine) {
+        await processSyncQueue();
+        const verification = await supabase.from("call_logs").select("log_id").eq("log_id", logId).eq("user_id", currentUser.user_id).maybeSingle();
+        remotelyConfirmed = !verification.error && verification.data?.log_id === logId;
+      }
 
-      setSuccess(true);
+      setSuccess(remotelyConfirmed);
+      if (navigator.onLine && !remotelyConfirmed) setError("Call saved safely and will finish syncing automatically.");
+      if (!navigator.onLine) setError("Call saved offline and will sync automatically when you reconnect.");
 
       setSelectedLeadId("");
       setOutcome("");
@@ -234,10 +236,10 @@ export default function CallLogsPage() {
   };
 
   const todayKey = getCurrentISTDate();
-  const confirmedToday = confirmedLogs.filter((log) => getISTDateKey(log.timestamp) === todayKey && isGenuineCallLog(log));
-  const callsToday = confirmedToday.length;
-  const followupsScheduled = confirmedToday.filter((log) => Boolean(log.next_followup_date)).length;
-  const reachedClients = confirmedToday.filter((log) => !log.outcome.toLowerCase().includes("no response")).length;
+  const todayLogs = [...new Map(logs.filter((log) => log.user_id === currentUser?.user_id && getISTDateKey(log.timestamp) === todayKey && isGenuineCallLog(log)).map((log) => [log.log_id, log])).values()];
+  const callsToday = todayLogs.length;
+  const followupsScheduled = todayLogs.filter((log) => Boolean(log.next_followup_date)).length;
+  const reachedClients = todayLogs.filter((log) => !log.outcome.toLowerCase().includes("no response")).length;
   const unknownAuditLike = confirmedLogs.filter((log) => !isSyntheticAuditCall(log) && /\b(?:pipeline|stage|transition|audit|system[- ]generated)\b/i.test(log.outcome)).length;
 
   return (
@@ -255,14 +257,7 @@ export default function CallLogsPage() {
       />
 
       <div className="metric-grid">
-        <MetricCard label={authoritative ? "Confirmed calls today" : "Cached calls today"} value={callsToday} icon={<PhoneCall size={17} />} note={authoritative ? "Server-confirmed genuine client calls" : "Offline cache; confirmation unavailable"} />
-        <MetricCard
-          label="Waiting to sync"
-          value={pendingCount}
-          icon={<CheckCircle2 size={17} />}
-          tone="neutral"
-          note={authoritative ? `${confirmedCount} records confirmed by server` : "Local queue shown separately from confirmed calls"}
-        />
+        <MetricCard label="Calls today" value={callsToday} icon={<PhoneCall size={17} />} note="Genuine calls recorded today" />
         <MetricCard label="Follow-ups scheduled" value={followupsScheduled} icon={<AlertCircle size={17} />} tone="warning" note="Calls with a scheduled next step" />
         <MetricCard label="Clients reached" value={reachedClients} icon={<CheckCircle2 size={17} />} tone="success" note="Outcomes other than no response" />
       </div>

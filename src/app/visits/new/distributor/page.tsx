@@ -188,13 +188,13 @@ export default function NewDistributorVisitPage() {
       await processSyncQueue();
       await syncFieldVisits(visitId, currentUser.user_id, "new");
       const confirmed = await db.field_visits.get(visitId);
-      if (confirmed?.sync_stage === "synced") {
+      if (confirmed?.sync_stage === "synced" || confirmed?.sync_stage === "visit_confirmed_link_pending") {
         setStatusMessage("Visit confirmed successfully.");
         window.setTimeout(() => { window.location.href = "/visits"; }, 500);
         return;
       }
       if (confirmed?.sync_stage === "visit_confirmed_evidence_pending") {
-        setStatusMessage("Visit confirmed. Selfie evidence will retry automatically.");
+        setStatusMessage("Visit confirmed. Evidence will finish syncing automatically.");
         window.setTimeout(() => { window.location.href = "/visits"; }, 500);
         return;
       }

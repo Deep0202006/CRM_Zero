@@ -34,9 +34,9 @@ describe("final field visit recovery compatibility", () => {
     expect(validateLeadCompatibility("recovery", "Legacy Party (@historical)", "Retailer", null)).toEqual({ allowed: true, warning: "BUSINESS_REFERENCE_WARNING" });
   });
 
-  it("allows a missing lead row in recovery but not in new mode", () => {
+  it("allows a missing lead row in both recovery and new mode with a warning", () => {
     expect(validateLeadCompatibility("recovery", "missing-reference", "Retailer", null).allowed).toBe(true);
-    expect(validateLeadCompatibility("new", "00000000-0000-4000-8000-000000000099", "Retailer", null).allowed).toBe(false);
+    expect(validateLeadCompatibility("new", "00000000-0000-4000-8000-000000000099", "Retailer", null)).toEqual({ allowed: true, warning: "BUSINESS_REFERENCE_WARNING" });
   });
 
   it("rejects a current UUID lead whose segment mismatches", () => {

@@ -56,8 +56,8 @@ type SafeCode =
   | "ATTENDANCE_NOT_CONFIRMED" | "ATTENDANCE_INTEGRITY_ERROR" | "VISIT_VALIDATION_FAILED"
   | "VISIT_INSERT_FAILED" | "VISIT_CONFIRMATION_FAILED" | "EVIDENCE_UPLOAD_FAILED"
   | "REFERENCE_CONSTRAINT_FAILED" | "VISIT_CONSTRAINT_FAILED" | "OPTIONAL_SCHEMA_MISMATCH"
-  | "SERVER_AUTHORIZATION_FAILED" | "NETWORK_OR_SERVER_RESPONSE_FAILED";
-type SafeWarning = "BUSINESS_REFERENCE_WARNING" | "OPTIONAL_SCHEMA_MISMATCH";
+  | "SERVER_AUTHORIZATION_FAILED" | "NETWORK_OR_SERVER_RESPONSE_FAILED" | "VISIT_ID_OWNERSHIP_COLLISION";
+type SafeWarning = "BUSINESS_REFERENCE_WARNING" | "ATTENDANCE_LINK_PENDING" | "OPTIONAL_SCHEMA_MISMATCH";
 
 function response(status: number, code: SafeCode, message: string, extra: Record<string, unknown> = {}) {
   return Response.json({ ok: false, code, message, ...extra }, { status, headers: { "Cache-Control": "no-store" } });
@@ -102,7 +102,6 @@ export function validateLeadCompatibility(
 ): { allowed: boolean; warning?: SafeWarning } {
   if (lead && lead.segment_type !== segment) return { allowed: false };
   if (lead) return { allowed: true };
-  if (mode === "new") return { allowed: false };
   return { allowed: Boolean(leadId.trim()), warning: "BUSINESS_REFERENCE_WARNING" };
 }
 
@@ -210,48 +209,60 @@ export async function POST(request: Request) {
     lead = leadResult.data;
   }
   const leadCompatibility = validateLeadCompatibility(mode, visit.lead_id, visit.segment_type, lead);
-  if (!leadCompatibility.allowed) return response(400, "VISIT_VALIDATION_FAILED", "The selected business reference is not valid for this visit.");
   if (leadCompatibility.warning) warningCodes.push(leadCompatibility.warning);
 
   const attendanceResult = await admin.from("attendance").select("attendance_id,user_id,date")
     .eq("user_id", auth.user.id).eq("date", visit.visit_date);
   if (attendanceResult.error) {
     console.error("Field visit attendance lookup failed", { code: attendanceResult.error.code ?? "UNKNOWN" });
-    return response(409, "ATTENDANCE_NOT_CONFIRMED", "Attendance is not yet confirmed. Retry synchronization.");
+    warningCodes.push("ATTENDANCE_LINK_PENDING");
   }
   const attendanceRows = attendanceResult.data ?? [];
   const attendanceResolution = resolveAttendanceId(attendanceRows, visit.attendance_id);
-  if (attendanceResolution.integrityError) return response(409, "ATTENDANCE_INTEGRITY_ERROR", "Multiple attendance records require administrator review.");
-  const resolvedAttendanceId = attendanceResolution.attendanceId;
-  if (!isAdmin && !resolvedAttendanceId) return response(409, "ATTENDANCE_NOT_CONFIRMED", "Attendance is not yet confirmed. Retry synchronization.");
+  const resolvedAttendanceId = attendanceResolution.integrityError ? null : attendanceResolution.attendanceId;
+  if (attendanceResolution.integrityError) warningCodes.push("ATTENDANCE_LINK_PENDING");
+  if (!resolvedAttendanceId && !warningCodes.includes("ATTENDANCE_LINK_PENDING")) warningCodes.push("ATTENDANCE_LINK_PENDING");
 
   const select = "visit_id,user_id,lead_id,segment_type,selfie_storage_path";
-  let insertError = (await admin.from("field_visits").insert({ ...coreRemotePayload(visit, resolvedAttendanceId), ...optionalRemotePayload(visit) })).error;
-  if (insertError && (insertError.code === "42703" || insertError.code === "PGRST204" || insertError.code === "23514")) {
-    console.error("Field visit optional schema mismatch", { code: insertError.code });
-    warningCodes.push("OPTIONAL_SCHEMA_MISMATCH");
-    insertError = (await admin.from("field_visits").insert(coreRemotePayload(visit, resolvedAttendanceId))).error;
+  const preflight = await admin.from("field_visits").select(select).eq("visit_id", visit.visit_id).maybeSingle();
+  if (preflight.error) return response(500, "VISIT_CONFIRMATION_FAILED", "The exact visit could not be checked safely.");
+  if (preflight.data && preflight.data.user_id !== auth.user.id) {
+    return response(409, "VISIT_ID_OWNERSHIP_COLLISION", "This visit ID belongs to another account.");
+  }
+  let alreadyConfirmed = Boolean(preflight.data);
+  if (!alreadyConfirmed) {
+    if (!leadCompatibility.allowed) return response(400, "VISIT_VALIDATION_FAILED", "The selected business reference conflicts with the current business segment.");
+    let insertError = (await admin.from("field_visits").insert({ ...coreRemotePayload(visit, resolvedAttendanceId), ...optionalRemotePayload(visit) })).error;
+    if (insertError && (insertError.code === "42703" || insertError.code === "PGRST204" || insertError.code === "23514")) {
+      console.error("Field visit optional schema mismatch", { code: insertError.code });
+      warningCodes.push("OPTIONAL_SCHEMA_MISMATCH");
+      insertError = (await admin.from("field_visits").insert(coreRemotePayload(visit, resolvedAttendanceId))).error;
+    }
+    if (insertError?.code === "23505") alreadyConfirmed = true;
+    else if (insertError) {
+      const safeCode = mapInsertError(insertError.code);
+      console.error("Field visit insert failed", { code: insertError.code ?? "UNKNOWN" });
+      return response(safeCode === "SERVER_AUTHORIZATION_FAILED" ? 403 : 500, safeCode, "The visit was retained locally and will retry.");
+    }
+  } else if (resolvedAttendanceId) {
+    const linkResult = await admin.from("field_visits").update({ attendance_id: resolvedAttendanceId })
+      .eq("visit_id", visit.visit_id).eq("user_id", auth.user.id);
+    if (linkResult.error) warningCodes.push("ATTENDANCE_LINK_PENDING");
+    else {
+      const warningIndex = warningCodes.indexOf("ATTENDANCE_LINK_PENDING");
+      if (warningIndex >= 0) warningCodes.splice(warningIndex, 1);
+    }
   }
 
-  let alreadyConfirmed = false;
-  if (insertError?.code === "23505") {
-    alreadyConfirmed = true;
-  } else if (insertError) {
-    const safeCode = mapInsertError(insertError.code);
-    console.error("Field visit insert failed", { code: insertError.code ?? "UNKNOWN" });
-    return response(safeCode === "SERVER_AUTHORIZATION_FAILED" ? 403 : 500, safeCode, "The visit was retained locally and will retry.");
-  }
-
-  const existing = await admin.from("field_visits").select(select).eq("visit_id", visit.visit_id).eq("user_id", auth.user.id).maybeSingle();
+  const existing = await admin.from("field_visits").select(select).eq("visit_id", visit.visit_id).maybeSingle();
   if (existing.error) {
     console.error("Field visit confirmation read failed", { code: existing.error.code ?? "UNKNOWN" });
     return response(500, "VISIT_CONFIRMATION_FAILED", "The exact visit could not be confirmed.");
   }
   const confirmed = existing.data;
   if (!confirmed || confirmed.visit_id !== visit.visit_id) return response(500, "VISIT_CONFIRMATION_FAILED", "The exact visit could not be confirmed.");
-  if (confirmed.user_id !== auth.user.id || confirmed.lead_id !== visit.lead_id || confirmed.segment_type !== visit.segment_type) {
-    return response(409, "VISIT_CONFIRMATION_FAILED", "The visit ID is already owned by incompatible visit data.");
-  }
+  if (confirmed.user_id !== auth.user.id) return response(409, "VISIT_ID_OWNERSHIP_COLLISION", "This visit ID belongs to another account.");
+  if (confirmed.lead_id !== visit.lead_id || confirmed.segment_type !== visit.segment_type) warningCodes.push("BUSINESS_REFERENCE_WARNING");
 
   const selfie = form.get("selfie");
   if (!(selfie instanceof Blob) || selfie.size === 0 || warningCodes.includes("OPTIONAL_SCHEMA_MISMATCH")) {

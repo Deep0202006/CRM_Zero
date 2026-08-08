@@ -275,7 +275,7 @@ export default function ManagerKpiPage() {
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
             <MetricCard label="Team members" value={report ? totals.team_members : "—"} icon={<Users size={17} />} tone="neutral" note="Active people included" />
             <MetricCard label="Unique completed work" value={report ? totals.total_completed_work : "—"} icon={<Activity size={17} />} tone="brand" note="Linked follow-up call and task count once here" />
-            <MetricCard label="Calls" value={report ? totals.calls_made : "—"} icon={<PhoneCall size={17} />} tone="info" note="Real call records" />
+            <MetricCard label="Calls today" value={report ? totals.calls_made : "—"} icon={<PhoneCall size={17} />} tone="info" note="Real call records" />
             <MetricCard label="Client queries" value={report ? totals.queries_handled : "—"} icon={<MessageSquare size={17} />} tone="success" note="Resolved today" />
             <MetricCard label="Mappings" value={report ? totals.mappings_completed : "—"} icon={<Link2 size={17} />} tone="warning" note="Completed today" />
             <MetricCard label="Tasks done" value={report ? totals.tasks_completed : "—"} icon={<CheckCircle2 size={17} />} tone="success" note="Tasks and allocated targets" />
@@ -366,7 +366,7 @@ export default function ManagerKpiPage() {
                       <th>Team member</th>
                       <th>Role</th>
                       <th>Unique completed work</th>
-                      <th>Calls</th>
+                      <th>Calls today</th>
                       <th>Client queries</th>
                       <th>Mappings</th>
                       <th>Tasks done</th>

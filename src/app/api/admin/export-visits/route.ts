@@ -103,7 +103,7 @@ export async function GET(request: Request) {
       "Visit date": visit.visit_date,
       "Check-in time": Number.isNaN(checkIn.getTime()) ? "Unavailable" : checkIn.toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", second: "2-digit" }),
       Segment: visit.segment_type,
-      Business: lead?.business_name ?? "Unavailable business",
+      Business: lead?.business_name?.trim() || visit.lead_id?.trim() || "Unavailable business",
       "Person met": visit.person_met ?? "",
       Outcome: getOutcomeLabel(String(visit.visit_outcome)),
       "Follow-up date": visit.follow_up_date ?? "",

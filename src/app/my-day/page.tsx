@@ -27,10 +27,11 @@ import { Input } from "@/components/ui/Input";
 import { isValidSelfScheduledFollowUp, parseFollowUpSourceCallId, stripInternalFollowUpMarkers } from "@/lib/followUps";
 import { getCurrentISTDate, getISTBusinessDayBounds, getISTDateKey } from "@/lib/dateTime";
 import { mergePaymentFollowUps, type PaymentFollowUpIdentity } from "@/lib/fieldVisits/paymentFollowUps";
+import { isGenuineCallLog } from "@/lib/workMetrics/canonical";
 
 interface WeeklyDigestTaskPerformance { assigned_to: string; completed_count: number; total_count: number; }
 interface WeeklyDigest { week_start: string; data: { stuck_leads: { id: string; name: string; status: string; days_in_stage: number; assigned_to: string }[]; task_performance: WeeklyDigestTaskPerformance[]; upcoming_renewals: { id: string; name: string; renewal_date: string }[]; }; }
-interface DailySummary { genuine_calls_today: number; normal_tasks_completed_today: number; followup_tasks_completed_today: number; total_tasks_completed_today: number; pending_followups: number; unique_completed_work: number; generated_at: string; }
+interface DailySummary { genuine_calls_today: number; confirmed_genuine_call_ids: string[]; normal_tasks_completed_today: number; followup_tasks_completed_today: number; total_tasks_completed_today: number; pending_followups: number; unique_completed_work: number; generated_at: string; }
 
 export default function MyDayPage() {
   const { currentUser, capabilities, hasOnboarding, hasSupport, isFieldStaff, isAdmin } = useAuth();
@@ -51,17 +52,25 @@ export default function MyDayPage() {
   const [completionOutcome, setCompletionOutcome] = useState("Follow-up completed");
   const [deleteDialogTask, setDeleteDialogTask] = useState<LocalTask | null>(null);
   const [dailySummary, setDailySummary] = useState<DailySummary | null>(null);
+  const [localCallsToday, setLocalCallsToday] = useState(0);
   const [paymentFollowUps, setPaymentFollowUps] = useState<PaymentFollowUpIdentity[]>([]);
   const confirmedPaymentFollowUps = useRef<{ date: string; rows: PaymentFollowUpIdentity[] }>({ date: "", rows: [] });
   const refreshDailySummary = useCallback(async () => {
     if (!currentUser) return;
+    const today = getCurrentISTDate();
+    const localCalls = await db.call_logs.where("user_id").equals(currentUser.user_id).toArray();
+    const localIds = localCalls.filter((call) => getISTDateKey(call.timestamp) === today && isGenuineCallLog(call)).map((call) => call.log_id);
+    setLocalCallsToday(new Set(localIds).size);
     if (!navigator.onLine || !isSupabaseConfigured) return;
+    await processSyncQueue();
     const { data } = await supabase.auth.getSession();
     const token = data.session?.access_token;
     if (!token) return;
     const response = await fetch("/api/my-day/daily-summary", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
     if (!response.ok) throw new Error("Confirmed My Day summary is unavailable.");
-    setDailySummary(await response.json() as DailySummary);
+    const summary = await response.json() as DailySummary;
+    summary.genuine_calls_today = new Set([...(summary.confirmed_genuine_call_ids ?? []), ...localIds]).size;
+    setDailySummary(summary);
   }, [currentUser]);
 
   useEffect(() => { void refreshDailySummary(); }, [refreshDailySummary]);
@@ -522,7 +531,7 @@ export default function MyDayPage() {
         <div className="metric-grid">
           <MetricCard label="Tasks done" value={dailySummary?.total_tasks_completed_today ?? "—"} icon={<CheckSquare size={17} />} note="Server-confirmed completed tasks and targets" tone="success" />
           <MetricCard label="Mapped today" value={mappedToday} icon={<Target size={17} />} note="Distributor-retailer mapping work completed" />
-          {hasOnboarding && <MetricCard label="Calls today" value={dailySummary?.genuine_calls_today ?? "—"} icon={<PhoneCall size={17} />} note="Server-confirmed genuine client calls" tone="info" />}
+          {hasOnboarding && <MetricCard label="Calls today" value={dailySummary?.genuine_calls_today ?? localCallsToday} icon={<PhoneCall size={17} />} note="Genuine calls recorded today" tone="info" />}
           <MetricCard label="Unique completed work" value={dailySummary?.unique_completed_work ?? "—"} icon={<CheckCircle2 size={17} />} note="Linked follow-up call and task count once here" tone="success" />
           {hasOnboarding && <MetricCard label="Converted leads" value={leadsConverted} icon={<Trophy size={17} />} note="Leads reaching a converted pipeline stage" tone="warning" />}
           {hasSupport && <MetricCard label="Resolved today" value={queriesResolvedToday} icon={<CheckCircle2 size={17} />} note="Client queries closed today" tone="success" />}
