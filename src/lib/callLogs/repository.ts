@@ -9,6 +9,8 @@ export interface CallLogSnapshot {
   confirmedCount: number;
   pendingCount: number;
   authoritative: boolean;
+  metricsAuthoritative: boolean;
+  notice: string | null;
   confirmedGenuineCallIds: string[];
   confirmedFollowupCallIds: string[];
   confirmedReachedCallIds: string[];
@@ -24,7 +26,13 @@ function sortNewestFirst(logs: LocalCallLog[]): LocalCallLog[] {
   return logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 }
 
-async function localSnapshot(userId: string, isAdmin: boolean): Promise<CallLogSnapshot> {
+export function mergeConfirmedAndPendingCalls(confirmedLogs: LocalCallLog[], pendingLogs: LocalCallLog[]): LocalCallLog[] {
+  const merged = new Map(confirmedLogs.map((log) => [log.log_id, log]));
+  for (const pending of pendingLogs) if (!merged.has(pending.log_id)) merged.set(pending.log_id, pending);
+  return sortNewestFirst([...merged.values()]);
+}
+
+async function localSnapshot(userId: string, isAdmin: boolean, notice: string | null): Promise<CallLogSnapshot> {
   const localLogs = isAdmin
     ? await db.call_logs.toArray()
     : await db.call_logs.where("user_id").equals(userId).toArray();
@@ -44,6 +52,8 @@ async function localSnapshot(userId: string, isAdmin: boolean): Promise<CallLogS
     confirmedCount: localLogs.filter((log) => !pendingIds.has(log.log_id)).length,
     pendingCount: pendingIds.size,
     authoritative: false,
+    metricsAuthoritative: false,
+    notice,
     confirmedGenuineCallIds: [],
     confirmedFollowupCallIds: [],
     confirmedReachedCallIds: [],
@@ -54,7 +64,7 @@ async function localSnapshot(userId: string, isAdmin: boolean): Promise<CallLogS
 
 export async function fetchCallLogSnapshot(userId: string, isAdmin: boolean, page = 1): Promise<CallLogSnapshot> {
   if (typeof navigator === "undefined" || !navigator.onLine || !isSupabaseConfigured) {
-    return localSnapshot(userId, isAdmin);
+    return localSnapshot(userId, isAdmin, "Offline: showing durable calls saved on this device. Confirmed history will reconcile after reconnecting.");
   }
 
   const pendingRows = await db.sync_queue
@@ -69,7 +79,7 @@ export async function fetchCallLogSnapshot(userId: string, isAdmin: boolean, pag
     const token = sessionData.session?.access_token;
     if (!token) throw new Error("Authentication required");
     const response = await fetch(`/api/call-logs/history?page=${page}${isAdmin ? "&scope=admin" : ""}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
-    const result = await response.json() as { calls?: LocalCallLog[]; confirmed_genuine_call_ids?: string[]; confirmed_followup_call_ids?: string[]; confirmed_reached_call_ids?: string[]; has_more?: boolean };
+    const result = await response.json() as { calls?: LocalCallLog[]; metrics_authoritative?: boolean; metric_warning?: string; confirmed_genuine_call_ids?: string[]; confirmed_followup_call_ids?: string[]; confirmed_reached_call_ids?: string[]; has_more?: boolean };
     if (!response.ok) throw new Error("Call history could not be confirmed.");
     const confirmedLogs = result.calls ?? [];
 
@@ -79,11 +89,13 @@ export async function fetchCallLogSnapshot(userId: string, isAdmin: boolean, pag
     const unsyncedLogs = pendingLogs.filter((log) => !confirmedIds.has(log.log_id));
 
     return {
-      logs: sortNewestFirst([...confirmedLogs, ...unsyncedLogs]),
+      logs: mergeConfirmedAndPendingCalls(confirmedLogs, unsyncedLogs),
       confirmedLogs: sortNewestFirst(confirmedLogs),
       confirmedCount: confirmedLogs.length,
       pendingCount: unsyncedLogs.length,
       authoritative: true,
+      metricsAuthoritative: result.metrics_authoritative !== false,
+      notice: result.metrics_authoritative === false ? "Confirmed call history is current. Today's derived call metrics are temporarily unavailable." : null,
       confirmedGenuineCallIds: result.confirmed_genuine_call_ids ?? [],
       confirmedFollowupCallIds: result.confirmed_followup_call_ids ?? [],
       confirmedReachedCallIds: result.confirmed_reached_call_ids ?? [],
@@ -92,6 +104,6 @@ export async function fetchCallLogSnapshot(userId: string, isAdmin: boolean, pag
     };
   } catch (error) {
     console.warn("Authoritative call-log refresh failed; using the offline snapshot:", error);
-    return localSnapshot(userId, isAdmin);
+    return localSnapshot(userId, isAdmin, "Confirmed call history could not be refreshed. Showing durable calls saved on this device; retry to reconcile server records.");
   }
 }
