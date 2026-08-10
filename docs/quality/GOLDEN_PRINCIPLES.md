@@ -23,6 +23,8 @@
 - Team KPI validates totals, unique users, target date, and explicit attribution.
 - Privileged authorization is checked on the server; client role claims are insufficient.
 - Local migrations are evidence, never proof of production schema.
+- Automated tests, QA fixtures, and smoke tests never create dummy/test business data in live production Supabase. Production verification is read-only by default. Testing may not insert, update, or delete users, leads, calls, visits, tasks, attendance, queries, mappings, chat/messages, or other business records without the owner explicitly authorizing that exact mutation.
+- Never use “insert dummy data → test → delete dummy data” in production. Use mocks, fixtures, isolated local tests, preview environments, and read-only production reconciliation.
 
 ## CURRENT
 

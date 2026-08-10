@@ -46,6 +46,21 @@ describe("admin visit authorization and responsive layout", () => {
     expect(capabilitySection).not.toContain("min-w-[220px]");
   });
 
+  it("shows visit outcomes as the primary status and confirmation as secondary copy", () => {
+    const page = read("src/app/admin/visits/page.tsx");
+    expect(page).toContain('return outcome === "registered" ? "New Registration" : label');
+    expect(page).toContain('case "installed": return "success"');
+    expect(page).toContain('case "interested": return "info"');
+    expect(page).toContain('case "payment_follow_up": return "warning"');
+    expect(page).toContain('case "not_interested": return "danger"');
+    expect(page).toContain("statusText: getAdminOutcomeLabel(visit.visit_outcome)");
+    expect(page).toContain("statusVariant: getAdminOutcomeVariant(visit.visit_outcome)");
+    expect(page).toContain('"Visit confirmed · Evidence pending"');
+    expect(page).toContain('"Visit confirmed"');
+    expect(page).not.toContain("Outcome: {getOutcomeLabel(visit.visit_outcome)}");
+    expect(page).toContain("actions: visit.has_selfie_evidence ? <EvidenceButton visitId={visit.visit_id} /> : undefined");
+  });
+
   it("adds no destructive browser or business-data operation to visit workflows", () => {
     const sources = [
       "src/lib/fieldVisits/repository.ts",

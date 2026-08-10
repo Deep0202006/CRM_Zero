@@ -50,3 +50,11 @@ test("G service-role reference in a client component fails", () => {
   const path = fixture("client.tsx", `'use client'; const key = process.env.SUPABASE_SERVICE_ROLE_KEY; export default key;`);
   assert.notEqual(run("scripts/harness/invariant-guard.mjs", [path]).status, 0);
 });
+
+test("H a production smoke test cannot write business data", () => {
+  const path = fixture("production-smoke.mjs", `
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    await client.from('field_visits').insert({ visit_id: 'dummy' });
+  `);
+  assert.notEqual(run("scripts/harness/invariant-guard.mjs", [path]).status, 0);
+});

@@ -19,6 +19,23 @@ interface AdminVisit extends LocalFieldVisit {
   leads?: { business_name?: string | null; contact_person?: string | null; phone?: string | null } | null;
 }
 
+function getAdminOutcomeLabel(outcome: string): string {
+  const label = getOutcomeLabel(outcome);
+  return outcome === "registered" ? "New Registration" : label;
+}
+
+function getAdminOutcomeVariant(outcome: string): "success" | "brand" | "info" | "warning" | "danger" {
+  switch (outcome) {
+    case "registered": return "brand";
+    case "installed": return "success";
+    case "interested": return "info";
+    case "follow_up":
+    case "payment_follow_up": return "warning";
+    case "not_interested": return "danger";
+    default: return "brand";
+  }
+}
+
 export default function AdminVisitsPage() {
   const { isAdmin } = useAuth();
   const [visits, setVisits] = useState<AdminVisit[]>([]);
@@ -181,21 +198,26 @@ export default function AdminVisitsPage() {
       </div>
       <QueueList
         title="Confirmed visit history"
-        items={visits.map((visit) => ({
-          id: visit.visit_id,
-          primaryNode: (
-            <div className="min-w-0 whitespace-normal break-words">
-              <p className="break-words text-[13px] font-semibold leading-snug text-[var(--text-primary)]">{visit.leads?.business_name?.trim() || visit.lead_id?.trim() || "Unavailable business"} <span className="font-normal text-[var(--text-secondary)]">({visit.segment_type})</span></p>
-              <p className="mt-1 break-all text-[11px] leading-5 text-[var(--text-muted)]">Rep · {visit.users?.name || "Unknown"} · {visit.users?.email || "Unavailable"}</p>
-              <p className="mt-1 text-[12px] text-[var(--text-secondary)]">Person met: {visit.person_met || "Unavailable"} · Outcome: {getOutcomeLabel(visit.visit_outcome)}{visit.follow_up_date ? ` · Follow-up: ${visit.follow_up_date}` : ""} · Synchronization confirmed</p>
-              {visit.visit_notes && <p className="mt-2 break-words text-[12px] leading-5 text-[var(--text-secondary)]">{visit.visit_notes}</p>}
-            </div>
-          ),
-          statusText: visit.confirmation_status ?? (visit.has_selfie_evidence ? "Confirmed" : "Evidence pending"),
-          statusVariant: visit.has_selfie_evidence ? "success" : "warning",
-          timestamp: new Date(visit.check_in_time).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }),
-          actions: visit.has_selfie_evidence ? <EvidenceButton visitId={visit.visit_id} /> : undefined,
-        }))}
+        items={visits.map((visit) => {
+          const confirmationText = visit.confirmation_status === "Evidence pending" || !visit.has_selfie_evidence
+            ? "Visit confirmed · Evidence pending"
+            : "Visit confirmed";
+          return {
+            id: visit.visit_id,
+            primaryNode: (
+              <div className="min-w-0 whitespace-normal break-words">
+                <p className="break-words text-[13px] font-semibold leading-snug text-[var(--text-primary)]">{visit.leads?.business_name?.trim() || visit.lead_id?.trim() || "Unavailable business"} <span className="font-normal text-[var(--text-secondary)]">({visit.segment_type})</span></p>
+                <p className="mt-1 break-all text-[11px] leading-5 text-[var(--text-muted)]">Rep · {visit.users?.name || "Unknown"} · {visit.users?.email || "Unavailable"}</p>
+                <p className="mt-1 text-[12px] text-[var(--text-secondary)]">Person met: {visit.person_met || "Unavailable"}{visit.follow_up_date ? ` · Follow-up: ${visit.follow_up_date}` : ""} · {confirmationText}</p>
+                {visit.visit_notes && <p className="mt-2 break-words text-[12px] leading-5 text-[var(--text-secondary)]">{visit.visit_notes}</p>}
+              </div>
+            ),
+            statusText: getAdminOutcomeLabel(visit.visit_outcome),
+            statusVariant: getAdminOutcomeVariant(visit.visit_outcome),
+            timestamp: new Date(visit.check_in_time).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }),
+            actions: visit.has_selfie_evidence ? <EvidenceButton visitId={visit.visit_id} /> : undefined,
+          };
+        })}
         emptyMessage={loading ? "Loading visits…" : "No confirmed visits match these filters."}
         onRefresh={() => void loadData(page)}
       />
