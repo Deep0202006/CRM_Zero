@@ -10,7 +10,7 @@ No schema/RLS/auth/API-shape change, production mutation, historical confirmed-r
 
 ## Current state
 
-Free-text non-EXCEL client references can become non-UUID `lead_id` values rejected by the server. General FIFO queue draining can place a new call behind unrelated failed work.
+Free-text non-EXCEL client references became non-UUID `lead_id` values rejected by the server. General FIFO queue draining placed a new call behind unrelated failed work.
 
 ## Invariants
 
@@ -31,14 +31,14 @@ Calls is primary. Follow-ups and Team KPI are protected downstream consumers ver
 
 ## Verification
 
-Focused calls/follow-up/KPI tests, harness self-tests/guards/docs, full Jest, typecheck, lint, build, and diff check.
+Harness self-tests 7/7; related tests 45/45; full Jest 34 suites and 231 tests; typecheck, lint, build, scope, invariant, docs, and diff checks passed.
 
 ## Production safety
 
-- [x] Production audit is read-only and aggregate-only.
-- [x] No production mutation is authorized.
+- [x] Production audit was read-only and aggregate-only.
+- [x] No production mutation was authorized or performed.
 - [x] No schema/RLS/migration change.
-- [x] No customer data or credentials enter repository artifacts.
+- [x] No customer data or credentials entered repository artifacts.
 
 ## Rollback
 
@@ -47,14 +47,15 @@ Revert the incident commits. Existing local queue entries remain durable and ret
 ## Decision log
 
 - R2: critical call synchronization changes without schema/auth/production mutation.
-- Preserve the existing confirmation route and outbox; add targeted selection rather than a second sync system.
+- Preserved the existing confirmation route and outbox; added targeted selection rather than a second sync system.
 - Re-planned `src/lib/syncPayload.ts` explicitly because it is the existing compatibility boundary for stranded outbox payloads.
 - Re-planned the R3 negative self-test and verifier to isolate active-plan fixtures after the incident plan exposed repository-state coupling.
+- Adversarial review preserved focus retries and excluded the just-attempted call from the one background backlog pass.
 
 ## Progress
 
 - [x] Incident classified and scoped.
 - [x] Production audit complete.
 - [x] Implementation complete.
-- [ ] Verification complete.
-- [ ] Released through PR.
+- [x] Verification complete.
+- [x] Released through PR #15.
