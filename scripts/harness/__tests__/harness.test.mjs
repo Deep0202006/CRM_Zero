@@ -58,3 +58,15 @@ test("H a production smoke test cannot write business data", () => {
   `);
   assert.notEqual(run("scripts/harness/invariant-guard.mjs", [path]).status, 0);
 });
+
+test("I a VAPID private key reference in a client component fails", () => {
+  const path = fixture("push-client.tsx", `'use client'; export const key = process.env.VAPID_PRIVATE_KEY;`);
+  assert.notEqual(run("scripts/harness/invariant-guard.mjs", [path]).status, 0);
+});
+
+test("J chat message mutation fails", () => {
+  const deletion = fixture("chat-delete.ts", `await client.from('chat_messages').delete().eq('message_id', id);`);
+  const editing = fixture("chat-edit.ts", `await client.from('chat_messages').update({ body }).eq('message_id', id);`);
+  assert.notEqual(run("scripts/harness/invariant-guard.mjs", [deletion]).status, 0);
+  assert.notEqual(run("scripts/harness/invariant-guard.mjs", [editing]).status, 0);
+});

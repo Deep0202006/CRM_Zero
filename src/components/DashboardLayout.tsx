@@ -18,6 +18,7 @@ import {
   LogOut,
   MapPin,
   Menu,
+  MessageCircle,
   Moon,
   PhoneCall,
   Search,
@@ -245,6 +246,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           description: "Record call outcomes and follow-ups",
           group: "Workspace",
           keywords: ["phone", "followup", "calls"],
+        },
+        {
+          icon: <MessageCircle size={17} />,
+          label: "Team Chat",
+          path: "/chat",
+          description: "Team room and direct employee messages",
+          group: "Workspace",
+          keywords: ["chat", "messages", "team", "direct"],
         },
         {
           icon: <MapPin size={17} />,

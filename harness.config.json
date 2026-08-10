@@ -11,6 +11,7 @@
     "queries": { "codePaths": ["src/lib/clientQueriesExport.ts", "src/app/api/", "src/app/queries/"], "tests": ["src/lib/__tests__/teamKpiLiveAggregation.test.ts"], "contract": "docs/contracts/queries.md", "criticality": "high", "protectedDependencies": ["auth", "team-kpi", "supabase"] },
     "auth": { "codePaths": ["src/context/AuthContext.tsx", "src/lib/supabaseClient.ts", "src/app/login/", "src/app/api/"], "tests": ["src/lib/__tests__/productionConsistencyGuards.test.ts", "src/lib/__tests__/coreReliabilityRelease.test.ts"], "contract": "docs/contracts/auth-session.md", "criticality": "critical", "protectedDependencies": ["all-domains", "supabase"] },
     "shared-ui": { "codePaths": ["src/components/", "src/app/globals.css", "src/app/layout.tsx"], "tests": ["src/lib/__tests__/adminVisitAndLayoutContract.test.ts"], "contract": "docs/contracts/auth-session.md", "criticality": "standard", "protectedDependencies": ["auth"] },
+    "team-chat": { "codePaths": ["src/lib/teamChat/", "src/app/chat/", "src/app/api/chat/", "src/app/api/push/", "public/team-chat-sw.js"], "tests": ["src/lib/__tests__/teamChatContract.test.ts", "src/lib/__tests__/teamChatSecurity.test.ts"], "contract": "docs/contracts/team-chat.md", "criticality": "R3", "protectedDependencies": ["auth", "supabase"] },
     "supabase": { "codePaths": ["supabase/"], "tests": ["src/lib/__tests__/productionConsistencyGuards.test.ts"], "contract": "docs/contracts/auth-session.md", "criticality": "R3", "protectedDependencies": ["all-domains"] }
   }
 }

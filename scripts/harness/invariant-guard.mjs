@@ -19,6 +19,8 @@ function findings(source, file) {
   const rules = [
     ["call_logs deletion", /(?:delete\s+from\s+["'`]?call_logs\b|\.from\(\s*["'`]call_logs["'`]\s*\)[\s\S]{0,180}?\.delete\s*\()/gi],
     ["field_visits deletion", /(?:delete\s+from\s+["'`]?field_visits\b|\.from\(\s*["'`]field_visits["'`]\s*\)[\s\S]{0,180}?\.delete\s*\()/gi],
+    ["chat_messages deletion", /(?:delete\s+from\s+["'`]?chat_messages\b|\.from\(\s*["'`]chat_messages["'`]\s*\)[\s\S]{0,180}?\.delete\s*\()/gi],
+    ["chat_messages mutation", /\.from\(\s*["'`]chat_messages["'`]\s*\)[\s\S]{0,180}?\.update\s*\(/gi],
     ["call_logs.clear", /\b(?:db\.)?call_logs\s*\.\s*clear\s*\(/gi],
     ["field_visits.clear", /\b(?:db\.)?field_visits\s*\.\s*clear\s*\(/gi],
     ["field_visit_media.clear", /\b(?:db\.)?field_visit_media\s*\.\s*clear\s*\(/gi],
@@ -30,6 +32,7 @@ function findings(source, file) {
 
   const clientCode = /(^|\n)\s*["']use client["']/.test(text) || (!file.startsWith("src/app/api/") && (file.endsWith(".tsx") || file.includes("/components/")));
   if (clientCode && /(?:SUPABASE_SERVICE_ROLE|SERVICE_ROLE_KEY|service_role)/i.test(text)) hits.push("service-role secret reference in client code");
+  if (clientCode && /\bVAPID_PRIVATE_KEY\b/.test(text)) hits.push("VAPID private key reference in client code");
   if (clientCode && /\.from\(\s*["'`](?:call_logs|field_visits)["'`]\s*\)[\s\S]{0,300}?\.(?:insert|upsert)\s*\(/i.test(text)) hits.push("direct browser critical write bypasses confirmation API");
 
   const normalizedFile = file.replaceAll("\\", "/").toLowerCase();
