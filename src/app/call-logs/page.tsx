@@ -30,6 +30,7 @@ export default function CallLogsPage() {
   const [genuineCallIdsToday, setGenuineCallIdsToday] = useState<Set<string>>(new Set());
   const [followupCallIdsToday, setFollowupCallIdsToday] = useState<Set<string>>(new Set());
   const [reachedCallIdsToday, setReachedCallIdsToday] = useState<Set<string>>(new Set());
+  const [historyNotice, setHistoryNotice] = useState<string | null>(null);
 
   const [selectedLeadId, setSelectedLeadId] = useState("");
   const [outcome, setOutcome] = useState("");
@@ -64,34 +65,40 @@ export default function CallLogsPage() {
         setLogs([]);
         return;
       }
-      if (drainQueue && navigator.onLine) await processSyncQueue();
+      if (drainQueue && navigator.onLine) void processSyncQueue().catch(() => console.warn("Background sync remains pending during call-history refresh."));
       const snapshot = await fetchCallLogSnapshot(currentUser.user_id, isAdmin);
       const fetchedLogs = snapshot.logs;
-
-      const currentLocalUser = isAdmin ? null : await db.users.get(currentUser.user_id);
-      const allUsers = isAdmin ? await db.users.toArray() : currentLocalUser ? [currentLocalUser] : [];
-      const uMap = new Map<string, LocalUser>();
-      allUsers.forEach(u => uMap.set(u.user_id, u));
-
-      const leadIds = [...new Set(fetchedLogs.map((log) => log.lead_id).filter((leadId): leadId is string => Boolean(leadId)))];
-      const allLeads = leadIds.length ? await db.leads.where("lead_id").anyOf(leadIds).toArray() : [];
-      const lMap = new Map<string, LocalLead>();
-      allLeads.forEach(l => lMap.set(l.lead_id, l));
-      const matchingTasks = await db.tasks.bulkGet(fetchedLogs.map((log) => log.log_id));
-      setFollowUpTaskIds(new Set(matchingTasks.filter((task): task is NonNullable<typeof task> => Boolean(task)).filter((task) => task.source === "manual" && task.template_id === null).map((task) => task.task_id)));
-      const today = getCurrentISTDate();
-      const ownLocalCalls = await db.call_logs.where("user_id").equals(currentUser.user_id).filter((log) => getISTDateKey(log.timestamp) === today).toArray();
-      const localTasks = (await db.tasks.bulkGet(ownLocalCalls.map((log) => log.log_id))).filter((task): task is NonNullable<typeof task> => Boolean(task));
-      const localMetric = getCanonicalDailyUserMetrics({ userId: currentUser.user_id, calls: ownLocalCalls, tasks: localTasks, taskHistory: [] });
-      setGenuineCallIdsToday(new Set([...snapshot.confirmedGenuineCallIds, ...localMetric.genuine_call_ids]));
-      setFollowupCallIdsToday(new Set([...snapshot.confirmedFollowupCallIds, ...localMetric.followup_call_ids]));
-      const localReachedIds = ownLocalCalls.filter((log) => localMetric.genuine_call_ids.has(log.log_id) && !log.outcome.toLowerCase().includes("no response")).map((log) => log.log_id);
-      setReachedCallIdsToday(new Set([...snapshot.confirmedReachedCallIds, ...localReachedIds]));
-
-      setUsersMap(uMap);
-      setLeadsMap(lMap);
+      setHistoryNotice(snapshot.notice);
       setLogs(fetchedLogs);
       setConfirmedLogs(snapshot.confirmedLogs);
+
+      try {
+        const currentLocalUser = isAdmin ? null : await db.users.get(currentUser.user_id);
+        const allUsers = isAdmin ? await db.users.toArray() : currentLocalUser ? [currentLocalUser] : [];
+        const uMap = new Map<string, LocalUser>();
+        allUsers.forEach(u => uMap.set(u.user_id, u));
+
+        const leadIds = [...new Set(fetchedLogs.map((log) => log.lead_id).filter((leadId): leadId is string => Boolean(leadId)))];
+        const allLeads = leadIds.length ? await db.leads.where("lead_id").anyOf(leadIds).toArray() : [];
+        const lMap = new Map<string, LocalLead>();
+        allLeads.forEach(l => lMap.set(l.lead_id, l));
+        const matchingTasks = await db.tasks.bulkGet(fetchedLogs.map((log) => log.log_id));
+        setFollowUpTaskIds(new Set(matchingTasks.filter((task): task is NonNullable<typeof task> => Boolean(task)).filter((task) => task.source === "manual" && task.template_id === null).map((task) => task.task_id)));
+        const today = getCurrentISTDate();
+        const ownLocalCalls = await db.call_logs.where("user_id").equals(currentUser.user_id).filter((log) => getISTDateKey(log.timestamp) === today).toArray();
+        const localTasks = (await db.tasks.bulkGet(ownLocalCalls.map((log) => log.log_id))).filter((task): task is NonNullable<typeof task> => Boolean(task));
+        const localMetric = getCanonicalDailyUserMetrics({ userId: currentUser.user_id, calls: ownLocalCalls, tasks: localTasks, taskHistory: [] });
+        setGenuineCallIdsToday(new Set([...snapshot.confirmedGenuineCallIds, ...localMetric.genuine_call_ids]));
+        setFollowupCallIdsToday(new Set([...snapshot.confirmedFollowupCallIds, ...localMetric.followup_call_ids]));
+        const localReachedIds = ownLocalCalls.filter((log) => localMetric.genuine_call_ids.has(log.log_id) && !log.outcome.toLowerCase().includes("no response")).map((log) => log.log_id);
+        setReachedCallIdsToday(new Set([...snapshot.confirmedReachedCallIds, ...localReachedIds]));
+
+        setUsersMap(uMap);
+        setLeadsMap(lMap);
+      } catch {
+        console.warn("Call history loaded; optional local display enrichment is unavailable.");
+        setHistoryNotice((current) => current ?? "Confirmed call history is visible. Some local labels or derived metrics are temporarily unavailable.");
+      }
     } catch (err) {
       console.error("Failed to load logs:", err);
     } finally {
@@ -285,6 +292,7 @@ export default function CallLogsPage() {
       </div>
 
       {isAdmin && unknownAuditLike > 0 && <div className="alert-panel alert-panel--warning" role="alert"><AlertCircle size={16} /><span>{unknownAuditLike} unknown audit-like call outcome(s) require classification review.</span></div>}
+      {historyNotice && <div className="alert-panel alert-panel--warning" role="status"><AlertCircle size={16} /><span>{historyNotice}</span></div>}
 
       <div className="workspace-split">
         <section className="surface-panel overflow-hidden" aria-labelledby="log-call-title">

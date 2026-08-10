@@ -40,7 +40,7 @@ describe("production consistency guards", () => {
     expect(repository).toContain("confirmedCount: confirmedLogs.length");
     expect(repository).toContain("confirmedLogs: sortNewestFirst(confirmedLogs)");
     expect(repository).toContain("pendingCount: unsyncedLogs.length");
-    expect(callLogs).toContain("await processSyncQueue()");
+    expect(callLogs).toContain("void processSyncQueue().catch");
     expect(callLogs).toContain("fetchCallLogSnapshot(currentUser.user_id, isAdmin)");
     expect(callLogs).toContain('label="Calls today"');
     expect(callLogs).toContain('label="Follow-up calls today"');
