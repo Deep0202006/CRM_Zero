@@ -18,4 +18,13 @@ describe("call client reference contract", () => {
       displayName: "Retailer One (@retailer01)",
     });
   });
+
+  it("keeps a free-text client as human identity instead of a lead foreign key", () => {
+    expect(parseCallClientReference("  New Horizon Party  ")).toEqual({
+      leadId: null,
+      clientUsername: null,
+      clientName: "New Horizon Party",
+      displayName: "New Horizon Party",
+    });
+  });
 });

@@ -9,6 +9,7 @@ Use this index to load only relevant knowledge.
 - [Change protocol](CHANGE_PROTOCOL.md)
 - [Release protocol](RELEASE_PROTOCOL.md)
 - [Prompting](PROMPTING.md)
+- [Lessons ledger](LESSONS_LEDGER.md)
 - [Architecture](../../ARCHITECTURE.md)
 - [Contracts](../contracts/)
 - [Golden principles](../quality/GOLDEN_PRINCIPLES.md)

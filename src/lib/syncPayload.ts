@@ -1,4 +1,4 @@
-import { parseCallClientReference } from "./callLogs/contract";
+import { isCallLeadId, parseCallClientReference } from "./callLogs/contract";
 
 export interface PreparedSyncPayload {
   data: Record<string, unknown>;
@@ -8,6 +8,10 @@ export interface PreparedSyncPayload {
 
 function asRecord(value: object): Record<string, unknown> {
   return Object.fromEntries(Object.entries(value));
+}
+
+function nonEmptyText(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
 /**
@@ -25,13 +29,15 @@ export function prepareSyncPayload(tableName: string, value: object): PreparedSy
 
   if (tableName === "call_logs") {
     const legacyLeadId = typeof data.lead_id === "string" ? data.lead_id : null;
-    if (legacyLeadId?.startsWith("EXCEL::")) {
+    if (legacyLeadId && !isCallLeadId(legacyLeadId)) {
       const parsed = parseCallClientReference(legacyLeadId);
       data.lead_id = null;
-      data.client_username = data.client_username ?? parsed.clientUsername;
-      data.client_name = data.client_name ?? parsed.clientName;
+      data.client_username = nonEmptyText(data.client_username) ?? parsed.clientUsername;
+      data.client_name = nonEmptyText(data.client_name) ?? parsed.clientName ?? legacyLeadId.trim();
       changed = true;
-      reasons.push("converted legacy Excel client reference");
+      reasons.push(legacyLeadId.startsWith("EXCEL::")
+        ? "converted legacy Excel client reference"
+        : "converted legacy custom client reference");
     }
   }
 

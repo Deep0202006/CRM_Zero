@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { claimSyncQueueOwnership, db, processSyncQueue, LocalCallLog, LocalUser, LocalLead } from "@/lib/db";
+import { claimSyncQueueOwnership, confirmQueuedCallLog, db, processSyncQueue, processSyncQueueExcept, LocalCallLog, LocalUser, LocalLead } from "@/lib/db";
 import { SearchableSelect, SearchableOption } from "@/components/SearchableSelect";
 import { PhoneCall, CheckCircle2, AlertCircle, Download } from "lucide-react";
 import excelUsers from "@/lib/excel_users.json";
@@ -58,13 +58,13 @@ export default function CallLogsPage() {
     return excelOptions.sort((a, b) => a.label.localeCompare(b.label));
   }, []);
 
-  const loadData = React.useCallback(async () => {
+  const loadData = React.useCallback(async (drainQueue = true) => {
     try {
       if (!currentUser) {
         setLogs([]);
         return;
       }
-      if (navigator.onLine) await processSyncQueue();
+      if (drainQueue && navigator.onLine) await processSyncQueue();
       const snapshot = await fetchCallLogSnapshot(currentUser.user_id, isAdmin);
       const fetchedLogs = snapshot.logs;
 
@@ -104,12 +104,13 @@ export default function CallLogsPage() {
   }, [loadData]);
 
   useEffect(() => {
-    const refresh = () => void loadData();
-    window.addEventListener(CALL_LOGS_CHANGED_EVENT, refresh);
-    window.addEventListener("focus", refresh);
+    const refreshAuthority = () => void loadData(false);
+    const refreshOnFocus = () => void loadData();
+    window.addEventListener(CALL_LOGS_CHANGED_EVENT, refreshAuthority);
+    window.addEventListener("focus", refreshOnFocus);
     return () => {
-      window.removeEventListener(CALL_LOGS_CHANGED_EVENT, refresh);
-      window.removeEventListener("focus", refresh);
+      window.removeEventListener(CALL_LOGS_CHANGED_EVENT, refreshAuthority);
+      window.removeEventListener("focus", refreshOnFocus);
     };
   }, [loadData]);
 
@@ -195,13 +196,27 @@ export default function CallLogsPage() {
           });
         }
       });
+
+      // The durable local record is the immediate employee view. Remote
+      // authority is reconciled asynchronously without re-reading history just
+      // to display the call that was saved above.
+      setLogs((current) => [log, ...current.filter((item) => item.log_id !== log.log_id)]);
+      if (getISTDateKey(log.timestamp) === getCurrentISTDate() && isGenuineCallLog(log)) {
+        setGenuineCallIdsToday((current) => new Set(current).add(log.log_id));
+        if (!log.outcome.toLowerCase().includes("no response")) {
+          setReachedCallIdsToday((current) => new Set(current).add(log.log_id));
+        }
+      }
+      setSuccess(true);
+
       let remotelyConfirmed = false;
       if (navigator.onLine) {
-        await processSyncQueue();
-        remotelyConfirmed = !(await db.sync_queue.where("idempotency_key").equals(`call-log:${logId}`).first());
+        remotelyConfirmed = await confirmQueuedCallLog(logId);
+        // One background pass handles the follow-up task (if any) and unrelated
+        // older work after this exact call has received priority.
+        void processSyncQueueExcept(`call-log:${logId}`).catch((syncError) => console.warn("Background sync remains pending:", syncError));
       }
 
-      setSuccess(remotelyConfirmed);
       if (navigator.onLine && !remotelyConfirmed) setError("Call saved safely and will finish syncing automatically.");
       if (!navigator.onLine) setError("Call saved offline and will sync automatically when you reconnect.");
 
@@ -209,8 +224,6 @@ export default function CallLogsPage() {
       setOutcome("");
       setNotes("");
       setNextFollowup("");
-
-      await loadData();
 
       setTimeout(() => setSuccess(false), 3000);
     } catch (err: unknown) {
@@ -305,7 +318,7 @@ export default function CallLogsPage() {
             )}
 
             {error && <div className="alert-panel alert-panel--danger" role="alert"><AlertCircle size={16} className="mt-0.5 shrink-0" /><span>{error}</span></div>}
-            {success && <div className="alert-panel alert-panel--success" role="status"><CheckCircle2 size={16} className="mt-0.5 shrink-0" /><span>Call recorded and the activity history is up to date.</span></div>}
+            {success && <div className="alert-panel alert-panel--success" role="status"><CheckCircle2 size={16} className="mt-0.5 shrink-0" /><span>Call saved safely and added to recent history.</span></div>}
 
             <div className="flex justify-end border-t border-[var(--border-subtle)] pt-5">
               <Button type="submit" isLoading={submitting} icon={<PhoneCall size={15} />} disabled={!selectedLeadId || !outcome}>Record call</Button>

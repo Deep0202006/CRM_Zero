@@ -9,7 +9,7 @@ const runtime = resolve(root, ".harness/self-test");
 const manifestPath = resolve(root, ".harness/task.json");
 const originalManifest = readFileSync(manifestPath, "utf8");
 
-function run(script, args = []) { return spawnSync(process.execPath, [resolve(root, script), ...args], { cwd: root, encoding: "utf8" }); }
+function run(script, args = [], env = {}) { return spawnSync(process.execPath, [resolve(root, script), ...args], { cwd: root, encoding: "utf8", env: { ...process.env, ...env } }); }
 function fixture(name, content) { mkdirSync(runtime, { recursive: true }); const path = resolve(runtime, name); writeFileSync(path, content); return path; }
 test.afterEach(() => { rmSync(runtime, { recursive: true, force: true }); writeFileSync(manifestPath, originalManifest); });
 
@@ -36,7 +36,8 @@ test("D a missing AGENTS contract link fails docs check", () => {
 
 test("E R3 without an ExecPlan fails before gates", () => {
   const task = JSON.parse(originalManifest); task.risk = "R3"; writeFileSync(manifestPath, JSON.stringify(task));
-  assert.notEqual(run("scripts/harness/verify.mjs", ["--list"]).status, 0);
+  mkdirSync(runtime, { recursive: true });
+  assert.notEqual(run("scripts/harness/verify.mjs", ["--list"], { HARNESS_ACTIVE_PLAN_DIR: runtime }).status, 0);
 });
 
 test("F R1 selects focused checks, not full test/build", () => {

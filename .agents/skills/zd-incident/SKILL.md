@@ -6,7 +6,7 @@ description: Use after a repeated production defect or a defect revealing missin
 
 Required inputs: impact, timeline, evidence, recovery, recurrence status.
 
-Workflow: document facts; identify root/contributing causes; assess data safety; decide contract/guard/test/incident updates; assign follow-up.
+Workflow: document facts; identify root/contributing causes; assess data safety; ask what assumption was wrong, what capability the harness lacked, and which reusable contract/guard/test/skill should prevent recurrence; update the lessons ledger only for genuinely new knowledge; assign follow-up.
 
 Docs: `docs/incidents/INDEX.md`, affected contract, golden principles.
 

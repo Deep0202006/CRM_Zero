@@ -27,6 +27,50 @@ describe("offline sync payload repair", () => {
     });
   });
 
+  it("repairs an arbitrary legacy call reference with the original ID and identity", () => {
+    const result = prepareSyncPayload("call_logs", {
+      log_id: "00000000-0000-4000-8000-000000000099",
+      lead_id: "New Horizon Party",
+      outcome: "Happy call",
+    });
+
+    expect(result).toMatchObject({
+      changed: true,
+      data: {
+        log_id: "00000000-0000-4000-8000-000000000099",
+        lead_id: null,
+        client_username: null,
+        client_name: "New Horizon Party",
+      },
+    });
+  });
+
+  it("does not overwrite a better identity while repairing a non-UUID lead value", () => {
+    expect(prepareSyncPayload("call_logs", {
+      log_id: "00000000-0000-4000-8000-000000000098",
+      lead_id: "legacy free text",
+      client_username: "canonical-user",
+      client_name: "Canonical Party",
+    }).data).toMatchObject({
+      lead_id: null,
+      client_username: "canonical-user",
+      client_name: "Canonical Party",
+    });
+  });
+
+  it("treats blank legacy identity fields as missing", () => {
+    expect(prepareSyncPayload("call_logs", {
+      log_id: "00000000-0000-4000-8000-000000000097",
+      lead_id: "Preserved Party",
+      client_username: "   ",
+      client_name: "",
+    }).data).toMatchObject({
+      lead_id: null,
+      client_username: null,
+      client_name: "Preserved Party",
+    });
+  });
+
   it("leaves valid payloads unchanged", () => {
     expect(prepareSyncPayload("call_logs", {
       log_id: "00000000-0000-4000-8000-000000000010",
