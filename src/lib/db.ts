@@ -2,6 +2,7 @@ import Dexie, { type Table } from "dexie";
 import { LeadSegment, LeadStatus } from "./validation";
 import { supabase, isSupabaseConfigured } from "./supabaseClient";
 import { prepareSyncPayload } from "./syncPayload";
+import { isLegacyPipelineStatusMutation, LEGACY_PIPELINE_STATUS_ERROR, preserveLegacyNonStatusUpdate } from "./pipeline/legacyQueue";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // INTERFACES — base system
@@ -48,6 +49,7 @@ export interface LocalLead {
   re_engage_after?: string | null;
   renewal_date?: string | null;
   renewal_reminder_sent?: boolean;
+  owner_name?: string;
 }
 
 export interface LocalClientQuery {
@@ -893,6 +895,26 @@ async function processSyncQueueInternal(): Promise<void> {
     // Supabase insert through this generic writer.
     if (item.table_name === "field_visits") continue;
 
+      if (isLegacyPipelineStatusMutation(item)) {
+        const preserved = preserveLegacyNonStatusUpdate(item);
+        await db.transaction("rw", db.sync_queue, async () => {
+          await db.sync_queue.update(item.id!, { data: preserved.originalData, last_error: LEGACY_PIPELINE_STATUS_ERROR });
+          if (preserved.replayData) {
+            await db.sync_queue.add({
+              idempotency_key: `${item.idempotency_key}:non-status`,
+              owner_user_id: itemOwnerId,
+              table_name: "leads",
+              action: "UPDATE",
+              data: preserved.replayData,
+              timestamp: item.timestamp,
+            });
+          }
+        });
+        continue;
+      }
+
+      if (item.table_name === "pipeline_transition_commands") continue;
+
     if (
       item.idempotency_key.startsWith("followup-completion-history:") ||
       item.idempotency_key.startsWith("followup-completion-call:")
@@ -959,40 +981,13 @@ async function processSyncQueueInternal(): Promise<void> {
             throw new Error(`No update fields provided for ${item.table_name}.`);
           }
 
-          if (item.table_name === "leads" && updateData.status !== undefined) {
-            const { data: rpcData, error: rpcError } = await supabase.rpc("transition_lead_stage", {
-              p_lead_id: primaryKeyValue as string,
-              p_expected_current_stage: null,
-              p_new_stage: updateData.status as string,
-              p_actor: "agent",
-            });
-            if (rpcError) throw new Error(`Lead transition failed: ${rpcError.message}`);
-            if (rpcData && rpcData.success === false) {
-              throw new Error(String(rpcData.error ?? "Lead transition was rejected."));
-            }
-
-            const otherUpdateData = { ...updateData };
-            delete otherUpdateData.status;
-            if (Object.keys(otherUpdateData).length > 0) {
-              const { data, error } = await client
-                .update(otherUpdateData)
-                .eq(primaryKey, primaryKeyValue)
-                .select(primaryKey)
-                .maybeSingle();
-              if (error) throw new Error(`Supabase update failed for ${remoteTableName}: ${error.message}`);
-              if (!data) throw new Error(`No ${remoteTableName} row was updated.`);
-            } else if (!(await verifyRemoteRowExists(remoteTableName, primaryKey, primaryKeyValue, authenticatedUserId))) {
-              throw new Error(`Lead transition returned without a verifiable lead row.`);
-            }
-          } else {
-            const { data, error } = await client
-              .update(updateData)
-              .eq(primaryKey, primaryKeyValue)
-              .select(primaryKey)
-              .maybeSingle();
-            if (error) throw new Error(`Supabase update failed for ${remoteTableName}: ${error.message}`);
-            if (!data) throw new Error(`No ${remoteTableName} row was updated.`);
-          }
+          const { data, error } = await client
+            .update(updateData)
+            .eq(primaryKey, primaryKeyValue)
+            .select(primaryKey)
+            .maybeSingle();
+          if (error) throw new Error(`Supabase update failed for ${remoteTableName}: ${error.message}`);
+          if (!data) throw new Error(`No ${remoteTableName} row was updated.`);
         } else if (item.action === "DELETE") {
           if (primaryKeyValue === undefined || primaryKeyValue === null || primaryKeyValue === "") {
             throw new Error(`Missing ${primaryKey} for ${item.table_name} delete.`);
