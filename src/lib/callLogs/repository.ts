@@ -3,10 +3,20 @@ import { isSupabaseConfigured, supabase } from "../supabaseClient";
 
 export const CALL_LOGS_CHANGED_EVENT = "zerodata:call-logs-changed";
 
+export function formatCallHistoryCount(input: { authoritative: boolean; lifetimeConfirmedTotal: number | null; pendingCount: number; loadedCount: number }): string {
+  const pending = input.pendingCount > 0 ? ` · ${input.pendingCount} pending sync` : "";
+  if (input.authoritative && input.lifetimeConfirmedTotal !== null) {
+    const noun = input.lifetimeConfirmedTotal === 1 ? "record" : "records";
+    return `${input.lifetimeConfirmedTotal} lifetime confirmed ${noun}${pending} · showing latest ${input.loadedCount}`;
+  }
+  const noun = input.loadedCount === 1 ? "record" : "records";
+  return `${input.loadedCount} ${noun} available on this device${pending}`;
+}
+
 export interface CallLogSnapshot {
   logs: LocalCallLog[];
   confirmedLogs: LocalCallLog[];
-  confirmedCount: number;
+  lifetimeConfirmedTotal: number | null;
   pendingCount: number;
   authoritative: boolean;
   metricsAuthoritative: boolean;
@@ -49,7 +59,7 @@ async function localSnapshot(userId: string, isAdmin: boolean, notice: string | 
   return {
     logs: sortNewestFirst(localLogs),
     confirmedLogs: sortNewestFirst(localLogs.filter((log) => !pendingIds.has(log.log_id))),
-    confirmedCount: localLogs.filter((log) => !pendingIds.has(log.log_id)).length,
+    lifetimeConfirmedTotal: null,
     pendingCount: pendingIds.size,
     authoritative: false,
     metricsAuthoritative: false,
@@ -79,7 +89,7 @@ export async function fetchCallLogSnapshot(userId: string, isAdmin: boolean, pag
     const token = sessionData.session?.access_token;
     if (!token) throw new Error("Authentication required");
     const response = await fetch(`/api/call-logs/history?page=${page}${isAdmin ? "&scope=admin" : ""}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
-    const result = await response.json() as { calls?: LocalCallLog[]; metrics_authoritative?: boolean; metric_warning?: string; confirmed_genuine_call_ids?: string[]; confirmed_followup_call_ids?: string[]; confirmed_reached_call_ids?: string[]; has_more?: boolean };
+    const result = await response.json() as { calls?: LocalCallLog[]; total?: number; metrics_authoritative?: boolean; metric_warning?: string; confirmed_genuine_call_ids?: string[]; confirmed_followup_call_ids?: string[]; confirmed_reached_call_ids?: string[]; has_more?: boolean };
     if (!response.ok) throw new Error("Call history could not be confirmed.");
     const confirmedLogs = result.calls ?? [];
 
@@ -91,7 +101,7 @@ export async function fetchCallLogSnapshot(userId: string, isAdmin: boolean, pag
     return {
       logs: mergeConfirmedAndPendingCalls(confirmedLogs, unsyncedLogs),
       confirmedLogs: sortNewestFirst(confirmedLogs),
-      confirmedCount: confirmedLogs.length,
+      lifetimeConfirmedTotal: typeof result.total === "number" ? result.total : null,
       pendingCount: unsyncedLogs.length,
       authoritative: true,
       metricsAuthoritative: result.metrics_authoritative !== false,

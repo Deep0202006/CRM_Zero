@@ -12,6 +12,8 @@ Never delete call logs or remove an outbox item before exact confirmation. Retry
 
 Authoritative call-history availability must not depend on unrelated KPI/task enrichment. Optional metric failure may explicitly degrade today's derived metrics, but cannot hide successfully retrieved confirmed call rows. Online history merges server-confirmed rows with the current user's durable pending outbox rows by `log_id`; server data wins display precedence for an already confirmed ID without deleting its local row or queue state.
 
+Paginated history length is not lifetime history count. When online, lifetime call-history totals come from authoritative server count metadata scoped to the authenticated owner; page size and browser cache size must never define the displayed lifetime total. Pending local calls and device-only fallback rows remain explicitly separate from that confirmed total.
+
 ## KNOWN DEBT
 
 Offline snapshots are intentionally non-authoritative and degraded authoritative reads must be visible rather than presented as complete empty history. Browser-local stranded rows cannot be discovered from remote introspection, so deterministic payload recovery and regression fixtures protect them.

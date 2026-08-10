@@ -25,7 +25,7 @@ function active(value: unknown) {
   return value === true || value === 1 || value === "1" || value === "true";
 }
 
-function historyBody(history: QueryResult<HistoryCall>, page: number) {
+export function historyBody(history: QueryResult<HistoryCall>, page: number) {
   return {
     calls: history.data ?? [],
     page,
