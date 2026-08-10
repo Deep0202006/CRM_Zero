@@ -2,7 +2,7 @@ import Dexie, { type Table } from "dexie";
 import { LeadSegment, LeadStatus } from "./validation";
 import { supabase, isSupabaseConfigured } from "./supabaseClient";
 import { prepareSyncPayload } from "./syncPayload";
-import { isLegacyPipelineStatusMutation, LEGACY_PIPELINE_STATUS_ERROR, preserveLegacyNonStatusUpdate } from "./pipeline/legacyQueue";
+import { isActiveSyncQueueItem, isLegacyPipelineStatusMutation, LEGACY_PIPELINE_STATUS_ERROR, preserveLegacyNonStatusUpdate } from "./pipeline/legacyQueue";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // INTERFACES — base system
@@ -312,6 +312,9 @@ export interface SyncQueueItem {
   timestamp: string;
   retry_count?: number;  // Part 6 — per-item retry tracking
   last_error?: string;   // Part 6 — surfaces dead-letter failures in UI
+  recovery_state?: "recovered" | "satisfied" | "review_required" | "quarantined";
+  recovery_reason?: string;
+  recovery_marked_at?: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -620,6 +623,10 @@ class CRMDatabase extends Dexie {
 
 export const db = new CRMDatabase();
 
+export async function countActiveSyncQueueItems(): Promise<number> {
+  return db.sync_queue.filter(isActiveSyncQueueItem).count();
+}
+
 // SEED DATA HAS BEEN REMOVED FOR PRODUCTION HARDENING
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -846,7 +853,7 @@ export async function confirmQueuedCallLog(logId: string): Promise<boolean> {
     await confirmCallLog(prepared.data, accessToken);
     const current = await db.sync_queue.get(item.id);
     if (current?.idempotency_key === idempotencyKey) await db.sync_queue.delete(item.id);
-    if ((await db.sync_queue.count()) === 0) localStorage.removeItem(OUTBOX_OWNER_KEY);
+    if ((await countActiveSyncQueueItems()) === 0) localStorage.removeItem(OUTBOX_OWNER_KEY);
     if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("zerodata:call-logs-changed"));
     return true;
   } catch (error) {
@@ -871,7 +878,7 @@ async function processSyncQueueInternal(): Promise<void> {
   if (authenticationError || !authenticatedUserId || !accessToken) return;
 
   const items = await db.sync_queue.orderBy("id").toArray();
-  if (items.length === 0) {
+  if (!items.some(isActiveSyncQueueItem)) {
     localStorage.removeItem(OUTBOX_OWNER_KEY);
     return;
   }
@@ -1041,7 +1048,7 @@ async function processSyncQueueInternal(): Promise<void> {
     }
   }
 
-  if ((await db.sync_queue.count()) === 0) {
+  if ((await countActiveSyncQueueItems()) === 0) {
     localStorage.removeItem(OUTBOX_OWNER_KEY);
   }
   console.log("Sync queue pass complete.");
@@ -1167,7 +1174,7 @@ export async function pullDownSync() {
 
         // Check if items have pending updates or deletes in the sync_queue
         const pendingMutations = await db.sync_queue
-          .filter(item => item.table_name === localTableName && (item.action === "UPDATE" || item.action === "DELETE"))
+          .filter(item => isActiveSyncQueueItem(item) && item.table_name === localTableName && (item.action === "UPDATE" || item.action === "DELETE"))
           .toArray();
         const pendingMutationIds = new Set(pendingMutations.map(item => getDynamicField(item.data, pk)));
 
@@ -1264,7 +1271,7 @@ if (typeof window !== "undefined") {
               // Skip if we have a pending offline mutation for this item (our local version is newer)
               const pendingMutation = await db.sync_queue
                 .where("table_name").equals(tableName)
-                .and(item => getDynamicField(item.data, pk) === record[pk])
+                .and(item => isActiveSyncQueueItem(item) && getDynamicField(item.data, pk) === record[pk])
                 .first();
 
               if (!pendingMutation) {
@@ -1280,7 +1287,7 @@ if (typeof window !== "undefined") {
               if (oldRecord && oldRecord[pk]) {
                 const pendingMutation = await db.sync_queue
                   .where("table_name").equals(tableName)
-                  .and(item => getDynamicField(item.data, pk) === oldRecord[pk])
+                  .and(item => isActiveSyncQueueItem(item) && getDynamicField(item.data, pk) === oldRecord[pk])
                   .first();
                 if (pendingMutation) return;
                 await db.transaction('rw', table, async () => {

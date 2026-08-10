@@ -21,9 +21,14 @@
 - Every valid frozen stage remains discoverable. Unknown legacy state is preserved rather than coerced.
 - Pipeline transitions never create genuine `call_logs`; historical synthetic-call metric exclusions remain.
 - Production verification is read-only by default; migrations require explicit approval.
+- A local-first to server-authority switch explicitly reconciles preserved durable local business state.
+- Legacy stages may be recovered only from an owner-matched, ordered, complete canonical command chain whose final target matches the preserved local lead.
+- Incomplete intent and weak lifecycle signals never become guessed server state. Newer confirmed/semantic work outranks legacy evidence.
+- Recovery uses canonical v2 transitions with historical UUID operation identity where available; conflict stops the chain.
+- Original recovery evidence remains preserved and becomes passive after recovery, satisfaction, quarantine, or review.
 
 ## KNOWN DEBT
 
 - Deployed policies, trigger bodies/grants, and renewal job require catalog-level read-only verification before migration approval.
-- Browser-local legacy status intents require reconciliation; their missing expected stage cannot be reconstructed safely.
-- Registration task fan-out remains until deployed trigger ownership and business policy are separately proven.
+- Browser-local evidence cannot be remotely enumerated; a browser/device that no longer has it cannot reconstruct it.
+- Deployed status-trigger idempotency remains unproven. Historical SQL can create generic and registration tasks, so automatic legacy replay is disabled until replay side effects are proven safe.

@@ -1,5 +1,5 @@
 import { assertOwnerTransition, canEmployeeTransition, canSystemTransition, PIPELINE_TRANSITION_QUEUE_TABLE, type PipelineTransitionCommand } from "../../pipeline/contract";
-import { isLegacyPipelineStatusMutation, LEGACY_PIPELINE_STATUS_ERROR, preserveLegacyNonStatusUpdate } from "../../pipeline/legacyQueue";
+import { isActiveSyncQueueItem, isLegacyPipelineStatusMutation, LEGACY_PIPELINE_STATUS_ERROR, preserveLegacyNonStatusUpdate } from "../../pipeline/legacyQueue";
 import { pendingStateFromQueue } from "../../pipeline/repository";
 
 const command: PipelineTransitionCommand = { operation_id: "operation", lead_id: "lead", expected_stage: "Contacted", target_stage: "Interested", actor_id: "owner", created_at: "2026-08-10T00:00:00Z" };
@@ -39,5 +39,12 @@ describe("Pipeline semantic transitions", () => {
   test("a stale conflict is retained as review state rather than confirmed", () => {
     const item = { idempotency_key: "pipeline-transition:operation", table_name: PIPELINE_TRANSITION_QUEUE_TABLE, action: "INSERT" as const, data: command, timestamp: command.created_at, last_error: "PIPELINE_CONFLICT:Interested" };
     expect(pendingStateFromQueue([item]).get("lead")).toEqual({ target: "Interested", kind: "conflict" });
+  });
+
+  test("passive recovery evidence is excluded from warnings and active queue accounting", () => {
+    const passive = { idempotency_key: "old", table_name: "leads", action: "UPDATE" as const, data: { lead_id: "lead", status: "Interested" }, timestamp: "old", recovery_state: "review_required" as const };
+    expect(isLegacyPipelineStatusMutation(passive)).toBe(true);
+    expect(isActiveSyncQueueItem(passive)).toBe(false);
+    expect(pendingStateFromQueue([passive]).has("lead")).toBe(false);
   });
 });
