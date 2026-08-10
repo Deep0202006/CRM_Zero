@@ -88,4 +88,4 @@ Revert the application commit. Preserve all legacy and semantic queue evidence. 
 - [x] Source-history and production read-only audits complete.
 - [x] Planner, integration, passive evidence, and scroller implemented; automatic mutation is side-effect gated off in the deployed policy response.
 - [x] Verification and adversarial review complete (19/182 related; 43/295 full; typecheck, lint, build, scope, invariant, docs, and diff checks passed).
-- [ ] Draft PR prepared.
+- [x] Draft PR prepared: https://github.com/Deep0202006/CRM_Zero/pull/21
