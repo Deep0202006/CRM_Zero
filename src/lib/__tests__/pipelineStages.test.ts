@@ -3,6 +3,9 @@
 import { ALLOWED_TRANSITIONS, PIPELINE_STAGES, isTransitionAllowed } from "../pipelineStages";
 
 describe("Pipeline transition matrix", () => {
+  test("the eight owner-frozen stage names and order cannot drift", () => {
+    expect(PIPELINE_STAGES).toEqual(["New", "Contacted", "Interested", "Not Interested", "Registration", "Installation", "Payment", "Renewal Due"]);
+  });
   // Generate every possible pair automatically — this is what makes a third
   // hidden bug structurally impossible: the test doesn't rely on someone
   // remembering to add a case, it checks all of them every time.
@@ -18,6 +21,21 @@ describe("Pipeline transition matrix", () => {
   test("Payment -> Renewal Due is blocked for agents specifically", () => {
     expect(isTransitionAllowed("Payment", "Renewal Due", "agent")).toBe(false);
     expect(isTransitionAllowed("Payment", "Renewal Due", "system")).toBe(true);
+  });
+
+  test("the canonical matrix is exact", () => {
+    expect(ALLOWED_TRANSITIONS).toEqual([
+      { from: "New", to: "Contacted", allowedBy: "agent" },
+      { from: "Contacted", to: "Interested", allowedBy: "agent" },
+      { from: "Contacted", to: "Not Interested", allowedBy: "agent" },
+      { from: "Interested", to: "Registration", allowedBy: "agent" },
+      { from: "Not Interested", to: "Contacted", allowedBy: "agent" },
+      { from: "Registration", to: "Installation", allowedBy: "agent" },
+      { from: "Installation", to: "Payment", allowedBy: "agent" },
+      { from: "Payment", to: "Renewal Due", allowedBy: "system" },
+      { from: "Renewal Due", to: "Payment", allowedBy: "agent" },
+      { from: "Renewal Due", to: "Not Interested", allowedBy: "agent" },
+    ]);
   });
 
   test("New -> Interested is never a single valid hop for any actor", () => {
