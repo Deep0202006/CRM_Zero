@@ -6,6 +6,8 @@ For R2/R3 work: feature branch → harness verification → pull request → Ver
 
 CI uses safe local/build-time configuration only and does not connect to production Supabase or expose service-role credentials.
 
+Automated tests, QA fixtures, and smoke tests must use mocks, isolated local fixtures, or preview environments. Production verification is read-only by default. A test must never insert, update, or delete live business records—even with planned cleanup—unless the owner explicitly authorizes that exact production mutation. Release evidence must state the environment and whether any production write was authorized; silence means no authorization.
+
 Emergency hotfix exception: create a narrowly scoped branch, declare elevated risk, preserve the same invariant gates, obtain explicit production authority, and follow with an incident/harness learning review when the defect exposed a protection gap.
 
 ## INVARIANT

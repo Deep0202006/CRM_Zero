@@ -31,6 +31,12 @@ function findings(source, file) {
   const clientCode = /(^|\n)\s*["']use client["']/.test(text) || (!file.startsWith("src/app/api/") && (file.endsWith(".tsx") || file.includes("/components/")));
   if (clientCode && /(?:SUPABASE_SERVICE_ROLE|SERVICE_ROLE_KEY|service_role)/i.test(text)) hits.push("service-role secret reference in client code");
   if (clientCode && /\.from\(\s*["'`](?:call_logs|field_visits)["'`]\s*\)[\s\S]{0,300}?\.(?:insert|upsert)\s*\(/i.test(text)) hits.push("direct browser critical write bypasses confirmation API");
+
+  const normalizedFile = file.replaceAll("\\", "/").toLowerCase();
+  const testLike = /(?:^|[\/._-])(?:__tests__|test|tests|qa|fixtures?|smoke)(?:[\/._-]|$)|\.(?:test|spec)\.[cm]?[jt]sx?$/.test(normalizedFile);
+  const productionAccess = /(?:SUPABASE_SERVICE_ROLE_KEY|PRODUCTION_SUPABASE|\.env\.production)/i.test(text);
+  const businessTableMutation = /\.from\(\s*["'`](?:users|leads|call_logs|field_visits|tasks|attendance|client_queries|queries|mappings|mapping_requests|chat|chats|messages)["'`]\s*\)[\s\S]{0,300}?\.(?:insert|upsert|update|delete)\s*\(/i.test(text);
+  if (testLike && productionAccess && businessTableMutation) hits.push("production test writes business data");
   return hits;
 }
 
