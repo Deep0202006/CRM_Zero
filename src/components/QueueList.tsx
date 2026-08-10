@@ -23,6 +23,7 @@ interface QueueListProps {
   emptyMessage?: string;
   onRefresh?: () => void;
   className?: string;
+  countDescription?: React.ReactNode;
 }
 
 export function QueueList({
@@ -32,6 +33,7 @@ export function QueueList({
   emptyMessage = "No items found.",
   onRefresh,
   className = "",
+  countDescription,
 }: QueueListProps) {
   return (
     <section className={`flex h-full max-h-[720px] min-h-[360px] flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] shadow-[var(--shadow-raised)] ${className}`}>
@@ -41,7 +43,9 @@ export function QueueList({
             <span className="grid h-8 w-8 place-items-center rounded-[var(--radius-md)] bg-[var(--brand-50)] text-[var(--brand-700)]">{icon}</span>
             <h2 className="text-[15px] font-semibold tracking-[-0.015em] text-[var(--text-primary)]">{title}</h2>
           </div>
-          <p className="ml-10 mt-0.5 text-[10px] font-medium text-[var(--text-muted)]">{items.length} {items.length === 1 ? "record" : "records"}</p>
+          <p className="ml-10 mt-0.5 text-[10px] font-medium text-[var(--text-muted)]">
+            {countDescription ?? <>{items.length} {items.length === 1 ? "record" : "records"}</>}
+          </p>
         </div>
         {onRefresh && (
           <Button variant="ghost" size="sm" onClick={onRefresh} title="Refresh queue" aria-label="Refresh queue" icon={<RefreshCw size={15} />} />

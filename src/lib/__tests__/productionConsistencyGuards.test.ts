@@ -37,7 +37,7 @@ describe("production consistency guards", () => {
 
     expect(repository).toContain('/api/call-logs/history?page=${page}');
     expect(repository).not.toContain('.from("call_logs")');
-    expect(repository).toContain("confirmedCount: confirmedLogs.length");
+    expect(repository).toContain('lifetimeConfirmedTotal: typeof result.total === "number" ? result.total : null');
     expect(repository).toContain("confirmedLogs: sortNewestFirst(confirmedLogs)");
     expect(repository).toContain("pendingCount: unsyncedLogs.length");
     expect(callLogs).toContain("void processSyncQueue().catch");

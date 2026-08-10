@@ -15,7 +15,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { getCurrentISTDate, getISTDateKey } from "@/lib/dateTime";
 import { buildSelfScheduledFollowUpTask, needsCallFollowUp } from "@/lib/followUps";
-import { CALL_LOGS_CHANGED_EVENT, fetchCallLogSnapshot } from "@/lib/callLogs/repository";
+import { CALL_LOGS_CHANGED_EVENT, fetchCallLogSnapshot, formatCallHistoryCount } from "@/lib/callLogs/repository";
 import { getCanonicalDailyUserMetrics, isGenuineCallLog, isSyntheticAuditCall } from "@/lib/workMetrics/canonical";
 
 export default function CallLogsPage() {
@@ -31,6 +31,9 @@ export default function CallLogsPage() {
   const [followupCallIdsToday, setFollowupCallIdsToday] = useState<Set<string>>(new Set());
   const [reachedCallIdsToday, setReachedCallIdsToday] = useState<Set<string>>(new Set());
   const [historyNotice, setHistoryNotice] = useState<string | null>(null);
+  const [lifetimeConfirmedTotal, setLifetimeConfirmedTotal] = useState<number | null>(null);
+  const [pendingSyncCount, setPendingSyncCount] = useState(0);
+  const [historyAuthoritative, setHistoryAuthoritative] = useState(false);
 
   const [selectedLeadId, setSelectedLeadId] = useState("");
   const [outcome, setOutcome] = useState("");
@@ -69,6 +72,9 @@ export default function CallLogsPage() {
       const snapshot = await fetchCallLogSnapshot(currentUser.user_id, isAdmin);
       const fetchedLogs = snapshot.logs;
       setHistoryNotice(snapshot.notice);
+      setLifetimeConfirmedTotal(snapshot.lifetimeConfirmedTotal);
+      setPendingSyncCount(snapshot.pendingCount);
+      setHistoryAuthoritative(snapshot.authoritative);
       setLogs(fetchedLogs);
       setConfirmedLogs(snapshot.confirmedLogs);
 
@@ -208,6 +214,7 @@ export default function CallLogsPage() {
       // authority is reconciled asynchronously without re-reading history just
       // to display the call that was saved above.
       setLogs((current) => [log, ...current.filter((item) => item.log_id !== log.log_id)]);
+      setPendingSyncCount((current) => current + 1);
       if (getISTDateKey(log.timestamp) === getCurrentISTDate() && isGenuineCallLog(log)) {
         setGenuineCallIdsToday((current) => new Set(current).add(log.log_id));
         if (!log.outcome.toLowerCase().includes("no response")) {
@@ -270,6 +277,7 @@ export default function CallLogsPage() {
   const followupCallsToday = followupCallIdsToday.size;
   const reachedClients = reachedCallIdsToday.size;
   const unknownAuditLike = confirmedLogs.filter((log) => !isSyntheticAuditCall(log) && /\b(?:pipeline|stage|transition|audit|system[- ]generated)\b/i.test(log.outcome)).length;
+  const historyCountDescription = formatCallHistoryCount({ authoritative: historyAuthoritative, lifetimeConfirmedTotal, pendingCount: pendingSyncCount, loadedCount: logs.length });
 
   return (
     <div className="app-page">
@@ -336,6 +344,7 @@ export default function CallLogsPage() {
 
         <QueueList
           title="Recent call history"
+          countDescription={historyCountDescription}
           items={logs.map((log) => ({
             id: log.log_id,
             primaryNode: (
