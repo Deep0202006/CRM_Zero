@@ -8,6 +8,16 @@
     "start": "next start",
     "lint": "eslint",
     "test": "jest",
+    "typecheck": "tsc --noEmit",
+    "harness:preflight": "node scripts/harness/preflight.mjs",
+    "harness:scope": "node scripts/harness/scope-guard.mjs",
+    "harness:guard": "node scripts/harness/invariant-guard.mjs",
+    "harness:docs": "node scripts/harness/docs-check.mjs",
+    "harness:related": "node scripts/harness/related-tests.mjs",
+    "harness:repo-map": "node scripts/harness/repo-map.mjs",
+    "harness:self-test": "node --test scripts/harness/__tests__/*.test.mjs",
+    "harness:verify": "node scripts/harness/verify.mjs",
+    "harness:full": "npm run harness:self-test && npm run typecheck && npm test -- --runInBand && npm run lint && npm run build && npm run harness:guard && npm run harness:docs",
     "vercel-build": "npm run test && next build"
   },
   "dependencies": {
