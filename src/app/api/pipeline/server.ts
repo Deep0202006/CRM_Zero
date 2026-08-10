@@ -2,6 +2,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { segmentsFromCapabilities } from "@/lib/pipeline/authority";
 import type { PipelineLeadView, PipelineSegment, PipelineTransitionCommand } from "@/lib/pipeline/contract";
 import { isPipelineStage } from "@/lib/pipeline/contract";
+import type { ConfirmedPipelineOperation } from "@/lib/pipeline/legacyRecovery";
 
 export interface PipelineServerContext {
   userId: string;
@@ -51,6 +52,26 @@ export async function readAuthorizedPipeline(context: PipelineServerContext): Pr
   if (ownerError) throw ownerError;
   const names = new Map((owners ?? []).map((owner) => [owner.user_id, owner.name]));
   return (leads ?? []).filter((lead) => isPipelineStage(lead.status)).map((lead) => ({ ...lead, owner_name: names.get(lead.assigned_to) ?? "Unassigned" })) as PipelineLeadView[];
+}
+
+export async function readOwnedPipelineOperationEvidence(context: PipelineServerContext, leads: PipelineLeadView[]): Promise<ConfirmedPipelineOperation[]> {
+  const ownedLeadIds = leads.filter((lead) => lead.assigned_to === context.userId).map((lead) => lead.lead_id);
+  if (ownedLeadIds.length === 0) return [];
+  const { data, error } = await context.service
+    .from("pipeline_transition_operations")
+    .select("operation_id,lead_id,actor_id,expected_stage,target_stage,confirmed_at")
+    .eq("actor_id", context.userId)
+    .in("lead_id", ownedLeadIds)
+    .order("confirmed_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []).filter((row) => isPipelineStage(row.expected_stage) && isPipelineStage(row.target_stage)).map((row) => ({
+    operationId: row.operation_id,
+    leadId: row.lead_id,
+    actorId: row.actor_id,
+    expectedStage: row.expected_stage,
+    targetStage: row.target_stage,
+    confirmedAt: row.confirmed_at,
+  })) as ConfirmedPipelineOperation[];
 }
 
 export function validateTransitionCommand(value: unknown): value is PipelineTransitionCommand {

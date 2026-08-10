@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { db, transactionalMutation, LocalUser, pullDownSync, processSyncQueue } from "@/lib/db";
+import { db, transactionalMutation, LocalUser, pullDownSync, processSyncQueue, countActiveSyncQueueItems } from "@/lib/db";
 import { supabase } from "@/lib/supabaseClient";
 import { getCurrentISTDate } from "@/lib/dateTime";
 import { syncFieldVisits } from "@/lib/fieldVisits/sync";
@@ -60,7 +60,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         if (sessionError || !session || session.user.id !== savedUserId) {
           if (savedUserId) {
-            const queuedOperations = await db.sync_queue.count();
+            const queuedOperations = await countActiveSyncQueueItems();
             if (queuedOperations > 0 && !localStorage.getItem("zerodata_outbox_owner_id")) {
               localStorage.setItem("zerodata_outbox_owner_id", savedUserId);
             }
