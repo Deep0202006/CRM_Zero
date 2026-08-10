@@ -10,9 +10,12 @@
 
 **Offline recovery:** local owner-scoped records → serialized retry → same business ID → server confirmation → local status reconciliation without destructive clearing.
 
+**Team Chat:** authenticated member → bounded authoritative API history → stable message ID → server-derived sender → database commit → private Realtime signal → member refetch/deduplicate → read-state reconciliation. Push is an opt-in alert, not message authority.
+
 ## INVARIANT
 
 UI success for critical work follows exact server confirmation when online. Evidence cannot block a confirmed visit. Retry is idempotent and owner-scoped.
+Private chat content and subscriptions remain membership-scoped; administrator capability alone does not grant DM access.
 
 ## KNOWN DEBT
 
