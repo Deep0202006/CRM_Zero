@@ -14,7 +14,7 @@ hooks:
     - matcher: "Bash"
       hooks:
         - type: command
-          command: "bash $HOME/.claude/skills/gstack/careful/bin/check-careful.sh"
+          command: "bash .agents/skills/careful/bin/check-careful.sh"
           statusMessage: "Checking for destructive commands..."
 ---
 <!-- AUTO-GENERATED from SKILL.md.tmpl — do not edit directly -->
@@ -35,10 +35,7 @@ Safety mode is now **active**. Every bash command will be checked for destructiv
 patterns before running. If a destructive command is detected, you'll be warned
 and can choose to proceed or cancel.
 
-```bash
-mkdir -p ~/.gstack/analytics
-echo '{"skill":"careful","ts":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'","repo":"'$(basename "$(git rev-parse --show-toplevel 2>/dev/null)" 2>/dev/null || echo "unknown")'"}'  >> ~/.gstack/analytics/skill-usage.jsonl 2>/dev/null || true
-```
+The repository-local hook at `.agents/skills/careful/bin/check-careful.sh` is sufficient; no external Claude installation is required.
 
 ## What's protected
 

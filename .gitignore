@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# repository-local engineering harness runtime state
+/.harness/*
+!/.harness/.gitkeep
