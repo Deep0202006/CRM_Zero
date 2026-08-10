@@ -36,7 +36,7 @@ describe("admin visit root recovery", () => {
 
   it("includes Payment follow-up and follow-up date in admin and export", () => {
     expect(page).toContain('"payment_follow_up"');
-    expect(page).toContain("getOutcomeLabel(visit.visit_outcome)");
+    expect(page).toContain("getAdminOutcomeLabel(visit.visit_outcome)");
     expect(exportRoute).toContain('"Follow-up date"');
     expect(exportRoute).toContain("getOutcomeLabel");
   });
