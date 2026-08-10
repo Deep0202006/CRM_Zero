@@ -49,6 +49,7 @@ Revert the harness commit/PR; product implementation remains at the pinned basel
 - Used differential executable-source scanning to reduce false positives.
 - Preserved pre-existing untracked user artifacts via runtime baseline scope.
 - Added CI base-branch comparison so guards work in clean PR checkouts.
+- Normalized the existing lockfile for reproducible `npm ci` and used Node 22 to satisfy installed SDK engine requirements.
 
 ## Progress
 
