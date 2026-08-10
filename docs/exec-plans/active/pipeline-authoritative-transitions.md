@@ -83,7 +83,7 @@ Revert the application commit and retain all local transition intents. If later 
 - [x] Application and review-only migration implementation completed.
 - [x] R3 verification completed (41 suites / 270 tests; typecheck, lint, build, scope, invariant, and docs passed).
 - [x] Adversarial review completed; P1 findings fixed.
-- [ ] Draft PR prepared.
+- [x] Draft PR #20 prepared; merge, deployment, and migration application remain blocked.
 
 ## Self-review
 
