@@ -6,14 +6,28 @@ export interface ParsedCallClientReference {
 }
 
 const EXCEL_PREFIX = "EXCEL::";
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export function isCallLeadId(value: unknown): boolean {
+  return typeof value === "string" && UUID_PATTERN.test(value.trim());
+}
 
 export function parseCallClientReference(value: string): ParsedCallClientReference {
   const trimmed = value.trim();
-  if (!trimmed.startsWith(EXCEL_PREFIX)) {
+  if (isCallLeadId(trimmed)) {
     return {
-      leadId: trimmed || null,
+      leadId: trimmed,
       clientUsername: null,
       clientName: null,
+      displayName: trimmed,
+    };
+  }
+
+  if (!trimmed.startsWith(EXCEL_PREFIX)) {
+    return {
+      leadId: null,
+      clientUsername: null,
+      clientName: trimmed || null,
       displayName: trimmed || "Unknown client",
     };
   }

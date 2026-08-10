@@ -2,7 +2,7 @@
 
 ## CURRENT
 
-**Call:** create stable log ID → retain locally/pending → POST approved confirmation route → retain confirmed server row → refresh authoritative history.
+**Call:** canonicalize client identity → create stable log ID → transactionally retain local row/outbox → prepend durable employee view → prioritize this exact outbox item through the approved confirmation route → remove it only after matching confirmation → background-drain unrelated work → asynchronously refresh authoritative history/KPI.
 
 **Field visit:** create stable visit ID → transactionally retain visit/media locally → confirm visit through server route → mark visit confirmed → retry evidence separately when needed.
 

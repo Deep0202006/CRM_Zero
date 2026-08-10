@@ -10,7 +10,9 @@ const gates = {
   R2: [["npm", ["run", "harness:scope"]], ["npm", ["run", "harness:guard"]], ["npm", ["run", "harness:related", "--", "--run"]], ["npm", ["test", "--", "--runInBand"]], ["npm", ["run", "typecheck"]], ["npm", ["run", "lint"]], ["npm", ["run", "build"]]],
 };
 if (task.risk === "R3") {
-  const active = resolve(root, "docs/exec-plans/active");
+  const active = process.env.HARNESS_ACTIVE_PLAN_DIR
+    ? resolve(root, process.env.HARNESS_ACTIVE_PLAN_DIR)
+    : resolve(root, "docs/exec-plans/active");
   const plans = readdirSync(active).filter((name) => name.endsWith(".md"));
   if (!plans.length) { console.error("R3 verification requires an active ExecPlan."); process.exit(1); }
   if (!plans.some((name) => /## Production safety[\s\S]*- \[[xX]\]/.test(readFileSync(resolve(active, name), "utf8")))) {

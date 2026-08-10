@@ -761,6 +761,7 @@ export function omitPrimaryKeyFromUpdate(data: Record<string, unknown>, primaryK
 
 let activeSyncQueueRun: Promise<void> | null = null;
 let syncQueueRerunRequested = false;
+const temporarilyExcludedSyncKeys = new Set<string>();
 
 function isEventuallyRetryableBusinessItem(item: SyncQueueItem): boolean {
   return (item.table_name === "call_logs" && item.action === "INSERT") ||
@@ -805,6 +806,60 @@ async function confirmCallLog(payload: Record<string, unknown>, accessToken: str
   }
 }
 
+/**
+ * Confirms one exact durable call outbox item without waiting for older queue
+ * work. It deliberately shares the normal payload repair and confirmation
+ * route; the general queue remains responsible for retries and other work.
+ */
+export async function confirmQueuedCallLog(logId: string): Promise<boolean> {
+  if (typeof navigator === "undefined" || !navigator.onLine || !isSupabaseConfigured) return false;
+
+  const idempotencyKey = `call-log:${logId}`;
+  const item = await db.sync_queue.where("idempotency_key").equals(idempotencyKey).first();
+  if (!item?.id || item.table_name !== "call_logs" || item.action !== "INSERT") return false;
+
+  const [{ data: authenticated, error: authenticationError }, { data: sessionData }] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase.auth.getSession(),
+  ]);
+  const authenticatedUserId = authenticated.user?.id;
+  const accessToken = sessionData.session?.access_token;
+  if (authenticationError || !authenticatedUserId || !accessToken) return false;
+
+  const legacyOwnerId = localStorage.getItem(OUTBOX_OWNER_KEY) ?? localStorage.getItem("authenticated_user_id");
+  const itemOwnerId = item.owner_user_id ?? legacyOwnerId;
+  if (!itemOwnerId || itemOwnerId !== authenticatedUserId) return false;
+  if (!item.owner_user_id) await db.sync_queue.update(item.id, { owner_user_id: itemOwnerId });
+
+  const prepared = prepareSyncPayload(item.table_name, item.data);
+  if (prepared.changed) {
+    await db.sync_queue.update(item.id, {
+      data: prepared.data,
+      retry_count: 0,
+      last_error: prepared.repairReason ? `Payload repaired: ${prepared.repairReason}` : undefined,
+    });
+  }
+
+  try {
+    await confirmCallLog(prepared.data, accessToken);
+    const current = await db.sync_queue.get(item.id);
+    if (current?.idempotency_key === idempotencyKey) await db.sync_queue.delete(item.id);
+    if ((await db.sync_queue.count()) === 0) localStorage.removeItem(OUTBOX_OWNER_KEY);
+    if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("zerodata:call-logs-changed"));
+    return true;
+  } catch (error) {
+    const current = await db.sync_queue.get(item.id);
+    if (current?.idempotency_key === idempotencyKey) {
+      await db.sync_queue.update(item.id, {
+        data: prepared.data,
+        retry_count: (prepared.changed ? 0 : (item.retry_count ?? 0)) + 1,
+        last_error: error instanceof Error ? error.message : String(error),
+      });
+    }
+    return false;
+  }
+}
+
 async function processSyncQueueInternal(): Promise<void> {
   if (typeof navigator === "undefined" || !navigator.onLine) return;
 
@@ -826,6 +881,7 @@ async function processSyncQueueInternal(): Promise<void> {
 
   for (const item of items) {
     if (!item.id) continue;
+    if (temporarilyExcludedSyncKeys.has(item.idempotency_key)) continue;
     const itemOwnerId = item.owner_user_id ?? legacyOwnerId;
     if (!itemOwnerId || itemOwnerId !== authenticatedUserId) continue;
     if (!item.owner_user_id) {
@@ -1012,6 +1068,16 @@ export function processSyncQueue(): Promise<void> {
     activeSyncQueueRun = null;
   });
   return activeSyncQueueRun;
+}
+
+/** Drains the existing outbox while avoiding an immediate duplicate attempt. */
+export async function processSyncQueueExcept(idempotencyKey: string): Promise<void> {
+  temporarilyExcludedSyncKeys.add(idempotencyKey);
+  try {
+    await processSyncQueue();
+  } finally {
+    temporarilyExcludedSyncKeys.delete(idempotencyKey);
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
