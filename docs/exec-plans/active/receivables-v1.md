@@ -109,16 +109,20 @@ Keep `RECEIVABLES_V1_READY=false` (or unset) to disable all mutation surfaces. A
 - [x] Complete authoritative pre-confirmation duplicate/conflict/employee classification and accessible employee action forms.
 - [x] Add disposable PostgreSQL migration, money, idempotency, concurrency, import rollback, My Day totals, metrics, reason-constraint, and RLS integration coverage.
 - [x] R3 harness passed locally; final GitHub verify, PostgreSQL 16.4 integration, and Vercel preview passed at `db8ae55`.
-- [ ] Prove paid and pending-verification terminal behavior in PostgreSQL.
-- [ ] Complete lifecycle/cancellation state-machine integration coverage.
-- [ ] Map deterministic duplicate identities to typed terminal results.
-- [ ] Bind import preview to every persisted field.
-- [ ] Add server urgency ordering and employee pagination beyond 50 rows.
-- [ ] Run the complete database suite on pinned PostgreSQL 17.6 and repeat all release gates.
+- [x] Prove paid and pending-verification terminal behavior in PostgreSQL.
+- [x] Complete lifecycle/cancellation state-machine integration coverage.
+- [x] Map deterministic duplicate identities to typed terminal results.
+- [x] Bind import preview to every persisted field.
+- [x] Add server urgency ordering and employee pagination beyond 50 rows.
+- [ ] Complete database suite passed on pinned PostgreSQL 17.6; repeat final local harness, adversarial review, GitHub verify, and Vercel after documentation closure.
 
 ## Adversarial review
 
 Data/security pass: no P0/P1 remained after real PostgreSQL proved migration apply, RLS denial, service-only RPC grants, actor/assignment/version checks, idempotency, overpayment prevention, and concurrent direct-payment locking. Source isolation scans and guards found no browser financial mutation, DELETE, service-key client exposure, or legacy/generic-domain writes.
 
 Product/failure pass: found two P1s and fixed both: increasing a fully paid bill could reopen an active balance without a follow-up, and locally malformed import rows were hidden instead of appearing in preview counts. The DB update command now requires a current follow-up whenever a correction reopens money; Admin preview now combines local invalid rows with authoritative server duplicate/conflict/employee classifications and disables confirmation. No P0/P1 remains known; final gates must rerun after these fixes.
+
+Final release-candidate data/security pass: verified paid and pending employee commands return before version/event/payment mutation; lifecycle and cancellation transitions are typed; unique failures are caught only inside rollback-safe insert subtransactions; 4xx terminal mapping prevents automatic retries; unexpected RPC errors remain 503; RLS/service-role/isolation boundaries are unchanged. P0/P1: none.
+
+Final release-candidate product/failure pass: verified complete preview-plan binding, 75-row global urgency ordering with stable pagination, Load More/count UX, terminal-state employee labels/control hiding, and lifecycle-aware Admin actions. The review found no additional P0/P1 after PostgreSQL 17.6 and local R3 harness evidence.
 - [ ] Draft PR preparation.
