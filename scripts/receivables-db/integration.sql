@@ -330,4 +330,20 @@ values('50000000-0000-4000-a000-000000000008','CONFIRM-RACE','confirm-race','Con
 insert into public.receivable_payments(payment_id,receivable_id,amount,payment_date,reported_by,verification_status)
 values('60000000-0000-4000-a000-000000000080','50000000-0000-4000-a000-000000000008',400.00,current_date,'20000000-0000-4000-a000-000000000001','reported');
 
+-- Additional isolated targets for cross-command concurrency warfare.
+insert into public.receivables(receivable_id,bill_reference,bill_reference_key,distributor_name,distributor_identity_key,contact_person,bill_amount,bill_due_date,next_follow_up_date,assigned_to,source,created_by)
+values
+('85000000-0000-4000-a000-000000000009','TWO-REPORTS','two-reports','Two Reports','code:two-reports','A',1000.00,current_date,current_date,'20000000-0000-4000-a000-000000000001','manual','10000000-0000-4000-a000-000000000001'),
+('85000000-0000-4000-a000-000000000010','REASSIGN-RACE','reassign-race','Reassign Race','code:reassign-race','A',1000.00,current_date,current_date,'20000000-0000-4000-a000-000000000001','manual','10000000-0000-4000-a000-000000000001'),
+('85000000-0000-4000-a000-000000000011','CANCEL-RACE','cancel-race','Cancel Race','code:cancel-race','A',1000.00,current_date,current_date,'20000000-0000-4000-a000-000000000001','manual','10000000-0000-4000-a000-000000000001'),
+('85000000-0000-4000-a000-000000000012','CORRECT-RACE','correct-race','Correct Race','code:correct-race','A',1000.00,current_date,current_date,'20000000-0000-4000-a000-000000000001','manual','10000000-0000-4000-a000-000000000001'),
+('85000000-0000-4000-a000-000000000013','REVERSE-RACE','reverse-race','Reverse Race','code:reverse-race','A',1000.00,current_date,current_date,'20000000-0000-4000-a000-000000000001','manual','10000000-0000-4000-a000-000000000001'),
+('85000000-0000-4000-a000-000000000014','EMPLOYEE-RACE','employee-race','Employee Race','code:employee-race','A',1000.00,current_date,current_date,'20000000-0000-4000-a000-000000000001','manual','10000000-0000-4000-a000-000000000001');
+insert into public.receivable_payments(payment_id,receivable_id,amount,payment_date,reported_by,verification_status) values
+('86000000-0000-4000-a000-000000000091','85000000-0000-4000-a000-000000000009',600.00,current_date,'20000000-0000-4000-a000-000000000001','reported'),
+('86000000-0000-4000-a000-000000000092','85000000-0000-4000-a000-000000000009',600.00,current_date,'20000000-0000-4000-a000-000000000001','reported'),
+('86000000-0000-4000-a000-000000000121','85000000-0000-4000-a000-000000000012',400.00,current_date,'20000000-0000-4000-a000-000000000001','reported'),
+('86000000-0000-4000-a000-000000000131','85000000-0000-4000-a000-000000000013',400.00,current_date,'20000000-0000-4000-a000-000000000001','confirmed','10000000-0000-4000-a000-000000000001',now()),
+('86000000-0000-4000-a000-000000000132','85000000-0000-4000-a000-000000000013',600.00,current_date,'20000000-0000-4000-a000-000000000001','reported');
+
 select 'receivables integration assertions passed' as result;
