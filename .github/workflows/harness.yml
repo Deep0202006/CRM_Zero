@@ -56,5 +56,9 @@ jobs:
       - run: npm test -- --runInBand
       - run: npm run lint
       - run: npm run build
+      - name: Install Chromium for Receivables browser flows
+        run: npx playwright install --with-deps chromium
+      - name: Run Receivables browser authorization and intake flows
+        run: npm run test:e2e:receivables
       - run: npm run harness:guard
       - run: npm run harness:docs

@@ -7,7 +7,7 @@ export interface ImportRow { rowNumber: number; billReference: string; distribut
 export interface InvalidImportRow { rowNumber: number; reason: string }
 function clean(v: Cell) { return v instanceof Date ? v : String(v ?? "").trim(); }
 function dateValue(value: Cell): string {
-  if (value instanceof Date && !Number.isNaN(value.getTime())) return value.toISOString().slice(0, 10);
+  if (value instanceof Date && !Number.isNaN(value.getTime())) return validDate(value.getFullYear(), value.getMonth() + 1, value.getDate());
   if (typeof value === "number" && Number.isInteger(value) && value > 0) { const d = new Date(Date.UTC(1899, 11, 30 + value)); return d.toISOString().slice(0, 10); }
   const text = String(value ?? "").trim();
   let m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text); if (m) return validDate(+m[1], +m[2], +m[3]);
@@ -21,6 +21,8 @@ export function parseReceivablesTable(table: Cell[][]): { rows: ImportRow[]; inv
   if (!table.length) throw new Error("The spreadsheet is empty."); if (table.length - 1 > MAX_IMPORT_ROWS) throw new Error("Maximum 5,000 data rows allowed.");
   const labels = table[0].map(v => String(v ?? "").trim()); const normalizeHeader=(v:string)=>v.toLowerCase().replace(/[\s_-]+/g, " "); const normalized = labels.map(normalizeHeader);
   if (new Set(normalized).size !== normalized.length) throw new Error("Duplicate spreadsheet headers are not allowed.");
+  const allowed = new Set(RECEIVABLE_HEADERS.map(normalizeHeader)); const unknown = labels.filter((label, position) => label && !allowed.has(normalized[position]));
+  if (unknown.length) throw new Error(`Unknown columns are not allowed: ${unknown.join(", ")}.`);
   const index = new Map<string, number>(); RECEIVABLE_HEADERS.forEach(h => { const i = normalized.indexOf(normalizeHeader(h)); if (i >= 0) index.set(h, i); });
   const missing = [...required].filter(h => !index.has(h)); if (missing.length) throw new Error(`Missing required columns: ${missing.join(", ")}.`);
   const rows: ImportRow[] = [], invalid: InvalidImportRow[] = []; const value = (source: Cell[], h: string) => source[index.get(h) ?? -1];
