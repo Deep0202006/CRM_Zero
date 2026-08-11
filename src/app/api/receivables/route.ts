@@ -1,0 +1,9 @@
+import { apiError, contextFor, isReceivablesReady } from "@/lib/receivables/server";
+export const dynamic="force-dynamic";
+export async function GET(request:Request){ if(!isReceivablesReady())return apiError(503,"RECEIVABLES_UNAVAILABLE","Payment Collections are not activated yet."); const context=await contextFor(request); if(!context)return apiError(401,"AUTH_REQUIRED","Sign in again.");
+ const url=new URL(request.url), page=Math.max(1,Number(url.searchParams.get("page"))||1), pageSize=Math.min(50,Math.max(1,Number(url.searchParams.get("pageSize"))||20)), from=(page-1)*pageSize;
+ let query=context.userClient.from("receivables_financial_read_v1").select("receivable_id,bill_reference,distributor_name,contact_person,contact_phone,bill_amount,confirmed_paid_amount,outstanding_amount,bill_due_date,next_follow_up_date,assigned_to,lifecycle_status,payment_state,alert_state,version,pending_payment_count,aging_bucket",{count:"exact"}).order("next_follow_up_date",{ascending:true,nullsFirst:false}).range(from,from+pageSize-1);
+ const search=url.searchParams.get("search")?.trim(); if(search)query=query.or(`bill_reference.ilike.%${search.replace(/[%_,]/g,"")}%,distributor_name.ilike.%${search.replace(/[%_,]/g,"")}%`); if(url.searchParams.get("state"))query=query.eq("payment_state",url.searchParams.get("state")!);
+ const {data,error,count}=await query; if(error)return apiError(503,"READ_FAILED","Confirmed Payment Collections could not be loaded."); const ids=[...new Set((data??[]).map(r=>r.assigned_to))]; const {data:owners}=ids.length?await context.service.from("users").select("user_id,name").in("user_id",ids):{data:[]}; const names=new Map((owners??[]).map(o=>[o.user_id,o.name]));
+ return Response.json({rows:(data??[]).map(r=>({...r,owner_name:names.get(r.assigned_to)??"Assigned employee"})),page,pageSize,total:count??0}); }
+

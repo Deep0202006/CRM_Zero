@@ -30,6 +30,7 @@ import {
   WifiOff,
   X,
   Activity,
+  WalletCards,
 } from "lucide-react";
 import { db, processSyncQueue } from "@/lib/db";
 import { syncFieldVisits } from "@/lib/fieldVisits/sync";
@@ -246,6 +247,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           description: "Record call outcomes and follow-ups",
           group: "Workspace",
           keywords: ["phone", "followup", "calls"],
+        },
+        {
+          icon: <WalletCards size={17} />,
+          label: isAdmin ? "Payment Collections" : "Payment Follow-ups",
+          path: isAdmin ? "/admin/payments" : "/payments",
+          description: "Receivables and collection actions",
+          group: "Workspace",
+          keywords: ["payments", "collections", "receivables"],
         },
         {
           icon: <MessageCircle size={17} />,
