@@ -10,6 +10,25 @@ insert into public.user_capabilities(user_id,capability_code) values ('10000000-
 
 set role service_role;
 
+-- Database authority rejects Admin accounts as operational assignees and rolls
+-- back the complete command, including event/receipt evidence.
+do $$
+begin
+  begin
+    perform public.execute_receivable_command_v1(
+      '30000000-0000-4000-a000-000000000099','create','10000000-0000-4000-a000-000000000001',repeat('9',64),
+      jsonb_build_object('receivable_id','50000000-0000-4000-a000-000000000098','bill_reference','ADMIN-OWNER','distributor_name','Invalid Owner','distributor_code','','contact_person','A','contact_phone','','bill_amount','10.00','bill_due_date',current_date::text,'next_follow_up_date',current_date::text,'assigned_to','10000000-0000-4000-a000-000000000001')
+    );
+    raise exception 'Admin assignee accepted';
+  exception when sqlstate 'ZD001' then null;
+  end;
+  if exists(select 1 from public.receivables where receivable_id='50000000-0000-4000-a000-000000000098')
+     or exists(select 1 from public.receivable_activity_events where receivable_id='50000000-0000-4000-a000-000000000098')
+     or exists(select 1 from public.receivable_operation_receipts where operation_id='30000000-0000-4000-a000-000000000099') then
+    raise exception 'Rejected Admin assignment left persistent evidence';
+  end if;
+end $$;
+
 -- Required initial follow-up: NULL/empty/past reject; today/future succeed.
 do $$
 declare r jsonb; today_text text := (now() at time zone 'Asia/Kolkata')::date::text;
@@ -23,6 +42,18 @@ begin
 end $$;
 
 select public.execute_receivable_command_v1('30000000-0000-4000-a000-000000000010','create','10000000-0000-4000-a000-000000000001',repeat('a',64),jsonb_build_object('receivable_id','50000000-0000-4000-a000-000000000010','bill_reference','INV-1000','distributor_name','Money Test','distributor_code','MONEY','contact_person','A','contact_phone','','bill_amount','1000.00','bill_due_date',(now() at time zone 'Asia/Kolkata')::date::text,'next_follow_up_date',(now() at time zone 'Asia/Kolkata')::date::text,'assigned_to','20000000-0000-4000-a000-000000000001'));
+
+do $$
+declare before_version bigint;
+begin
+  select version into before_version from public.receivables where receivable_id='50000000-0000-4000-a000-000000000010';
+  begin
+    perform public.execute_receivable_command_v1('30000000-0000-4000-a000-000000000098','reassign','10000000-0000-4000-a000-000000000001',repeat('8',64),jsonb_build_object('receivable_id','50000000-0000-4000-a000-000000000010','expected_version',before_version,'assigned_to','10000000-0000-4000-a000-000000000001'));
+    raise exception 'Admin reassignment accepted';
+  exception when sqlstate 'ZD001' then null;
+  end;
+  if (select version from public.receivables where receivable_id='50000000-0000-4000-a000-000000000010')<>before_version then raise exception 'Rejected Admin reassignment changed version'; end if;
+end $$;
 
 do $$ declare v record; begin
   select * into v from public.receivables_financial_read_v1 where receivable_id='50000000-0000-4000-a000-000000000010';

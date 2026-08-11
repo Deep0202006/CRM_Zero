@@ -4,7 +4,7 @@
 
 Supabase-confirmed rows are authoritative across devices. IndexedDB holds durable local/offline recovery state and pending operations. The sync queue retries pending writes. Team KPI and admin reporting aggregate server data rather than browser totals.
 
-Receivables financial state is server authoritative: PostgreSQL numeric calculations and confirmed, non-reversed payments determine paid and outstanding amounts. A browser payment report or uncertain command is never confirmed money.
+Receivables financial state is server authoritative: PostgreSQL numeric calculations and confirmed, non-reversed payments determine paid and outstanding amounts. A browser payment report or uncertain command is never confirmed money. Receivables assignment is also authoritative: server-listed active operational employees are convenience, while PostgreSQL rejects inactive or Admin assignees.
 
 ## INVARIANT
 

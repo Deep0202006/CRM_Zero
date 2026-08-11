@@ -26,6 +26,7 @@ function findings(source, file) {
     ["field_visit_media.clear", /\b(?:db\.)?field_visit_media\s*\.\s*clear\s*\(/gi],
     ["localStorage.clear", /\blocalStorage\s*\.\s*clear\s*\(/gi],
     ["browser database deletion", /\b(?:indexedDB\s*\.\s*)?deleteDatabase\s*\(/gi],
+    ["financial table deletion", /(?:delete\s+from\s+["'`]?(?:receivables|receivable_payments)\b|\.from\(\s*["'`](?:receivables|receivable_payments)["'`]\s*\)[\s\S]{0,180}?\.delete\s*\()/gi],
   ];
   const hits = [];
   for (const [label, regex] of rules) for (const match of compact.matchAll(regex)) if (match) hits.push(label);
@@ -34,6 +35,7 @@ function findings(source, file) {
   if (clientCode && /(?:SUPABASE_SERVICE_ROLE|SERVICE_ROLE_KEY|service_role)/i.test(text)) hits.push("service-role secret reference in client code");
   if (clientCode && /\bVAPID_PRIVATE_KEY\b/.test(text)) hits.push("VAPID private key reference in client code");
   if (clientCode && /\.from\(\s*["'`](?:call_logs|field_visits)["'`]\s*\)[\s\S]{0,300}?\.(?:insert|upsert)\s*\(/i.test(text)) hits.push("direct browser critical write bypasses confirmation API");
+  if (clientCode && /\.from\(\s*["'`](?:receivables|receivable_payments)["'`]\s*\)[\s\S]{0,300}?\.(?:insert|upsert|update|delete)\s*\(/i.test(text)) hits.push("direct browser financial write bypasses Receivables command API");
 
   const normalizedFile = file.replaceAll("\\", "/").toLowerCase();
   const testLike = /(?:^|[\/._-])(?:__tests__|test|tests|qa|fixtures?|smoke)(?:[\/._-]|$)|\.(?:test|spec)\.[cm]?[jt]sx?$/.test(normalizedFile);

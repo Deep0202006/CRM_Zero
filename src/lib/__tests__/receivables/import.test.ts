@@ -11,4 +11,14 @@ describe("receivables import validation", () => {
     expect(parseReceivablesTable([headers, ["INV", "ABC", "A", "1", "08/31/2026", "2026-08-11", "a@example.com"]]).invalid).toHaveLength(1);
   });
   test("enforces row cap", () => expect(() => parseReceivablesTable([headers, ...Array.from({ length: MAX_IMPORT_ROWS + 1 }, () => [])])).toThrow(/5,000/));
+  test("accepts UTF-8 BOM, Unicode text, and safe Excel date values", () => {
+    const result = parseReceivablesTable([
+      [`\uFEFF${headers[0]}`, ...headers.slice(1)],
+      ["INV-UNICODE", "कंपनी वितरण", "Priya", "84,500.00", 46245, new Date(2026, 7, 12), "employee@example.com"],
+    ]);
+    expect(result.rows[0]).toMatchObject({ distributorName: "कंपनी वितरण", billDueDate: "2026-08-11", nextFollowUpDate: "2026-08-12" });
+  });
+  test("rejects unknown columns instead of silently reinterpreting them", () => {
+    expect(() => parseReceivablesTable([[...headers, "Unexpected Financial State"]])).toThrow(/Unknown columns/);
+  });
 });

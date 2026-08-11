@@ -20,12 +20,12 @@ Receivables is the financial-critical authority for Payment Collections. Postgre
 - V1 commands require online server confirmation. A lost response is retried with the same semantic command; UI never calls uncertain or reported money confirmed.
 - Only network/unreadable-response/5xx outcomes remain in the owner-scoped recovery outbox. Authoritative 4xx validation, authorization, conflict, mismatch, and ineligible results are retained as terminal evidence but never automatically retried.
 - Deterministic unique-identity failures are typed terminal results (`RECEIVABLE_DUPLICATE` or `PAYMENT_DUPLICATE`). Only the failing insert subtransaction is caught and rolled back; unexpected database failures still propagate as retryable infrastructure uncertainty.
-- `RECEIVABLES_V1_READY` is server-only, defaults false, and fails mutations closed before schema activation.
+- `RECEIVABLES_V1_READY` is server-only, defaults false, and fails mutations closed before schema activation. Authenticated `/api/receivables/health` exposes only typed readiness/compatibility status; Admin UI disables intake with an explicit activation message instead of presenting dead controls.
 
 ## AUTHORIZATION
 
 - System Administrator: all bounded reads, create/import, assignment/correction, direct confirmed payment, report verification/rejection, reversal, dispute/resolve, cancellation, export.
-- Assigned active employee: own bounded reads/history and Contacted, No Response, Promise to Pay, Payment Reported commands.
+- Assigned active operational employee: own bounded reads/history and Contacted, No Response, Promise to Pay, Payment Reported commands. Admin accounts are excluded from server assignee lists and rejected by the database assignment trigger.
 - Other employees: no read or mutation. Admin read capability does not make Admin the assigned operational actor.
 - Browser roles, user IDs, and assignment claims are never authority. Browser clients have no financial INSERT/UPDATE/DELETE grants.
 
@@ -37,7 +37,7 @@ Zero confirmed outstanding is terminal for employee Contacted, No Response, Prom
 
 ## IMPORT
 
-Manual entry and spreadsheet import share canonical money validation. Preview performs no write and authoritatively classifies each row. Its hash binds the complete canonical classification and resolved persisted plan, including identity, visible/contact fields, money, dates, assignee, notes, row number, and generated receivable ID. XLSX/XLS/CSV are limited to 10 MB and 5,000 rows. Money and controlled Indian/ISO dates are parsed without binary-float financial authority. Assignment uses exact active-user email. Server revalidates canonical payload, employees, duplicates and conflicts. The database validates every row without writes before creating the batch, accepted rows, creation events, and receipt; an unexpected mutation-phase failure raises and rolls back the transaction. Business identity is distributor code (when present) or conservative normalized name plus normalized bill reference.
+Manual entry and spreadsheet import share canonical money validation. Admin intake uses focused accessible modals; import supports drag/drop, same-file reselection, an XLSX template/instructions sheet, and the first meaningful worksheet. Preview performs no write and authoritatively classifies each row. Its hash binds the complete canonical classification and resolved persisted plan, including identity, visible/contact fields, money, dates, assignee, notes, row number, and generated receivable ID. XLSX/XLS/CSV are limited to 10 MB and 5,000 rows. UTF-8 BOM/Unicode, controlled Indian/ISO dates, and safe Excel values are accepted without binary-float financial authority. Assignment uses exact active operational-employee email. Server revalidates canonical payload, employees, duplicates and conflicts. The database validates every row without writes before creating the batch, accepted rows, creation events, and receipt; an unexpected mutation-phase failure raises and rolls back the transaction. Business identity is distributor code (when present) or conservative normalized name plus normalized bill reference.
 
 ## REPORTING SEMANTICS
 
@@ -49,7 +49,7 @@ Receivables never writes Tasks, Call Logs, Field Visits, `lead_payment_details`,
 
 ## RELEASE
 
-Migration `033_receivables_v1.sql` is additive and review-only until owner approval. Apply it exactly once through the Supabase migration mechanism; it is not advertised as rerunnable. A disposable PostgreSQL 17.6 CI job matching the production major applies it to the minimum prerequisite schema and executes money, idempotency, concurrency, state-machine, import rollback, metrics, pagination, and RLS tests. Application deployment remains inert while readiness is false. Production verification is read-only; no dummy financial records may be created and deleted.
+Migrations `033_receivables_v1.sql` and `034_receivables_production_completion.sql` are additive and review-only until owner approval. Apply them once, in order, through the Supabase migration mechanism; they are not advertised as rerunnable. Migration 034 adds the active non-Admin operational-assignee guard and no business-row rewrite. A disposable PostgreSQL 17.6 CI job matching the production major applies both to the minimum prerequisite schema and executes money, idempotency, concurrency, state-machine, import rollback, assignment, metrics, pagination, and RLS tests. Application deployment remains inert while readiness is false. Production verification is read-only; no dummy financial records may be created and deleted.
 
 ## KNOWN LIMITATIONS
 

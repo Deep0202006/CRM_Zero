@@ -3,6 +3,7 @@ set -euo pipefail
 
 psql -v ON_ERROR_STOP=1 -f scripts/receivables-db/fixture.sql
 psql -v ON_ERROR_STOP=1 -f supabase/migrations/033_receivables_v1.sql
+psql -v ON_ERROR_STOP=1 -f supabase/migrations/034_receivables_production_completion.sql
 psql -v ON_ERROR_STOP=1 -f scripts/receivables-db/integration.sql
 
 # Two concurrent Admin direct-payment commands both start at version 1. One may

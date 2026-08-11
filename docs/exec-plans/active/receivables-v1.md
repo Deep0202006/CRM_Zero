@@ -4,6 +4,8 @@
 
 Deliver financial-critical Payment Collections with authoritative server balances, durable idempotent commands, strict assignment/admin authorization, safe import, dedicated employee/Admin surfaces, and an isolated My Day projection.
 
+Production-completion round: make the merged feature operationally usable end to end, especially Admin manual/file intake, readiness diagnosis, template/download, browser-level workflows, and active OS regression gates. Work is on `fix/receivables-production-completion` from fetched `origin/main` at `12a1fe1fe4952893a97ae95724b9009af203e5fc`.
+
 ## Non-goals
 
 - No customer-facing messaging or payment links.
@@ -12,6 +14,10 @@ Deliver financial-critical Payment Collections with authoritative server balance
 - No production migration execution, production test records, merge, or automatic activation.
 
 ## Current state
+
+- Read-only production diagnosis on 2026-08-11 found Vercel Production deployed from `12a1fe1`, but `RECEIVABLES_V1_READY` is absent. Zero-row service-role probes returned 404 for `receivables`, `receivables_read_v1`, `receivable_payments`, and `receivable_import_batches`, proving migration 033 is not present without reading customer content. Production writes were not attempted.
+- The merged Admin page uses a bare file input, reads only the first worksheet, has no health/readiness surface, template, drag/drop/change/remove lifecycle, same-file reset, or browser-level intake coverage. These are product defects independent of the deliberately closed deployment.
+- Existing money, authority, idempotency, state-machine, atomic-import, RLS, PostgreSQL 17.6, and pagination foundations are retained unless a focused test proves a defect.
 
 - Branch `feat/receivables-v1` starts from fetched `origin/main` at `fbbdce0f328fbe9ba49c10c8a9a7f8e8e8450cbd` (2026-08-10).
 - Pre-existing untracked `.codex-artifacts/` and `docs/data-platform-repair/` are outside task scope and preserved.
@@ -61,6 +67,9 @@ Primary: receivables. Protected boundaries: auth, My Day/shared UI, Supabase, Fi
 8. Add the dedicated top-of-My-Day priority panel and isolation regression tests.
 9. Harden races/recovery, run two-pass adversarial review, fix P0/P1.
 10. Run R3 gates, update durable OS knowledge, create intentional commits, and prepare/open a draft PR if authenticated tooling permits.
+11. Add authenticated readiness health and clear unavailable UI, then complete Admin modal-based manual/import intake with template, meaningful-sheet parsing, same-file recovery, and authoritative preview.
+12. Add browser-level Admin/employee critical-flow coverage and generic financial-domain harness enforcement; rerun PostgreSQL 17.6 and two-pass adversarial review.
+13. Push the new completion branch and open a new draft PR. Stop before production activation because owner application of migration 033 is required.
 
 ## Verification
 
@@ -73,11 +82,13 @@ Primary: receivables. Protected boundaries: auth, My Day/shared UI, Supabase, Fi
 
 Latest hardening evidence (2026-08-11): focused Receivables suites pass (6 suites / 41 tests after hardening additions), full Jest passes (50 suites / 345 tests), TypeScript passes, and the Next.js 16 production build passes. Local PostgreSQL remains unavailable; the pinned PostgreSQL 16.4 disposable CI job is implemented and must pass before release recommendation. Full harness/lint/adversarial/remote gates are pending the final diff.
 
+Production-completion local evidence (2026-08-11): R3 harness passes; related selection is 14 suites / 85 tests; full Jest is 52 suites / 361 tests; TypeScript, build, scope (166 paths), invariant guard (30 executable files), docs, diff check, and harness self-tests pass. Chromium runs three real-route flows covering Admin manual submit, template/corrupt-file recovery, same-file reselection, authoritative preview/confirm/refresh, detail/direct payment/filter, readiness-disabled intake, and employee action/pagination isolation. Lint has 0 errors and 34 pre-existing warnings. PostgreSQL 17.6 CI for migrations 033+034 remains the remote release gate.
+
 ## Production safety
 
 - [x] Production mutation is not authorized; all development verification is local/mock/read-only.
 - [x] Schema/RLS design is authorized as source code only; migration execution is not authorized.
-- [ ] Read-only schema/name collision audit completed where credentials/tooling permit.
+- [x] Read-only production schema/readiness audit completed: readiness name absent and migration-033 relations unavailable; zero rows requested and no business content read.
 - [x] Secrets and production connections are excluded from CI/local tests.
 
 ## Rollback
@@ -95,6 +106,8 @@ Keep `RECEIVABLES_V1_READY=false` (or unset) to disable all mutation surfaces. A
 - 2026-08-11: CTO hardening round requires PostgreSQL 16 CI service, validation-before-mutation import architecture, strict per-command server schemas, real forms, complete Admin controls/filter/export, and terminal/retryable outbox classification before release recommendation.
 - 2026-08-11: Disputed balances remain included in Total Outstanding and aging because the debt still exists, but ordinary reminder/due metrics exclude disputed. Cancelled balances are excluded from every collectible metric.
 - 2026-08-11: Collected This Month is based on `payment_date` in the IST calendar month, not verification timestamp.
+- 2026-08-11: Production completion starts from merged main on a new branch. Live diagnosis is read-only; migration 033 and readiness activation remain owner-gated.
+- 2026-08-11: No migration 034 will be invented for UI/observability work. Add one only if a proven database invariant cannot be implemented against migration 033.
 
 ## Progress
 
@@ -115,6 +128,13 @@ Keep `RECEIVABLES_V1_READY=false` (or unset) to disable all mutation surfaces. A
 - [x] Bind import preview to every persisted field.
 - [x] Add server urgency ordering and employee pagination beyond 50 rows.
 - [x] Complete database suite passed on pinned PostgreSQL 17.6; final local R3 harness, two-pass adversarial review, GitHub verify, and Vercel passed at `f8e1fda`.
+- [x] Diagnose Production read-only: deployment is current, but readiness is absent and migration-033 relations return zero-row 404.
+- [x] Add observable authenticated health plus explicit fail-closed Admin UI.
+- [x] Replace permanent Admin intake panels with accessible creation/import workflows, template, meaningful-sheet parsing, file recovery, and resolved preview identity.
+- [x] Add browser coverage and generic OS financial guards/CI browser gate.
+- [x] Add unapplied migration 034 to reject Admin/inactive operational assignees at database authority, with typed terminal API mapping and rollback tests.
+- [x] Production-completion data/security and product/failure adversarial passes; P0/P1=0 locally.
+- [ ] GitHub PostgreSQL 17.6/verify jobs and Vercel Preview on the completion PR.
 
 ## Adversarial review
 
@@ -125,4 +145,6 @@ Product/failure pass: found two P1s and fixed both: increasing a fully paid bill
 Final release-candidate data/security pass: verified paid and pending employee commands return before version/event/payment mutation; lifecycle and cancellation transitions are typed; unique failures are caught only inside rollback-safe insert subtransactions; 4xx terminal mapping prevents automatic retries; unexpected RPC errors remain 503; RLS/service-role/isolation boundaries are unchanged. P0/P1: none.
 
 Final release-candidate product/failure pass: verified complete preview-plan binding, 75-row global urgency ordering with stable pagination, Load More/count UX, terminal-state employee labels/control hiding, and lifecycle-aware Admin actions. The review found no additional P0/P1 after PostgreSQL 17.6 and local R3 harness evidence.
+- Production-completion data/security pass: challenged health information disclosure, stale/local assignee authority, Admin assignment, direct financial browser writes, typed SQLSTATE mapping, import rollback, and service-role isolation. Added server-listed assignees plus migration 034 trigger; rejected assignment leaves no row/event/receipt/version mutation. No local P0/P1 remains.
+- Production-completion product/failure pass: challenged readiness false/schema absent, manual confirmation response, template/corrupt/empty/cover-sheet files, same-file retry, Unicode/BOM/calendar dates, import preview identity, disputed metrics, mobile containment, and employee pagination. Browser testing found and fixed a post-confirmation React form-reference bug that could leave successful creation looking failed. No local P0/P1 remains.
 - [ ] Draft PR preparation.

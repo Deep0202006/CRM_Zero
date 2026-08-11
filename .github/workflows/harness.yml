@@ -49,12 +49,16 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24.13.0
           cache: npm
       - run: npm ci
       - run: npm run typecheck
       - run: npm test -- --runInBand
       - run: npm run lint
       - run: npm run build
+      - name: Install Chromium for Receivables browser flows
+        run: npx playwright install --with-deps chromium
+      - name: Run Receivables browser authorization and intake flows
+        run: npm run test:e2e:receivables
       - run: npm run harness:guard
       - run: npm run harness:docs
