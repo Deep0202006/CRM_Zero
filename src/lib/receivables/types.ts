@@ -1,0 +1,3 @@
+import type { AlertState, LifecycleStatus, PaymentState } from "./domain";
+export interface ReceivableSummary { receivable_id: string; bill_reference: string; distributor_name: string; contact_person: string; contact_phone: string | null; bill_amount: string; confirmed_paid_amount: string; outstanding_amount: string; bill_due_date: string; next_follow_up_date: string | null; promise_date?: string | null; assigned_to: string; owner_name: string; lifecycle_status: LifecycleStatus; payment_state: PaymentState; alert_state: AlertState; version: number; pending_payment_count: number; aging_bucket: string; }
+export interface ReceivablesListResult { rows: ReceivableSummary[]; page: number; pageSize: number; total: number; metrics?: Record<string, string | number>; }

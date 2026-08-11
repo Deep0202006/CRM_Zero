@@ -12,6 +12,7 @@ Use this index to load only relevant knowledge.
 - [Lessons ledger](LESSONS_LEDGER.md)
 - [Architecture](../../ARCHITECTURE.md)
 - [Contracts](../contracts/)
+- [Receivables contract](../contracts/receivables.md)
 - [Golden principles](../quality/GOLDEN_PRINCIPLES.md)
 - [Generated repository map](../generated/REPO_MAP.md)
 - [Generated data contract](../generated/DATA_CONTRACT.md)

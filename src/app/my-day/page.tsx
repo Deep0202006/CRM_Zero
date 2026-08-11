@@ -28,6 +28,7 @@ import { isValidSelfScheduledFollowUp, parseFollowUpSourceCallId, stripInternalF
 import { getCurrentISTDate, getISTBusinessDayBounds, getISTDateKey } from "@/lib/dateTime";
 import { mergePaymentFollowUps, type PaymentFollowUpIdentity } from "@/lib/fieldVisits/paymentFollowUps";
 import { getCanonicalDailyUserMetrics } from "@/lib/workMetrics/canonical";
+import PaymentCollectionsPriorityPanel from "@/components/PaymentCollectionsPriorityPanel";
 
 interface WeeklyDigestTaskPerformance { assigned_to: string; completed_count: number; total_count: number; }
 interface WeeklyDigest { week_start: string; data: { stuck_leads: { id: string; name: string; status: string; days_in_stage: number; assigned_to: string }[]; task_performance: WeeklyDigestTaskPerformance[]; upcoming_renewals: { id: string; name: string; renewal_date: string }[]; }; }
@@ -469,6 +470,8 @@ export default function MyDayPage() {
           </>
         }
       />
+
+      <PaymentCollectionsPriorityPanel />
 
       {paymentFollowUps.length > 0 && (
         <section className="mb-4 rounded-[var(--radius-lg)] border border-amber-300 bg-amber-50 p-4 shadow-[var(--shadow-raised)]" aria-labelledby="payment-followups-title">
