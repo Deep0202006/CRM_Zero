@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import * as XLSX from "xlsx";
 
 const adminId = "10000000-0000-4000-a000-000000000001";
 const employeeId = "20000000-0000-4000-a000-000000000001";
@@ -125,4 +126,83 @@ test("Employee Payment Follow-ups authority surface has actions and Load More wi
   await expect(page.getByRole("button", { name: "New Receivable" })).toHaveCount(0);
   await page.getByRole("button", { name: "Load more" }).click();
   await expect(page.getByText("Showing 26 of 26 assigned receivables")).toBeVisible();
+});
+
+test("XLSX, XLS, BOM CSV, empty-first-sheet, replacement, and visible file failures work in the browser", async ({ page }) => {
+  await mockBackend(page, "admin");
+  await seedUser(page, "admin");
+  await page.goto("/admin/payments");
+  await page.getByRole("button", { name: "Import Spreadsheet" }).click();
+  const headers = ["Bill Reference", "Distributor Name", "Contact Person", "Contact Phone", "Bill Amount", "Bill Due Date", "Payment Follow-up Date", "Assigned Employee Email", "Distributor Code", "Notes"];
+  const row = ["INV-BROWSER", "\u0935\u093f\u0924\u0930\u0915", "Anita", "", "\u20b984,500", "11/08/2026", "12-08-2026", "employee@example.test", "", ""];
+  for (const bookType of ["xlsx", "xls"] as const) {
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([]), "Empty Cover");
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([headers, row]), "Collections");
+    const buffer = XLSX.write(workbook, { type: "buffer", bookType });
+    const chooser = page.waitForEvent("filechooser");
+    await page.getByRole("button", { name: "Browse file" }).click();
+    await (await chooser).setFiles({ name: `collections.${bookType}`, mimeType: "application/octet-stream", buffer });
+    await expect(page.getByText("Authoritative preview complete")).toBeVisible();
+    await page.getByRole("button", { name: "Remove selected file" }).click();
+  }
+  const bomCsv = Buffer.from(`\uFEFF${headers.join(",")}\nINV-BOM,\u0935\u093f\u0924\u0930\u0915,Anita,,84500,2026-08-11,2026-08-12,employee@example.test,,,`, "utf8");
+  const csvChooser = page.waitForEvent("filechooser");
+  await page.getByRole("button", { name: "Browse file" }).click();
+  await (await csvChooser).setFiles({ name: "collections.csv", mimeType: "", buffer: bomCsv });
+  await expect(page.getByText("Authoritative preview complete")).toBeVisible();
+  await page.getByRole("button", { name: "Remove selected file" }).click();
+
+  const badChooser = page.waitForEvent("filechooser");
+  await page.getByRole("button", { name: "Browse file" }).click();
+  await (await badChooser).setFiles({ name: "collections.txt", mimeType: "text/plain", buffer: Buffer.from("bad") });
+  await expect(page.getByText(/Choose an XLSX, XLS, or CSV file/i)).toBeVisible();
+  const retryChooser = page.waitForEvent("filechooser");
+  await page.getByRole("button", { name: "Browse file" }).click();
+  await (await retryChooser).setFiles({ name: "collections.csv", mimeType: "text/csv", buffer: bomCsv });
+  await expect(page.getByText("Authoritative preview complete")).toBeVisible();
+});
+
+test("employee forms persist operational intent and terminal rows expose no collection controls", async ({ page }) => {
+  await mockBackend(page, "employee");
+  await seedUser(page, "employee");
+  await page.goto("/payments");
+  await page.getByRole("button", { name: "Contacted" }).first().click();
+  await page.getByLabel("Next follow-up date").fill("2026-08-12");
+  await page.getByRole("button", { name: "Confirm Contacted" }).click();
+  await expect(page.getByText("Collection action confirmed.")).toBeVisible();
+  await page.getByRole("button", { name: "Promise to Pay" }).first().click();
+  await page.getByLabel("Promise date").fill("2026-08-12");
+  await page.getByLabel("Promised amount").fill("\u20b984,500");
+  await page.getByRole("button", { name: "Confirm Promise to Pay" }).click();
+  await expect(page.getByText("Collection action confirmed.")).toBeVisible();
+  await page.getByRole("button", { name: "Payment Reported" }).first().click();
+  await page.getByLabel("Amount").fill("400");
+  await page.getByRole("button", { name: "Confirm Payment Reported" }).click();
+  await expect(page.getByText("Payment awaiting verification. Confirmed outstanding is unchanged.")).toBeVisible();
+
+  await page.unroute(/\/api\/receivables(?:\?.*)?$/);
+  await page.route(/\/api\/receivables(?:\?.*)?$/, async route => route.fulfill({ json: { rows: [summaryRow({ payment_state: "Paid", outstanding_amount: "0.00", next_follow_up_date: null, alert_state: "none" }), summaryRow({ receivable_id: "30000000-0000-4000-a000-000000000002", pending_payment_count: 1, alert_state: "payment_verification_pending" }), summaryRow({ receivable_id: "30000000-0000-4000-a000-000000000003", lifecycle_status: "disputed", payment_state: "Disputed", alert_state: "disputed" }), summaryRow({ receivable_id: "30000000-0000-4000-a000-000000000004", lifecycle_status: "cancelled", payment_state: "Cancelled", alert_state: "none" })], page: 1, pageSize: 25, total: 4 } }));
+  await page.reload();
+  await expect(page.getByText(/Paid .* no further collection action/i)).toBeVisible();
+  await expect(page.getByText(/Payment awaiting verification .* paused/i)).toBeVisible();
+  await expect(page.getByText(/Disputed .* paused/i)).toBeVisible();
+  await expect(page.getByText(/Cancelled .* closed/i)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Payment Reported" })).toHaveCount(0);
+});
+
+test("critical Admin intake and detail remain usable at mobile and tablet widths", async ({ page }) => {
+  await mockBackend(page, "admin");
+  await seedUser(page, "admin");
+  for (const viewport of [{ width: 390, height: 844 }, { width: 820, height: 1180 }]) {
+    await page.setViewportSize(viewport);
+    await page.goto("/admin/payments");
+    await page.getByRole("button", { name: "New Receivable" }).click();
+    await expect(page.getByRole("dialog", { name: "New Receivable" })).toBeVisible();
+    await page.keyboard.press("Escape");
+    await page.getByText("Unicode \u0935\u093f\u0924\u0930\u0923", { exact: true }).click();
+    await expect(page.getByRole("dialog", { name: "Unicode \u0935\u093f\u0924\u0930\u0923" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Record payment" })).toBeVisible();
+    await page.keyboard.press("Escape");
+  }
 });

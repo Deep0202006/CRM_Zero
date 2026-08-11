@@ -1,7 +1,7 @@
 import { getISTDateKey } from "@/lib/dateTime";
 import { canonicalMoney } from "@/lib/receivables/domain";
 import { MAX_IMPORT_ROWS,parseReceivablesTable } from "@/lib/receivables/import";
-import { parseReceivableCommand } from "@/lib/receivables/validation";
+import { importRequestSchema, parseReceivableCommand } from "@/lib/receivables/validation";
 import { isRetryableReceivableFailure,receivablesOutboxKey } from "@/lib/receivables/client";
 import { importPreviewBinding,type ImportBindingRow } from "@/lib/receivables/importBinding";
 
@@ -19,11 +19,15 @@ describe("receivables CTO hardening contracts",()=>{
   const base={receivable_id:receivable,bill_reference:"INV",distributor_name:"ABC",distributor_code:"",contact_person:"A",contact_phone:"",bill_amount:"1000.00",bill_due_date:"2026-08-10",assigned_to:id,note:""};
   for(const next_follow_up_date of [null,""])expect(parseReceivableCommand({operation_id:id,operation_type:"create",payload:{...base,next_follow_up_date}}).success).toBe(false);
   expect(parseReceivableCommand({operation_id:id,operation_type:"create",payload:{...base,next_follow_up_date:"2026-08-11"}}).success).toBe(true);
+  expect(parseReceivableCommand({operation_id:id,operation_type:"create",payload:{...base,next_follow_up_date:"2026-02-30"}}).success).toBe(false);
  });
  test("classifies only uncertain/transient responses for retry and scopes recovery by account",()=>{
   expect(isRetryableReceivableFailure(undefined)).toBe(true);expect(isRetryableReceivableFailure(503)).toBe(true);
   expect(isRetryableReceivableFailure(400)).toBe(false);expect(isRetryableReceivableFailure(403)).toBe(false);expect(isRetryableReceivableFailure(409)).toBe(false);
   expect(receivablesOutboxKey("employee-a")).not.toBe(receivablesOutboxKey("employee-b"));
+ });
+ test("rejects an empty authoritative import request",()=>{
+  expect(importRequestSchema.safeParse({mode:"preview",operation_id:id,filename:"empty.csv",rows:[]}).success).toBe(false);
  });
  test("parses the 5,000-row chaos ceiling without quadratic duplicate scans",()=>{
   const headers=["Bill Reference","Distributor Name","Contact Person","Contact Phone","Bill Amount","Bill Due Date","Payment Follow-up Date","Assigned Employee Email","Distributor Code","Notes"];

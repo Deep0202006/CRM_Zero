@@ -4,6 +4,10 @@
 
 Deliver financial-critical Payment Collections with authoritative server balances, durable idempotent commands, strict assignment/admin authorization, safe import, dedicated employee/Admin surfaces, and an isolated My Day projection.
 
+Final certification round: independently attack the merged production-completion implementation from `origin/main` at `3f0354f6b2d4cd3c9d570c57db867bb480d7e323` on `fix/receivables-final-certification`. This round is test/break/fix/retest only, uses disposable deterministic fixtures, and permits no production business-data mutation.
+
+Certification found two release defects: export cells were not protected from spreadsheet formulas and exact-10,000-row exports were rejected; the 5,000-row import function also accumulated growing JSONB state with O(nÂ²)-style copying. Export is corrected in application code. Migration 035 replaces only the import function with indexed transaction-local staging and remains unapplied pending owner review.
+
 Production-completion round: make the merged feature operationally usable end to end, especially Admin manual/file intake, readiness diagnosis, template/download, browser-level workflows, and active OS regression gates. Work is on `fix/receivables-production-completion` from fetched `origin/main` at `12a1fe1fe4952893a97ae95724b9009af203e5fc`.
 
 ## Non-goals
@@ -111,6 +115,8 @@ Keep `RECEIVABLES_V1_READY=false` (or unset) to disable all mutation surfaces. A
 
 ## Progress
 
+- [x] Final clean-room certification: authorization attacks, money/state torture, real parallel concurrency, import destruction/rollback/tampering, browser Admin/employee workflows, export formula defense, IST boundaries, performance/security review, and full R3 gates.
+
 - [x] Latest main fetched and feature branch created.
 - [x] R3 manifest and active plan created.
 - [x] Forensic analysis and local name/schema audit; production catalog access was unavailable and no customer data was read.
@@ -147,4 +153,6 @@ Final release-candidate data/security pass: verified paid and pending employee c
 Final release-candidate product/failure pass: verified complete preview-plan binding, 75-row global urgency ordering with stable pagination, Load More/count UX, terminal-state employee labels/control hiding, and lifecycle-aware Admin actions. The review found no additional P0/P1 after PostgreSQL 17.6 and local R3 harness evidence.
 - Production-completion data/security pass: challenged health information disclosure, stale/local assignee authority, Admin assignment, direct financial browser writes, typed SQLSTATE mapping, import rollback, and service-role isolation. Added server-listed assignees plus migration 034 trigger; rejected assignment leaves no row/event/receipt/version mutation. No local P0/P1 remains.
 - Production-completion product/failure pass: challenged readiness false/schema absent, manual confirmation response, template/corrupt/empty/cover-sheet files, same-file retry, Unicode/BOM/calendar dates, import preview identity, disputed metrics, mobile containment, and employee pagination. Browser testing found and fixed a post-confirmation React form-reference bug that could leave successful creation looking failed. No local P0/P1 remains.
+- Final-certification data/money/security pass: runtime authorization attacks rejected employee Admin operations and Admin employee impersonation; PostgreSQL 17.6 proved exact numeric state, RLS/service-only grants, paid/pending/lifecycle terminals, idempotency, and parallel direct-payment/confirmation/reassignment/cancellation/correction/reversal/employee-device races. The pass found quadratic import staging and replaced it through unapplied migration 035. Production was count-fingerprinted read-only before/after with no change.
+- Final-certification product/failure pass: browser-tested XLSX/XLS/BOM CSV, empty-first-sheet recovery, same-file/replacement flows, operational forms, terminal controls, and mobile/tablet detail. It found formula-capable export cells, an exact-10,000 export off-by-one, unsafe search grammar handling, invalid calendar acceptance, and empty import requests; all gained behavioral regressions. Clean CI: 55 Jest suites / 396 tests, 6 Chromium flows, PostgreSQL 17.6, typecheck, lint (0 errors), build, scope/guard/docs, and Vercel Preview. P0/P1=0; migration 035 owner approval remains the release gate.
 - [ ] Draft PR preparation.

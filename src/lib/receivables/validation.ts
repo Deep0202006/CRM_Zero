@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 const uuid=z.string().uuid();
-const date=z.string().regex(/^\d{4}-\d{2}-\d{2}$/,"Use YYYY-MM-DD.");
+const date=z.string().regex(/^\d{4}-\d{2}-\d{2}$/,"Use YYYY-MM-DD.").refine(value=>{const [year,month,day]=value.split("-").map(Number),parsed=new Date(Date.UTC(year,month-1,day));return parsed.getUTCFullYear()===year&&parsed.getUTCMonth()===month-1&&parsed.getUTCDate()===day},"Enter a valid calendar date.");
 const money=z.string().regex(/^\d{1,12}\.\d{2}$/,"Use a canonical positive amount with two decimals.").refine(value=>value!=="0.00","Amount must be greater than zero.");
 const optionalText=(max:number)=>z.string().trim().max(max).optional();
 const requiredText=(max:number)=>z.string().trim().min(1).max(max);
@@ -39,7 +39,7 @@ export function parseReceivableCommand(input:unknown){
 export const importRowSchema=z.object({
  rowNumber:z.number().int().min(2).max(5001),billReference:requiredText(120),distributorName:requiredText(200),contactPerson:requiredText(160),contactPhone:z.string().trim().max(40),billAmount:money,billDueDate:date,nextFollowUpDate:date,assignedEmployeeEmail:z.string().trim().toLowerCase().email().max(254),distributorCode:z.string().trim().max(80),notes:z.string().max(1000),
 }).strict();
-export const importRequestSchema=z.object({mode:z.enum(["preview","confirm"]),operation_id:uuid,filename:requiredText(255),preview_hash:z.string().length(64).optional(),rows:z.array(importRowSchema).max(5000)}).strict();
+export const importRequestSchema=z.object({mode:z.enum(["preview","confirm"]),operation_id:uuid,filename:requiredText(255),preview_hash:z.string().length(64).optional(),rows:z.array(importRowSchema).min(1).max(5000)}).strict();
 
 const optionalDateParam=z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional();
 export const receivablesFilterSchema=z.object({
