@@ -1,9 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+production_ref="gwfjkpsoaoherntwhdyf"
+connection_fingerprint="${PGHOST:-} ${PGDATABASE:-} ${DATABASE_URL:-} ${SUPABASE_URL:-} ${NEXT_PUBLIC_SUPABASE_URL:-}"
+if [[ "$connection_fingerprint" == *"$production_ref"* ]] || [[ "${PGHOST:-}" == *.supabase.co ]]; then
+  echo "Refusing to run Receivables fixtures against a production Supabase target." >&2
+  exit 86
+fi
+
 psql -v ON_ERROR_STOP=1 -f scripts/receivables-db/fixture.sql
 psql -v ON_ERROR_STOP=1 -f supabase/migrations/033_receivables_v1.sql
 psql -v ON_ERROR_STOP=1 -f supabase/migrations/034_receivables_production_completion.sql
+psql -v ON_ERROR_STOP=1 -f supabase/migrations/035_receivables_import_linearization.sql
 psql -v ON_ERROR_STOP=1 -f scripts/receivables-db/integration.sql
 
 # Two concurrent Admin direct-payment commands both start at version 1. One may

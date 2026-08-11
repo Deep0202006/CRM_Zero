@@ -4,6 +4,10 @@
 
 Deliver financial-critical Payment Collections with authoritative server balances, durable idempotent commands, strict assignment/admin authorization, safe import, dedicated employee/Admin surfaces, and an isolated My Day projection.
 
+Final certification round: independently attack the merged production-completion implementation from `origin/main` at `3f0354f6b2d4cd3c9d570c57db867bb480d7e323` on `fix/receivables-final-certification`. This round is test/break/fix/retest only, uses disposable deterministic fixtures, and permits no production business-data mutation.
+
+Certification found two release defects: export cells were not protected from spreadsheet formulas and exact-10,000-row exports were rejected; the 5,000-row import function also accumulated growing JSONB state with O(nÂ²)-style copying. Export is corrected in application code. Migration 035 replaces only the import function with indexed transaction-local staging and remains unapplied pending owner review.
+
 Production-completion round: make the merged feature operationally usable end to end, especially Admin manual/file intake, readiness diagnosis, template/download, browser-level workflows, and active OS regression gates. Work is on `fix/receivables-production-completion` from fetched `origin/main` at `12a1fe1fe4952893a97ae95724b9009af203e5fc`.
 
 ## Non-goals
@@ -110,6 +114,8 @@ Keep `RECEIVABLES_V1_READY=false` (or unset) to disable all mutation surfaces. A
 - 2026-08-11: No migration 034 will be invented for UI/observability work. Add one only if a proven database invariant cannot be implemented against migration 033.
 
 ## Progress
+
+- [ ] Final clean-room certification: authorization attacks, money/state torture, real parallel concurrency, import destruction/rollback/tampering, browser Admin/employee workflows, export formula defense, IST boundaries, performance/security review, and full R3 gates.
 
 - [x] Latest main fetched and feature branch created.
 - [x] R3 manifest and active plan created.

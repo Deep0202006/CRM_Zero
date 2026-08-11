@@ -220,7 +220,88 @@ insert into public.receivable_payments(payment_id,receivable_id,amount,payment_d
 ('60000000-0000-4000-a000-000000000091','50000000-0000-4000-a000-000000000091',20.00,date_trunc('month',(now() at time zone 'Asia/Kolkata'))::date,'10000000-0000-4000-a000-000000000001','confirmed','10000000-0000-4000-a000-000000000001',now()-interval '20 days');
 do $$ declare r jsonb;total_aging numeric; begin r:=public.receivables_admin_metrics_v1('10000000-0000-4000-a000-000000000001');select sum(value::numeric) into total_aging from jsonb_each_text(r->'aging');if (r->>'collected_this_month')::numeric<>729.90 or (r->>'disputed_outstanding')::numeric<>270.00 or total_aging<>(r->>'total_outstanding')::numeric then raise exception 'Admin metrics inconsistent: %',r;end if;end $$;
 
+-- Full 5,000-row import certification. Late validation failures leave no persistent evidence.
+do $$
+declare rows jsonb;r jsonb;position integer;before_r bigint;before_b bigint;before_e bigint;before_o bigint;
+begin
+  foreach position in array array[2,50,4999,5000] loop
+    select jsonb_agg(jsonb_build_object(
+      'row_number',n+1,'receivable_id',('80000000-0000-4000-a000-'||lpad((position*10000+n)::text,12,'0'))::uuid,
+      'bill_reference','FAIL-'||position||'-'||n,'distributor_name','Failure '||position||' '||n,'distributor_code','FAIL-'||position||'-'||n,
+      'contact_person','A','contact_phone','','bill_amount','1.00','bill_due_date',current_date,'next_follow_up_date',current_date,
+      'assigned_to',case when n=position-1 then '20000000-0000-4000-a000-000000000003' else '20000000-0000-4000-a000-000000000001' end,'notes','') order by n)
+      into rows from generate_series(1,5000)n;
+    select count(*) into before_r from public.receivables;select count(*) into before_b from public.receivable_import_batches;select count(*) into before_e from public.receivable_activity_events;select count(*) into before_o from public.receivable_operation_receipts;
+    r:=public.import_receivables_v1(('81000000-0000-4000-a000-'||lpad(position::text,12,'0'))::uuid,'10000000-0000-4000-a000-000000000001',repeat('1',64),'failure-'||position||'.xlsx',md5(position::text)||md5(position::text),rows);
+    if r->>'code'<>'IMPORT_EMPLOYEE_CHANGED' or (r->>'rowNumber')::int<>position
+      or (select count(*) from public.receivables)<>before_r or (select count(*) from public.receivable_import_batches)<>before_b
+      or (select count(*) from public.receivable_activity_events)<>before_e or (select count(*) from public.receivable_operation_receipts)<>before_o then
+      raise exception '5,000-row validation failure wrote at row %: %',position,r;
+    end if;
+  end loop;
+end $$;
+
+-- An unexpected last-row Phase-B failure raises and rolls back batch, rows, events, and receipt.
+create function public.receivables_certification_fail_v1() returns trigger language plpgsql set search_path=public,pg_temp as $$
+begin if new.bill_reference='PHASE-5000' then raise exception 'injected certification failure';end if;return new;end $$;
+create trigger receivables_certification_fail_v1 before insert on public.receivables for each row execute function public.receivables_certification_fail_v1();
+do $$
+declare rows jsonb;before_r bigint;before_b bigint;before_e bigint;before_o bigint;failed boolean:=false;
+begin
+  select jsonb_agg(jsonb_build_object(
+    'row_number',n+1,'receivable_id',('82000000-0000-4000-a000-'||lpad(n::text,12,'0'))::uuid,
+    'bill_reference',case when n=5000 then 'PHASE-5000' else 'PHASE-'||n end,'distributor_name','Phase '||n,'distributor_code','PHASE-'||n,
+    'contact_person','A','contact_phone','','bill_amount','1.00','bill_due_date',current_date,'next_follow_up_date',current_date,
+    'assigned_to','20000000-0000-4000-a000-000000000001','notes','') order by n) into rows from generate_series(1,5000)n;
+  select count(*) into before_r from public.receivables;select count(*) into before_b from public.receivable_import_batches;select count(*) into before_e from public.receivable_activity_events;select count(*) into before_o from public.receivable_operation_receipts;
+  begin
+    perform public.import_receivables_v1('82000000-0000-4000-a000-000000009999','10000000-0000-4000-a000-000000000001',repeat('2',64),'phase-failure.xlsx',repeat('2',64),rows);
+  exception when others then failed:=true;
+  end;
+  if not failed or (select count(*) from public.receivables)<>before_r or (select count(*) from public.receivable_import_batches)<>before_b
+    or (select count(*) from public.receivable_activity_events)<>before_e or (select count(*) from public.receivable_operation_receipts)<>before_o then
+    raise exception 'Phase-B failure did not roll back completely';
+  end if;
+end $$;
+drop trigger receivables_certification_fail_v1 on public.receivables;
+drop function public.receivables_certification_fail_v1();
+
+-- A clean 5,000-row import commits exactly one batch, 5,000 rows/events, and one receipt.
+do $$
+declare rows jsonb;r jsonb;before_r bigint;before_b bigint;before_e bigint;before_o bigint;
+begin
+  select jsonb_agg(jsonb_build_object(
+    'row_number',n+1,'receivable_id',('83000000-0000-4000-a000-'||lpad(n::text,12,'0'))::uuid,
+    'bill_reference','SUCCESS-'||n,'distributor_name','à¤¸à¤«à¤² à¤µà¤¿à¤¤à¤°à¤• '||n,'distributor_code','SUCCESS-'||n,
+    'contact_person','A','contact_phone','','bill_amount','1.00','bill_due_date',current_date,'next_follow_up_date',current_date,
+    'assigned_to','20000000-0000-4000-a000-000000000001','notes','') order by n) into rows from generate_series(1,5000)n;
+  select count(*) into before_r from public.receivables;select count(*) into before_b from public.receivable_import_batches;select count(*) into before_e from public.receivable_activity_events;select count(*) into before_o from public.receivable_operation_receipts;
+  r:=public.import_receivables_v1('83000000-0000-4000-a000-000000009999','10000000-0000-4000-a000-000000000001',repeat('3',64),'success-5000.xlsx',repeat('3',64),rows);
+  if not (r->>'success')::boolean or (r->>'created_count')::int<>5000
+    or (select count(*) from public.receivables)<>before_r+5000 or (select count(*) from public.receivable_import_batches)<>before_b+1
+    or (select count(*) from public.receivable_activity_events)<>before_e+5000 or (select count(*) from public.receivable_operation_receipts)<>before_o+1 then
+    raise exception 'Clean 5,000-row import was not exact: %',r;
+  end if;
+end $$;
+
 -- RLS and service-only authority.
+insert into public.receivables(receivable_id,bill_reference,bill_reference_key,distributor_name,distributor_identity_key,contact_person,bill_amount,bill_due_date,next_follow_up_date,assigned_to,source,created_by)
+values('84000000-0000-4000-a000-000000000001','AUTH','auth','Authorization','code:auth','A',100.00,current_date,current_date,'20000000-0000-4000-a000-000000000001','manual','10000000-0000-4000-a000-000000000001');
+do $$ declare op text;r jsonb;before_version bigint;before_events bigint;begin
+ select version into before_version from public.receivables where receivable_id='84000000-0000-4000-a000-000000000001';select count(*) into before_events from public.receivable_activity_events where receivable_id='84000000-0000-4000-a000-000000000001';
+ foreach op in array array['direct_payment','confirm_payment','reject_payment','reverse_payment','reassign','update','dispute','resolve_dispute','cancel'] loop
+   r:=public.execute_receivable_command_v1(gen_random_uuid(),op,'20000000-0000-4000-a000-000000000001',repeat('4',64),jsonb_build_object('receivable_id','84000000-0000-4000-a000-000000000001','expected_version',before_version,'payment_id',gen_random_uuid(),'amount','1.00','payment_date',current_date,'assigned_to','20000000-0000-4000-a000-000000000002','bill_amount','101.00','reason','forged'));
+   if r->>'code'<>'ADMIN_REQUIRED' then raise exception 'employee admin operation % was not denied: %',op,r;end if;
+ end loop;
+ r:=public.execute_receivable_command_v1(gen_random_uuid(),'contacted','10000000-0000-4000-a000-000000000001',repeat('5',64),jsonb_build_object('receivable_id','84000000-0000-4000-a000-000000000001','expected_version',before_version,'next_follow_up_date',current_date));
+ if r->>'code'<>'RECEIVABLE_NOT_ASSIGNED' then raise exception 'Admin impersonated employee operation: %',r;end if;
+ r:=public.execute_receivable_command_v1(gen_random_uuid(),'contacted','20000000-0000-4000-a000-000000000003',repeat('6',64),jsonb_build_object('receivable_id','84000000-0000-4000-a000-000000000001','expected_version',before_version,'next_follow_up_date',current_date));
+ if r->>'code'<>'ACCOUNT_INACTIVE' then raise exception 'inactive account reached command authority: %',r;end if;
+ if (select version from public.receivables where receivable_id='84000000-0000-4000-a000-000000000001')<>before_version or (select count(*) from public.receivable_activity_events where receivable_id='84000000-0000-4000-a000-000000000001')<>before_events then raise exception 'denied authorization attempt mutated evidence';end if;
+ r:=public.import_receivables_v1(gen_random_uuid(),'20000000-0000-4000-a000-000000000001',repeat('7',64),'forged.csv',repeat('7',64),'[]');if r->>'code'<>'ADMIN_REQUIRED' then raise exception 'employee import accepted';end if;
+ r:=public.import_receivables_v1(gen_random_uuid(),'10000000-0000-4000-a000-000000000001',repeat('8',64),'empty.csv',repeat('8',64),'[]');if r->>'code'<>'IMPORT_INVALID' then raise exception 'empty import batch accepted';end if;
+end $$;
+
 reset role;
 set role authenticated;
 select set_config('request.jwt.claim.sub','20000000-0000-4000-a000-000000000001',false);
