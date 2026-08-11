@@ -102,14 +102,16 @@ Keep `RECEIVABLES_V1_READY=false` (or unset) to disable all mutation surfaces. A
 - [x] Forensic analysis and local name/schema audit; production catalog access was unavailable and no customer data was read.
 - [x] Contract/tests/migration source.
 - [x] Server foundation and initial application surfaces.
-- [ ] Repeat two conceptual adversarial passes against the complete hardening diff; prior foundation review is not sufficient.
+- [x] Repeated two conceptual adversarial passes against the complete hardening diff.
 - [x] Admin authoritative metrics, aging, and payment verification queue added.
 - [x] Complete Admin detail UI, direct-payment/verification/reversal/reassignment/correction/dispute/cancel controls, filtered export, and server filter set.
 - [x] Complete authoritative pre-confirmation duplicate/conflict/employee classification and accessible employee action forms.
 - [x] Add disposable PostgreSQL migration, money, idempotency, concurrency, import rollback, My Day totals, metrics, reason-constraint, and RLS integration coverage.
-- [ ] Run final R3 harness, GitHub CI database job, and Vercel preview.
+- [x] R3 harness, GitHub CI database job, and Vercel preview passed at `455b048`; final adversarial fixes require one last rerun.
 
 ## Adversarial review
 
-Pending final two-pass review after runtime PostgreSQL evidence. Earlier findings have corresponding source changes but are not closed until the complete diff and CI results are reviewed.
+Data/security pass: no P0/P1 remained after real PostgreSQL proved migration apply, RLS denial, service-only RPC grants, actor/assignment/version checks, idempotency, overpayment prevention, and concurrent direct-payment locking. Source isolation scans and guards found no browser financial mutation, DELETE, service-key client exposure, or legacy/generic-domain writes.
+
+Product/failure pass: found two P1s and fixed both: increasing a fully paid bill could reopen an active balance without a follow-up, and locally malformed import rows were hidden instead of appearing in preview counts. The DB update command now requires a current follow-up whenever a correction reopens money; Admin preview now combines local invalid rows with authoritative server duplicate/conflict/employee classifications and disables confirmation. No P0/P1 remains known; final gates must rerun after these fixes.
 - [ ] Draft PR preparation.
