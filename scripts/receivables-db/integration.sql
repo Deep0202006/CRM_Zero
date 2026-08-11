@@ -119,7 +119,7 @@ values('50000000-0000-4000-a000-000000000090','CANCEL','cancel','Cancelled','nam
 insert into public.receivable_payments(payment_id,receivable_id,amount,payment_date,reported_by,verification_status,verified_by,verified_at) values
 ('60000000-0000-4000-a000-000000000090','50000000-0000-4000-a000-000000000091',10.00,date_trunc('month',(now() at time zone 'Asia/Kolkata'))::date-1,'10000000-0000-4000-a000-000000000001','confirmed','10000000-0000-4000-a000-000000000001',now()),
 ('60000000-0000-4000-a000-000000000091','50000000-0000-4000-a000-000000000091',20.00,date_trunc('month',(now() at time zone 'Asia/Kolkata'))::date,'10000000-0000-4000-a000-000000000001','confirmed','10000000-0000-4000-a000-000000000001',now()-interval '20 days');
-do $$ declare r jsonb;total_aging numeric; begin r:=public.receivables_admin_metrics_v1('10000000-0000-4000-a000-000000000001');select sum(value::text::numeric) into total_aging from jsonb_each(r->'aging');if (r->>'collected_this_month')::numeric<>20.00 or (r->>'disputed_outstanding')::numeric<>270.00 or total_aging<>(r->>'total_outstanding')::numeric then raise exception 'Admin metrics inconsistent: %',r;end if;end $$;
+do $$ declare r jsonb;total_aging numeric; begin r:=public.receivables_admin_metrics_v1('10000000-0000-4000-a000-000000000001');select sum(value::numeric) into total_aging from jsonb_each_text(r->'aging');if (r->>'collected_this_month')::numeric<>20.00 or (r->>'disputed_outstanding')::numeric<>270.00 or total_aging<>(r->>'total_outstanding')::numeric then raise exception 'Admin metrics inconsistent: %',r;end if;end $$;
 
 -- RLS and service-only authority.
 reset role;
