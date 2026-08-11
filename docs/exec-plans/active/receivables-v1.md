@@ -114,7 +114,7 @@ Keep `RECEIVABLES_V1_READY=false` (or unset) to disable all mutation surfaces. A
 - [x] Map deterministic duplicate identities to typed terminal results.
 - [x] Bind import preview to every persisted field.
 - [x] Add server urgency ordering and employee pagination beyond 50 rows.
-- [ ] Complete database suite passed on pinned PostgreSQL 17.6; repeat final local harness, adversarial review, GitHub verify, and Vercel after documentation closure.
+- [x] Complete database suite passed on pinned PostgreSQL 17.6; final local R3 harness, two-pass adversarial review, GitHub verify, and Vercel passed at `f8e1fda`.
 
 ## Adversarial review
 
