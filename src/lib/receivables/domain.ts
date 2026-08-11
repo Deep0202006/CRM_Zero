@@ -12,6 +12,7 @@ export function parseMoneyToMinorUnits(input: string | number): bigint {
   return units;
 }
 export function minorUnitsToDecimal(value: bigint): string { return `${value / BigInt(100)}.${(value % BigInt(100)).toString().padStart(2, "0")}`; }
+export function canonicalMoney(input: string | number): string { return minorUnitsToDecimal(parseMoneyToMinorUnits(input)); }
 export function formatInr(decimal: string): string {
   const [whole, fraction = "00"] = decimal.split(".");
   const tail=whole.slice(-3), head=whole.slice(0,-3).replace(/\B(?=(\d{2})+(?!\d))/g,",");

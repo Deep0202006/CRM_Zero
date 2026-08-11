@@ -18,6 +18,7 @@ Receivables is the financial-critical authority for Payment Collections. Postgre
 - Same operation, actor, and payload returns the stored logical result. Reuse with a different payload or actor fails. Row locks prevent double confirmation, overpayment, and last-writer-wins updates.
 - The server derives actor identity and checks active account/capability. Database functions independently enforce Admin/assignment rules despite service-role execution.
 - V1 commands require online server confirmation. A lost response is retried with the same semantic command; UI never calls uncertain or reported money confirmed.
+- Only network/unreadable-response/5xx outcomes remain in the owner-scoped recovery outbox. Authoritative 4xx validation, authorization, conflict, mismatch, and ineligible results are retained as terminal evidence but never automatically retried.
 - `RECEIVABLES_V1_READY` is server-only, defaults false, and fails mutations closed before schema activation.
 
 ## AUTHORIZATION
@@ -29,11 +30,15 @@ Receivables is the financial-critical authority for Payment Collections. Postgre
 
 ## FOLLOW-UP AND ALERTS
 
-`bill_due_date` and `next_follow_up_date` are distinct. Current alert is deterministically derived in IST; no reminder rows or cron synchronization exist. Pending verification suppresses employee chase alerts. Paid/cancelled produce none; disputed pauses ordinary reminders. A new follow-up supersedes stale promise state.
+`bill_due_date` and `next_follow_up_date` are distinct. An initial active receivable requires a non-null follow-up date of today or later. Payment dates may be historical but never future-dated in IST. Current alert is deterministically derived in IST; no reminder rows or cron synchronization exist. Pending verification suppresses employee chase alerts. Paid/cancelled produce none; disputed pauses ordinary reminders. A new follow-up supersedes stale promise state.
 
 ## IMPORT
 
-Manual entry and spreadsheet import share canonical validation. Preview performs no write. XLSX/XLS/CSV are limited to 10 MB and 5,000 rows. Money and controlled Indian/ISO dates are parsed without binary-float financial authority. Assignment uses exact active-user email or an exact unique name fallback. Server revalidates canonical payload, employees, duplicates and conflicts, then creates accepted rows in one transaction. Business identity is distributor code (when present) or conservative normalized name plus normalized bill reference.
+Manual entry and spreadsheet import share canonical money validation. Preview performs no write and authoritatively classifies each row. XLSX/XLS/CSV are limited to 10 MB and 5,000 rows. Money and controlled Indian/ISO dates are parsed without binary-float financial authority. Assignment uses exact active-user email. Server revalidates canonical payload, employees, duplicates and conflicts. The database validates every row without writes before creating the batch, accepted rows, creation events, and receipt; an unexpected mutation-phase failure raises and rolls back the transaction. Business identity is distributor code (when present) or conservative normalized name plus normalized bill reference.
+
+## REPORTING SEMANTICS
+
+Cancelled balances are excluded from collectible outstanding, overdue, and aging. Disputed balances remain included and are exposed separately. Collected This Month uses confirmed payments whose `payment_date` falls in the IST month, independent of verification timestamp. My Day totals aggregate the complete urgent set while display rows are limited to five.
 
 ## DOMAIN ISOLATION
 
@@ -41,9 +46,8 @@ Receivables never writes Tasks, Call Logs, Field Visits, `lead_payment_details`,
 
 ## RELEASE
 
-Migration `033_receivables_v1.sql` is additive and review-only until owner approval. Application deployment remains inert while readiness is false. Production verification is read-only; no dummy financial records may be created and deleted.
+Migration `033_receivables_v1.sql` is additive and review-only until owner approval. Apply it exactly once through the Supabase migration mechanism; it is not advertised as rerunnable. A disposable PostgreSQL 16 CI job must apply it to the minimum prerequisite schema and execute money, idempotency, concurrency, import rollback, metrics, and RLS tests. Application deployment remains inert while readiness is false. Production verification is read-only; no dummy financial records may be created and deleted.
 
 ## KNOWN LIMITATIONS
 
 V1 has internal CRM alerts only, online-only commands, no customer messaging, no legacy migration, and no employee export. Local migration execution is evidence only and never proves production state.
-

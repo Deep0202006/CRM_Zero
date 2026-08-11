@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+psql -v ON_ERROR_STOP=1 -f scripts/receivables-db/fixture.sql
+psql -v ON_ERROR_STOP=1 -f supabase/migrations/033_receivables_v1.sql
+psql -v ON_ERROR_STOP=1 -f scripts/receivables-db/integration.sql
+
+# Two concurrent Admin direct-payment commands both start at version 1. One may
+# succeed; the other must observe the locked row at version 2 and conflict.
+command_a="set role service_role; select public.execute_receivable_command_v1('70000000-0000-4000-a000-000000000001','direct_payment','10000000-0000-4000-a000-000000000001',repeat('7',64),jsonb_build_object('receivable_id','50000000-0000-4000-a000-000000000007','expected_version',1,'payment_id','60000000-0000-4000-a000-000000000071','amount','600.00','payment_date',(now() at time zone 'Asia/Kolkata')::date::text,'next_follow_up_date',(now() at time zone 'Asia/Kolkata')::date::text));"
+command_b="set role service_role; select public.execute_receivable_command_v1('70000000-0000-4000-a000-000000000002','direct_payment','10000000-0000-4000-a000-000000000001',repeat('8',64),jsonb_build_object('receivable_id','50000000-0000-4000-a000-000000000007','expected_version',1,'payment_id','60000000-0000-4000-a000-000000000072','amount','600.00','payment_date',(now() at time zone 'Asia/Kolkata')::date::text,'next_follow_up_date',(now() at time zone 'Asia/Kolkata')::date::text));"
+psql -v ON_ERROR_STOP=1 -Atc "$command_a" > /tmp/receivables-command-a.out & pid_a=$!
+psql -v ON_ERROR_STOP=1 -Atc "$command_b" > /tmp/receivables-command-b.out & pid_b=$!
+wait "$pid_a"; wait "$pid_b"
+combined="$(cat /tmp/receivables-command-a.out /tmp/receivables-command-b.out)"
+grep -q '"success": true' <<< "$combined"
+grep -q 'RECEIVABLE_CONFLICT' <<< "$combined"
+psql -v ON_ERROR_STOP=1 -Atc "select case when count(*)=1 and sum(amount)=600.00 then 'ok' else 'bad' end from public.receivable_payments where receivable_id='50000000-0000-4000-a000-000000000007' and verification_status='confirmed';" | grep -q '^ok$'
+
+echo "Receivables PostgreSQL integration passed."
+
