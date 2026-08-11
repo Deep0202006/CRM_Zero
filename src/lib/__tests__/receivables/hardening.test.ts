@@ -3,6 +3,7 @@ import { canonicalMoney } from "@/lib/receivables/domain";
 import { MAX_IMPORT_ROWS,parseReceivablesTable } from "@/lib/receivables/import";
 import { parseReceivableCommand } from "@/lib/receivables/validation";
 import { isRetryableReceivableFailure,receivablesOutboxKey } from "@/lib/receivables/client";
+import { importPreviewBinding,type ImportBindingRow } from "@/lib/receivables/importBinding";
 
 const id="11111111-1111-4111-8111-111111111111",receivable="22222222-2222-4222-8222-222222222222";
 describe("receivables CTO hardening contracts",()=>{
@@ -28,5 +29,14 @@ describe("receivables CTO hardening contracts",()=>{
   const headers=["Bill Reference","Distributor Name","Contact Person","Contact Phone","Bill Amount","Bill Due Date","Payment Follow-up Date","Assigned Employee Email","Distributor Code","Notes"];
   const rows=Array.from({length:MAX_IMPORT_ROWS},(_,i)=>[` INV-${i} `,i%2?"कंपनी वितरण":"Unicode Distributors","Contact",i%3?"":"9999999999",i%4===0?"₹84,500":i%4===1?"84,500":"84500.00",i%3===0?"2026-08-01":i%3===1?"01/08/2026":"01-08-2026","2026-08-12","employee@example.com",i%2?`CODE-${i}`:"",""]);
   const result=parseReceivablesTable([headers,...rows]);expect(result.rows).toHaveLength(MAX_IMPORT_ROWS);expect(result.invalid).toHaveLength(0);
+ });
+ test("preview binding changes for every persisted field",()=>{
+  const row:ImportBindingRow={rowNumber:2,billReference:"INV-1",distributorName:"Distributor",distributorCode:"D1",contactPerson:"Person",contactPhone:"999",billAmount:"1000.00",billDueDate:"2026-08-10",nextFollowUpDate:"2026-08-12",assignedEmployeeEmail:"employee@example.com",notes:"note",classification:"NEW",business_key:"code:d1|inv-1",assigned_to:id,receivable_id:receivable};
+  const resolved={row_number:2,receivable_id:receivable,bill_reference:"INV-1",distributor_name:"Distributor",distributor_code:"D1",contact_person:"Person",contact_phone:"999",bill_amount:"1000.00",bill_due_date:"2026-08-10",next_follow_up_date:"2026-08-12",assigned_to:id,notes:"note"};
+  const original=JSON.stringify(importPreviewBinding([row],[resolved]));
+  const cases:Array<[keyof ImportBindingRow,keyof typeof resolved,string|number]>=[["rowNumber","row_number",3],["receivable_id","receivable_id","33333333-3333-4333-8333-333333333333"],["billReference","bill_reference","INV-2"],["distributorName","distributor_name","DISTRIBUTOR visible"],["distributorCode","distributor_code","D2"],["contactPerson","contact_person","Changed"],["contactPhone","contact_phone","888"],["billAmount","bill_amount","1000.01"],["billDueDate","bill_due_date","2026-08-09"],["nextFollowUpDate","next_follow_up_date","2026-08-13"],["assigned_to","assigned_to","44444444-4444-4444-8444-444444444444"],["notes","notes","changed"]];
+  for(const [rowField,resolvedField,value] of cases)expect(JSON.stringify(importPreviewBinding([{...row,[rowField]:value}],[{...resolved,[resolvedField]:value}]))).not.toBe(original);
+  expect(JSON.stringify(importPreviewBinding([{...row,classification:"EXACT_DUPLICATE"}],[resolved]))).not.toBe(original);expect(JSON.stringify(importPreviewBinding([{...row,business_key:"code:d1|inv-2"}],[resolved]))).not.toBe(original);
+  expect(JSON.stringify(importPreviewBinding([row],[resolved]))).toBe(original);
  });
 });

@@ -4,7 +4,8 @@ insert into public.users(user_id,name,email,is_active) values
  ('20000000-0000-4000-a000-000000000001','Employee One','one@example.test',true),
  ('20000000-0000-4000-a000-000000000002','Employee Two','two@example.test',true),
  ('20000000-0000-4000-a000-000000000003','Inactive Employee','inactive@example.test',false),
- ('20000000-0000-4000-a000-000000000004','My Day Employee','myday@example.test',true);
+ ('20000000-0000-4000-a000-000000000004','My Day Employee','myday@example.test',true),
+ ('20000000-0000-4000-a000-000000000005','Pagination Employee','pages@example.test',true);
 insert into public.user_capabilities(user_id,capability_code) values ('10000000-0000-4000-a000-000000000001','admin');
 
 set role service_role;
@@ -105,6 +106,73 @@ do $$ declare a jsonb;b jsonb;rows jsonb;before_r int; begin
  a:=public.import_receivables_v1('40000000-0000-4000-a000-000000000004','10000000-0000-4000-a000-000000000001',repeat('d',64),'first.xlsx',repeat('d',64),rows);select count(*) into before_r from public.receivables;
  b:=public.import_receivables_v1('40000000-0000-4000-a000-000000000005','10000000-0000-4000-a000-000000000001',repeat('e',64),'renamed.xlsx',repeat('d',64),rows);
  if not (a->>'success')::boolean or not (b->>'success')::boolean or (select count(*) from public.receivables)<>before_r or b->>'replayed_batch'<>'true' then raise exception 'exact import replay duplicated'; end if;
+end $$;
+
+-- Paid is terminal for every employee collection command; over-reports fail without mutation.
+insert into public.receivables(receivable_id,bill_reference,bill_reference_key,distributor_name,distributor_identity_key,contact_person,bill_amount,bill_due_date,next_follow_up_date,assigned_to,source,created_by)
+values('51000000-0000-4000-a000-000000000001','PAID-TERMINAL','paid-terminal','Paid Terminal','name:paid-terminal','A',100.00,current_date,current_date,'20000000-0000-4000-a000-000000000001','manual','10000000-0000-4000-a000-000000000001'),
+('51000000-0000-4000-a000-000000000002','OVER-REPORT','over-report','Over Report','name:over-report','A',100.00,current_date,current_date,'20000000-0000-4000-a000-000000000001','manual','10000000-0000-4000-a000-000000000001');
+insert into public.receivable_payments(payment_id,receivable_id,amount,payment_date,reported_by,verification_status,verified_by,verified_at)
+values('61000000-0000-4000-a000-000000000001','51000000-0000-4000-a000-000000000001',100.00,current_date,'10000000-0000-4000-a000-000000000001','confirmed','10000000-0000-4000-a000-000000000001',now());
+do $$ declare op text;r jsonb;before_events int;before_payments int;begin
+ select count(*) into before_events from public.receivable_activity_events where receivable_id='51000000-0000-4000-a000-000000000001';select count(*) into before_payments from public.receivable_payments where receivable_id='51000000-0000-4000-a000-000000000001';
+ foreach op in array array['contacted','no_response','promise','payment_report'] loop
+  r:=public.execute_receivable_command_v1(gen_random_uuid(),op,'20000000-0000-4000-a000-000000000001',repeat('1',64),jsonb_build_object('receivable_id','51000000-0000-4000-a000-000000000001','expected_version',1,'next_follow_up_date',current_date,'promise_date',current_date,'payment_id',gen_random_uuid(),'amount','1.00','payment_date',current_date));
+  if r->>'code'<>'RECEIVABLE_ALREADY_PAID' then raise exception 'paid % accepted: %',op,r;end if;
+ end loop;
+ if (select version from public.receivables where receivable_id='51000000-0000-4000-a000-000000000001')<>1 or (select count(*) from public.receivable_activity_events where receivable_id='51000000-0000-4000-a000-000000000001')<>before_events or (select count(*) from public.receivable_payments where receivable_id='51000000-0000-4000-a000-000000000001')<>before_payments then raise exception 'paid terminal mutated';end if;
+ r:=public.execute_receivable_command_v1(gen_random_uuid(),'payment_report','20000000-0000-4000-a000-000000000001',repeat('2',64),jsonb_build_object('receivable_id','51000000-0000-4000-a000-000000000002','expected_version',1,'payment_id',gen_random_uuid(),'amount','100.01','payment_date',current_date));
+ if r->>'code'<>'PAYMENT_NOT_ELIGIBLE' or (select version from public.receivables where receivable_id='51000000-0000-4000-a000-000000000002')<>1 then raise exception 'over-report mutated: %',r;end if;
+end $$;
+
+-- One pending report pauses every employee collection command, including a second report.
+insert into public.receivables(receivable_id,bill_reference,bill_reference_key,distributor_name,distributor_identity_key,contact_person,bill_amount,bill_due_date,next_follow_up_date,assigned_to,source,created_by)
+values('51000000-0000-4000-a000-000000000003','PENDING-PAUSE','pending-pause','Pending Pause','name:pending-pause','A',100.00,current_date,current_date,'20000000-0000-4000-a000-000000000001','manual','10000000-0000-4000-a000-000000000001');
+insert into public.receivable_payments(payment_id,receivable_id,amount,payment_date,reported_by,verification_status) values('61000000-0000-4000-a000-000000000003','51000000-0000-4000-a000-000000000003',10.00,current_date,'20000000-0000-4000-a000-000000000001','reported');
+do $$ declare op text;r jsonb;before_events int;begin select count(*) into before_events from public.receivable_activity_events where receivable_id='51000000-0000-4000-a000-000000000003';
+ foreach op in array array['contacted','no_response','promise','payment_report'] loop
+  r:=public.execute_receivable_command_v1(gen_random_uuid(),op,'20000000-0000-4000-a000-000000000001',repeat('3',64),jsonb_build_object('receivable_id','51000000-0000-4000-a000-000000000003','expected_version',1,'next_follow_up_date',current_date,'promise_date',current_date,'payment_id',gen_random_uuid(),'amount','1.00','payment_date',current_date));
+  if r->>'code'<>'PAYMENT_VERIFICATION_PENDING' then raise exception 'pending pause failed for %: %',op,r;end if;
+ end loop;
+ if (select version from public.receivables where receivable_id='51000000-0000-4000-a000-000000000003')<>1 or (select count(*) from public.receivable_activity_events where receivable_id='51000000-0000-4000-a000-000000000003')<>before_events or (select count(*) from public.receivable_payments where receivable_id='51000000-0000-4000-a000-000000000003')<>1 then raise exception 'pending pause mutated';end if;
+end $$;
+
+-- Explicit lifecycle state machine and cancellation/payment-review rules.
+insert into public.receivables(receivable_id,bill_reference,bill_reference_key,distributor_name,distributor_identity_key,contact_person,bill_amount,bill_due_date,next_follow_up_date,assigned_to,source,created_by,lifecycle_status,cancelled_at,cancelled_by,cancellation_reason)
+values('51000000-0000-4000-a000-000000000004','STATE','state','State','name:state','A',100.00,current_date,current_date,'20000000-0000-4000-a000-000000000001','manual','10000000-0000-4000-a000-000000000001','active',null,null,null),
+('51000000-0000-4000-a000-000000000005','CANCELLED','cancelled-state','Cancelled State','name:cancelled-state','A',100.00,current_date,null,'20000000-0000-4000-a000-000000000001','cancelled','manual','10000000-0000-4000-a000-000000000001',now(),'10000000-0000-4000-a000-000000000001','Valid cancellation'),
+('51000000-0000-4000-a000-000000000006','CANCEL-PENDING','cancel-pending','Cancel Pending','name:cancel-pending','A',100.00,current_date,current_date,'20000000-0000-4000-a000-000000000001','manual','10000000-0000-4000-a000-000000000001','active',null,null,null),
+('51000000-0000-4000-a000-000000000007','CANCEL-CONFIRMED','cancel-confirmed','Cancel Confirmed','name:cancel-confirmed','A',100.00,current_date,current_date,'20000000-0000-4000-a000-000000000001','manual','10000000-0000-4000-a000-000000000001','active',null,null,null);
+insert into public.receivable_payments(payment_id,receivable_id,amount,payment_date,reported_by,verification_status) values('61000000-0000-4000-a000-000000000006','51000000-0000-4000-a000-000000000006',10.00,current_date,'20000000-0000-4000-a000-000000000001','reported');
+insert into public.receivable_payments(payment_id,receivable_id,amount,payment_date,reported_by,verification_status,verified_by,verified_at) values('61000000-0000-4000-a000-000000000007','51000000-0000-4000-a000-000000000007',10.00,current_date,'10000000-0000-4000-a000-000000000001','confirmed','10000000-0000-4000-a000-000000000001',now());
+do $$ declare r jsonb;begin
+ r:=public.execute_receivable_command_v1(gen_random_uuid(),'dispute','10000000-0000-4000-a000-000000000001',repeat('4',64),jsonb_build_object('receivable_id','51000000-0000-4000-a000-000000000004','expected_version',1,'reason','Customer disputes bill'));if not (r->>'success')::boolean then raise exception 'active dispute failed';end if;
+ r:=public.execute_receivable_command_v1(gen_random_uuid(),'dispute','10000000-0000-4000-a000-000000000001',repeat('4',64),jsonb_build_object('receivable_id','51000000-0000-4000-a000-000000000004','expected_version',2,'reason','Repeated'));if r->>'code'<>'INVALID_RECEIVABLE_STATE' then raise exception 'repeated dispute accepted';end if;
+ r:=public.execute_receivable_command_v1(gen_random_uuid(),'resolve_dispute','10000000-0000-4000-a000-000000000001',repeat('5',64),jsonb_build_object('receivable_id','51000000-0000-4000-a000-000000000004','expected_version',2));if not (r->>'success')::boolean then raise exception 'dispute resolve failed';end if;
+ r:=public.execute_receivable_command_v1(gen_random_uuid(),'resolve_dispute','10000000-0000-4000-a000-000000000001',repeat('6',64),jsonb_build_object('receivable_id','51000000-0000-4000-a000-000000000004','expected_version',3));if r->>'code'<>'INVALID_RECEIVABLE_STATE' then raise exception 'active resolve accepted';end if;
+ r:=public.execute_receivable_command_v1(gen_random_uuid(),'resolve_dispute','10000000-0000-4000-a000-000000000001',repeat('7',64),jsonb_build_object('receivable_id','51000000-0000-4000-a000-000000000005','expected_version',1));if r->>'code'<>'INVALID_RECEIVABLE_STATE' then raise exception 'cancelled resolve accepted';end if;
+ r:=public.execute_receivable_command_v1(gen_random_uuid(),'dispute','10000000-0000-4000-a000-000000000001',repeat('8',64),jsonb_build_object('receivable_id','51000000-0000-4000-a000-000000000005','expected_version',1,'reason','Invalid'));if r->>'code'<>'INVALID_RECEIVABLE_STATE' then raise exception 'cancelled dispute accepted';end if;
+ r:=public.execute_receivable_command_v1(gen_random_uuid(),'cancel','10000000-0000-4000-a000-000000000001',repeat('9',64),jsonb_build_object('receivable_id','51000000-0000-4000-a000-000000000006','expected_version',1,'reason','Duplicate'));if r->>'code'<>'PAYMENT_VERIFICATION_PENDING' then raise exception 'reported cancellation accepted';end if;
+ r:=public.execute_receivable_command_v1(gen_random_uuid(),'reject_payment','10000000-0000-4000-a000-000000000001',repeat('a',64),jsonb_build_object('receivable_id','51000000-0000-4000-a000-000000000006','expected_version',1,'payment_id','61000000-0000-4000-a000-000000000006','reason','Not received'));if not (r->>'success')::boolean then raise exception 'reject before cancel failed';end if;
+ r:=public.execute_receivable_command_v1(gen_random_uuid(),'cancel','10000000-0000-4000-a000-000000000001',repeat('b',64),jsonb_build_object('receivable_id','51000000-0000-4000-a000-000000000006','expected_version',2,'reason','Duplicate'));if not (r->>'success')::boolean then raise exception 'cancel after reject failed: %',r;end if;
+ r:=public.execute_receivable_command_v1(gen_random_uuid(),'cancel','10000000-0000-4000-a000-000000000001',repeat('c',64),jsonb_build_object('receivable_id','51000000-0000-4000-a000-000000000007','expected_version',1,'reason','Unsafe'));if r->>'code'<>'CANCELLATION_UNSAFE' then raise exception 'confirmed cancellation accepted';end if;
+end $$;
+
+-- Deterministic unique failures are typed terminal results and leave no partial evidence.
+do $$ declare r jsonb;before_r int;before_e int;before_receipts int;begin
+ select count(*) into before_r from public.receivables;select count(*) into before_e from public.receivable_activity_events;select count(*) into before_receipts from public.receivable_operation_receipts;
+ r:=public.execute_receivable_command_v1('52000000-0000-4000-a000-000000000001','create','10000000-0000-4000-a000-000000000001',repeat('d',64),jsonb_build_object('receivable_id',gen_random_uuid(),'bill_reference',' state ','distributor_name','STATE','distributor_code','','contact_person','A','contact_phone','','bill_amount','100.00','bill_due_date',current_date,'next_follow_up_date',current_date,'assigned_to','20000000-0000-4000-a000-000000000001'));
+ if r->>'code'<>'RECEIVABLE_DUPLICATE' or (select count(*) from public.receivables)<>before_r or (select count(*) from public.receivable_activity_events)<>before_e or (select count(*) from public.receivable_operation_receipts)<>before_receipts then raise exception 'manual duplicate not terminal/atomic: %',r;end if;
+ r:=public.execute_receivable_command_v1('52000000-0000-4000-a000-000000000002','payment_report','20000000-0000-4000-a000-000000000001',repeat('e',64),jsonb_build_object('receivable_id','51000000-0000-4000-a000-000000000002','expected_version',1,'payment_id','61000000-0000-4000-a000-000000000001','amount','1.00','payment_date',current_date));
+ if r->>'code'<>'PAYMENT_DUPLICATE' or (select version from public.receivables where receivable_id='51000000-0000-4000-a000-000000000002')<>1 or exists(select 1 from public.receivable_operation_receipts where operation_id='52000000-0000-4000-a000-000000000002') then raise exception 'payment duplicate not terminal/atomic: %',r;end if;
+end $$;
+
+-- Server pagination ordering is global, stable, complete, and duplicate-free across 75 rows.
+insert into public.receivables(receivable_id,bill_reference,bill_reference_key,distributor_name,distributor_identity_key,contact_person,bill_amount,bill_due_date,next_follow_up_date,assigned_to,source,created_by)
+select gen_random_uuid(),'PAGE-'||n,'page-'||n,'Page '||n,'name:page-'||n,'A',100.00,current_date,case when n<=30 then current_date-1 else current_date+1 end,'20000000-0000-4000-a000-000000000005','manual','10000000-0000-4000-a000-000000000001' from generate_series(1,75)n;
+do $$ declare all_count int;distinct_count int;first_priority int;begin
+ with ordered as (select receivable_id,collection_priority,row_number() over(order by collection_priority,collection_sort_date,receivable_id) rn from public.receivables_financial_read_v1 where assigned_to='20000000-0000-4000-a000-000000000005'),pages as (select * from ordered where rn between 1 and 25 union all select * from ordered where rn between 26 and 50 union all select * from ordered where rn between 51 and 75) select count(*),count(distinct receivable_id),max(collection_priority) filter(where rn<=25) into all_count,distinct_count,first_priority from pages;
+ if all_count<>75 or distinct_count<>75 or first_priority<>2 then raise exception '75-row pagination wrong: %, %, %',all_count,distinct_count,first_priority;end if;
 end $$;
 
 -- My Day aggregates all 12 urgent rows while returning five.

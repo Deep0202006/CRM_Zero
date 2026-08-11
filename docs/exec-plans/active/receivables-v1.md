@@ -19,6 +19,7 @@ Deliver financial-critical Payment Collections with authoritative server balance
 - Generic My Day follow-ups are Task/Call-derived; Field Visit `payment_follow_up` projects Distributor visits; Pipeline Payment is a lead stage; Team Chat push uses conversation subscriptions. All remain separate and non-authoritative for money.
 - Existing server routes derive bearer identity and use server-only service clients. Receivables follows that boundary but confines all writes to dedicated transactional RPCs.
 - CTO hardening review on 2026-08-11 rejected the foundation for merge: import validation returned after earlier inserts, runtime PostgreSQL evidence was absent, and owner-required P1 application surfaces remained incomplete. PR #23 remains draft; this plan is the single active record for the remediation.
+- Final release-candidate review accepted the architecture but identified bounded authority gaps: paid/pending employee commands, lifecycle transitions, cancellation with a report, typed duplicate constraints, complete import-plan hashing, employee pagination/order, and production-major CI parity. Work remains confined to those findings.
 
 ## Invariants
 
@@ -108,6 +109,12 @@ Keep `RECEIVABLES_V1_READY=false` (or unset) to disable all mutation surfaces. A
 - [x] Complete authoritative pre-confirmation duplicate/conflict/employee classification and accessible employee action forms.
 - [x] Add disposable PostgreSQL migration, money, idempotency, concurrency, import rollback, My Day totals, metrics, reason-constraint, and RLS integration coverage.
 - [x] R3 harness passed locally; final GitHub verify, PostgreSQL 16.4 integration, and Vercel preview passed at `db8ae55`.
+- [ ] Prove paid and pending-verification terminal behavior in PostgreSQL.
+- [ ] Complete lifecycle/cancellation state-machine integration coverage.
+- [ ] Map deterministic duplicate identities to typed terminal results.
+- [ ] Bind import preview to every persisted field.
+- [ ] Add server urgency ordering and employee pagination beyond 50 rows.
+- [ ] Run the complete database suite on pinned PostgreSQL 17.6 and repeat all release gates.
 
 ## Adversarial review
 

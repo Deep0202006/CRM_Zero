@@ -171,6 +171,15 @@ select r.*,
     when a.promise_date=(now() at time zone 'Asia/Kolkata')::date then 'promise_due_today'
     when r.next_follow_up_date=(now() at time zone 'Asia/Kolkata')::date then 'followup_due_today'
     when coalesce(a.promise_date,r.next_follow_up_date) is not null then 'upcoming' else 'none' end alert_state,
+  case when r.lifecycle_status='cancelled' or r.bill_amount-coalesce(m.confirmed_paid_amount,0)=0 then 8
+    when r.lifecycle_status='disputed' then 7
+    when coalesce(m.pending_payment_count,0)>0 then 6
+    when a.promise_date < (now() at time zone 'Asia/Kolkata')::date then 1
+    when r.next_follow_up_date < (now() at time zone 'Asia/Kolkata')::date then 2
+    when a.promise_date=(now() at time zone 'Asia/Kolkata')::date then 3
+    when r.next_follow_up_date=(now() at time zone 'Asia/Kolkata')::date then 4
+    when coalesce(a.promise_date,r.next_follow_up_date) is not null then 5 else 8 end collection_priority,
+  coalesce(a.promise_date,r.next_follow_up_date,r.bill_due_date) collection_sort_date,
   greatest(0,(now() at time zone 'Asia/Kolkata')::date-r.bill_due_date) aging_days,
   case when r.bill_due_date >= (now() at time zone 'Asia/Kolkata')::date then 'Current'
     when (now() at time zone 'Asia/Kolkata')::date-r.bill_due_date<=7 then '1-7 days'
@@ -189,6 +198,7 @@ declare
   v_payment public.receivable_payments%rowtype;
   v_admin boolean;
   v_paid numeric(14,2);
+  v_pending integer;
   v_result jsonb;
   v_event text;
   v_change_set jsonb;
@@ -219,9 +229,13 @@ begin
     if nullif(p_payload->>'next_follow_up_date','') is null or (p_payload->>'next_follow_up_date')::date < v_today then
       return jsonb_build_object('success',false,'code','INVALID_FOLLOW_UP_DATE');
     end if;
-    insert into public.receivables(receivable_id,bill_reference,bill_reference_key,distributor_name,distributor_identity_key,distributor_code,contact_person,contact_phone,bill_amount,bill_due_date,next_follow_up_date,assigned_to,source,created_by)
-    values((p_payload->>'receivable_id')::uuid,p_payload->>'bill_reference',lower(regexp_replace(btrim(p_payload->>'bill_reference'),'\s+',' ','g')),p_payload->>'distributor_name',case when nullif(btrim(p_payload->>'distributor_code'),'') is not null then 'code:'||lower(btrim(p_payload->>'distributor_code')) else 'name:'||lower(regexp_replace(btrim(p_payload->>'distributor_name'),'\s+',' ','g')) end,nullif(btrim(p_payload->>'distributor_code'),''),p_payload->>'contact_person',nullif(btrim(p_payload->>'contact_phone'),''),(p_payload->>'bill_amount')::numeric,(p_payload->>'bill_due_date')::date,(p_payload->>'next_follow_up_date')::date,(p_payload->>'assigned_to')::uuid,'manual',p_actor_id)
-    returning * into v_r;
+    begin
+      insert into public.receivables(receivable_id,bill_reference,bill_reference_key,distributor_name,distributor_identity_key,distributor_code,contact_person,contact_phone,bill_amount,bill_due_date,next_follow_up_date,assigned_to,source,created_by)
+      values((p_payload->>'receivable_id')::uuid,p_payload->>'bill_reference',lower(regexp_replace(btrim(p_payload->>'bill_reference'),'\s+',' ','g')),p_payload->>'distributor_name',case when nullif(btrim(p_payload->>'distributor_code'),'') is not null then 'code:'||lower(btrim(p_payload->>'distributor_code')) else 'name:'||lower(regexp_replace(btrim(p_payload->>'distributor_name'),'\s+',' ','g')) end,nullif(btrim(p_payload->>'distributor_code'),''),p_payload->>'contact_person',nullif(btrim(p_payload->>'contact_phone'),''),(p_payload->>'bill_amount')::numeric,(p_payload->>'bill_due_date')::date,(p_payload->>'next_follow_up_date')::date,(p_payload->>'assigned_to')::uuid,'manual',p_actor_id)
+      returning * into v_r;
+    exception when unique_violation then
+      return jsonb_build_object('success',false,'code','RECEIVABLE_DUPLICATE');
+    end;
     v_event:='created';
     v_change_set:=jsonb_build_object('source','manual');
   else
@@ -236,8 +250,14 @@ begin
     if p_operation_type in ('contacted','no_response','promise','payment_report') and v_r.lifecycle_status<>'active' then
       return jsonb_build_object('success',false,'code','RECEIVABLE_NOT_ACTIVE');
     end if;
-    select coalesce(sum(amount) filter(where verification_status='confirmed'),0) into v_paid
+    select coalesce(sum(amount) filter(where verification_status='confirmed'),0),count(*) filter(where verification_status='reported') into v_paid,v_pending
     from public.receivable_payments where receivable_id=v_r.receivable_id;
+    if p_operation_type in ('contacted','no_response','promise','payment_report') and v_r.bill_amount-v_paid<=0 then
+      return jsonb_build_object('success',false,'code','RECEIVABLE_ALREADY_PAID');
+    end if;
+    if p_operation_type in ('contacted','no_response','promise','payment_report') and v_pending>0 then
+      return jsonb_build_object('success',false,'code','PAYMENT_VERIFICATION_PENDING');
+    end if;
 
     if p_operation_type in ('contacted','no_response') then
       if nullif(p_payload->>'next_follow_up_date','') is null or (p_payload->>'next_follow_up_date')::date < v_today then
@@ -256,8 +276,13 @@ begin
       v_event:='promise_to_pay';
     elsif p_operation_type='payment_report' then
       if (p_payload->>'payment_date')::date > v_today then return jsonb_build_object('success',false,'code','FUTURE_PAYMENT_DATE'); end if;
-      insert into public.receivable_payments(payment_id,receivable_id,amount,payment_date,payment_mode,payment_reference,note,reported_by,verification_status)
-      values((p_payload->>'payment_id')::uuid,v_r.receivable_id,(p_payload->>'amount')::numeric,(p_payload->>'payment_date')::date,nullif(btrim(p_payload->>'payment_mode'),''),nullif(btrim(p_payload->>'payment_reference'),''),nullif(p_payload->>'note',''),p_actor_id,'reported') returning * into v_payment;
+      if (p_payload->>'amount')::numeric<=0 or (p_payload->>'amount')::numeric>v_r.bill_amount-v_paid then return jsonb_build_object('success',false,'code','PAYMENT_NOT_ELIGIBLE'); end if;
+      begin
+        insert into public.receivable_payments(payment_id,receivable_id,amount,payment_date,payment_mode,payment_reference,note,reported_by,verification_status)
+        values((p_payload->>'payment_id')::uuid,v_r.receivable_id,(p_payload->>'amount')::numeric,(p_payload->>'payment_date')::date,nullif(btrim(p_payload->>'payment_mode'),''),nullif(btrim(p_payload->>'payment_reference'),''),nullif(p_payload->>'note',''),p_actor_id,'reported') returning * into v_payment;
+      exception when unique_violation then
+        return jsonb_build_object('success',false,'code','PAYMENT_DUPLICATE');
+      end;
       update public.receivables set updated_at=now(),version=version+1 where receivable_id=v_r.receivable_id returning * into v_r;
       v_event:='payment_reported';
     elsif p_operation_type in ('confirm_payment','reject_payment','reverse_payment','direct_payment','reassign','update','dispute','resolve_dispute','cancel') then
@@ -288,12 +313,16 @@ begin
         update public.receivables set next_follow_up_date=coalesce((p_payload->>'next_follow_up_date')::date,v_today),updated_at=now(),version=version+1 where receivable_id=v_r.receivable_id returning * into v_r;
         v_event:='payment_reversed';
       elsif p_operation_type='direct_payment' then
-        if v_r.lifecycle_status='cancelled' or (p_payload->>'amount')::numeric>v_r.bill_amount-v_paid then return jsonb_build_object('success',false,'code','PAYMENT_NOT_ELIGIBLE'); end if;
+        if v_r.lifecycle_status='cancelled' or (p_payload->>'amount')::numeric<=0 or (p_payload->>'amount')::numeric>v_r.bill_amount-v_paid then return jsonb_build_object('success',false,'code','PAYMENT_NOT_ELIGIBLE'); end if;
         if (p_payload->>'payment_date')::date > v_today then return jsonb_build_object('success',false,'code','FUTURE_PAYMENT_DATE'); end if;
         v_next_date:=coalesce((p_payload->>'next_follow_up_date')::date,v_r.next_follow_up_date);
         if (p_payload->>'amount')::numeric<v_r.bill_amount-v_paid and (v_next_date is null or v_next_date<v_today) then return jsonb_build_object('success',false,'code','NEXT_FOLLOW_UP_REQUIRED'); end if;
-        insert into public.receivable_payments(payment_id,receivable_id,amount,payment_date,payment_mode,payment_reference,note,reported_by,verification_status,verified_by,verified_at)
-        values((p_payload->>'payment_id')::uuid,v_r.receivable_id,(p_payload->>'amount')::numeric,(p_payload->>'payment_date')::date,nullif(btrim(p_payload->>'payment_mode'),''),nullif(btrim(p_payload->>'payment_reference'),''),nullif(p_payload->>'note',''),p_actor_id,'confirmed',p_actor_id,now()) returning * into v_payment;
+        begin
+          insert into public.receivable_payments(payment_id,receivable_id,amount,payment_date,payment_mode,payment_reference,note,reported_by,verification_status,verified_by,verified_at)
+          values((p_payload->>'payment_id')::uuid,v_r.receivable_id,(p_payload->>'amount')::numeric,(p_payload->>'payment_date')::date,nullif(btrim(p_payload->>'payment_mode'),''),nullif(btrim(p_payload->>'payment_reference'),''),nullif(p_payload->>'note',''),p_actor_id,'confirmed',p_actor_id,now()) returning * into v_payment;
+        exception when unique_violation then
+          return jsonb_build_object('success',false,'code','PAYMENT_DUPLICATE');
+        end;
         update public.receivables set next_follow_up_date=case when (p_payload->>'amount')::numeric=v_r.bill_amount-v_paid then null else v_next_date end,updated_at=now(),version=version+1 where receivable_id=v_r.receivable_id returning * into v_r;
         v_event:='payment_confirmed';
       elsif p_operation_type='reassign' then
@@ -316,14 +345,18 @@ begin
         update public.receivables set bill_amount=coalesce((p_payload->>'bill_amount')::numeric,bill_amount),contact_person=coalesce(nullif(p_payload->>'contact_person',''),contact_person),contact_phone=case when p_payload ? 'contact_phone' then nullif(p_payload->>'contact_phone','') else contact_phone end,bill_due_date=coalesce((p_payload->>'bill_due_date')::date,bill_due_date),next_follow_up_date=v_next_date,updated_at=now(),version=version+1 where receivable_id=v_r.receivable_id returning * into v_r;
         v_event:='admin_updated';
       elsif p_operation_type='dispute' then
+        if v_r.lifecycle_status<>'active' then return jsonb_build_object('success',false,'code','INVALID_RECEIVABLE_STATE'); end if;
         v_change_set:=jsonb_build_object('lifecycle_status',jsonb_build_object('old',v_r.lifecycle_status,'new','disputed'));
         update public.receivables set lifecycle_status='disputed',updated_at=now(),version=version+1 where receivable_id=v_r.receivable_id returning * into v_r;
         v_event:='disputed';
       elsif p_operation_type='resolve_dispute' then
+        if v_r.lifecycle_status<>'disputed' then return jsonb_build_object('success',false,'code','INVALID_RECEIVABLE_STATE'); end if;
         v_change_set:=jsonb_build_object('lifecycle_status',jsonb_build_object('old',v_r.lifecycle_status,'new','active'));
         update public.receivables set lifecycle_status='active',updated_at=now(),version=version+1 where receivable_id=v_r.receivable_id returning * into v_r;
         v_event:='dispute_resolved';
       elsif p_operation_type='cancel' then
+        if v_r.lifecycle_status not in ('active','disputed') then return jsonb_build_object('success',false,'code','INVALID_RECEIVABLE_STATE'); end if;
+        if v_pending>0 then return jsonb_build_object('success',false,'code','PAYMENT_VERIFICATION_PENDING'); end if;
         if v_paid>0 or nullif(btrim(p_payload->>'reason'),'') is null then return jsonb_build_object('success',false,'code','CANCELLATION_UNSAFE'); end if;
         v_change_set:=jsonb_build_object('lifecycle_status',jsonb_build_object('old',v_r.lifecycle_status,'new','cancelled'));
         update public.receivables set lifecycle_status='cancelled',cancelled_at=now(),cancelled_by=p_actor_id,cancellation_reason=btrim(p_payload->>'reason'),next_follow_up_date=null,updated_at=now(),version=version+1 where receivable_id=v_r.receivable_id returning * into v_r;
