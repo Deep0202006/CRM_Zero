@@ -141,5 +141,9 @@ reset role;
 -- Seed isolated concurrency target for shell-level parallel calls.
 insert into public.receivables(receivable_id,bill_reference,bill_reference_key,distributor_name,distributor_identity_key,contact_person,bill_amount,bill_due_date,next_follow_up_date,assigned_to,source,created_by)
 values('50000000-0000-4000-a000-000000000007','RACE','race','Race','name:race','A',1000.00,current_date,current_date,'20000000-0000-4000-a000-000000000001','manual','10000000-0000-4000-a000-000000000001');
+insert into public.receivables(receivable_id,bill_reference,bill_reference_key,distributor_name,distributor_identity_key,contact_person,bill_amount,bill_due_date,next_follow_up_date,assigned_to,source,created_by)
+values('50000000-0000-4000-a000-000000000008','CONFIRM-RACE','confirm-race','Confirm Race','name:confirm-race','A',1000.00,current_date,current_date,'20000000-0000-4000-a000-000000000001','manual','10000000-0000-4000-a000-000000000001');
+insert into public.receivable_payments(payment_id,receivable_id,amount,payment_date,reported_by,verification_status)
+values('60000000-0000-4000-a000-000000000080','50000000-0000-4000-a000-000000000008',400.00,current_date,'20000000-0000-4000-a000-000000000001','reported');
 
 select 'receivables integration assertions passed' as result;

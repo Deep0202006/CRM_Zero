@@ -17,5 +17,16 @@ grep -q '"success": true' <<< "$combined"
 grep -q 'RECEIVABLE_CONFLICT' <<< "$combined"
 psql -v ON_ERROR_STOP=1 -Atc "select case when count(*)=1 and sum(amount)=600.00 then 'ok' else 'bad' end from public.receivable_payments where receivable_id='50000000-0000-4000-a000-000000000007' and verification_status='confirmed';" | grep -q '^ok$'
 
-echo "Receivables PostgreSQL integration passed."
+# Two devices confirm the same employee-reported payment. Exactly one transition
+# and one confirmation event may commit; the other command sees a stale version.
+confirm_a="set role service_role; select public.execute_receivable_command_v1('70000000-0000-4000-a000-000000000011','confirm_payment','10000000-0000-4000-a000-000000000001',repeat('a',64),jsonb_build_object('receivable_id','50000000-0000-4000-a000-000000000008','expected_version',1,'payment_id','60000000-0000-4000-a000-000000000080','next_follow_up_date',(now() at time zone 'Asia/Kolkata')::date::text));"
+confirm_b="set role service_role; select public.execute_receivable_command_v1('70000000-0000-4000-a000-000000000012','confirm_payment','10000000-0000-4000-a000-000000000001',repeat('b',64),jsonb_build_object('receivable_id','50000000-0000-4000-a000-000000000008','expected_version',1,'payment_id','60000000-0000-4000-a000-000000000080','next_follow_up_date',(now() at time zone 'Asia/Kolkata')::date::text));"
+psql -v ON_ERROR_STOP=1 -Atc "$confirm_a" > /tmp/receivables-confirm-a.out & confirm_pid_a=$!
+psql -v ON_ERROR_STOP=1 -Atc "$confirm_b" > /tmp/receivables-confirm-b.out & confirm_pid_b=$!
+wait "$confirm_pid_a"; wait "$confirm_pid_b"
+confirm_combined="$(cat /tmp/receivables-confirm-a.out /tmp/receivables-confirm-b.out)"
+grep -q '"success": true' <<< "$confirm_combined"
+grep -q 'RECEIVABLE_CONFLICT' <<< "$confirm_combined"
+psql -v ON_ERROR_STOP=1 -Atc "select case when count(*)=1 then 'ok' else 'bad' end from public.receivable_activity_events where receivable_id='50000000-0000-4000-a000-000000000008' and event_type='payment_confirmed';" | grep -q '^ok$'
 
+echo "Receivables PostgreSQL integration passed."
