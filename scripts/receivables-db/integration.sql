@@ -242,9 +242,11 @@ begin
 end $$;
 
 -- An unexpected last-row Phase-B failure raises and rolls back batch, rows, events, and receipt.
+reset role;
 create function public.receivables_certification_fail_v1() returns trigger language plpgsql set search_path=public,pg_temp as $$
 begin if new.bill_reference='PHASE-5000' then raise exception 'injected certification failure';end if;return new;end $$;
 create trigger receivables_certification_fail_v1 before insert on public.receivables for each row execute function public.receivables_certification_fail_v1();
+set role service_role;
 do $$
 declare rows jsonb;before_r bigint;before_b bigint;before_e bigint;before_o bigint;failed boolean:=false;
 begin
@@ -263,8 +265,10 @@ begin
     raise exception 'Phase-B failure did not roll back completely';
   end if;
 end $$;
+reset role;
 drop trigger receivables_certification_fail_v1 on public.receivables;
 drop function public.receivables_certification_fail_v1();
+set role service_role;
 
 -- A clean 5,000-row import commits exactly one batch, 5,000 rows/events, and one receipt.
 do $$
