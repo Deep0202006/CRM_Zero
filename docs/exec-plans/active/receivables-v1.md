@@ -107,7 +107,7 @@ Keep `RECEIVABLES_V1_READY=false` (or unset) to disable all mutation surfaces. A
 - [x] Complete Admin detail UI, direct-payment/verification/reversal/reassignment/correction/dispute/cancel controls, filtered export, and server filter set.
 - [x] Complete authoritative pre-confirmation duplicate/conflict/employee classification and accessible employee action forms.
 - [x] Add disposable PostgreSQL migration, money, idempotency, concurrency, import rollback, My Day totals, metrics, reason-constraint, and RLS integration coverage.
-- [x] R3 harness, GitHub CI database job, and Vercel preview passed at `455b048`; final adversarial fixes require one last rerun.
+- [x] R3 harness passed locally; final GitHub verify, PostgreSQL 16.4 integration, and Vercel preview passed at `db8ae55`.
 
 ## Adversarial review
 
