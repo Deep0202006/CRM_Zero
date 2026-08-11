@@ -3,7 +3,8 @@ insert into public.users(user_id,name,email,is_active) values
  ('10000000-0000-4000-a000-000000000001','Admin','admin@example.test',true),
  ('20000000-0000-4000-a000-000000000001','Employee One','one@example.test',true),
  ('20000000-0000-4000-a000-000000000002','Employee Two','two@example.test',true),
- ('20000000-0000-4000-a000-000000000003','Inactive Employee','inactive@example.test',false);
+ ('20000000-0000-4000-a000-000000000003','Inactive Employee','inactive@example.test',false),
+ ('20000000-0000-4000-a000-000000000004','My Day Employee','myday@example.test',true);
 insert into public.user_capabilities(user_id,capability_code) values ('10000000-0000-4000-a000-000000000001','admin');
 
 set role service_role;
@@ -108,8 +109,8 @@ end $$;
 
 -- My Day aggregates all 12 urgent rows while returning five.
 insert into public.receivables(receivable_id,bill_reference,bill_reference_key,distributor_name,distributor_identity_key,contact_person,bill_amount,bill_due_date,next_follow_up_date,assigned_to,source,created_by)
-select gen_random_uuid(),'URG-'||n,'urg-'||n,'Urgent '||n,'name:urgent-'||n,'A',100.00,current_date-10,current_date-1,'20000000-0000-4000-a000-000000000001','manual','10000000-0000-4000-a000-000000000001' from generate_series(1,12)n;
-do $$ declare r jsonb; begin r:=public.receivables_my_day_v1('20000000-0000-4000-a000-000000000001'); if (r->>'urgentCount')::int<>12 or jsonb_array_length(r->'rows')<>5 or (r->>'outstandingAmount')::numeric<>1200.00 then raise exception 'My Day total wrong: %',r; end if; end $$;
+select gen_random_uuid(),'URG-'||n,'urg-'||n,'Urgent '||n,'name:urgent-'||n,'A',100.00,current_date-10,current_date-1,'20000000-0000-4000-a000-000000000004','manual','10000000-0000-4000-a000-000000000001' from generate_series(1,12)n;
+do $$ declare r jsonb; begin r:=public.receivables_my_day_v1('20000000-0000-4000-a000-000000000004'); if (r->>'urgentCount')::int<>12 or jsonb_array_length(r->'rows')<>5 or (r->>'outstandingAmount')::numeric<>1200.00 then raise exception 'My Day total wrong: %',r; end if; end $$;
 
 -- Admin metrics: cancelled excluded everywhere; disputed included in outstanding/aging; payment_date owns month.
 insert into public.receivables(receivable_id,bill_reference,bill_reference_key,distributor_name,distributor_identity_key,contact_person,bill_amount,bill_due_date,next_follow_up_date,assigned_to,lifecycle_status,source,created_by,cancelled_at,cancelled_by,cancellation_reason)
