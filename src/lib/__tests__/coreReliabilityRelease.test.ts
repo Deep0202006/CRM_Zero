@@ -38,7 +38,7 @@ describe("core reliability release contracts", () => {
     expect(route.indexOf("const preflight")).toBeLessThan(route.indexOf('.from("field_visits").insert'));
   });
 
-  it("drains call synchronization again and retries durable business items beyond five attempts", () => {
+  it("drains calls again while backing off transient failures and quarantining permanent failures", () => {
     const database = read("src/lib/db.ts");
     expect(database).toContain("let syncQueueRerunRequested = false");
     expect(database).toContain("syncQueueRerunRequested = true");
@@ -48,7 +48,18 @@ describe("core reliability release contracts", () => {
     expect(database).toContain("Call confirmation is unavailable until Supabase is configured.");
     expect(database).toContain('fetch("/api/call-logs/confirm"');
     expect(database).toContain('remoteTableName === "call_logs" && authenticatedUserId');
+    expect(database).toContain("syncRetryDelayMs");
+    expect(database).toContain('recovery_state: "review_required"');
+    expect(database).toContain("if (!retryIsDue(item)) continue");
     expect(read("src/app/call-logs/page.tsx")).toContain('idempotency_key: `call-log:${logId}`');
+  });
+
+  it("bounds full workspace hydration across duplicate lifecycle triggers", () => {
+    const database = read("src/lib/db.ts");
+    expect(database).toContain("FULL_PULL_MIN_INTERVAL_MS = 30 * 60 * 1000");
+    expect(database).toContain("if (activePullDownSync) return activePullDownSync");
+    expect(database).toContain('`last_pull_sync:${localStorage.getItem("authenticated_user_id") ?? "anonymous"}`');
+    expect(database).toContain("Date.now() - lastSync < FULL_PULL_MIN_INTERVAL_MS");
   });
 
   it("introduces no deletion or browser reset path for calls and visits", () => {
