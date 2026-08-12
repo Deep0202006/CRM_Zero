@@ -2,7 +2,7 @@
 
 ## CURRENT
 
-Calls use stable `log_id` values, are retained in Dexie/outbox while pending, confirmed through `/api/call-logs/confirm`, and read through authoritative history when online. Client identity has one canonical interpretation: a valid UUID may be `lead_id`; Excel identities use `client_username`/`client_name` with null `lead_id`; free text uses the exact trimmed value as `client_name` with null `lead_id`.
+Calls use stable `log_id` values, are retained in Dexie/outbox while pending, confirmed through `/api/call-logs/confirm`, and read through authoritative history when online. Client identity has one canonical interpretation: a valid UUID may be `lead_id`; non-lead directory identities require both `client_username` and `client_name` with null `lead_id`. An incomplete retained legacy reference is preserved for review and is not automatically replayed forever.
 
 A newly saved online call receives exact-item priority confirmation by its existing outbox idempotency key. Unrelated backlog drains afterward. Legacy non-UUID `lead_id` payloads are repaired only for remote confirmation, preserve better existing text identity, and reuse the original `log_id`.
 
@@ -16,6 +16,6 @@ Paginated history length is not lifetime history count. When online, lifetime ca
 
 ## KNOWN DEBT
 
-Offline snapshots are intentionally non-authoritative and degraded authoritative reads must be visible rather than presented as complete empty history. Browser-local stranded rows cannot be discovered from remote introspection, so deterministic payload recovery and regression fixtures protect them.
+Offline snapshots are intentionally non-authoritative and degraded authoritative reads must be visible rather than presented as complete empty history. Browser-local stranded rows cannot be discovered from remote introspection, so deterministic payload recovery and regression fixtures protect them. A legacy free-text call with no stable username cannot be safely fabricated into a production directory identity; it remains durable review-required evidence.
 
 Primary tests: `callLogContract`, `callHistoryAuthority`, `syncPayload`, `callPriorityConfirmation`, `coreReliabilityRelease`, `productionConsistencyGuards`.

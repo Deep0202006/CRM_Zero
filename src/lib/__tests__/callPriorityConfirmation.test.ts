@@ -49,4 +49,12 @@ describe("priority call confirmation incident contract", () => {
     expect(page).toContain('idempotency_key: `call-log:${logId}`');
     expect(database).toContain("result.log_id !== payload.log_id");
   });
+
+  it("does not endlessly retry a permanently invalid retained call", () => {
+    const route = read("src/app/api/call-logs/confirm/route.ts");
+    expect(route).toContain('code: "CALL_REFERENCE_INVALID"');
+    expect(route).toContain("referenceInvalid ? 422 : 500");
+    expect(database).toContain("response.status === 408 || response.status === 429 || response.status >= 500");
+    expect(database).toContain('recovery_reason: "PERMANENT_CALL_CONFIRMATION_FAILURE"');
+  });
 });

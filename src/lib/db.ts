@@ -312,6 +312,7 @@ export interface SyncQueueItem {
   timestamp: string;
   retry_count?: number;  // Part 6 — per-item retry tracking
   last_error?: string;   // Part 6 — surfaces dead-letter failures in UI
+  next_retry_at?: string;
   recovery_state?: "recovered" | "satisfied" | "review_required" | "quarantined";
   recovery_reason?: string;
   recovery_marked_at?: string;
@@ -772,6 +773,19 @@ let activeSyncQueueRun: Promise<void> | null = null;
 let syncQueueRerunRequested = false;
 const temporarilyExcludedSyncKeys = new Set<string>();
 
+class SyncAttemptError extends Error {
+  constructor(message: string, readonly retryable: boolean) { super(message); }
+}
+
+const MAX_SYNC_RETRY_DELAY_MS = 60 * 60 * 1000;
+export function syncRetryDelayMs(retryCount: number): number {
+  return Math.min(MAX_SYNC_RETRY_DELAY_MS, 60_000 * 2 ** Math.max(0, retryCount - 1));
+}
+
+function retryIsDue(item: SyncQueueItem): boolean {
+  return !item.next_retry_at || Date.parse(item.next_retry_at) <= Date.now();
+}
+
 function isEventuallyRetryableBusinessItem(item: SyncQueueItem): boolean {
   return (item.table_name === "call_logs" && item.action === "INSERT") ||
     item.idempotency_key.startsWith("followup-completion-task:") ||
@@ -809,9 +823,10 @@ async function confirmCallLog(payload: Record<string, unknown>, accessToken: str
   });
   let result: { ok?: boolean; code?: string; log_id?: string };
   try { result = await response.json() as typeof result; }
-  catch { throw new Error("Call confirmation returned an unreadable response."); }
+  catch { throw new SyncAttemptError("Call confirmation returned an unreadable response.", true); }
   if (!response.ok || !result.ok || !["CALL_CONFIRMED", "CALL_ALREADY_CONFIRMED"].includes(result.code ?? "") || result.log_id !== payload.log_id) {
-    throw new Error(`Call confirmation failed (${result.code ?? response.status}).`);
+    const retryable = response.status === 408 || response.status === 429 || response.status >= 500;
+    throw new SyncAttemptError(`Call confirmation failed (${result.code ?? response.status}).`, retryable);
   }
 }
 
@@ -859,10 +874,15 @@ export async function confirmQueuedCallLog(logId: string): Promise<boolean> {
   } catch (error) {
     const current = await db.sync_queue.get(item.id);
     if (current?.idempotency_key === idempotencyKey) {
+      const retryable = !(error instanceof SyncAttemptError) || error.retryable;
+      const retryCount = retryable ? (prepared.changed ? 0 : (item.retry_count ?? 0)) + 1 : Math.max(5, item.retry_count ?? 0);
       await db.sync_queue.update(item.id, {
         data: prepared.data,
-        retry_count: (prepared.changed ? 0 : (item.retry_count ?? 0)) + 1,
+        retry_count: retryCount,
         last_error: error instanceof Error ? error.message : String(error),
+        ...(retryable
+          ? { next_retry_at: new Date(Date.now() + syncRetryDelayMs(retryCount)).toISOString() }
+          : { recovery_state: "review_required", recovery_reason: "PERMANENT_CALL_CONFIRMATION_FAILURE", recovery_marked_at: new Date().toISOString(), next_retry_at: undefined }),
       });
     }
     return false;
@@ -891,6 +911,7 @@ async function processSyncQueueInternal(): Promise<void> {
   for (const item of items) {
     if (!item.id) continue;
     if (temporarilyExcludedSyncKeys.has(item.idempotency_key)) continue;
+    if (!retryIsDue(item)) continue;
     const itemOwnerId = item.owner_user_id ?? legacyOwnerId;
     if (!itemOwnerId || itemOwnerId !== authenticatedUserId) continue;
     if (!item.owner_user_id) {
@@ -1026,13 +1047,17 @@ async function processSyncQueueInternal(): Promise<void> {
         }
       }
     } catch (error) {
-      const retryCount = effectiveRetryCount + 1;
+      const retryable = !(error instanceof SyncAttemptError) || error.retryable;
+      const retryCount = retryable ? effectiveRetryCount + 1 : Math.max(5, effectiveRetryCount);
       const safeError = error instanceof Error ? error.message : String(error);
       console.warn(`Sync item ${item.id} failed (attempt ${retryCount}):`, safeError);
       await db.sync_queue.update(item.id, {
         data: prepared.data,
         retry_count: retryCount,
         last_error: safeError,
+        ...(retryable
+          ? { next_retry_at: new Date(Date.now() + syncRetryDelayMs(retryCount)).toISOString() }
+          : { recovery_state: "review_required", recovery_reason: "PERMANENT_SYNC_FAILURE", recovery_marked_at: new Date().toISOString(), next_retry_at: undefined }),
       });
 
       if (item.table_name === "field_visits") {
@@ -1086,16 +1111,18 @@ export async function processSyncQueueExcept(idempotencyKey: string): Promise<vo
 // PULL DOWN SYNC — Fetch full dataset from Supabase for local robustness
 // ─────────────────────────────────────────────────────────────────────────────
 
-export async function pullDownSync() {
+const FULL_PULL_MIN_INTERVAL_MS = 30 * 60 * 1000;
+let activePullDownSync: Promise<void> | null = null;
+function fullPullSyncKey(): string {
+  return `last_pull_sync:${localStorage.getItem("authenticated_user_id") ?? "anonymous"}`;
+}
+
+async function pullDownSyncInternal() {
   if (typeof window === "undefined" || !navigator.onLine || !isSupabaseConfigured) {
     return;
   }
 
   console.log("Pulling latest data from Supabase...");
-  if (typeof window !== "undefined") {
-    localStorage.setItem("last_pull_sync", Date.now().toString());
-  }
-
   try {
     const tables = [
       "users",
@@ -1204,9 +1231,24 @@ export async function pullDownSync() {
     }
 
     console.log("Downward sync complete.");
+    localStorage.setItem(fullPullSyncKey(), Date.now().toString());
   } catch (err) {
     console.error("Failed to perform pull down sync:", err);
   }
+}
+
+export function pullDownSync(): Promise<void> {
+  if (typeof window === "undefined" || !navigator.onLine || !isSupabaseConfigured) return Promise.resolve();
+  if (activePullDownSync) return activePullDownSync;
+
+  const lastSync = Number.parseInt(localStorage.getItem(fullPullSyncKey()) ?? "0", 10);
+  if (Number.isFinite(lastSync) && Date.now() - lastSync < FULL_PULL_MIN_INTERVAL_MS) return Promise.resolve();
+
+  // Claim the cooldown before I/O so login, online, visibility, and sibling-tab
+  // triggers converge on one hydration pass instead of multiplying full pulls.
+  localStorage.setItem(fullPullSyncKey(), Date.now().toString());
+  activePullDownSync = pullDownSyncInternal().finally(() => { activePullDownSync = null; });
+  return activePullDownSync;
 }
 
 
@@ -1227,11 +1269,12 @@ if (typeof window !== "undefined") {
        console.log("Tab focused. Checking sync throttle...");
        processSyncQueue().catch(console.error);
 
-       const lastSyncStr = localStorage.getItem("last_pull_sync");
+       const lastSyncStr = localStorage.getItem(fullPullSyncKey());
        const lastSync = lastSyncStr ? parseInt(lastSyncStr, 10) : 0;
 
-       // Throttle pullDownSync to once every 5 minutes (300000 ms)
-       if (Date.now() - lastSync > 300000) {
+       // pullDownSync also enforces the shared 30-minute cooldown so duplicate
+       // login, online, visibility, and sibling-tab triggers remain bounded.
+       if (Date.now() - lastSync > FULL_PULL_MIN_INTERVAL_MS) {
          console.log("Throttle passed. Triggering full pullDownSync...");
          pullDownSync().catch(console.error);
        } else {

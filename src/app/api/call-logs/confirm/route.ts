@@ -40,6 +40,9 @@ export async function POST(request: Request) {
   const parsed = schema.safeParse(input);
   if (!parsed.success) return json(400, { ok: false, code: "CALL_VALIDATION_FAILED", message: "Review the call details and retry." });
   const call = parsed.data;
+  if (!call.lead_id && (!call.client_username?.trim() || !call.client_name?.trim())) {
+    return json(422, { ok: false, code: "CALL_REFERENCE_INVALID", message: "The retained call needs a complete client reference before confirmation." });
+  }
   if (call.user_id !== auth.user.id) return json(403, { ok: false, code: "CALL_OWNERSHIP_MISMATCH", message: "This call belongs to another account." });
   const preflight = await service.from("call_logs").select("log_id,user_id").eq("log_id", call.log_id).maybeSingle();
   if (preflight.error) return json(500, { ok: false, code: "CALL_CONFIRMATION_FAILED", message: "The exact call could not be checked safely." });
@@ -52,7 +55,14 @@ export async function POST(request: Request) {
     next_followup_date: call.next_followup_date ?? null,
   };
   const insert = await service.from("call_logs").insert(payload);
-  if (insert.error && insert.error.code !== "23505") return json(500, { ok: false, code: "CALL_INSERT_FAILED", message: "The call remains saved locally and will retry." });
+  if (insert.error && insert.error.code !== "23505") {
+    const referenceInvalid = insert.error.code === "23514";
+    return json(referenceInvalid ? 422 : 500, {
+      ok: false,
+      code: referenceInvalid ? "CALL_REFERENCE_INVALID" : "CALL_INSERT_FAILED",
+      message: referenceInvalid ? "The retained call needs a complete client reference before confirmation." : "The call remains saved locally and will retry.",
+    });
+  }
   const confirmed = await service.from("call_logs").select("log_id,user_id").eq("log_id", call.log_id).maybeSingle();
   if (confirmed.error || !confirmed.data) return json(500, { ok: false, code: "CALL_CONFIRMATION_FAILED", message: "The exact call could not be confirmed." });
   if (confirmed.data.user_id !== auth.user.id) return json(409, { ok: false, code: "CALL_ID_OWNERSHIP_COLLISION", message: "This call ID belongs to another account." });
