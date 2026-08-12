@@ -56,5 +56,6 @@ describe("priority call confirmation incident contract", () => {
     expect(route).toContain("referenceInvalid ? 422 : 500");
     expect(database).toContain("response.status === 408 || response.status === 429 || response.status >= 500");
     expect(database).toContain('recovery_reason: "PERMANENT_CALL_CONFIRMATION_FAILURE"');
+    expect(route.indexOf("schema.safeParse(input)")).toBeLessThan(route.indexOf("service.auth.getUser(token)"));
   });
 });

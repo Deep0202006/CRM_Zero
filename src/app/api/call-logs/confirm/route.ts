@@ -31,10 +31,6 @@ function tokenOf(request: Request) { const value = request.headers.get("authoriz
 export async function POST(request: Request) {
   const service = adminClient(); const token = tokenOf(request);
   if (!service || !token) return json(401, { ok: false, code: "AUTH_REQUIRED", message: "Sign in again before retrying this call." });
-  const { data: auth, error: authError } = await service.auth.getUser(token);
-  if (authError || !auth.user) return json(401, { ok: false, code: "AUTH_REQUIRED", message: "Sign in again before retrying this call." });
-  const { data: account, error: accountError } = await service.from("users").select("user_id,is_active").eq("user_id", auth.user.id).maybeSingle();
-  if (accountError || !account || !active(account.is_active)) return json(403, { ok: false, code: "ACCOUNT_INACTIVE", message: "An active employee account is required." });
   let input: unknown;
   try { input = await request.json(); } catch { return json(400, { ok: false, code: "CALL_VALIDATION_FAILED", message: "Call details could not be read." }); }
   const parsed = schema.safeParse(input);
@@ -43,6 +39,10 @@ export async function POST(request: Request) {
   if (!call.lead_id && (!call.client_username?.trim() || !call.client_name?.trim())) {
     return json(422, { ok: false, code: "CALL_REFERENCE_INVALID", message: "The retained call needs a complete client reference before confirmation." });
   }
+  const { data: auth, error: authError } = await service.auth.getUser(token);
+  if (authError || !auth.user) return json(401, { ok: false, code: "AUTH_REQUIRED", message: "Sign in again before retrying this call." });
+  const { data: account, error: accountError } = await service.from("users").select("user_id,is_active").eq("user_id", auth.user.id).maybeSingle();
+  if (accountError || !account || !active(account.is_active)) return json(403, { ok: false, code: "ACCOUNT_INACTIVE", message: "An active employee account is required." });
   if (call.user_id !== auth.user.id) return json(403, { ok: false, code: "CALL_OWNERSHIP_MISMATCH", message: "This call belongs to another account." });
   const preflight = await service.from("call_logs").select("log_id,user_id").eq("log_id", call.log_id).maybeSingle();
   if (preflight.error) return json(500, { ok: false, code: "CALL_CONFIRMATION_FAILED", message: "The exact call could not be checked safely." });

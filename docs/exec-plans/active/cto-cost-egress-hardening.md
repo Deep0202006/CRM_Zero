@@ -61,6 +61,7 @@ Revert the isolated application commit/deployment. No data rollback or migration
 - 2026-08-12: Vercel showed 971 call-confirmation requests (929 HTTP 500, 42 HTTP 400) in 24 hours; Supabase PostgreSQL logs showed 90/100 latest entries violating `call_logs_client_reference_check`.
 - 2026-08-12: Read-only catalog inspection confirmed the deployed constraint requires a lead ID or both client username and name. No production rows were read or changed.
 - 2026-08-12: Recent API logs showed repeated 20-table `select=*` hydration passes, including three 1,000-row call-log pages. Kept the fallback but serialized it and changed its minimum interval from 5 to 30 minutes per authenticated browser account.
+- 2026-08-12: Initial post-deploy observation found stale open tabs still sending invalid call payloads (77 typed 422 and 12 typed 400). Moved structural parsing ahead of remote auth/profile queries so stale malformed requests consume zero Supabase requests while authorization remains mandatory for every valid call.
 
 ## Progress
 
