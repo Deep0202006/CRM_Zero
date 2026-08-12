@@ -21,6 +21,7 @@
 - Every valid frozen stage remains discoverable. Unknown legacy state is preserved rather than coerced.
 - Pipeline transitions never create genuine `call_logs`; historical synthetic-call metric exclusions remain.
 - Pipeline transitions create no employee Task/follow-up/notification or cross-domain write. Calls create neither Leads nor Pipeline transitions.
+- A bounded daily server-only renewal processor moves only due Distributor Payment leads to Renewal Due, records an actorless system audit, and creates no employee work or cross-domain rows.
 - Admin normal actions require assignment exactly like every other active user. Reassignment, if introduced, is a separate administrative operation.
 - Hot reads use explicit columns, stable ordering, one owner-name projection, and server pagination capped at 50.
 - Production verification is read-only by default; migrations require explicit approval.

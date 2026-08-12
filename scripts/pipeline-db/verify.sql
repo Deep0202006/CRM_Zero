@@ -5,7 +5,7 @@ declare
   before_leads bigint;
 begin
   select count(*) into before_leads from public.leads;
-  if before_leads <> 4 then raise exception 'fixture lead count drift'; end if;
+  if before_leads <> 5 then raise exception 'fixture lead count drift'; end if;
   if (select count(*) from public.tasks where is_active=false) <> 2 then raise exception 'only proven Pipeline tasks were not archived'; end if;
   if not (select is_active from public.tasks where task_id='30000000-0000-4000-a000-000000000002') then raise exception 'manual task changed'; end if;
   select count(*) into before_tasks from public.tasks;
@@ -26,7 +26,7 @@ begin
 end $$;
 
 -- 038 must correct only the target and retain IDs/counts.
-select case when count(*)=4 then 'lead-count-ok' else 'bad' end from public.leads;
+select case when count(*)=5 then 'lead-count-ok' else 'bad' end from public.leads;
 select case when count(*)=0 then 'retailer-payment-ok' else 'bad' end from public.leads where segment_type='Retailer' and status='Payment';
 select case when count(*)=1 then 'distributor-payment-ok' else 'bad' end from public.leads where segment_type='Distributor' and status='Payment';
 select case when count(*)=1 then 'system-audit-ok' else 'bad' end from public.pipeline_transition_operations where event_kind='system_correction' and reason='retailer_payment_stage_removed';

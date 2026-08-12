@@ -3,8 +3,13 @@ set -euo pipefail
 fingerprint="${PGHOST:-} ${PGDATABASE:-} ${DATABASE_URL:-} ${SUPABASE_URL:-} ${NEXT_PUBLIC_SUPABASE_URL:-}"
 if [[ "$fingerprint" == *"gwfjkpsoaoherntwhdyf"* ]] || [[ "${PGHOST:-}" == *.supabase.co ]]; then echo "Refusing production database" >&2; exit 86; fi
 psql -v ON_ERROR_STOP=1 -f scripts/pipeline-db/bootstrap.sql
+psql -v ON_ERROR_STOP=1 -f supabase/migrations/032_pipeline_authoritative_transitions.sql
 psql -v ON_ERROR_STOP=1 -f supabase/migrations/037_pipeline_authority_and_resource_budget.sql
-psql -v ON_ERROR_STOP=1 -f supabase/migrations/038_retailer_payment_to_converted.sql
+psql -v ON_ERROR_STOP=1 -f scripts/pipeline-db/verify-037.sql
+psql -v ON_ERROR_STOP=1 <<'SQL'
+set request.jwt.claim.sub = '10000000-0000-4000-a000-000000000001';
+\i supabase/migrations/038_retailer_payment_to_converted.sql
+SQL
 psql -v ON_ERROR_STOP=1 -f scripts/pipeline-db/verify.sql | grep -q 'system-audit-ok'
 
 # Two tabs race from the same expected state: exactly one transition commits.
