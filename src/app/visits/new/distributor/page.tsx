@@ -20,6 +20,7 @@ export default function NewDistributorVisitPage() {
   const [leadsMap, setLeadsMap] = useState<Map<string, LocalLead>>(new Map());
   const [selectedLeadId, setSelectedLeadId] = useState("");
   const [personMet, setPersonMet] = useState("");
+  const [address, setAddress] = useState("");
   const [outcome, setOutcome] = useState("");
   const [notes, setNotes] = useState("");
   const [followUpDate, setFollowUpDate] = useState("");
@@ -43,6 +44,7 @@ export default function NewDistributorVisitPage() {
     { label: "Interested (Payment/Training/Discussion)", value: "interested" },
     { label: "Follow-up Required (Not Available/Issue)", value: "follow_up" },
     { label: "Payment follow-up", value: "payment_follow_up" },
+    { label: "Payment done", value: "payment_done" },
     { label: "Not Interested / Price Issue", value: "not_interested" }
   ];
 
@@ -113,7 +115,7 @@ export default function NewDistributorVisitPage() {
     e.preventDefault();
     if (!currentUser) return;
     
-    if (!selectedLeadId || !outcome || !personMet || !photoBlob) {
+    if (!selectedLeadId || !outcome || !personMet || !address.trim() || !photoBlob) {
       setError("Please fill out required fields including selfie.");
       return;
     }
@@ -164,6 +166,7 @@ export default function NewDistributorVisitPage() {
         visit_outcome: outcome,
         visit_notes: notes.trim() || null,
         person_met: personMet.trim() || null,
+        address: address.trim(),
         segment_type: "Distributor",
         follow_up_date: outcome === "follow_up" || outcome === "payment_follow_up" ? followUpDate || null : null,
         attendance_id: attendanceRec?.attendance_id || null,
@@ -294,7 +297,12 @@ export default function NewDistributorVisitPage() {
 
             <div className="flex justify-end gap-2 border-t border-[var(--border-subtle)] pt-5">
               {offlineAcknowledgementRequired && <Button type="button" variant="outline" onClick={() => { window.location.href = "/visits"; }}>I understand — open My Visits</Button>}
-              {!offlineAcknowledgementRequired && <Button type="submit" isLoading={submitting} icon={<CheckCircle2 size={15} />} disabled={!selectedLeadId || !outcome || !personMet || !photoBlob || !lat || !lng}>{pendingVisitId ? "Retry confirmation" : "Save Visit"}</Button>}
+              {!offlineAcknowledgementRequired && <Button type="submit" isLoading={submitting} icon={<CheckCircle2 size={15} />} disabled={!selectedLeadId || !outcome || !personMet || !address.trim() || !photoBlob || !lat || !lng}>{pendingVisitId ? "Retry confirmation" : "Save Visit"}</Button>}
+            </div>
+
+            <div>
+              <label htmlFor="visit-address" className="field-label">Address <span className="text-[var(--status-danger)]">*</span></label>
+              <textarea id="visit-address" value={address} onChange={(event) => setAddress(event.target.value)} maxLength={500} rows={3} className="field-control resize-y" placeholder="Human-readable visit address" required />
             </div>
           </form>
         </section>

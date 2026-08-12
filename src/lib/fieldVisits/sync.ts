@@ -3,6 +3,7 @@ import { supabase, isSupabaseConfigured } from "../supabaseClient";
 
 export type FieldVisitSafeCode =
   | "AUTH_REQUIRED" | "ACCOUNT_INACTIVE" | "CAPABILITY_MISMATCH"
+  | "ADDRESS_REQUIRED"
   | "ATTENDANCE_NOT_CONFIRMED" | "ATTENDANCE_INTEGRITY_ERROR" | "VISIT_VALIDATION_FAILED"
   | "VISIT_INSERT_FAILED" | "VISIT_CONFIRMATION_FAILED"
   | "EVIDENCE_UPLOAD_FAILED" | "NETWORK_UNAVAILABLE" | "NETWORK_OR_SERVER_RESPONSE_FAILED"
@@ -34,6 +35,7 @@ interface ConfirmResponse {
 
 const SAFE_MESSAGES: Record<FieldVisitSafeCode, string> = {
   AUTH_REQUIRED: "Sign in again before retrying this visit.",
+  ADDRESS_REQUIRED: "Address required before this queued visit can sync.",
   ACCOUNT_INACTIVE: "Your account is inactive. Contact an administrator.",
   CAPABILITY_MISMATCH: "Your account is not permitted to confirm this visit.",
   ATTENDANCE_NOT_CONFIRMED: "Attendance is not yet confirmed. Retry synchronization.",
@@ -122,6 +124,7 @@ export function buildFieldVisitConfirmPayload(visit: LocalFieldVisit) {
     visit_notes: visit.visit_notes,
     attendance_id: visit.attendance_id ?? null,
     person_met: visit.person_met ?? null,
+    address: visit.address ?? null,
     segment_type: visit.segment_type,
     follow_up_date: visit.follow_up_date ?? null,
     created_at: visit.created_at,
@@ -170,6 +173,17 @@ async function runSyncCycle(onlyVisitId?: string, ownerUserId?: string, mode: "n
   summary.locallyFound = visits.length;
 
   for (const visit of visits) {
+    if (!visit.address?.trim()) {
+      await db.field_visits.update(visit.visit_id, {
+        sync_status: "sync_failed",
+        sync_stage: "address_required",
+        sync_error_code: "ADDRESS_REQUIRED",
+        sync_error_message: SAFE_MESSAGES.ADDRESS_REQUIRED,
+      });
+      summary.failed++;
+      summary.failureCodes = [...new Set([...summary.failureCodes, "ADDRESS_REQUIRED" as FieldVisitSafeCode])];
+      continue;
+    }
     const attemptedAt = new Date().toISOString();
     await db.field_visits.update(visit.visit_id, {
       last_sync_attempt_at: attemptedAt,
@@ -238,6 +252,22 @@ async function runSyncCycle(onlyVisitId?: string, ownerUserId?: string, mode: "n
     }
   }
   return summary;
+}
+
+export async function supplyQueuedVisitAddress(visitId: string, ownerUserId: string, address: string): Promise<void> {
+  const normalized = address.trim();
+  if (!normalized || normalized.length > 500) throw new Error("Address must be between 1 and 500 characters.");
+  const visit = await db.field_visits.get(visitId);
+  if (!visit || visit.user_id !== ownerUserId) throw new Error("Queued visit is unavailable for this account.");
+  if (visit.sync_stage !== "address_required" && visit.sync_error_code !== "ADDRESS_REQUIRED") throw new Error("This visit is not waiting for an address.");
+  await db.field_visits.update(visitId, {
+    address: normalized,
+    sync_status: "pending_sync",
+    sync_stage: "pending_visit",
+    sync_error_code: undefined,
+    sync_error_message: undefined,
+    updated_at: new Date().toISOString(),
+  });
 }
 
 async function markFailure(visitId: string, code: FieldVisitSafeCode) {

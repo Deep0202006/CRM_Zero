@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { db, transactionalMutation, LocalAttendance } from "@/lib/db";
+import { db, saveAttendanceWithEvidence, LocalAttendance } from "@/lib/db";
 import {
   Camera,
   CheckCircle,
@@ -16,6 +16,14 @@ import { Button } from "@/components/ui/Button";
 import Link from "next/link";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { getCurrentISTDate } from "@/lib/dateTime";
+
+function formatISTDateKey(dateKey: string) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  const weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  return `${weekdays[date.getUTCDay()]} ${day} ${months[month - 1]}, ${year}`;
+}
 
 export default function AttendancePage() {
   const { currentUser, isFieldStaff, isOfficeStaff, isAdmin } = useAuth();
@@ -77,14 +85,14 @@ export default function AttendancePage() {
     };
   }, [isFieldStaff, todayRecord, currentUser]);
 
-  const captureSelfie = (): string | null => {
+  const captureSelfie = async (): Promise<Blob | null> => {
     if (!videoRef.current || !canvasRef.current) return null;
     const ctx = canvasRef.current.getContext("2d");
     if (!ctx) return null;
     canvasRef.current.width = videoRef.current.videoWidth || 480;
     canvasRef.current.height = videoRef.current.videoHeight || 480;
     ctx.drawImage(videoRef.current, 0, 0);
-    return canvasRef.current.toDataURL("image/jpeg", 0.7);
+    return new Promise((resolve) => canvasRef.current?.toBlob(resolve, "image/jpeg", 0.7));
   };
 
   const handleClockIn = async () => {
@@ -92,11 +100,11 @@ export default function AttendancePage() {
     setIsLoading(true);
     setErrorMsg(null);
 
-    let selfieUrl: string | null = null;
+    let selfieBlob: Blob | null = null;
 
     if (isFieldStaff) {
-      selfieUrl = captureSelfie();
-      if (!selfieUrl) {
+      selfieBlob = await captureSelfie();
+      if (!selfieBlob) {
         setErrorMsg("Could not capture selfie. Please allow camera access and try again.");
         setIsLoading(false);
         return;
@@ -114,15 +122,16 @@ export default function AttendancePage() {
         date: todayStr,
         clock_in: new Date().toISOString(),
         clock_out: null,
-        selfie_url: selfieUrl,
+        selfie_url: null,
+        selfie_captured: Boolean(selfieBlob),
         latitude: null,
         longitude: null,
       };
 
-      await transactionalMutation("attendance", "INSERT", newAttendance);
+      await saveAttendanceWithEvidence(newAttendance, selfieBlob);
 
       setTodayRecord(newAttendance);
-      setCapturedImage(selfieUrl);
+      if (selfieBlob) setCapturedImage(URL.createObjectURL(selfieBlob));
       setSuccessMsg(isFieldStaff ? "Clock-in verified! Redirecting..." : "Clocked in! Redirecting...");
       setTimeout(() => {
         window.location.href = "/my-day";
@@ -134,7 +143,7 @@ export default function AttendancePage() {
     }
   };
 
-  const formattedDate = new Date().toLocaleDateString("en-IN", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+  const formattedDate = formatISTDateKey(todayStr);
 
   if (isAdmin) {
     return (

@@ -37,6 +37,8 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const requestedDate = url.searchParams.get("date") ?? "";
   const date = isValidISTDateKey(requestedDate) ? requestedDate : "";
+  const dateFrom = isValidISTDateKey(url.searchParams.get("date_from") ?? "") ? url.searchParams.get("date_from")! : "";
+  const dateTo = isValidISTDateKey(url.searchParams.get("date_to") ?? "") ? url.searchParams.get("date_to")! : "";
   const representative = url.searchParams.get("agent");
   const segment = url.searchParams.get("segment");
   const outcome = url.searchParams.get("outcome");
@@ -59,11 +61,13 @@ export async function GET(request: Request) {
   const visits: Array<Record<string, unknown> & { visit_id: string; user_id: string; lead_id: string }> = [];
   for (let from = 0; ; from += EXPORT_PAGE_SIZE) {
     let query = admin.from("field_visits")
-      .select("visit_id,user_id,lead_id,visit_date,check_in_time,segment_type,person_met,visit_outcome,visit_notes,follow_up_date,created_at")
+      .select("visit_id,user_id,lead_id,visit_date,check_in_time,check_in_lat,check_in_lng,address,segment_type,person_met,visit_outcome,visit_notes,follow_up_date,selfie_storage_path,selfie_purged_at,created_at")
       .order("created_at", { ascending: false })
       .order("visit_id", { ascending: false })
       .range(from, from + EXPORT_PAGE_SIZE - 1);
     if (date && selectedBounds) query = query.or(`visit_date.eq.${date},and(check_in_time.gte.${selectedBounds.startsAt},check_in_time.lt.${selectedBounds.endsAt})`);
+    if (!date && dateFrom) query = query.gte("visit_date", dateFrom);
+    if (!date && dateTo) query = query.lte("visit_date", dateTo);
     if (representative && representative !== "ALL") query = query.eq("user_id", representative);
     if (segment && segment !== "ALL") query = query.eq("segment_type", segment);
     if (outcome && outcome !== "ALL") query = query.eq("visit_outcome", outcome);
@@ -105,9 +109,13 @@ export async function GET(request: Request) {
       Segment: visit.segment_type,
       Business: lead?.business_name?.trim() || visit.lead_id?.trim() || "Unavailable business",
       "Person met": visit.person_met ?? "",
+      Address: visit.address ?? "Legacy visit — address not captured",
+      Latitude: visit.check_in_lat ?? "",
+      Longitude: visit.check_in_lng ?? "",
       Outcome: getOutcomeLabel(String(visit.visit_outcome)),
       "Follow-up date": visit.follow_up_date ?? "",
       Notes: visit.visit_notes ?? "",
+      "Selfie status": visit.selfie_purged_at ? "Expired after 5-day retention" : visit.selfie_storage_path ? "Available" : "Pending",
     };
   });
   const worksheet = xlsx.utils.json_to_sheet(rows);

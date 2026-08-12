@@ -6,6 +6,8 @@ Supabase-confirmed rows are authoritative across devices. IndexedDB holds durabl
 
 Receivables financial state is server authoritative: PostgreSQL numeric calculations and confirmed, non-reversed payments determine paid and outstanding amounts. A browser payment report or uncertain command is never confirmed money. Receivables assignment is also authoritative: server-listed active operational employees are convenience, while PostgreSQL rejects inactive or Admin assignees.
 
+Field-visit `payment_done` is an observation, never financial confirmation. Payment Collections alone owns Receivables payment mutations. Permanent visit/attendance rows and metadata remain authoritative after temporary evidence objects expire.
+
 ## INVARIANT
 
 Stable IDs survive retry. Confirmed server rows are not deleted to reconcile local state. Unknown records are preserved. Production verification requires read-only introspection; migrations alone do not prove deployed state.

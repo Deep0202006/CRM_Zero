@@ -14,7 +14,8 @@ import { getOutcomeLabel } from "@/lib/fieldVisits/contract";
 
 interface AdminVisit extends LocalFieldVisit {
   has_selfie_evidence?: boolean;
-  confirmation_status?: "Confirmed" | "Evidence pending";
+  selfie_status?: "AVAILABLE" | "PURGED" | "PENDING";
+  confirmation_status?: string;
   users?: { name?: string | null; email?: string | null } | null;
   leads?: { business_name?: string | null; contact_person?: string | null; phone?: string | null } | null;
 }
@@ -28,6 +29,7 @@ function getAdminOutcomeVariant(outcome: string): "success" | "brand" | "info" |
   switch (outcome) {
     case "registered": return "brand";
     case "installed": return "success";
+    case "payment_done": return "success";
     case "interested": return "info";
     case "follow_up":
     case "payment_follow_up": return "warning";
@@ -47,6 +49,8 @@ export default function AdminVisitsPage() {
   const [todayTotal, setTodayTotal] = useState(0);
   const [legacyMismatchCount, setLegacyMismatchCount] = useState(0);
   const [date, setDate] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [search, setSearch] = useState("");
   const [representative, setRepresentative] = useState("ALL");
@@ -69,6 +73,8 @@ export default function AdminVisitsPage() {
       setErrorMessage("");
       const params = new URLSearchParams({ page: String(targetPage) });
       if (date) params.set("date", date);
+      if (!date && dateFrom) params.set("date_from", dateFrom);
+      if (!date && dateTo) params.set("date_to", dateTo);
       if (search.trim()) params.set("search", search.trim());
       if (representative !== "ALL") params.set("representative", representative);
       if (segment !== "ALL") params.set("segment", segment);
@@ -94,7 +100,7 @@ export default function AdminVisitsPage() {
     } finally {
       if (sequence === requestSequence.current) setLoading(false);
     }
-  }, [date, isAdmin, outcome, representative, search, segment]);
+  }, [date, dateFrom, dateTo, isAdmin, outcome, representative, search, segment]);
 
   useEffect(() => {
     queueMicrotask(() => void loadData(1));
@@ -134,6 +140,8 @@ export default function AdminVisitsPage() {
       if (!token) throw new Error("Authentication required");
       const params = new URLSearchParams();
       if (date) params.set("date", date);
+      if (!date && dateFrom) params.set("date_from", dateFrom);
+      if (!date && dateTo) params.set("date_to", dateTo);
       if (search.trim()) params.set("search", search.trim());
       if (representative !== "ALL") params.set("agent", representative);
       if (segment !== "ALL") params.set("segment", segment);
@@ -165,8 +173,8 @@ export default function AdminVisitsPage() {
       <PageHeader
         eyebrow="Field Operations"
         icon={<MapPin size={18} />}
-        title="Team Field Visits"
-        description="Confirmed field visits from the original production source."
+        title="VISITS OVERVIEW"
+        description="Bounded authoritative history. Selfies load only on explicit request."
         actions={<Button size="sm" variant="outline" icon={<Download size={14} />} onClick={handleExport} isLoading={exporting}>Export to Excel</Button>}
       />
       <div className="metric-grid">
@@ -178,12 +186,16 @@ export default function AdminVisitsPage() {
       <div className="mb-3 flex flex-wrap gap-2">
         <Button size="sm" variant={date ? "outline" : "primary"} onClick={() => { setPage(1); setDate(""); }}>All visits</Button>
         <Button size="sm" variant={date === getCurrentISTDate() ? "primary" : "outline"} onClick={() => { setPage(1); setDate(getCurrentISTDate()); }}>Today</Button>
+        <Button size="sm" variant={segment === "Retailer" ? "primary" : "outline"} onClick={() => { setPage(1); setSegment(segment === "Retailer" ? "ALL" : "Retailer"); }}>Retailer</Button>
+        <Button size="sm" variant={segment === "Distributor" ? "primary" : "outline"} onClick={() => { setPage(1); setSegment(segment === "Distributor" ? "ALL" : "Distributor"); }}>Distributor</Button>
       </div>
       {legacyMismatchCount > 0 && <div role="status" className="mb-4 rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">Included {legacyMismatchCount} confirmed visit{legacyMismatchCount === 1 ? "" : "s"} whose stored date differs from the selected India check-in date.</div>}
       {errorMessage && <div role="alert" className="mb-4 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800">{errorMessage} <Button size="sm" variant="outline" onClick={() => void loadData(page)}>Refresh</Button></div>}
       <div className="mb-6 grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <input aria-label="Search visits" className="field-control min-w-0" placeholder="Business, representative, or notes" value={search} onChange={(event) => { setPage(1); setSearch(event.target.value); }} />
         <input aria-label="Visit date" type="date" className="field-control min-w-0" value={date} onChange={(event) => { setPage(1); setDate(event.target.value); }} />
+        <input aria-label="Date From" type="date" className="field-control min-w-0" value={dateFrom} onChange={(event) => { setPage(1); setDate(""); setDateFrom(event.target.value); }} />
+        <input aria-label="Date To" type="date" className="field-control min-w-0" value={dateTo} onChange={(event) => { setPage(1); setDate(""); setDateTo(event.target.value); }} />
         <select aria-label="Representative" className="field-control min-w-0" value={representative} onChange={(event) => { setPage(1); setRepresentative(event.target.value); }}>
           <option value="ALL">All representatives</option>
           {representatives.map((user) => <option key={user.user_id} value={user.user_id}>{user.name}{user.email ? ` (${user.email})` : ""}{user.is_active ? "" : " — inactive"}{user.historical_only ? " — historical" : ""}</option>)}
@@ -193,15 +205,13 @@ export default function AdminVisitsPage() {
         </select>
         <select aria-label="Outcome" className="field-control min-w-0" value={outcome} onChange={(event) => { setPage(1); setOutcome(event.target.value); }}>
           <option value="ALL">All outcomes</option>
-          {["registered", "installed", "interested", "follow_up", "payment_follow_up", "not_interested"].map((value) => <option key={value} value={value}>{getOutcomeLabel(value)}</option>)}
+          {["registered", "installed", "interested", "follow_up", "payment_follow_up", "payment_done", "not_interested"].map((value) => <option key={value} value={value}>{getOutcomeLabel(value)}</option>)}
         </select>
       </div>
       <QueueList
         title="Confirmed visit history"
         items={visits.map((visit) => {
-          const confirmationText = visit.confirmation_status === "Evidence pending" || !visit.has_selfie_evidence
-            ? "Visit confirmed · Evidence pending"
-            : "Visit confirmed";
+          const confirmationText = visit.selfie_status === "PURGED" ? "Selfie captured · Expired after 5-day retention" : visit.selfie_status === "AVAILABLE" ? "Selfie available" : "Evidence pending";
           return {
             id: visit.visit_id,
             primaryNode: (
@@ -209,13 +219,14 @@ export default function AdminVisitsPage() {
                 <p className="break-words text-[13px] font-semibold leading-snug text-[var(--text-primary)]">{visit.leads?.business_name?.trim() || visit.lead_id?.trim() || "Unavailable business"} <span className="font-normal text-[var(--text-secondary)]">({visit.segment_type})</span></p>
                 <p className="mt-1 break-all text-[11px] leading-5 text-[var(--text-muted)]">Rep · {visit.users?.name || "Unknown"} · {visit.users?.email || "Unavailable"}</p>
                 <p className="mt-1 text-[12px] text-[var(--text-secondary)]">Person met: {visit.person_met || "Unavailable"}{visit.follow_up_date ? ` · Follow-up: ${visit.follow_up_date}` : ""} · {confirmationText}</p>
-                {visit.visit_notes && <p className="mt-2 break-words text-[12px] leading-5 text-[var(--text-secondary)]">{visit.visit_notes}</p>}
+                <p className="mt-2 whitespace-pre-wrap break-words text-[13px] font-medium leading-5 text-[var(--text-primary)]">{visit.address?.trim() || "Legacy visit — address was not captured"}</p>
+                <details className="mt-2 rounded border border-[var(--border-subtle)] p-3 text-[12px] leading-5 text-[var(--text-secondary)]"><summary className="cursor-pointer font-semibold">Visit detail</summary><p><strong>GPS:</strong> {visit.check_in_lat != null && visit.check_in_lng != null ? `${visit.check_in_lat}, ${visit.check_in_lng}` : "Not captured"}</p><p><strong>Sync:</strong> {visit.sync_status || "Confirmed"}</p><p><strong>Follow-up:</strong> {visit.follow_up_date || "None"}</p><p className="whitespace-pre-wrap"><strong>Notes:</strong> {visit.visit_notes || "None"}</p>{visit.check_in_lat != null && visit.check_in_lng != null && <a target="_blank" rel="noreferrer" className="text-[var(--brand-700)] underline" href={`https://www.google.com/maps?q=${visit.check_in_lat},${visit.check_in_lng}`}>Open Location</a>}</details>
               </div>
             ),
             statusText: getAdminOutcomeLabel(visit.visit_outcome),
             statusVariant: getAdminOutcomeVariant(visit.visit_outcome),
             timestamp: new Date(visit.check_in_time).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }),
-            actions: visit.has_selfie_evidence ? <EvidenceButton visitId={visit.visit_id} /> : undefined,
+            actions: visit.selfie_status === "AVAILABLE" ? <EvidenceButton visitId={visit.visit_id} /> : visit.selfie_status === "PURGED" ? <span className="text-xs text-[var(--text-muted)]">Selfie expired after 5-day retention</span> : undefined,
           };
         })}
         emptyMessage={loading ? "Loading visits…" : "No confirmed visits match these filters."}

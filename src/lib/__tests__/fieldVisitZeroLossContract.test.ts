@@ -58,7 +58,7 @@ describe("field visit zero-loss contract", () => {
     };
     const payload = buildFieldVisitConfirmPayload(local) as Record<string, unknown>;
     expect(Object.keys(payload)).toEqual([
-      "visit_id", "lead_id", "user_id", "visit_date", "check_in_time", "check_in_lat", "check_in_lng", "location_accuracy_m", "location_captured_at", "location_acquisition_mode", "location_quality", "check_in_photo_url", "selfie_captured_at", "selfie_capture_method", "selfie_storage_path", "visit_outcome", "visit_notes", "attendance_id", "person_met", "segment_type", "follow_up_date", "created_at", "updated_at",
+      "visit_id", "lead_id", "user_id", "visit_date", "check_in_time", "check_in_lat", "check_in_lng", "location_accuracy_m", "location_captured_at", "location_acquisition_mode", "location_quality", "check_in_photo_url", "selfie_captured_at", "selfie_capture_method", "selfie_storage_path", "visit_outcome", "visit_notes", "attendance_id", "person_met", "address", "segment_type", "follow_up_date", "created_at", "updated_at",
     ]);
     expect(JSON.stringify(payload)).not.toMatch(/sync_status|sync_stage|sync_error|sync_attempt|last_sync|raw error|SECRET/);
   });
@@ -88,7 +88,7 @@ describe("field visit zero-loss contract", () => {
   });
 
   it("shows confirmed admin rows even when evidence is pending", () => {
-    expect(adminRoute).toContain('confirmation_status: visit.selfie_storage_path ? "Confirmed" : "Evidence pending"');
+    expect(adminRoute).toContain('selfie_status: visit.selfie_purged_at ? "PURGED" : visit.selfie_storage_path ? "AVAILABLE" : "PENDING"');
     expect(adminPage).toContain('"Evidence pending"');
     expect(adminRoute).toContain("leadsById.get(visit.lead_id) ?? null");
   });

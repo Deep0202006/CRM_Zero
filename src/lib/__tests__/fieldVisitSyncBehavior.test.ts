@@ -6,6 +6,7 @@ const mockVisit = {
   check_in_time: "2026-07-31T04:00:00.000Z",
   check_in_lat: 1,
   check_in_lng: 1,
+  address: "Main Road",
   check_in_photo_url: null,
   selfie_storage_path: null,
   visit_outcome: "interested",

@@ -85,10 +85,12 @@ describe("authoritative admin visit contracts", () => {
     expect(page).not.toContain("setVisits([])");
   });
 
-  it("exports all pages only on click and excludes private evidence and location", () => {
+  it("exports all pages only on click, includes requested business/location metadata, and excludes evidence bytes", () => {
     expect(page).toContain("onClick={handleExport}");
     expect(exportRoute).toContain("for (let from = 0; ; from += EXPORT_PAGE_SIZE)");
-    expect(exportRoute).not.toMatch(/selfie|signed|base64|latitude|longitude|check_in_lat|check_in_lng/i);
+    expect(exportRoute).not.toMatch(/signedUrl|base64|media_data|download\(/i);
+    expect(exportRoute).toContain("check_in_lat");
+    expect(exportRoute).toContain("selfie_purged_at");
     expect(exportRoute).toContain('date || "all"');
     expect(exportRoute).toContain("segment_type");
     expect(exportRoute).toContain("visit_outcome");

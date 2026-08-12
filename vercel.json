@@ -2,8 +2,17 @@
     "functions": {
         "app/api/**/*.ts": {
             "maxDuration": 10
+        },
+        "app/api/maintenance/selfie-retention/route.ts": {
+            "maxDuration": 60
         }
     },
+    "crons": [
+        {
+            "path": "/api/maintenance/selfie-retention",
+            "schedule": "17 2 * * *"
+        }
+    ],
     "headers": [
         {
             "source": "/(.*)",

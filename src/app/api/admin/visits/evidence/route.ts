@@ -29,9 +29,12 @@ export async function GET(request: Request) {
   if (!visitId) return NextResponse.json({ error: "Visit ID is required." }, { status: 400 });
   const { data: visit, error } = await admin
     .from("field_visits")
-    .select("selfie_storage_path")
+    .select("selfie_storage_path,selfie_purged_at")
     .eq("visit_id", visitId)
     .maybeSingle();
+  if (visit?.selfie_purged_at) {
+    return NextResponse.json({ status: "PURGED", message: "Selfie captured. Expired after 5-day retention." }, { status: 410, headers: { "Cache-Control": "no-store" } });
+  }
   if (error || !visit?.selfie_storage_path) {
     return NextResponse.json({ error: "Evidence is unavailable." }, { status: 404 });
   }
