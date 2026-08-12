@@ -8,6 +8,8 @@ Receivables financial state is server authoritative: PostgreSQL numeric calculat
 
 Field-visit `payment_done` is an observation, never financial confirmation. Payment Collections alone owns Receivables payment mutations. Permanent visit/attendance rows and metadata remain authoritative after temporary evidence objects expire.
 
+Pipeline is a global read model for active CRM users. Ordinary Lead mutation belongs only to the assigned owner; Admin status is not an override. The authoritative transition boundary writes Lead state plus Pipeline audit/idempotency only. Pipeline never creates Tasks, Calls, Visits, Receivables, payments, or chat records, and Calls never create Leads or Pipeline transitions.
+
 ## INVARIANT
 
 Stable IDs survive retry. Confirmed server rows are not deleted to reconcile local state. Unknown records are preserved. Production verification requires read-only introspection; migrations alone do not prove deployed state.

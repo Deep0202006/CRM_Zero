@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
 import { db } from "@/lib/db";
-import { PIPELINE_STAGES } from "@/lib/pipelineStages";
+import { PIPELINE_STAGES, stagesForSegment } from "@/lib/pipelineStages";
 import {
   BarChart,
   Bar,
@@ -54,9 +54,9 @@ export default function FunnelTab() {
       if (isSupabaseConfigured) {
         // Fetch from Supabase views
         const [funnelRes, sourceRes, timeRes] = await Promise.all([
-          supabase.from("pipeline_funnel_summary").select("*"),
-          supabase.from("lead_source_performance").select("*"),
-          supabase.from("avg_time_in_stage").select("*"),
+          supabase.from("pipeline_funnel_summary").select("segment_type,status,lead_count").limit(100),
+          supabase.from("lead_source_performance").select("lead_source,segment_type,total_leads,converted,conversion_rate_pct").limit(100),
+          supabase.from("avg_time_in_stage").select("status,segment_type,avg_days_in_current_stage").limit(100),
         ]);
         setFunnelData(funnelRes.data || []);
         setSourceData(sourceRes.data || []);
@@ -83,7 +83,7 @@ export default function FunnelTab() {
           const key = `${l.lead_source}|${l.segment_type}`;
           if (!sourceMap[key]) sourceMap[key] = { total: 0, converted: 0 };
           sourceMap[key].total += 1;
-          if (l.status === "Payment") sourceMap[key].converted += 1;
+          if ((l.segment_type === "Retailer" && l.status === "Converted") || (l.segment_type === "Distributor" && l.status === "Payment")) sourceMap[key].converted += 1;
         });
         const localSource: SourcePerformance[] = Object.keys(sourceMap).map(k => {
           const [src, seg] = k.split("|");
@@ -101,7 +101,7 @@ export default function FunnelTab() {
         const timeMap: Record<string, { sum: number; count: number }> = {};
         const now = Date.now();
         leads.forEach(l => {
-          if (l.status === "Payment" || l.status === "Not Interested") return;
+          if (l.status === "Not Interested" || (l.segment_type === "Retailer" && l.status === "Converted") || (l.segment_type === "Distributor" && l.status === "Payment")) return;
           const key = `${l.status}|${l.segment_type}`;
           if (!timeMap[key]) timeMap[key] = { sum: 0, count: 0 };
           const start = new Date(l.stage_entered_at || l.created_at).getTime();
@@ -135,10 +135,12 @@ export default function FunnelTab() {
     "Registration": "var(--chart-4)",
     "Installation": "var(--status-success)",
     "Payment": "var(--brand-700)",
+    "Converted": "var(--status-success)",
     "Renewal Due": "var(--status-danger)",
   };
 
-  const currentFunnel = PIPELINE_STAGES.map(stage => {
+  const visibleStages = activeSegment === "All" ? PIPELINE_STAGES : stagesForSegment(activeSegment);
+  const currentFunnel = visibleStages.map(stage => {
     const leadsInStage = funnelData
       .filter(f => (activeSegment === "All" || f.segment_type === activeSegment) && f.status === stage)
       .reduce((sum, f) => sum + f.lead_count, 0);
@@ -162,7 +164,7 @@ export default function FunnelTab() {
     }, [] as SourcePerformance[])
     .sort((a, b) => b.total_leads - a.total_leads); // Rank by total leads
 
-  const currentTime = PIPELINE_STAGES.filter((s: string) => s !== "Payment" && s !== "Not Interested").map((stage: string) => {
+  const currentTime = visibleStages.filter((stage) => stage !== "Payment" && stage !== "Converted" && stage !== "Not Interested").map((stage) => {
     const stageData = timeData
       .filter((t) => (activeSegment === "All" || t.segment_type === activeSegment) && t.status === stage);
     
@@ -196,7 +198,7 @@ export default function FunnelTab() {
 
       <div className="grid gap-4 md:grid-cols-3">
         <div className="surface-panel p-5"><div className="flex items-start justify-between gap-4"><div><p className="section-kicker">Visible pipeline</p><p className="mt-2 text-3xl font-semibold tracking-[-0.04em] tabular-nums">{totalVisibleLeads}</p><p className="mt-1 text-[12px] text-[var(--text-muted)]">Leads across active funnel stages</p></div><span className="grid h-10 w-10 place-items-center rounded-[var(--radius-md)] bg-[var(--brand-50)] text-[var(--brand-700)]"><Route size={18} /></span></div></div>
-        <div className="surface-panel p-5"><div className="flex items-start justify-between gap-4"><div><p className="section-kicker">Converted</p><p className="mt-2 text-3xl font-semibold tracking-[-0.04em] tabular-nums">{convertedVisibleLeads}</p><p className="mt-1 text-[12px] text-[var(--text-muted)]">Leads reaching payment</p></div><span className="grid h-10 w-10 place-items-center rounded-[var(--radius-md)] bg-[var(--status-success-soft)] text-[var(--status-success)]"><TrendingUp size={18} /></span></div></div>
+        <div className="surface-panel p-5"><div className="flex items-start justify-between gap-4"><div><p className="section-kicker">Converted</p><p className="mt-2 text-3xl font-semibold tracking-[-0.04em] tabular-nums">{convertedVisibleLeads}</p><p className="mt-1 text-[12px] text-[var(--text-muted)]">Retailers converted or distributors at payment</p></div><span className="grid h-10 w-10 place-items-center rounded-[var(--radius-md)] bg-[var(--status-success-soft)] text-[var(--status-success)]"><TrendingUp size={18} /></span></div></div>
         <div className="surface-panel p-5"><div className="flex items-start justify-between gap-4"><div><p className="section-kicker">Average stage time</p><p className="mt-2 text-3xl font-semibold tracking-[-0.04em] tabular-nums">{averageVisibleStageTime}<span className="ml-1 text-sm font-medium text-[var(--text-muted)]">days</span></p><p className="mt-1 text-[12px] text-[var(--text-muted)]">Across active non-terminal stages</p></div><span className="grid h-10 w-10 place-items-center rounded-[var(--radius-md)] bg-[var(--status-warning-soft)] text-[var(--status-warning)]"><Clock size={18} /></span></div></div>
       </div>
 

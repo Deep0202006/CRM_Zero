@@ -34,19 +34,19 @@ export function isPipelineStage(value: unknown): value is PipelineStage {
   return typeof value === "string" && (PIPELINE_STAGES as readonly string[]).includes(value);
 }
 
-export function canEmployeeTransition(from: PipelineStage, to: PipelineStage): boolean {
-  return ALLOWED_TRANSITIONS.some((transition) => transition.from === from && transition.to === to && transition.allowedBy === "agent");
+export function canEmployeeTransition(from: PipelineStage, to: PipelineStage, segment?: PipelineSegment): boolean {
+  return ALLOWED_TRANSITIONS.some((transition) => transition.from === from && transition.to === to && transition.allowedBy === "agent" && (!transition.segment || transition.segment === segment));
 }
 
-export function canSystemTransition(from: PipelineStage, to: PipelineStage): boolean {
-  return ALLOWED_TRANSITIONS.some((transition) => transition.from === from && transition.to === to);
+export function canSystemTransition(from: PipelineStage, to: PipelineStage, segment: PipelineSegment): boolean {
+  return ALLOWED_TRANSITIONS.some((transition) => transition.from === from && transition.to === to && (!transition.segment || transition.segment === segment));
 }
 
-export function assertOwnerTransition(command: PipelineTransitionCommand, assignedTo: string | null): void {
+export function assertOwnerTransition(command: PipelineTransitionCommand, assignedTo: string | null, segment?: PipelineSegment): void {
   if (!assignedTo || command.actor_id !== assignedTo) throw new Error("PIPELINE_NOT_ASSIGNED");
-  if (!canEmployeeTransition(command.expected_stage, command.target_stage)) throw new Error("PIPELINE_INVALID_TRANSITION");
+  if (!canEmployeeTransition(command.expected_stage, command.target_stage, segment)) throw new Error("PIPELINE_INVALID_TRANSITION");
 }
 
-export function getEmployeeTransitionActions(stage: PipelineStage) {
-  return ALLOWED_TRANSITIONS.filter((transition) => transition.from === stage && transition.allowedBy === "agent");
+export function getEmployeeTransitionActions(stage: PipelineStage, segment: PipelineSegment) {
+  return ALLOWED_TRANSITIONS.filter((transition) => transition.from === stage && transition.allowedBy === "agent" && (!transition.segment || transition.segment === segment));
 }

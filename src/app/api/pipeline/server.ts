@@ -1,5 +1,4 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { segmentsFromCapabilities } from "@/lib/pipeline/authority";
 import type { PipelineLeadView, PipelineSegment, PipelineTransitionCommand } from "@/lib/pipeline/contract";
 import { isPipelineStage } from "@/lib/pipeline/contract";
 import type { ConfirmedPipelineOperation } from "@/lib/pipeline/legacyRecovery";
@@ -27,23 +26,20 @@ export async function createPipelineServerContext(request: Request): Promise<Pip
   const { data: authenticated, error } = await auth.auth.getUser(token);
   if (error || !authenticated.user) return null;
   const userId = authenticated.user.id;
-  const [{ data: user }, { data: grants }] = await Promise.all([
-    service.from("users").select("user_id,is_active").eq("user_id", userId).maybeSingle(),
-    service.from("user_capabilities").select("capability_code").eq("user_id", userId),
-  ]);
+  const { data: user } = await service.from("users").select("user_id,is_active").eq("user_id", userId).maybeSingle();
   if (!user || !(user.is_active === true || user.is_active === 1)) return null;
-  return { userId, segments: segmentsFromCapabilities((grants ?? []).map((grant) => grant.capability_code)), userClient: auth, service };
+  return { userId, segments: ["Retailer", "Distributor"], userClient: auth, service };
 }
 
-export async function readAuthorizedPipeline(context: PipelineServerContext): Promise<PipelineLeadView[]> {
-  if (context.segments.length === 0) return [];
-  // The authenticated client preserves the deployed RLS visibility boundary;
-  // segment capabilities can narrow it but never broaden it.
-  const { data: leads, error } = await context.userClient
+export async function readAuthorizedPipeline(context: PipelineServerContext, page: number, pageSize: number, segment: PipelineSegment): Promise<{ leads: PipelineLeadView[]; total: number }> {
+  const start = (page - 1) * pageSize;
+  const { data: leads, error, count } = await context.service
     .from("leads")
-    .select("lead_id,business_name,contact_person,phone,segment_type,status,assigned_to,created_at,stage_entered_at,onboarded_at,lead_source,area")
-    .in("segment_type", context.segments)
-    .order("created_at", { ascending: false });
+    .select("lead_id,business_name,contact_person,phone,segment_type,status,assigned_to,created_at,stage_entered_at,onboarded_at,lead_source,area", { count: "exact" })
+    .eq("segment_type", segment)
+    .order("created_at", { ascending: false })
+    .order("lead_id", { ascending: false })
+    .range(start, start + pageSize - 1);
   if (error) throw error;
   const ownerIds = [...new Set((leads ?? []).map((lead) => lead.assigned_to).filter(Boolean))];
   const { data: owners, error: ownerError } = ownerIds.length
@@ -51,7 +47,7 @@ export async function readAuthorizedPipeline(context: PipelineServerContext): Pr
     : { data: [], error: null };
   if (ownerError) throw ownerError;
   const names = new Map((owners ?? []).map((owner) => [owner.user_id, owner.name]));
-  return (leads ?? []).filter((lead) => isPipelineStage(lead.status)).map((lead) => ({ ...lead, owner_name: names.get(lead.assigned_to) ?? "Unassigned" })) as PipelineLeadView[];
+  return { leads: (leads ?? []).filter((lead) => isPipelineStage(lead.status)).map((lead) => ({ ...lead, owner_name: names.get(lead.assigned_to) ?? "Unassigned" })) as PipelineLeadView[], total: count ?? 0 };
 }
 
 export async function readOwnedPipelineOperationEvidence(context: PipelineServerContext, leads: PipelineLeadView[]): Promise<ConfirmedPipelineOperation[]> {

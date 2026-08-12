@@ -38,6 +38,10 @@ function findings(source, file) {
   if (clientCode && /\.from\(\s*["'`](?:receivables|receivable_payments)["'`]\s*\)[\s\S]{0,300}?\.(?:insert|upsert|update|delete)\s*\(/i.test(text)) hits.push("direct browser financial write bypasses Receivables command API");
 
   const normalizedFile = file.replaceAll("\\", "/").toLowerCase();
+  if (clientCode && /\.from\(\s*["'`]leads["'`]\s*\)[\s\S]{0,300}?\.update\s*\(/i.test(text)) hits.push("direct browser Pipeline mutation bypasses authority");
+  if (!normalizedFile.includes("/__tests__/") && (normalizedFile.includes("/pipeline/") || normalizedFile.includes("/onboarding/")) && /from\s+["'][^"']*(?:task|calllogs|fieldvisits|receivables)[^"']*["']/i.test(text)) hits.push("Pipeline imports cross-domain write helper");
+  if (normalizedFile.endsWith("src/app/api/call-logs/confirm/route.ts") && /\.from\(\s*["'`]leads["'`]\s*\)[\s\S]{0,300}?\.(?:insert|upsert)\s*\(/i.test(text)) hits.push("Call confirmation creates Lead");
+  if ((normalizedFile.includes("/pipeline/") || normalizedFile.includes("/onboarding/")) && /\.select\(\s*["'`]\*["'`]\s*\)/i.test(text)) hits.push("Pipeline hot path SELECT star");
   const testLike = /(?:^|[\/._-])(?:__tests__|test|tests|qa|fixtures?|smoke)(?:[\/._-]|$)|\.(?:test|spec)\.[cm]?[jt]sx?$/.test(normalizedFile);
   const productionAccess = /(?:SUPABASE_SERVICE_ROLE_KEY|PRODUCTION_SUPABASE|\.env\.production)/i.test(text);
   const businessTableMutation = /\.from\(\s*["'`](?:users|leads|call_logs|field_visits|tasks|attendance|client_queries|queries|mappings|mapping_requests|chat|chats|messages)["'`]\s*\)[\s\S]{0,300}?\.(?:insert|upsert|update|delete)\s*\(/i.test(text);
@@ -62,5 +66,24 @@ for (const file of files) {
     else { console.error(`${file}: prohibited new pattern: ${item}`); failed = true; }
   }
 }
+function requireInvariant(ok, message) { if (!ok) { console.error(`semantic invariant: ${message}`); failed = true; } }
+const pipelineStages = readFileSync(resolve(root, "src/lib/pipelineStages.ts"), "utf8");
+const retailerStages = pipelineStages.match(/RETAILER_PIPELINE_STAGES\s*=([\s\S]*?);/)?.[1] ?? "";
+const distributorStages = pipelineStages.match(/DISTRIBUTOR_PIPELINE_STAGES\s*=([\s\S]*?);/)?.[1] ?? "";
+requireInvariant(retailerStages.includes('stage !== "Payment"'), "Retailer stage map must exclude Payment");
+requireInvariant(distributorStages.includes('stage !== "Converted"') && pipelineStages.includes('to: "Payment"') && pipelineStages.includes('segment: "Distributor"'), "Distributor stage map must retain Payment");
+const pipelineServer = readFileSync(resolve(root, "src/app/api/pipeline/server.ts"), "utf8");
+requireInvariant(pipelineServer.includes('.range(start, start + pageSize - 1)'), "Pipeline list must remain server bounded");
+requireInvariant(!/\.select\(\s*["'`]\*["'`]\s*\)/.test(pipelineServer), "Pipeline hot read cannot SELECT star");
+const transitionRoute = readFileSync(resolve(root, "src/app/api/pipeline/transition/route.ts"), "utf8");
+requireInvariant(transitionRoute.includes("command.actor_id !== context.userId") && transitionRoute.includes("p_actor_id: context.userId"), "Pipeline mutation API must derive and assert actor identity");
+const callConfirm = readFileSync(resolve(root, "src/app/api/call-logs/confirm/route.ts"), "utf8");
+requireInvariant(!/\.from\(\s*["'`]leads["'`]\s*\)[\s\S]{0,400}?\.(?:insert|upsert|update)\s*\(/i.test(callConfirm), "Call confirmation cannot mutate Leads");
+for (const migration of changedPaths().filter((file) => file.startsWith("supabase/migrations/") && file.endsWith(".sql") && existsSync(resolve(root, file)))) {
+  const sql = readFileSync(resolve(root, migration), "utf8").replace(/--.*$/gm, "");
+  requireInvariant(!/\bdelete\s+from\s+public\.leads\b|\btruncate\b/i.test(sql), `${migration} cannot DELETE Leads or TRUNCATE`);
+}
+requireInvariant(existsSync(resolve(root, "src/lib/__tests__/pipeline/pipelineHardeningMigration.test.ts")), "Pipeline cross-domain mutation assertions are required");
+requireInvariant(existsSync(resolve(root, "docs/contracts/RESOURCE_BUDGET.md")), "hot-query changes require the Resource Budget contract");
 if (failed) process.exit(1);
 console.log(`Invariant guard passed (${files.length} executable changed files scanned differentially).`);

@@ -19,6 +19,14 @@ export type { LocalTask, LocalTaskTemplate };
 
 const PRIORITY_ORDER: Record<string, number> = { High: 0, Medium: 1, Low: 2 };
 
+export function isProvenPipelineGeneratedTask(task: Pick<LocalTask, "assigned_by" | "source" | "related_lead_id" | "title" | "description">): boolean {
+  if (task.assigned_by || task.source !== "manual" || !task.related_lead_id) return false;
+  const title = task.title ?? ""; const description = task.description ?? "";
+  const stage = "(?:Contacted|Interested|Not Interested|Registration|Installation|Payment|Converted|Renewal Due)";
+  if (new RegExp(`^Lead moved to ${stage}\\. Follow up before it goes stale\\.$`).test(description) && new RegExp(`^Follow up: .+ \\(${stage}\\)$`).test(title)) return true;
+  return description === "Required for registration." && /^(?:Collect GST certificate|Collect PAN card|Collect Drug Licence|Collect Bill Photo):/.test(title);
+}
+
 async function removeUnconfirmedInvalidTemplateFollowUps(userId: string): Promise<void> {
   const invalid = await db.tasks
     .where("assigned_to")
@@ -175,7 +183,7 @@ export async function getOrGenerateTodayTasks(
     .toArray();
 
   const visibleRelevant = allRelevant.filter(
-    (task) => !(task.source === "template" && isFollowUpLikeText(task.title, task.description)),
+    (task) => task.is_active !== false && !isProvenPipelineGeneratedTask(task) && !(task.source === "template" && isFollowUpLikeText(task.title, task.description)),
   );
   return sortTasks(deduplicateSelfScheduledFollowUps(visibleRelevant, userId));
 }
@@ -185,12 +193,12 @@ export async function getMyDayStats(userId: string) {
 
   const pendingToday = await db.tasks
     .where("assigned_to").equals(userId)
-    .and((t: LocalTask) => t.due_date <= today && t.status !== "Completed")
+    .and((t: LocalTask) => t.is_active !== false && !isProvenPipelineGeneratedTask(t) && t.due_date <= today && t.status !== "Completed")
     .count();
 
   const scheduledLater = await db.tasks
     .where("assigned_to").equals(userId)
-    .and((t: LocalTask) => t.due_date > today && t.status === "Pending")
+    .and((t: LocalTask) => t.is_active !== false && !isProvenPipelineGeneratedTask(t) && t.due_date > today && t.status === "Pending")
     .count();
 
   return { pendingToday, scheduledLater };

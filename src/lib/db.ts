@@ -239,6 +239,9 @@ export interface LocalTask {
   proof_note: string | null;
   proof_photo_url: string | null;
   created_at: string;
+  is_active?: boolean;
+  cancelled_at?: string | null;
+  cancellation_reason?: string | null;
 }
 
 export interface LocalTaskStatusHistory {
@@ -633,6 +636,28 @@ class CRMDatabase extends Dexie {
       users: "user_id, email, is_active, manager_id", capabilities: "code",
       user_capabilities: "id, user_id, capability_code, [user_id+capability_code]",
       leads: "lead_id, business_name, segment_type, status, assigned_to, stage_entered_at, lead_source, area, renewal_date",
+      client_queries: "query_id, client_username, problem_status, assigned_to, created_at",
+      mappings: "mapping_id, distributor_lead_id, retailer_lead_id, [distributor_lead_id+retailer_lead_id], mapped_by",
+      mapping_requests: "request_id, distributor_lead_id, retailer_lead_id, mapped_by, status, created_at",
+      internal_tickets: "ticket_id, raised_by, status, assigned_to",
+      attendance: "attendance_id, user_id, date, [user_id+date]",
+      call_logs: "log_id, user_id, lead_id, timestamp",
+      sync_queue: "++id, idempotency_key, table_name, action, timestamp, retry_count",
+      task_templates: "template_id, applies_to_capability, is_active",
+      tasks: "task_id, assigned_to, due_date, status, [assigned_to+due_date], template_id",
+      task_status_history: "id, task_id, changed_at", kpi_snapshots: "snapshot_id, user_id, date, [user_id+date]",
+      lead_registration_checklist: "checklist_id, lead_id", lead_installation_details: "installation_id, lead_id",
+      lead_payment_details: "payment_id, lead_id", task_upload_batches: "id, uploaded_by, file_hash",
+      allocated_targets: "target_id, batch_id, assigned_to_user_id, city, is_completed, [assigned_to_user_id+is_completed+city]",
+      field_visits: "visit_id, lead_id, user_id, visit_date, sync_status, [user_id+visit_date]",
+      field_visit_media: "media_id, visit_id, user_id"
+    });
+
+    // Version 15 adds an index only; existing leads and every durable outbox item are preserved.
+    this.version(15).stores({
+      users: "user_id, email, is_active, manager_id", capabilities: "code",
+      user_capabilities: "id, user_id, capability_code, [user_id+capability_code]",
+      leads: "lead_id, business_name, segment_type, status, assigned_to, stage_entered_at, lead_source, area, renewal_date, [segment_type+created_at+lead_id]",
       client_queries: "query_id, client_username, problem_status, assigned_to, created_at",
       mappings: "mapping_id, distributor_lead_id, retailer_lead_id, [distributor_lead_id+retailer_lead_id], mapped_by",
       mapping_requests: "request_id, distributor_lead_id, retailer_lead_id, mapped_by, status, created_at",
@@ -1204,6 +1229,8 @@ const HYDRATION_COLUMNS: Record<string, string> = {
   // Evidence payloads are never part of ordinary hydration. Legacy data URLs
   // remain server-side until the explicitly authorized lifecycle purge.
   attendance: "attendance_id,user_id,date,clock_in,clock_out,latitude,longitude,selfie_captured,selfie_storage_path,selfie_uploaded_at,selfie_purged_at,selfie_purge_state",
+  leads: "lead_id,business_name,contact_person,phone,segment_type,status,loss_reason,assigned_to,created_at,onboarded_at,stage_entered_at,lead_source,area,re_engage_after,lead_source_other,renewal_date,renewal_reminder_sent",
+  tasks: "task_id,assigned_to,assigned_by,title,description,priority,status,source,template_id,related_lead_id,due_date,started_at,completed_at,proof_note,proof_photo_url,created_at,is_active,cancelled_at,cancellation_reason",
 };
 let activePullDownSync: Promise<void> | null = null;
 function fullPullSyncKey(): string {

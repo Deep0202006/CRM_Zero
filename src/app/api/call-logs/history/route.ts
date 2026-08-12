@@ -127,7 +127,7 @@ export async function GET(request: Request) {
   return loadCallHistoryWithOptionalMetrics({
     history: () => historyQuery,
     todayCalls: () => service.from("call_logs").select("log_id,user_id,timestamp,outcome,next_followup_date").eq("user_id", auth.user.id).gte("timestamp", startsAt).lt("timestamp", endsAt),
-    tasks: () => service.from("tasks").select("task_id,assigned_to,assigned_by,completed_at,status,source,template_id,description").eq("assigned_to", auth.user.id),
+    tasks: () => service.from("tasks").select("task_id,assigned_to,assigned_by,completed_at,status,source,template_id,description").eq("assigned_to", auth.user.id).eq("is_active", true),
     taskHistory: () => service.from("task_status_history").select("id,task_id,changed_by,changed_at,new_status").eq("new_status", "Completed").gte("changed_at", startsAt).lt("changed_at", endsAt),
   }, auth.user.id, page);
 }

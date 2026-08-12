@@ -1,4 +1,4 @@
-import { filterPipelineSegments, mergeAuthoritativePipeline, segmentsFromCapabilities } from "../../pipeline/authority";
+import { mergeAuthoritativePipeline } from "../../pipeline/authority";
 import type { PipelineLeadView } from "../../pipeline/contract";
 
 const lead = (id: string, status: PipelineLeadView["status"], segment: PipelineLeadView["segment_type"] = "Retailer"): PipelineLeadView => ({
@@ -10,12 +10,6 @@ describe("Pipeline server authority", () => {
   test("server rows win over stale local rows and pending creations remain", () => {
     const result = mergeAuthoritativePipeline([lead("1", "Interested")], [{ ...lead("1", "Contacted"), pending_creation: true }, { ...lead("2", "New"), pending_creation: true }]);
     expect(result).toHaveLength(2); expect(result.find((item) => item.lead_id === "1")?.status).toBe("Interested");
-  });
-
-  test("equivalent capabilities map to the same segments while isolation remains explicit", () => {
-    expect(segmentsFromCapabilities(["ret_onboarding"])).toEqual(["Retailer"]);
-    expect(segmentsFromCapabilities(["admin"])).toEqual(["Retailer", "Distributor"]);
-    expect(filterPipelineSegments([lead("1", "New"), lead("2", "New", "Distributor")], ["Retailer"]).map((item) => item.lead_id)).toEqual(["1"]);
   });
 
   test("owner identity is human-readable data, not a rendered UUID", () => {
