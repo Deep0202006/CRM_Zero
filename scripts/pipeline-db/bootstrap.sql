@@ -12,6 +12,7 @@ create type public.task_status_enum as enum ('Pending','In Progress','Completed'
 create type public.task_priority_enum as enum ('High','Medium','Low');
 create type public.task_source_enum as enum ('template','manual');
 create table public.users(user_id uuid primary key, name text not null, email text, is_active boolean not null default true);
+grant select on public.users to authenticated;
 create table public.leads(
   lead_id uuid primary key, business_name text not null, contact_person text not null, phone text not null,
   segment_type public.segment_type not null, status public.lead_status not null, assigned_to uuid references public.users(user_id),
