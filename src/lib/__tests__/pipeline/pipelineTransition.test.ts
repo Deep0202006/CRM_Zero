@@ -1,19 +1,23 @@
 import { assertOwnerTransition, canEmployeeTransition, canSystemTransition, PIPELINE_TRANSITION_QUEUE_TABLE, type PipelineTransitionCommand } from "../../pipeline/contract";
 import { isActiveSyncQueueItem, isLegacyPipelineStatusMutation, LEGACY_PIPELINE_STATUS_ERROR, preserveLegacyNonStatusUpdate } from "../../pipeline/legacyQueue";
 import { pendingStateFromQueue } from "../../pipeline/repository";
+import fs from "node:fs";
+import path from "node:path";
 
 const command: PipelineTransitionCommand = { operation_id: "operation", lead_id: "lead", expected_stage: "Contacted", target_stage: "Interested", actor_id: "owner", created_at: "2026-08-10T00:00:00Z" };
 
 describe("Pipeline semantic transitions", () => {
   test("only assigned user may perform an employee transition, including Admin", () => {
-    expect(() => assertOwnerTransition(command, "owner")).not.toThrow();
+    expect(() => assertOwnerTransition(command, "owner", "Retailer")).not.toThrow();
     expect(() => assertOwnerTransition({ ...command, actor_id: "same-segment-user" }, "owner")).toThrow("PIPELINE_NOT_ASSIGNED");
     expect(() => assertOwnerTransition({ ...command, actor_id: "admin-not-owner" }, "owner")).toThrow("PIPELINE_NOT_ASSIGNED");
   });
 
   test("Payment to Renewal Due is system-only", () => {
-    expect(canEmployeeTransition("Payment", "Renewal Due")).toBe(false);
-    expect(canSystemTransition("Payment", "Renewal Due")).toBe(true);
+    expect(canEmployeeTransition("Payment", "Renewal Due", "Distributor")).toBe(false);
+    expect(canSystemTransition("Payment", "Renewal Due", "Distributor")).toBe(true);
+    expect(canEmployeeTransition("Installation", "Payment", "Retailer")).toBe(false);
+    expect(canEmployeeTransition("Installation", "Converted", "Retailer")).toBe(true);
   });
 
   test("semantic queue retains operation, expected and target identity", () => {
@@ -46,5 +50,14 @@ describe("Pipeline semantic transitions", () => {
     expect(isLegacyPipelineStatusMutation(passive)).toBe(true);
     expect(isActiveSyncQueueItem(passive)).toBe(false);
     expect(pendingStateFromQueue([passive]).has("lead")).toBe(false);
+  });
+
+  test("transient retries use a bounded backoff and deterministic failures become review state", () => {
+    const source = fs.readFileSync(path.join(process.cwd(), "src/lib/leadStageService.ts"), "utf8");
+    expect(source).toContain("MAX_PIPELINE_RETRIES = 8");
+    expect(source).toContain("pipelineRetryDelayMs");
+    expect(source).toContain("response.status === 408 || response.status === 429 || response.status >= 500");
+    expect(source).toContain('recovery_state: "review_required"');
+    expect(source).toContain("Date.parse(item.next_retry_at) <= Date.now()");
   });
 });

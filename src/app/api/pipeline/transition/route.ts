@@ -17,7 +17,7 @@ export async function POST(request: Request) {
   if (error) return Response.json({ code: "PIPELINE_CONFIGURATION", message: "Pipeline confirmation is not available." }, { status: 503 });
   const result = data as { success?: boolean; code?: string; current_stage?: string; lead?: unknown; operation_id?: string } | null;
   if (!result?.success) {
-    const status = result?.code === "PIPELINE_CONFLICT" ? 409 : result?.code === "PIPELINE_NOT_ASSIGNED" ? 403 : 422;
+    const status = result?.code === "PIPELINE_CONFLICT" ? 409 : ["PIPELINE_NOT_ASSIGNED", "PIPELINE_ACTOR_INACTIVE"].includes(result?.code ?? "") ? 403 : result?.code === "PIPELINE_NOT_FOUND" ? 404 : 422;
     return Response.json(result ?? { code: "PIPELINE_REJECTED" }, { status });
   }
   const rawLead = result.lead as Record<string, unknown> | undefined;

@@ -58,4 +58,12 @@ describe("priority call confirmation incident contract", () => {
     expect(database).toContain('recovery_reason: "PERMANENT_CALL_CONFIRMATION_FAILURE"');
     expect(route.indexOf("schema.safeParse(input)")).toBeLessThan(route.indexOf("service.auth.getUser(token)"));
   });
+
+  it("confirms only the Call and has zero Lead or Pipeline transition authority", () => {
+    const route = read("src/app/api/call-logs/confirm/route.ts");
+    expect(route).toContain('service.from("call_logs").insert(payload)');
+    expect(route).not.toMatch(/from\(["']leads["']\)/);
+    expect(route).not.toContain("pipeline_transition_operations");
+    expect(route).not.toMatch(/\.rpc\(/);
+  });
 });

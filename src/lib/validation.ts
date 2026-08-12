@@ -14,9 +14,9 @@ export const LEAD_SOURCES = ["Referral", "Cold Call", "Inbound Inquiry", "Social
 /**
  * Validates if a transition from currentStatus to nextStatus is allowed in the linear pipeline
  */
-export function validateLeadStatusTransition(currentStatus: LeadStatus, nextStatus: LeadStatus, actor: "agent" | "system" = "agent"): boolean {
+export function validateLeadStatusTransition(currentStatus: LeadStatus, nextStatus: LeadStatus, actor: "agent" | "system" = "agent", segment?: LeadSegment): boolean {
   if (currentStatus === nextStatus) return true;
-  return isTransitionAllowed(currentStatus, nextStatus, actor);
+  return isTransitionAllowed(currentStatus, nextStatus, actor, segment);
 }
 
 // UUID validation helper

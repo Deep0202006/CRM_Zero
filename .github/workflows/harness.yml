@@ -45,6 +45,8 @@ jobs:
         run: bash scripts/receivables-db/run-integration.sh
       - name: Fresh-apply Field Visits lifecycle migration and prove historic compatibility
         run: createdb field_visits_test && PGDATABASE=field_visits_test bash scripts/field-visits-db/run-integration.sh
+      - name: Fresh-apply Pipeline authority migrations and prove isolation
+        run: createdb pipeline_test && PGDATABASE=pipeline_test bash scripts/pipeline-db/run-integration.sh
 
   verify:
     runs-on: ubuntu-latest

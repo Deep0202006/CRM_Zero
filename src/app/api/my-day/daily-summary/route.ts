@@ -31,14 +31,14 @@ export async function GET(request: NextRequest) {
     const [report, callsResult, completedTasksResult, pendingTasksResult, historyResult] = await Promise.all([
       loadTeamKpiServerReport(service, date),
       service.from("call_logs").select("log_id,user_id,timestamp,outcome,next_followup_date").eq("user_id", auth.user.id).gte("timestamp", startsAt).lt("timestamp", endsAt),
-      service.from("tasks").select("task_id,assigned_to,assigned_by,completed_at,status,source,template_id,description").eq("assigned_to", auth.user.id).eq("status", "Completed").gte("completed_at", startsAt).lt("completed_at", endsAt),
-      service.from("tasks").select("task_id,assigned_to,assigned_by,completed_at,status,source,template_id,description").eq("assigned_to", auth.user.id).neq("status", "Completed"),
+      service.from("tasks").select("task_id,assigned_to,assigned_by,completed_at,status,source,template_id,description").eq("assigned_to", auth.user.id).eq("is_active", true).eq("status", "Completed").gte("completed_at", startsAt).lt("completed_at", endsAt),
+      service.from("tasks").select("task_id,assigned_to,assigned_by,completed_at,status,source,template_id,description").eq("assigned_to", auth.user.id).eq("is_active", true).neq("status", "Completed"),
       service.from("task_status_history").select("id,task_id,changed_by,changed_at,new_status").eq("new_status", "Completed").gte("changed_at", startsAt).lt("changed_at", endsAt),
     ]);
     if (callsResult.error || completedTasksResult.error || pendingTasksResult.error || historyResult.error) throw callsResult.error ?? completedTasksResult.error ?? pendingTasksResult.error ?? historyResult.error;
     const historyTaskIds = [...new Set((historyResult.data ?? []).map((item) => item.task_id))];
     const historyTasksResult = historyTaskIds.length
-      ? await service.from("tasks").select("task_id,assigned_to,assigned_by,completed_at,status,source,template_id,description").eq("assigned_to", auth.user.id).in("task_id", historyTaskIds)
+      ? await service.from("tasks").select("task_id,assigned_to,assigned_by,completed_at,status,source,template_id,description").eq("assigned_to", auth.user.id).eq("is_active", true).in("task_id", historyTaskIds)
       : { data: [], error: null };
     if (historyTasksResult.error) throw historyTasksResult.error;
     const taskMap = new Map([...completedTasksResult.data ?? [], ...pendingTasksResult.data ?? [], ...historyTasksResult.data ?? []].map((task) => [task.task_id, task]));

@@ -26,6 +26,13 @@ describe("Pipeline recovery integration safety", () => {
     expect(repository).toContain("Pipeline recovery refresh failed");
   });
 
+  test("offline Pipeline uses the compound segment page index instead of hydrating all local Leads", () => {
+    expect(repository).toContain('where("[segment_type+created_at+lead_id]")');
+    expect(repository).toContain("offset((page - 1) * 50).limit(50)");
+    expect(repository).not.toContain("db.leads.toArray()");
+    expect(dbSource).toContain('this.version(15).stores');
+  });
+
   test("optional recovery failure cannot suppress authoritative board rows", () => {
     expect(route).toContain("let operations: ConfirmedPipelineOperation[] = []");
     expect(route).toContain("RECOVERY_EVIDENCE_UNAVAILABLE");

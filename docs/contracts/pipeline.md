@@ -3,11 +3,11 @@
 ## CURRENT
 
 - Supabase-confirmed lead rows are cross-device authority online. Dexie is durable offline/cache state for pending creations and transition intents.
-- Segment access derives from existing `ret_onboarding`, `dist_onboarding`, and Admin capabilities. Equivalent authorized users consume the same confirmed segment rows.
+- Every active authenticated CRM user can read both segment boards through bounded server pages of at most 50 rows.
 - Only the lead's `assigned_to` user receives employee transition controls. Admin has no automatic override.
 - `assigned_to` resolves to `users.name`; UUIDs are not owner labels.
-- Frozen ordered stages: New, Contacted, Interested, Not Interested, Registration, Installation, Payment, Renewal Due.
-- Employee matrix: New→Contacted; Contacted→Interested or Not Interested; Interested→Registration; Not Interested→Contacted; Registration→Installation; Installation→Payment; Renewal Due→Payment or Not Interested. Payment→Renewal Due is system-only.
+- Retailer stages exclude Payment and terminate at Converted. Distributor retains Payment and does not use Converted.
+- Common employee matrix: New→Contacted; Contacted→Interested or Not Interested; Interested→Registration; Not Interested→Contacted; Registration→Installation. Retailer: Installation/Renewal Due→Converted, and Renewal Due→Not Interested. Distributor: Installation/Renewal Due→Payment, and Renewal Due→Not Interested. Payment→Renewal Due is Distributor system-only.
 
 ## INVARIANT
 
@@ -20,6 +20,10 @@
 - Legacy queued status patches are preserved, never guessed/replayed/deleted, and do not block authoritative cache reconciliation.
 - Every valid frozen stage remains discoverable. Unknown legacy state is preserved rather than coerced.
 - Pipeline transitions never create genuine `call_logs`; historical synthetic-call metric exclusions remain.
+- Pipeline transitions create no employee Task/follow-up/notification or cross-domain write. Calls create neither Leads nor Pipeline transitions.
+- A bounded daily server-only renewal processor moves only due Distributor Payment leads to Renewal Due, records an actorless system audit, and creates no employee work or cross-domain rows.
+- Admin normal actions require assignment exactly like every other active user. Reassignment, if introduced, is a separate administrative operation.
+- Hot reads use explicit columns, stable ordering, one owner-name projection, and server pagination capped at 50.
 - Production verification is read-only by default; migrations require explicit approval.
 - A local-first to server-authority switch explicitly reconciles preserved durable local business state.
 - Legacy stages may be recovered only from an owner-matched, ordered, complete canonical command chain whose final target matches the preserved local lead.
@@ -27,8 +31,8 @@
 - Recovery uses canonical v2 transitions with historical UUID operation identity where available; conflict stops the chain.
 - Original recovery evidence remains preserved and becomes passive after recovery, satisfaction, quarantine, or review.
 
-## KNOWN DEBT
+## RELEASE DEPENDENCY
 
-- Deployed policies, trigger bodies/grants, and renewal job require catalog-level read-only verification before migration approval.
+- Owner must apply migrations 037 then 038 before this application release; Codex must not apply them.
 - Browser-local evidence cannot be remotely enumerated; a browser/device that no longer has it cannot reconstruct it.
-- Deployed status-trigger idempotency remains unproven. Historical SQL can create generic and registration tasks, so automatic legacy replay is disabled until replay side effects are proven safe.
+- Automatic legacy replay remains disabled because preserved browser evidence can be incomplete; review is safer than guessed mutation.
