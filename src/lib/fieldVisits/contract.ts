@@ -14,6 +14,7 @@ export const FIELD_VISIT_OUTCOMES = [
   "interested",
   "follow_up",
   "payment_follow_up",
+  "payment_done",
   "not_interested"
 ] as const;
 
@@ -26,6 +27,7 @@ export function getOutcomeLabel(outcome: FieldVisitOutcome | string): string {
     case "interested": return "Interested";
     case "follow_up": return "Follow-up";
     case "payment_follow_up": return "Payment follow-up";
+    case "payment_done": return "Payment done";
     case "not_interested": return "Not interested";
     default: return outcome; // Legacy fallback
   }
@@ -68,6 +70,7 @@ export const FieldVisitSchema = z.object({
   visit_date: z.string().refine(isValidISTDateKey, "Invalid India business date"),
   check_in_time: z.string().datetime(),
   person_met: z.string().trim().min(2).max(120).optional().nullable(),
+  address: z.string().trim().min(1).max(500).optional().nullable(),
   visit_notes: z.string().max(2000).optional().nullable(),
   segment_type: z.enum(FIELD_VISIT_SEGMENTS),
   visit_outcome: z.enum(FIELD_VISIT_OUTCOMES),
@@ -89,6 +92,9 @@ export const FieldVisitSchema = z.object({
       message: "Payment follow-up is available only for Distributor visits",
       path: ["visit_outcome"]
     });
+  }
+  if (data.visit_outcome === "payment_done" && data.segment_type !== "Distributor") {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Payment done is available only for Distributor visits", path: ["visit_outcome"] });
   }
 
   if (data.visit_outcome === "follow_up" || data.visit_outcome === "payment_follow_up") {

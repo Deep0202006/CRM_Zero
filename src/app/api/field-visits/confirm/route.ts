@@ -30,6 +30,7 @@ export const VisitConfirmationSchema = z.object({
   visit_notes: z.string().trim().max(2000).nullable().optional(),
   attendance_id: uuid.nullable().optional(),
   person_met: z.string().trim().min(2).max(120).nullable().optional(),
+  address: z.string().trim().min(1).max(500).nullable().optional(),
   segment_type: z.enum(FIELD_VISIT_SEGMENTS),
   follow_up_date: z.string().refine(isValidISTDateKey).nullable().optional(),
   created_at: z.string().datetime({ offset: true }),
@@ -46,6 +47,9 @@ export const VisitConfirmationSchema = z.object({
   }
   if (visit.visit_outcome === "payment_follow_up" && visit.segment_type !== "Distributor") {
     ctx.addIssue({ code: "custom", path: ["visit_outcome"], message: "Payment follow-up requires Distributor segment" });
+  }
+  if (visit.visit_outcome === "payment_done" && visit.segment_type !== "Distributor") {
+    ctx.addIssue({ code: "custom", path: ["visit_outcome"], message: "Payment done requires Distributor segment" });
   }
 });
 
@@ -86,6 +90,7 @@ function active(value: unknown): boolean {
 export function validateNewVisit(visit: VisitPayload): boolean {
   return visit.visit_date === getCurrentISTDate()
     && Boolean(visit.person_met?.trim())
+    && Boolean(visit.address?.trim())
     && visit.check_in_lat !== null && visit.check_in_lat !== undefined
     && visit.check_in_lng !== null && visit.check_in_lng !== undefined
     && Boolean(visit.location_accuracy_m)
@@ -128,6 +133,8 @@ export function coreRemotePayload(visit: VisitPayload, attendanceId: string | nu
     visit_notes: visit.visit_notes ?? null,
     attendance_id: attendanceId,
     person_met: visit.person_met ?? null,
+    address: visit.address?.trim() ?? null,
+    address_contract_version: 1,
     segment_type: visit.segment_type,
     follow_up_date: visit.follow_up_date ?? null,
     created_at: visit.created_at,
@@ -223,7 +230,7 @@ export async function POST(request: Request) {
   if (attendanceResolution.integrityError) warningCodes.push("ATTENDANCE_LINK_PENDING");
   if (!resolvedAttendanceId && !warningCodes.includes("ATTENDANCE_LINK_PENDING")) warningCodes.push("ATTENDANCE_LINK_PENDING");
 
-  const select = "visit_id,user_id,lead_id,segment_type,selfie_storage_path";
+  const select = "visit_id,user_id,lead_id,segment_type,selfie_storage_path,selfie_purged_at";
   const preflight = await admin.from("field_visits").select(select).eq("visit_id", visit.visit_id).maybeSingle();
   if (preflight.error) return response(500, "VISIT_CONFIRMATION_FAILED", "The exact visit could not be checked safely.");
   if (preflight.data && preflight.data.user_id !== auth.user.id) {
@@ -290,7 +297,7 @@ export async function POST(request: Request) {
   }
 
   const { data: updated, error: updateError } = await admin.from("field_visits")
-    .update({ selfie_storage_path: evidencePath, updated_at: new Date().toISOString() })
+    .update({ selfie_storage_path: evidencePath, selfie_uploaded_at: new Date().toISOString(), selfie_purged_at: null, updated_at: new Date().toISOString() })
     .eq("visit_id", visit.visit_id).eq("user_id", auth.user.id).select("visit_id,selfie_storage_path").maybeSingle();
   if (updateError || updated?.visit_id !== visit.visit_id || updated.selfie_storage_path !== evidencePath) {
     console.error("Field visit evidence link failed", { code: updateError?.code ?? "CONFIRMATION_MISSING" });

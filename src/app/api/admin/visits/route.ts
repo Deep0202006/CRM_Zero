@@ -118,6 +118,10 @@ export async function GET(request: Request) {
     const page = Math.max(1, Number.parseInt(url.searchParams.get("page") ?? "1", 10) || 1);
     const requestedDate = url.searchParams.get("date") ?? "";
     const date = isValidISTDateKey(requestedDate) ? requestedDate : "";
+    const requestedFrom = url.searchParams.get("date_from") ?? "";
+    const requestedTo = url.searchParams.get("date_to") ?? "";
+    const dateFrom = isValidISTDateKey(requestedFrom) ? requestedFrom : "";
+    const dateTo = isValidISTDateKey(requestedTo) ? requestedTo : "";
     const representative = url.searchParams.get("representative");
     const segment = url.searchParams.get("segment");
     const outcome = url.searchParams.get("outcome");
@@ -127,10 +131,12 @@ export async function GET(request: Request) {
 
     let query = admin
       .from("field_visits")
-      .select("visit_id,user_id,lead_id,visit_date,check_in_time,selfie_storage_path,visit_outcome,visit_notes,person_met,segment_type,follow_up_date,created_at,updated_at", { count: "exact" })
+      .select("visit_id,user_id,lead_id,visit_date,check_in_time,check_in_lat,check_in_lng,address,selfie_storage_path,selfie_uploaded_at,selfie_purged_at,visit_outcome,visit_notes,person_met,segment_type,follow_up_date,sync_status,created_at,updated_at", { count: "exact" })
       .order("created_at", { ascending: false })
       .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
     if (date && selectedBounds) query = query.or(`visit_date.eq.${date},and(check_in_time.gte.${selectedBounds.startsAt},check_in_time.lt.${selectedBounds.endsAt})`);
+    if (!date && dateFrom) query = query.gte("visit_date", dateFrom);
+    if (!date && dateTo) query = query.lte("visit_date", dateTo);
     if (representative && representative !== "ALL") query = query.eq("user_id", representative);
     if (segment && segment !== "ALL") query = query.eq("segment_type", segment);
     if (outcome && outcome !== "ALL") query = query.eq("visit_outcome", outcome);
@@ -144,6 +150,7 @@ export async function GET(request: Request) {
         searchClauses = [
           `visit_notes.ilike.%${safeSearch}%`,
           `person_met.ilike.%${safeSearch}%`,
+          `address.ilike.%${safeSearch}%`,
           ...(matchingUsers?.length ? [`user_id.in.(${matchingUsers.map((row) => row.user_id).join(",")})`] : []),
           ...(matchingLeads?.length ? [`lead_id.in.(${matchingLeads.map((row) => `"${row.lead_id}"`).join(",")})`] : []),
         ];
@@ -180,6 +187,9 @@ export async function GET(request: Request) {
       lead_id: visit.lead_id,
       visit_date: visit.visit_date,
       check_in_time: visit.check_in_time,
+      check_in_lat: visit.check_in_lat,
+      check_in_lng: visit.check_in_lng,
+      address: visit.address,
       visit_outcome: visit.visit_outcome,
       visit_notes: visit.visit_notes,
       person_met: visit.person_met,
@@ -187,8 +197,12 @@ export async function GET(request: Request) {
       follow_up_date: visit.follow_up_date,
       created_at: visit.created_at,
       updated_at: visit.updated_at,
-      has_selfie_evidence: Boolean(visit.selfie_storage_path),
-      confirmation_status: visit.selfie_storage_path ? "Confirmed" : "Evidence pending",
+      sync_status: visit.sync_status,
+      selfie_uploaded_at: visit.selfie_uploaded_at,
+      selfie_purged_at: visit.selfie_purged_at,
+      has_selfie_evidence: Boolean(visit.selfie_storage_path) && !visit.selfie_purged_at,
+      selfie_status: visit.selfie_purged_at ? "PURGED" : visit.selfie_storage_path ? "AVAILABLE" : "PENDING",
+      confirmation_status: visit.selfie_purged_at ? "Selfie expired after 5-day retention" : visit.selfie_storage_path ? "Confirmed" : "Evidence pending",
       users: usersById.get(visit.user_id) ?? null,
       leads: leadsById.get(visit.lead_id) ?? null,
     }));
@@ -229,6 +243,8 @@ export async function GET(request: Request) {
         today_total: todayTotal ?? 0,
         has_more: page * PAGE_SIZE < (count ?? 0),
         date,
+        date_from: dateFrom,
+        date_to: dateTo,
         legacy_date_mismatch_count: legacyResult.count ?? 0,
         representatives,
       },

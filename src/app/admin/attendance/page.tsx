@@ -17,6 +17,15 @@ function attendanceStatus(record?: LocalAttendance) {
   return record.clock_out ? "Logged out" : "Working";
 }
 
+function hasSelfieEvidence(record: LocalAttendance) {
+  return Boolean(record.selfie_captured || record.selfie_storage_path || record.selfie_url);
+}
+
+function evidenceLabel(record: LocalAttendance) {
+  if (record.selfie_purged_at || record.selfie_purge_state === "purged") return "Selfie expired";
+  return hasSelfieEvidence(record) ? "Selfie captured" : "System record";
+}
+
 function csvCell(value: string) {
   return `"${value.replaceAll('"', '""')}"`;
 }
@@ -68,7 +77,7 @@ export default function AdminAttendancePage() {
     attendance.forEach((a) => {
       const u = users.find((usr) => usr.user_id === a.user_id);
       const role = userRoles[a.user_id] || "Unknown";
-      csv += [a.date, a.user_id, u?.name || "Unknown", role, a.clock_in || "", a.clock_out || "", attendanceStatus(a), a.selfie_url ? "Yes" : "No"].map(csvCell).join(",") + "\n";
+      csv += [a.date, a.user_id, u?.name || "Unknown", role, a.clock_in || "", a.clock_out || "", attendanceStatus(a), hasSelfieEvidence(a) ? "Yes" : "No"].map(csvCell).join(",") + "\n";
     });
     const blob = new Blob([csv], { type: "text/csv" });
     const url = window.URL.createObjectURL(blob);
@@ -144,7 +153,7 @@ export default function AdminAttendancePage() {
         <MetricCard label="Team members" value={staffUsers.length} icon={<UserIcon size={17} />} tone="neutral" note="Active non-administrator accounts" />
         <MetricCard label={activeTab === "daily" ? "Present" : "Attendance records"} value={activeTab === "daily" ? presentCount : filteredRecords.length} icon={<CheckCircle2 size={17} />} tone="success" note={activeTab === "daily" ? `Clocked in on ${new Date(selectedDate).toLocaleDateString()}` : `Records in the ${activeTab} view`} />
         <MetricCard label={activeTab === "daily" ? "Absent" : "Highest attendance"} value={activeTab === "daily" ? absentCount : Math.max(0, ...aggregatedData.map((row) => row.daysPresent))} icon={<AlertCircle size={17} />} tone={activeTab === "daily" ? "danger" : "brand"} note={activeTab === "daily" ? "No record for the selected date" : `Days present in this ${activeTab} period`} />
-        <MetricCard label="Verification records" value={filteredRecords.filter((record) => Boolean(record.selfie_url)).length} icon={<CalendarDays size={17} />} tone="info" note="Attendance entries containing a selfie" />
+        <MetricCard label="Verification records" value={filteredRecords.filter(hasSelfieEvidence).length} icon={<CalendarDays size={17} />} tone="info" note="Attendance entries with captured evidence metadata" />
       </div>
 
       <section className="data-table-shell" aria-labelledby="attendance-table-title">
@@ -174,7 +183,7 @@ export default function AdminAttendancePage() {
                       <td><Chip variant={!record ? "danger" : record.clock_out ? "neutral" : "success"} size="sm" dot>{attendanceStatus(record)}</Chip></td>
                       <td className="font-mono text-[12px]">{record ? new Date(record.clock_in).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" }) : "—"}</td>
                       <td className="font-mono text-[12px]">{record?.clock_out ? new Date(record.clock_out).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" }) : "—"}</td>
-                      <td>{record?.selfie_url ? <img src={record.selfie_url} alt={`Verification for ${user.name}`} className="h-9 w-9 rounded-[var(--radius-md)] object-cover ring-1 ring-[var(--border-default)]" /> : record ? <Chip variant="neutral" size="sm">System record</Chip> : <span className="text-[var(--text-disabled)]">—</span>}</td>
+                      <td>{record ? <Chip variant={hasSelfieEvidence(record) ? "info" : "neutral"} size="sm">{evidenceLabel(record)}</Chip> : <span className="text-[var(--text-disabled)]">—</span>}</td>
                     </tr>
                   );
                 }) : aggregatedData.map((aggregate) => {

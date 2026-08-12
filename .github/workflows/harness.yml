@@ -43,6 +43,8 @@ jobs:
           test "$status" -eq 86
       - name: Apply migration and run Receivables database integration
         run: bash scripts/receivables-db/run-integration.sh
+      - name: Fresh-apply Field Visits lifecycle migration and prove historic compatibility
+        run: createdb field_visits_test && PGDATABASE=field_visits_test bash scripts/field-visits-db/run-integration.sh
 
   verify:
     runs-on: ubuntu-latest
@@ -67,5 +69,7 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Run Receivables browser authorization and intake flows
         run: npm run test:e2e:receivables
+      - name: Run Field Visits and Attendance evidence browser flows
+        run: npm run test:e2e:field-visits
       - run: npm run harness:guard
       - run: npm run harness:docs

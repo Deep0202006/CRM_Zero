@@ -55,10 +55,10 @@ describe("admin visit authorization and responsive layout", () => {
     expect(page).toContain('case "not_interested": return "danger"');
     expect(page).toContain("statusText: getAdminOutcomeLabel(visit.visit_outcome)");
     expect(page).toContain("statusVariant: getAdminOutcomeVariant(visit.visit_outcome)");
-    expect(page).toContain('"Visit confirmed · Evidence pending"');
-    expect(page).toContain('"Visit confirmed"');
+    expect(page).toContain('"Evidence pending"');
+    expect(page).toContain('"Selfie captured · Expired after 5-day retention"');
     expect(page).not.toContain("Outcome: {getOutcomeLabel(visit.visit_outcome)}");
-    expect(page).toContain("actions: visit.has_selfie_evidence ? <EvidenceButton visitId={visit.visit_id} /> : undefined");
+    expect(page).toContain('visit.selfie_status === "AVAILABLE" ? <EvidenceButton visitId={visit.visit_id} />');
   });
 
   it("adds no destructive browser or business-data operation to visit workflows", () => {

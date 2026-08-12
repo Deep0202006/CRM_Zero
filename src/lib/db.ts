@@ -108,7 +108,13 @@ export interface LocalAttendance {
   date: string; // YYYY-MM-DD
   clock_in: string;
   clock_out?: string | null;
-  selfie_url?: string | null; // now nullable — office staff skip selfie
+  selfie_url?: string | null; // Legacy embedded evidence; new records keep this null.
+  selfie_captured?: boolean;
+  selfie_storage_path?: string | null;
+  selfie_uploaded_at?: string | null;
+  selfie_purged_at?: string | null;
+  selfie_purge_state?: "available" | "purge_pending" | "purged" | null;
+  selfie_purge_started_at?: string | null;
   latitude?: number | null;   // now nullable — office staff skip GPS
   longitude?: number | null;
 }
@@ -178,10 +184,11 @@ export interface LocalFieldVisit {
   visit_notes: string | null;
   attendance_id?: string | null;
   person_met?: string | null;
+  address?: string | null;
   segment_type?: string | null;
   follow_up_date?: string | null;
   sync_status?: 'pending_sync' | 'synced' | 'sync_failed';
-  sync_stage?: 'pending_visit' | 'visit_confirmed_evidence_pending' | 'visit_confirmed_link_pending' | 'synced' | 'sync_failed';
+  sync_stage?: 'pending_visit' | 'address_required' | 'visit_confirmed_evidence_pending' | 'visit_confirmed_link_pending' | 'synced' | 'sync_failed';
   confirmation_mode?: 'new' | 'recovery';
   sync_error_code?: string;
   sync_error_message?: string;
@@ -619,10 +626,48 @@ class CRMDatabase extends Dexie {
       field_visits: "visit_id, lead_id, user_id, visit_date, sync_status, [user_id+visit_date]",
       field_visit_media: "media_id, visit_id, user_id"
     });
+
+    // Version 14 keeps the existing stores intact. Attendance evidence lives
+    // as a Blob in its durable outbox item until exact server confirmation.
+    this.version(14).stores({
+      users: "user_id, email, is_active, manager_id", capabilities: "code",
+      user_capabilities: "id, user_id, capability_code, [user_id+capability_code]",
+      leads: "lead_id, business_name, segment_type, status, assigned_to, stage_entered_at, lead_source, area, renewal_date",
+      client_queries: "query_id, client_username, problem_status, assigned_to, created_at",
+      mappings: "mapping_id, distributor_lead_id, retailer_lead_id, [distributor_lead_id+retailer_lead_id], mapped_by",
+      mapping_requests: "request_id, distributor_lead_id, retailer_lead_id, mapped_by, status, created_at",
+      internal_tickets: "ticket_id, raised_by, status, assigned_to",
+      attendance: "attendance_id, user_id, date, [user_id+date]",
+      call_logs: "log_id, user_id, lead_id, timestamp",
+      sync_queue: "++id, idempotency_key, table_name, action, timestamp, retry_count",
+      task_templates: "template_id, applies_to_capability, is_active",
+      tasks: "task_id, assigned_to, due_date, status, [assigned_to+due_date], template_id",
+      task_status_history: "id, task_id, changed_at", kpi_snapshots: "snapshot_id, user_id, date, [user_id+date]",
+      lead_registration_checklist: "checklist_id, lead_id", lead_installation_details: "installation_id, lead_id",
+      lead_payment_details: "payment_id, lead_id", task_upload_batches: "id, uploaded_by, file_hash",
+      allocated_targets: "target_id, batch_id, assigned_to_user_id, city, is_completed, [assigned_to_user_id+is_completed+city]",
+      field_visits: "visit_id, lead_id, user_id, visit_date, sync_status, [user_id+visit_date]",
+      field_visit_media: "media_id, visit_id, user_id"
+    });
   }
 }
 
 export const db = new CRMDatabase();
+
+export async function saveAttendanceWithEvidence(attendance: LocalAttendance, evidence: Blob | null): Promise<void> {
+  await db.transaction("rw", [db.attendance, db.sync_queue], async () => {
+    await db.attendance.add({ ...attendance, selfie_url: null, selfie_captured: Boolean(evidence) });
+    await db.sync_queue.add({
+      idempotency_key: `attendance:${attendance.attendance_id}`,
+      owner_user_id: claimSyncQueueOwnership(),
+      table_name: "attendance",
+      action: "INSERT",
+      data: { ...attendance, selfie_url: null, selfie_blob: evidence },
+      timestamp: new Date().toISOString(),
+    });
+  });
+  if (typeof navigator !== "undefined" && navigator.onLine) void processSyncQueue();
+}
 
 export async function countActiveSyncQueueItems(): Promise<number> {
   return db.sync_queue.filter(isActiveSyncQueueItem).count();
@@ -830,6 +875,32 @@ async function confirmCallLog(payload: Record<string, unknown>, accessToken: str
   }
 }
 
+async function legacyDataUrlToBlob(value: unknown): Promise<Blob | null> {
+  if (value instanceof Blob) return value;
+  if (typeof value !== "string" || !value.startsWith("data:image/")) return null;
+  const response = await fetch(value);
+  return response.blob();
+}
+
+async function confirmAttendance(item: SyncQueueItem, accessToken: string): Promise<Record<string, unknown>> {
+  const payload = toDynamicRow(item.data);
+  const evidence = await legacyDataUrlToBlob(payload.selfie_blob ?? payload.selfie_url);
+  const form = new FormData();
+  const business = { ...payload };
+  delete business.selfie_blob;
+  form.set("attendance", JSON.stringify({ ...business, selfie_url: null }));
+  if (evidence) form.set("selfie", new File([evidence], "attendance.jpg", { type: evidence.type || "image/jpeg" }));
+  const response = await fetch("/api/attendance/confirm", { method: "POST", headers: { Authorization: `Bearer ${accessToken}` }, body: form, cache: "no-store" });
+  let result: { ok?: boolean; code?: string; attendance_id?: string; attendance?: Record<string, unknown> };
+  try { result = await response.json() as typeof result; }
+  catch { throw new SyncAttemptError("Attendance confirmation returned an unreadable response.", true); }
+  const expectedId = String(payload.attendance_id ?? "");
+  if (!response.ok || !result.ok || !["ATTENDANCE_CONFIRMED", "ATTENDANCE_ALREADY_CONFIRMED"].includes(result.code ?? "") || result.attendance_id !== expectedId) {
+    throw new SyncAttemptError(`Attendance confirmation failed (${result.code ?? response.status}).`, response.status === 408 || response.status === 429 || response.status >= 500);
+  }
+  return result.attendance ?? business;
+}
+
 /**
  * Confirms one exact durable call outbox item without waiting for older queue
  * work. It deliberately shares the normal payload repair and confirmation
@@ -922,6 +993,23 @@ async function processSyncQueueInternal(): Promise<void> {
     // any legacy queue item intact for recovery, but never replay its browser
     // Supabase insert through this generic writer.
     if (item.table_name === "field_visits") continue;
+
+    // Attendance inserts, including legacy queued data URLs, converge through
+    // the stable-ID server confirmation route. Generic Supabase insert is forbidden.
+    if (item.table_name === "attendance" && item.action === "INSERT") {
+      try {
+        const confirmed = await confirmAttendance(item, accessToken);
+        await db.transaction("rw", [db.attendance, db.sync_queue], async () => {
+          await db.attendance.update(String(toDynamicRow(item.data).attendance_id), confirmed as Partial<LocalAttendance>);
+          await db.sync_queue.delete(item.id!);
+        });
+      } catch (error) {
+        const retryable = !(error instanceof SyncAttemptError) || error.retryable;
+        const retryCount = retryable ? (item.retry_count ?? 0) + 1 : Math.max(5, item.retry_count ?? 0);
+        await db.sync_queue.update(item.id, { retry_count: retryCount, last_error: error instanceof Error ? error.message : String(error), ...(retryable ? { next_retry_at: new Date(Date.now() + syncRetryDelayMs(retryCount)).toISOString() } : { recovery_state: "review_required", recovery_reason: "PERMANENT_ATTENDANCE_CONFIRMATION_FAILURE", recovery_marked_at: new Date().toISOString(), next_retry_at: undefined }) });
+      }
+      continue;
+    }
 
       if (isLegacyPipelineStatusMutation(item)) {
         const preserved = preserveLegacyNonStatusUpdate(item);
@@ -1112,6 +1200,11 @@ export async function processSyncQueueExcept(idempotencyKey: string): Promise<vo
 // ─────────────────────────────────────────────────────────────────────────────
 
 const FULL_PULL_MIN_INTERVAL_MS = 30 * 60 * 1000;
+const HYDRATION_COLUMNS: Record<string, string> = {
+  // Evidence payloads are never part of ordinary hydration. Legacy data URLs
+  // remain server-side until the explicitly authorized lifecycle purge.
+  attendance: "attendance_id,user_id,date,clock_in,clock_out,latitude,longitude,selfie_captured,selfie_storage_path,selfie_uploaded_at,selfie_purged_at,selfie_purge_state",
+};
 let activePullDownSync: Promise<void> | null = null;
 function fullPullSyncKey(): string {
   return `last_pull_sync:${localStorage.getItem("authenticated_user_id") ?? "anonymous"}`;
@@ -1157,7 +1250,7 @@ async function pullDownSyncInternal() {
       while (true) {
         const { data, error } = await supabase
           .from(remoteTableName)
-          .select("*")
+          .select(HYDRATION_COLUMNS[remoteTableName] ?? "*")
           .order(pk, { ascending: true })
           .range(from, from + limit - 1);
         if (error) {
@@ -1165,7 +1258,7 @@ async function pullDownSyncInternal() {
           break;
         }
         if (data && data.length > 0) {
-          allData = allData.concat(data);
+          allData = allData.concat(data as unknown as DynamicRow[]);
           from += limit;
           if (data.length < limit) break;
         } else {

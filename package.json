@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test": "jest",
     "test:e2e:receivables": "playwright test e2e/receivables",
+    "test:e2e:field-visits": "playwright test e2e/field-visits",
     "typecheck": "tsc --noEmit",
     "harness:preflight": "node scripts/harness/preflight.mjs",
     "harness:scope": "node scripts/harness/scope-guard.mjs",

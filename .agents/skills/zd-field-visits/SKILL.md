@@ -10,6 +10,6 @@ Workflow: read contract/scoped guidance; trace local transaction → server conf
 
 Docs: `docs/contracts/field-visits.md`, `src/lib/fieldVisits/AGENTS.md`.
 
-Checks: no delete/clear, confirmed visit survives evidence failure, IST helper, approved route.
+Checks: no delete/clear, confirmed visit survives evidence failure, IST helper, approved route. Required-field upgrades preserve legacy rows and repair the same offline operation ID. Evidence expiry uses only exact authoritative Storage keys and never deletes visits. Distributor `payment_done` remains observational and cannot mutate financial, Pipeline, or Call authority.
 
 Output: changed state transition, authority/recovery impact, tests, and remaining debt.
