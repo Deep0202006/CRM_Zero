@@ -75,10 +75,10 @@ alter table public.distributor_operation_receipts enable row level security;
 alter table public.distributor_import_batches enable row level security;
 
 create policy distributor_accounts_read on public.distributor_accounts for select to authenticated using (
-  assigned_to=auth.uid() or public.receivables_is_admin(auth.uid())
+  exists(select 1 from public.users u where u.user_id=auth.uid() and u.is_active=true) and (assigned_to=auth.uid() or public.receivables_is_admin(auth.uid()))
 );
 create policy distributor_events_read on public.distributor_status_events for select to authenticated using (
-  exists(select 1 from public.distributor_accounts d where d.distributor_id=distributor_status_events.distributor_id and (d.assigned_to=auth.uid() or public.receivables_is_admin(auth.uid())))
+  exists(select 1 from public.users u where u.user_id=auth.uid() and u.is_active=true) and exists(select 1 from public.distributor_accounts d where d.distributor_id=distributor_status_events.distributor_id and (d.assigned_to=auth.uid() or public.receivables_is_admin(auth.uid())))
 );
 
 revoke insert,update,delete on public.distributor_accounts from anon,authenticated;
@@ -94,31 +94,46 @@ $$;
 
 create or replace function public.distributor_status_command_v1(p_operation_id uuid,p_actor_id uuid,p_operation_type text,p_request_hash text,p_payload jsonb)
 returns jsonb language plpgsql security definer set search_path=public,pg_temp as $$
-declare v_existing public.distributor_operation_receipts%rowtype; v_row public.distributor_accounts%rowtype; v_id uuid; v_response jsonb; v_event text; v_old_renewal date; v_new_renewal date;
+declare v_existing public.distributor_operation_receipts%rowtype; v_before public.distributor_accounts%rowtype; v_row public.distributor_accounts%rowtype; v_id uuid; v_response jsonb; v_event text; v_old_renewal date; v_new_renewal date; v_change_set jsonb='{}'::jsonb; v_only_assignment boolean;
 begin
-  if not exists(select 1 from public.users u where u.user_id=p_actor_id and u.is_active=true and public.receivables_is_admin(u.user_id)) then return jsonb_build_object('success',false,'code','ADMIN_REQUIRED'); end if;
+  perform pg_advisory_xact_lock(hashtextextended(p_operation_id::text,0));
   select * into v_existing from public.distributor_operation_receipts where operation_id=p_operation_id for update;
   if found then
     if v_existing.actor_id<>p_actor_id or v_existing.request_hash<>p_request_hash or v_existing.operation_type<>p_operation_type then return jsonb_build_object('success',false,'code','DISTRIBUTOR_OPERATION_MISMATCH'); end if;
     return v_existing.response;
   end if;
+  if not exists(select 1 from public.users u where u.user_id=p_actor_id and u.is_active=true and public.receivables_is_admin(u.user_id)) then return jsonb_build_object('success',false,'code','ADMIN_REQUIRED'); end if;
   if p_operation_type='create' then
     v_id=(p_payload->>'distributor_id')::uuid;
     if not exists(select 1 from public.users u where u.user_id=(p_payload->>'assigned_to')::uuid and u.is_active=true and not public.receivables_is_admin(u.user_id)) then return jsonb_build_object('success',false,'code','INVALID_ASSIGNEE'); end if;
     insert into public.distributor_accounts(distributor_id,distributor_name,distributor_reference,identity_key,lead_id,phone,city,assigned_to,installation_status,installation_completed_at,training_status,training_completed_at,activity_status,billing_status,billed_at,bill_reference,renewal_date,created_by)
     values(v_id,btrim(p_payload->>'distributor_name'),nullif(btrim(p_payload->>'distributor_reference'),''),p_payload->>'identity_key',nullif(p_payload->>'lead_id','')::uuid,nullif(btrim(p_payload->>'phone'),''),nullif(btrim(p_payload->>'city'),''),(p_payload->>'assigned_to')::uuid,p_payload->>'installation_status',nullif(p_payload->>'installation_completed_at','')::date,p_payload->>'training_status',nullif(p_payload->>'training_completed_at','')::date,p_payload->>'activity_status',p_payload->>'billing_status',nullif(p_payload->>'billed_at','')::date,nullif(btrim(p_payload->>'bill_reference'),''),nullif(p_payload->>'renewal_date','')::date,p_actor_id)
-    returning * into v_row; v_event='created';
+    returning * into v_row; v_event='created'; v_change_set=jsonb_build_object('created',true);
   elsif p_operation_type in ('update','renew') then
     v_id=(p_payload->>'distributor_id')::uuid;
     select * into v_row from public.distributor_accounts where distributor_id=v_id for update;
     if not found then return jsonb_build_object('success',false,'code','DISTRIBUTOR_NOT_FOUND'); end if;
     if v_row.version<>(p_payload->>'expected_version')::bigint then return jsonb_build_object('success',false,'code','DISTRIBUTOR_CONFLICT','current',to_jsonb(v_row)); end if;
     if not exists(select 1 from public.users u where u.user_id=(p_payload->>'assigned_to')::uuid and u.is_active=true and not public.receivables_is_admin(u.user_id)) then return jsonb_build_object('success',false,'code','INVALID_ASSIGNEE'); end if;
-    v_old_renewal=v_row.renewal_date; v_new_renewal=nullif(p_payload->>'renewal_date','')::date;
+    v_before=v_row; v_old_renewal=v_row.renewal_date; v_new_renewal=nullif(p_payload->>'renewal_date','')::date;
+    if p_operation_type='renew' and v_new_renewal is null then return jsonb_build_object('success',false,'code','NEXT_RENEWAL_REQUIRED'); end if;
+    if p_operation_type='renew' and (v_new_renewal <= (now() at time zone 'Asia/Kolkata')::date or (v_old_renewal is not null and v_new_renewal <= v_old_renewal)) then return jsonb_build_object('success',false,'code','INVALID_NEXT_RENEWAL_DATE'); end if;
     update public.distributor_accounts set distributor_name=btrim(p_payload->>'distributor_name'),distributor_reference=nullif(btrim(p_payload->>'distributor_reference'),''),identity_key=p_payload->>'identity_key',lead_id=nullif(p_payload->>'lead_id','')::uuid,phone=nullif(btrim(p_payload->>'phone'),''),city=nullif(btrim(p_payload->>'city'),''),assigned_to=(p_payload->>'assigned_to')::uuid,installation_status=p_payload->>'installation_status',installation_completed_at=nullif(p_payload->>'installation_completed_at','')::date,training_status=p_payload->>'training_status',training_completed_at=nullif(p_payload->>'training_completed_at','')::date,activity_status=p_payload->>'activity_status',billing_status=p_payload->>'billing_status',billed_at=nullif(p_payload->>'billed_at','')::date,bill_reference=nullif(btrim(p_payload->>'bill_reference'),''),renewal_date=v_new_renewal,version=version+1,updated_at=now() where distributor_id=v_id returning * into v_row;
-    v_event=case when p_operation_type='renew' then 'renewed' when v_old_renewal is distinct from v_new_renewal then 'renewal_date_updated' else 'status_updated' end;
+    if v_before.assigned_to is distinct from v_row.assigned_to then v_change_set=v_change_set||jsonb_build_object('assigned_to',jsonb_build_object('from',v_before.assigned_to,'to',v_row.assigned_to)); end if;
+    if v_before.distributor_name is distinct from v_row.distributor_name then v_change_set=v_change_set||jsonb_build_object('distributor_name',jsonb_build_object('from',v_before.distributor_name,'to',v_row.distributor_name)); end if;
+    if v_before.distributor_reference is distinct from v_row.distributor_reference then v_change_set=v_change_set||jsonb_build_object('distributor_reference',jsonb_build_object('from',v_before.distributor_reference,'to',v_row.distributor_reference)); end if;
+    if v_before.lead_id is distinct from v_row.lead_id then v_change_set=v_change_set||jsonb_build_object('lead_id',jsonb_build_object('from',v_before.lead_id,'to',v_row.lead_id)); end if;
+    if v_before.phone is distinct from v_row.phone then v_change_set=v_change_set||jsonb_build_object('phone',jsonb_build_object('from',v_before.phone,'to',v_row.phone)); end if;
+    if v_before.city is distinct from v_row.city then v_change_set=v_change_set||jsonb_build_object('city',jsonb_build_object('from',v_before.city,'to',v_row.city)); end if;
+    if v_before.installation_status is distinct from v_row.installation_status or v_before.installation_completed_at is distinct from v_row.installation_completed_at then v_change_set=v_change_set||jsonb_build_object('installation',jsonb_build_object('status_from',v_before.installation_status,'status_to',v_row.installation_status,'date_from',v_before.installation_completed_at,'date_to',v_row.installation_completed_at)); end if;
+    if v_before.training_status is distinct from v_row.training_status or v_before.training_completed_at is distinct from v_row.training_completed_at then v_change_set=v_change_set||jsonb_build_object('training',jsonb_build_object('status_from',v_before.training_status,'status_to',v_row.training_status,'date_from',v_before.training_completed_at,'date_to',v_row.training_completed_at)); end if;
+    if v_before.activity_status is distinct from v_row.activity_status then v_change_set=v_change_set||jsonb_build_object('activity_status',jsonb_build_object('from',v_before.activity_status,'to',v_row.activity_status)); end if;
+    if v_before.billing_status is distinct from v_row.billing_status or v_before.billed_at is distinct from v_row.billed_at or v_before.bill_reference is distinct from v_row.bill_reference then v_change_set=v_change_set||jsonb_build_object('billing',jsonb_build_object('status_from',v_before.billing_status,'status_to',v_row.billing_status,'date_from',v_before.billed_at,'date_to',v_row.billed_at,'reference_from',v_before.bill_reference,'reference_to',v_row.bill_reference)); end if;
+    if v_old_renewal is distinct from v_new_renewal then v_change_set=v_change_set||jsonb_build_object('renewal_date',jsonb_build_object('from',v_old_renewal,'to',v_new_renewal)); end if;
+    v_only_assignment=(v_change_set ? 'assigned_to') and jsonb_object_length(v_change_set)=1;
+    v_event=case when p_operation_type='renew' then 'renewed' when v_only_assignment then 'reassigned' when v_old_renewal is distinct from v_new_renewal and jsonb_object_length(v_change_set)=1 then 'renewal_date_updated' else 'status_updated' end;
   else return jsonb_build_object('success',false,'code','INVALID_OPERATION'); end if;
-  insert into public.distributor_status_events(event_id,distributor_id,event_type,previous_renewal_date,new_renewal_date,change_set,note,actor_id) values(gen_random_uuid(),v_id,v_event,v_old_renewal,v_row.renewal_date,p_payload,nullif(btrim(p_payload->>'note'),''),p_actor_id);
+  insert into public.distributor_status_events(event_id,distributor_id,event_type,previous_renewal_date,new_renewal_date,change_set,note,actor_id) values(gen_random_uuid(),v_id,v_event,v_old_renewal,v_row.renewal_date,v_change_set,nullif(btrim(p_payload->>'note'),''),p_actor_id);
   v_response=jsonb_build_object('success',true,'record',to_jsonb(v_row));
   insert into public.distributor_operation_receipts(operation_id,actor_id,operation_type,request_hash,response) values(p_operation_id,p_actor_id,p_operation_type,p_request_hash,v_response);
   return v_response;
@@ -136,7 +151,7 @@ returns jsonb language sql stable security definer set search_path=public,pg_tem
   'active',count(*) filter(where installation_status='done' and training_status='done' and activity_status='active'),
   'inactive',count(*) filter(where installation_status='done' and training_status='done' and activity_status='inactive'),
   'billed',count(*) filter(where billing_status='billed')
- ) from public.distributor_accounts where (p_admin and public.receivables_is_admin(p_actor_id)) or assigned_to=p_actor_id
+ ) from public.distributor_accounts where exists(select 1 from public.users u where u.user_id=p_actor_id and u.is_active=true) and ((p_admin and public.receivables_is_admin(p_actor_id)) or (not p_admin and assigned_to=p_actor_id))
 $$;
 
 create or replace function public.distributor_renewals_due_v1(p_actor_id uuid,p_admin boolean,p_limit integer default 5)
@@ -144,10 +159,11 @@ returns jsonb language sql stable security definer set search_path=public,pg_tem
  with due as (
   select d.distributor_id,d.distributor_name,d.renewal_date,public.distributor_renewal_state_v1(d.renewal_date,(now() at time zone 'Asia/Kolkata')::date) renewal_state
   from public.distributor_accounts d
-  where ((p_admin and public.receivables_is_admin(p_actor_id)) or d.assigned_to=p_actor_id)
+  where exists(select 1 from public.users u where u.user_id=p_actor_id and u.is_active=true)
+    and ((p_admin and public.receivables_is_admin(p_actor_id)) or (not p_admin and d.assigned_to=p_actor_id))
     and d.renewal_date is not null and d.renewal_date <= (now() at time zone 'Asia/Kolkata')::date + 2
  ), counted as (select *,count(*) over() total_count from due)
- select jsonb_build_object('total',coalesce(max(total_count),0),'rows',coalesce(jsonb_agg(jsonb_build_object('distributor_id',distributor_id,'distributor_name',distributor_name,'renewal_date',renewal_date,'renewal_state',renewal_state) order by renewal_date,distributor_id) filter(where rn<=greatest(1,least(p_limit,50))),'[]'::jsonb))
+ select jsonb_build_object('total',coalesce(max(total_count),0),'rows',coalesce(jsonb_agg(jsonb_build_object('distributor_id',distributor_id,'distributor_name',distributor_name,'renewal_date',renewal_date,'renewal_state',renewal_state) order by renewal_date,distributor_id) filter(where rn<=greatest(1,least(coalesce(p_limit,5),50))),'[]'::jsonb))
  from (select *,row_number() over(order by renewal_date,distributor_id) rn from counted) ordered
 $$;
 
@@ -156,11 +172,12 @@ grant execute on function public.distributor_status_metrics_v1(uuid,boolean),pub
 
 create or replace function public.import_distributor_status_v1(p_operation_id uuid,p_actor_id uuid,p_request_hash text,p_filename text,p_rows jsonb)
 returns jsonb language plpgsql security definer set search_path=public,pg_temp as $$
-declare v_batch public.distributor_import_batches%rowtype; v_item jsonb; v_payload jsonb; v_current public.distributor_accounts%rowtype; v_old_renewal date; v_created integer=0; v_updated integer=0; v_skipped integer=0; v_result jsonb;
+declare v_batch public.distributor_import_batches%rowtype; v_item jsonb; v_payload jsonb; v_before public.distributor_accounts%rowtype; v_current public.distributor_accounts%rowtype; v_old_renewal date; v_change_set jsonb; v_created integer=0; v_updated integer=0; v_skipped integer=0; v_result jsonb;
 begin
- if not exists(select 1 from public.users u where u.user_id=p_actor_id and u.is_active=true and public.receivables_is_admin(u.user_id)) then return jsonb_build_object('success',false,'code','ADMIN_REQUIRED'); end if;
+ perform pg_advisory_xact_lock(hashtextextended(p_operation_id::text,0));
  select * into v_batch from public.distributor_import_batches where operation_id=p_operation_id for update;
- if found then if v_batch.actor_id<>p_actor_id or v_batch.request_hash<>p_request_hash then return jsonb_build_object('success',false,'code','DISTRIBUTOR_OPERATION_MISMATCH'); end if; return v_batch.response||jsonb_build_object('replayed',true); end if;
+ if found then if v_batch.actor_id<>p_actor_id or v_batch.request_hash<>p_request_hash then return jsonb_build_object('success',false,'code','DISTRIBUTOR_OPERATION_MISMATCH'); end if; return v_batch.response; end if;
+ if not exists(select 1 from public.users u where u.user_id=p_actor_id and u.is_active=true and public.receivables_is_admin(u.user_id)) then return jsonb_build_object('success',false,'code','ADMIN_REQUIRED'); end if;
  if jsonb_typeof(p_rows)<>'array' or jsonb_array_length(p_rows) not between 1 and 5000 then return jsonb_build_object('success',false,'code','IMPORT_SIZE_INVALID'); end if;
  create temporary table distributor_import_stage(row_number integer primary key,classification text not null,payload jsonb not null) on commit drop;
  for v_item in select value from jsonb_array_elements(p_rows) loop
@@ -180,9 +197,16 @@ begin
    values((v_payload->>'distributor_id')::uuid,btrim(v_payload->>'distributor_name'),nullif(btrim(v_payload->>'distributor_reference'),''),v_payload->>'identity_key',(v_payload->>'assigned_to')::uuid,v_payload->>'installation_status',nullif(v_payload->>'installation_completed_at','')::date,v_payload->>'training_status',nullif(v_payload->>'training_completed_at','')::date,v_payload->>'activity_status',v_payload->>'billing_status',nullif(v_payload->>'billed_at','')::date,nullif(btrim(v_payload->>'bill_reference'),''),nullif(v_payload->>'renewal_date','')::date,p_actor_id) returning * into v_current; v_created=v_created+1;
    insert into public.distributor_status_events values(gen_random_uuid(),v_current.distributor_id,'imported',null,v_current.renewal_date,jsonb_build_object('source','import'),null,p_actor_id,now());
   elsif v_item->>'classification'='UPDATE' then
-   select renewal_date into v_old_renewal from public.distributor_accounts where distributor_id=(v_payload->>'distributor_id')::uuid;
+   select * into v_before from public.distributor_accounts where distributor_id=(v_payload->>'distributor_id')::uuid; v_old_renewal=v_before.renewal_date;
    update public.distributor_accounts set distributor_name=btrim(v_payload->>'distributor_name'),distributor_reference=nullif(btrim(v_payload->>'distributor_reference'),''),identity_key=v_payload->>'identity_key',assigned_to=(v_payload->>'assigned_to')::uuid,installation_status=v_payload->>'installation_status',installation_completed_at=nullif(v_payload->>'installation_completed_at','')::date,training_status=v_payload->>'training_status',training_completed_at=nullif(v_payload->>'training_completed_at','')::date,activity_status=v_payload->>'activity_status',billing_status=v_payload->>'billing_status',billed_at=nullif(v_payload->>'billed_at','')::date,bill_reference=nullif(btrim(v_payload->>'bill_reference'),''),renewal_date=nullif(v_payload->>'renewal_date','')::date,version=version+1,updated_at=now() where distributor_id=(v_payload->>'distributor_id')::uuid returning * into v_current; v_updated=v_updated+1;
-   insert into public.distributor_status_events values(gen_random_uuid(),v_current.distributor_id,case when v_old_renewal is distinct from v_current.renewal_date then 'renewal_date_updated' else 'imported' end,v_old_renewal,v_current.renewal_date,jsonb_build_object('source','import'),null,p_actor_id,now());
+   v_change_set=jsonb_build_object('source','import');
+   if v_before.assigned_to is distinct from v_current.assigned_to then v_change_set=v_change_set||jsonb_build_object('assigned_to',jsonb_build_object('from',v_before.assigned_to,'to',v_current.assigned_to)); end if;
+   if v_before.installation_status is distinct from v_current.installation_status or v_before.installation_completed_at is distinct from v_current.installation_completed_at then v_change_set=v_change_set||jsonb_build_object('installation',jsonb_build_object('status_from',v_before.installation_status,'status_to',v_current.installation_status,'date_from',v_before.installation_completed_at,'date_to',v_current.installation_completed_at)); end if;
+   if v_before.training_status is distinct from v_current.training_status or v_before.training_completed_at is distinct from v_current.training_completed_at then v_change_set=v_change_set||jsonb_build_object('training',jsonb_build_object('status_from',v_before.training_status,'status_to',v_current.training_status,'date_from',v_before.training_completed_at,'date_to',v_current.training_completed_at)); end if;
+   if v_before.activity_status is distinct from v_current.activity_status then v_change_set=v_change_set||jsonb_build_object('activity_status',jsonb_build_object('from',v_before.activity_status,'to',v_current.activity_status)); end if;
+   if v_before.billing_status is distinct from v_current.billing_status or v_before.billed_at is distinct from v_current.billed_at or v_before.bill_reference is distinct from v_current.bill_reference then v_change_set=v_change_set||jsonb_build_object('billing',jsonb_build_object('status_from',v_before.billing_status,'status_to',v_current.billing_status,'date_from',v_before.billed_at,'date_to',v_current.billed_at,'reference_from',v_before.bill_reference,'reference_to',v_current.bill_reference)); end if;
+   if v_old_renewal is distinct from v_current.renewal_date then v_change_set=v_change_set||jsonb_build_object('renewal_date',jsonb_build_object('from',v_old_renewal,'to',v_current.renewal_date)); end if;
+   insert into public.distributor_status_events values(gen_random_uuid(),v_current.distributor_id,case when v_old_renewal is distinct from v_current.renewal_date then 'renewal_date_updated' else 'imported' end,v_old_renewal,v_current.renewal_date,v_change_set,null,p_actor_id,now());
   else v_skipped=v_skipped+1; end if;
  end loop;
  v_result=jsonb_build_object('success',true,'batch_id',v_batch.batch_id,'created_count',v_created,'updated_count',v_updated,'duplicate_count',v_skipped,'replayed',false);update public.distributor_import_batches set response=v_result where batch_id=v_batch.batch_id;return v_result;
