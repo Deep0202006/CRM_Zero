@@ -14,3 +14,4 @@ insert into users values('10000000-0000-4000-a000-000000000001','Admin','admin@e
 insert into user_capabilities values('10000000-0000-4000-a000-000000000001','admin');
 create table protected_writes(domain text primary key,writes bigint not null default 0);
 insert into protected_writes(domain) values('leads'),('receivables'),('payments'),('tasks'),('calls'),('field_visits'),('attendance'),('chat'),('pipeline');
+grant select on protected_writes to service_role;

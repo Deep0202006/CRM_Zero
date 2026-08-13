@@ -65,7 +65,7 @@ create table public.distributor_import_batches (
 
 create index distributor_assignee_renewal_idx on public.distributor_accounts(assigned_to,renewal_date,distributor_id) where renewal_date is not null;
 create index distributor_list_updated_idx on public.distributor_accounts(updated_at desc,distributor_id desc);
-create index distributor_identity_lookup_idx on public.distributor_accounts(identity_key,distributor_id);
+create unique index distributor_identity_unique_idx on public.distributor_accounts(identity_key);
 create unique index distributor_reference_unique_idx on public.distributor_accounts(lower(btrim(distributor_reference))) where distributor_reference is not null;
 create index distributor_events_history_idx on public.distributor_status_events(distributor_id,created_at desc,event_id desc);
 
