@@ -88,6 +88,18 @@ Implementation and tests are authoritative when documentation conflicts. Correct
 - India business dates use the shared IST helpers.
 - Employee ownership is explicit; admin reporting is server-authoritative.
 
+## Capability Reuse & Verification
+
+- **Reuse Existing Capabilities:** Before implementing a feature that needs an existing domain capability, you MUST locate and reuse the existing working implementation rather than independently recreating it.
+  - Employee selection → reuse canonical employee authority
+  - Authentication → reuse canonical auth context
+  - Admin authorization → reuse canonical authorization
+  - Distributor identity → reuse distributor authority
+  - Renewal → reuse `distributor_accounts.renewal_date`
+  - Financial data → never duplicate receivables authority
+- **End-to-End Verification:** A successful database migration does not prove a feature works. Database schema, API, authorization, frontend state, and E2E behavior must all be verified.
+- **UI Bug Diagnosis:** Never prescribe a database migration solely because a UI feature is empty or broken. First determine whether the authoritative table exists and whether the application can read/write it.
+
 ## Progressive disclosure
 
 For each task read, in order:
