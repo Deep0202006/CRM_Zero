@@ -84,6 +84,8 @@ create policy distributor_events_read on public.distributor_status_events for se
 revoke insert,update,delete on public.distributor_accounts from anon,authenticated;
 revoke insert,update,delete on public.distributor_status_events from anon,authenticated;
 revoke all on public.distributor_operation_receipts,public.distributor_import_batches from anon,authenticated;
+grant select on public.distributor_accounts,public.distributor_status_events to authenticated,service_role;
+grant all on public.distributor_accounts,public.distributor_status_events,public.distributor_operation_receipts,public.distributor_import_batches to service_role;
 
 create or replace function public.distributor_renewal_state_v1(p_date date, p_today date)
 returns text language sql immutable as $$
