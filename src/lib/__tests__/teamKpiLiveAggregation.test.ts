@@ -38,6 +38,7 @@ describe("Team KPI live server aggregation", () => {
       allocatedTargets: [
         { target_id: "target-1", assigned_to_user_id: "00000000-0000-4000-8000-000000000001", completed_at: "2026-07-27T10:00:00.000Z", is_completed: true },
       ],
+      attendance: [{ attendance_id: "00000000-0000-4000-8000-000000000010", user_id: "00000000-0000-4000-8000-000000000001", date: "2026-07-27", clock_in: "2026-07-26T18:30:00.000Z", selfie_purged_at: "2026-08-01T00:00:00.000Z", selfie_purge_state: "purged" }],
     });
 
     expect(report.rows).toHaveLength(2);
@@ -51,6 +52,7 @@ describe("Team KPI live server aggregation", () => {
       tasks_completed: 1,
       total_completed_work: 4,
       latest_activity_time: "2026-07-27T10:00:00.000Z",
+      attendance_status: "Present",
     });
     expect(report.rows[1]).toMatchObject({
       name: "User B",
@@ -60,6 +62,7 @@ describe("Team KPI live server aggregation", () => {
       mappings_completed: 0,
       tasks_completed: 2,
       total_completed_work: 2,
+      attendance_status: "Absent",
     });
     expect(report.totals).toEqual({
       team_members: 2,

@@ -1,5 +1,6 @@
 import { getCanonicalDailyTeamMetrics, isSyntheticAuditCall } from "../workMetrics/canonical";
 import type { TeamKpiResponse, TeamKpiSourceWarning } from "./contract";
+import { resolveAttendanceDay, type AttendanceAuthorityRow } from "@/lib/attendance/authority";
 
 export interface KpiUserRecord { user_id: string; name: string; is_active: boolean | number | string | null; }
 export interface KpiUserCapabilityRecord { user_id: string; capability_code: string; }
@@ -14,6 +15,7 @@ export interface BuildTeamKpiReportInput {
   targetDate: string; generatedAt?: string; users: KpiUserRecord[]; userCapabilities: KpiUserCapabilityRecord[]; capabilities: KpiCapabilityRecord[];
   calls: KpiCallRecord[]; clientQueries: KpiClientQueryRecord[]; mappings: KpiMappingRecord[]; tasks: KpiTaskRecord[]; taskHistory: KpiTaskHistoryRecord[];
   taskIdsWithAnyCompletionHistory?: ReadonlySet<string>; allocatedTargets: KpiAllocatedTargetRecord[]; warnings?: TeamKpiSourceWarning[]; source?: "server-aggregation" | "database-rpc";
+  attendance?: AttendanceAuthorityRow[];
 }
 
 function isActive(value: KpiUserRecord["is_active"]): boolean {
@@ -44,6 +46,7 @@ export function buildTeamKpiReport(input: BuildTeamKpiReportInput): TeamKpiRespo
       user_id: user.user_id, name: user.name.trim() || "Unnamed team member", role: codes.map((code) => labels.get(code) ?? humanize(code)).join(" · ") || "Team member", capabilities: codes,
       calls_made: metric.genuine_call_ids.size, followup_calls: metric.followup_call_ids.size, queries_handled: metric.query_ids.size, mappings_completed: metric.mapping_ids.size,
       tasks_completed: metric.completed_task_ids.size + metric.target_ids.size, total_completed_work: metric.unique_work_keys.size,
+      attendance_status: resolveAttendanceDay(input.attendance ?? [], user.user_id, input.targetDate).present ? "Present" as const : "Absent" as const,
       latest_activity_time: metric.latest_activity_at,
     };
   }).sort((a, b) => b.total_completed_work - a.total_completed_work || a.name.localeCompare(b.name) || a.user_id.localeCompare(b.user_id));

@@ -370,6 +370,7 @@ export default function ManagerKpiPage() {
                     <tr>
                       <th>Team member</th>
                       <th>Role</th>
+                      <th>Attendance</th>
                       <th>Unique completed work</th>
                       <th>Calls today</th>
                       <th>Follow-up calls</th>
@@ -388,6 +389,7 @@ export default function ManagerKpiPage() {
                         <td>
                           <span className="block max-w-[220px] whitespace-normal break-words text-[12px] font-medium leading-5 text-[var(--text-muted)]">{row.role}</span>
                         </td>
+                        <td><Chip variant={row.attendance_status === "Present" ? "success" : "danger"} size="sm" dot>{row.attendance_status}</Chip></td>
                         <td className="font-semibold tabular-nums text-[var(--text-primary)]">{row.total_completed_work}</td>
                         <td className="font-semibold tabular-nums text-[var(--text-primary)]">{row.calls_made}</td>
                         <td className="font-semibold tabular-nums text-[var(--text-primary)]">{row.followup_calls}</td>

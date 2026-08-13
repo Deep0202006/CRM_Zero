@@ -11,6 +11,7 @@
     "test:e2e:receivables": "playwright test e2e/receivables",
     "test:e2e:field-visits": "playwright test e2e/field-visits",
     "test:e2e:pipeline": "playwright test e2e/pipeline",
+    "test:e2e:attendance": "playwright test e2e/attendance",
     "typecheck": "tsc --noEmit",
     "harness:preflight": "node scripts/harness/preflight.mjs",
     "harness:scope": "node scripts/harness/scope-guard.mjs",

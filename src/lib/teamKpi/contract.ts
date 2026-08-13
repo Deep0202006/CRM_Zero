@@ -19,6 +19,7 @@ export const teamKpiRowSchema = z.object({
   tasks_completed: nonNegativeInteger,
   total_completed_work: nonNegativeInteger,
   latest_activity_time: z.string().datetime({ offset: true }).nullable(),
+  attendance_status: z.enum(["Present", "Absent"]).default("Absent"),
 });
 
 export const teamKpiTotalsSchema = z.object({
