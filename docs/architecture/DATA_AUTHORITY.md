@@ -6,6 +6,8 @@ Supabase-confirmed rows are authoritative across devices. IndexedDB holds durabl
 
 Receivables financial state is server authoritative: PostgreSQL numeric calculations and confirmed, non-reversed payments determine paid and outstanding amounts. A browser payment report or uncertain command is never confirmed money. Receivables assignment is also authoritative: server-listed active operational employees are convenience, while PostgreSQL rejects inactive or Admin assignees.
 
+Distributor Status is a separate operational authority keyed by one internal distributor account ID. It owns installation, training, activity, billed indication, assignment, current renewal date, and their audit history. Receivables may resolve and display that account but remains the only financial authority; Distributor Status writes no Lead, financial, Pipeline, Task, Call, Visit, Attendance, or Chat row. Renewal reminders are derived from the authoritative date in IST rather than generated work.
+
 Field-visit `payment_done` is an observation, never financial confirmation. Payment Collections alone owns Receivables payment mutations. Permanent visit/attendance rows and metadata remain authoritative after temporary evidence objects expire.
 
 Pipeline is a global read model for active CRM users. Ordinary Lead mutation belongs only to the assigned owner; Admin status is not an override. The authoritative transition boundary writes Lead state plus Pipeline audit/idempotency only. Pipeline never creates Tasks, Calls, Visits, Receivables, payments, or chat records, and Calls never create Leads or Pipeline transitions.

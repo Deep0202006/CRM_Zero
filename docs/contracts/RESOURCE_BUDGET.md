@@ -21,6 +21,7 @@ These are internal release thresholds below the external Free-plan ceilings of 5
 - Polling below 60 seconds requires explicit architecture approval and tests. Full hydration remains serialized and budgeted.
 - Material hot-query or egress growth requires an ExecPlan resource section. Derived projections never become business authority.
 - Service-role secrets remain server-only. Existing normalized authority is not duplicated as large text or binary payloads.
+- Major screens declare initial request count, page size, polling policy, and binary policy. Distributor Status is one aggregate plus one 50-row list, with no polling or binary hydration.
 
 ## Current snapshot
 
