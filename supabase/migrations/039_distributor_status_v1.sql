@@ -130,8 +130,8 @@ begin
     if v_before.activity_status is distinct from v_row.activity_status then v_change_set=v_change_set||jsonb_build_object('activity_status',jsonb_build_object('from',v_before.activity_status,'to',v_row.activity_status)); end if;
     if v_before.billing_status is distinct from v_row.billing_status or v_before.billed_at is distinct from v_row.billed_at or v_before.bill_reference is distinct from v_row.bill_reference then v_change_set=v_change_set||jsonb_build_object('billing',jsonb_build_object('status_from',v_before.billing_status,'status_to',v_row.billing_status,'date_from',v_before.billed_at,'date_to',v_row.billed_at,'reference_from',v_before.bill_reference,'reference_to',v_row.bill_reference)); end if;
     if v_old_renewal is distinct from v_new_renewal then v_change_set=v_change_set||jsonb_build_object('renewal_date',jsonb_build_object('from',v_old_renewal,'to',v_new_renewal)); end if;
-    v_only_assignment=(v_change_set ? 'assigned_to') and jsonb_object_length(v_change_set)=1;
-    v_event=case when p_operation_type='renew' then 'renewed' when v_only_assignment then 'reassigned' when v_old_renewal is distinct from v_new_renewal and jsonb_object_length(v_change_set)=1 then 'renewal_date_updated' else 'status_updated' end;
+    v_only_assignment=(v_change_set ? 'assigned_to') and (select count(*) from jsonb_object_keys(v_change_set))=1;
+    v_event=case when p_operation_type='renew' then 'renewed' when v_only_assignment then 'reassigned' when v_old_renewal is distinct from v_new_renewal and (select count(*) from jsonb_object_keys(v_change_set))=1 then 'renewal_date_updated' else 'status_updated' end;
   else return jsonb_build_object('success',false,'code','INVALID_OPERATION'); end if;
   insert into public.distributor_status_events(event_id,distributor_id,event_type,previous_renewal_date,new_renewal_date,change_set,note,actor_id) values(gen_random_uuid(),v_id,v_event,v_old_renewal,v_row.renewal_date,v_change_set,nullif(btrim(p_payload->>'note'),''),p_actor_id);
   v_response=jsonb_build_object('success',true,'record',to_jsonb(v_row));
