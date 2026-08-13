@@ -10,7 +10,7 @@ import {PageHeader} from "@/components/ui/PageHeader";import {Button} from "@/co
 import {DistributorImportModal} from "@/components/distributors/DistributorImportModal";
 
 const metricFilters=[
- ["Total Distributors","total",{}],["Installation Pending","installation_pending",{installation:"pending"}],["Installation + Training Done","installation_training_done",{installation:"done",training:"done"}],["Active","active",{installation:"done",training:"done",activity:"active"}],["Inactive","inactive",{installation:"done",training:"done",activity:"inactive"}],["Billed","billed",{billing:"billed"}],
+ ["Total Distributors","total",{}],["Installation Pending","installation_pending",{installation:"pending"}],["Training Pending","training_pending",{installation:"done",training:"pending"}],["Installation + Training Done","installation_training_done",{installation:"done",training:"done"}],["Active","active",{installation:"done",training:"done",activity:"active"}],["Inactive","inactive",{installation:"done",training:"done",activity:"inactive"}],["Billed","billed",{billing:"billed"}],
 ] as const;
 const blank={distributor_name:"",distributor_reference:"",lead_id:"",phone:"",city:"",assigned_to:"",installation_status:"pending",installation_completed_at:"",training_status:"pending",training_completed_at:"",activity_status:"not_applicable",billing_status:"not_billed",billed_at:"",bill_reference:"",renewal_date:"",note:""};
 export default function DistributorStatusPage(){

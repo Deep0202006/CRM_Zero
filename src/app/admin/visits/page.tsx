@@ -59,7 +59,6 @@ export default function AdminVisitsPage() {
   const [representatives, setRepresentatives] = useState<Array<{ user_id: string; name: string; email: string; is_active: boolean; capabilities: string[]; historical_only: boolean }>>([]);
   const requestSequence = useRef(0);
   const realtimeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const fallbackTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const [realtimeSubscribed, setRealtimeSubscribed] = useState(false);
 
   const loadData = useCallback(async (targetPage = 1) => {
@@ -123,13 +122,11 @@ export default function AdminVisitsPage() {
   }, [isAdmin, loadData, page]);
 
   useEffect(() => {
-    const stopFallback = () => { if (fallbackTimer.current) clearInterval(fallbackTimer.current); fallbackTimer.current = null; };
     const updateFallback = () => {
-      stopFallback();
-      if (!realtimeSubscribed && document.visibilityState === "visible") fallbackTimer.current = setInterval(() => void loadData(page), 10_000);
+      if (!realtimeSubscribed && document.visibilityState === "visible") void loadData(page);
     };
-    updateFallback(); document.addEventListener("visibilitychange", updateFallback);
-    return () => { document.removeEventListener("visibilitychange", updateFallback); stopFallback(); };
+    document.addEventListener("visibilitychange", updateFallback);
+    return () => { document.removeEventListener("visibilitychange", updateFallback); };
   }, [loadData, page, realtimeSubscribed]);
 
   const handleExport = async () => {

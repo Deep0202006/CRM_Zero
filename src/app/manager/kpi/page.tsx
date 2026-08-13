@@ -100,7 +100,6 @@ export default function ManagerKpiPage() {
   const [activeTab, setActiveTab] = useState<"Team" | "Funnel">("Team");
   const requestSequence = useRef(0);
   const realtimeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const fallbackTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const [realtimeSubscribed, setRealtimeSubscribed] = useState(false);
 
   const loadTeamKpi = useCallback(async (background = false) => {
@@ -191,13 +190,11 @@ export default function ManagerKpiPage() {
   }, [currentUser, isAdmin, loadTeamKpi]);
 
   useEffect(() => {
-    const stopFallback = () => { if (fallbackTimer.current) clearInterval(fallbackTimer.current); fallbackTimer.current = null; };
     const updateFallback = () => {
-      stopFallback();
-      if (!realtimeSubscribed && document.visibilityState === "visible") fallbackTimer.current = setInterval(() => void loadTeamKpi(true), 10_000);
+      if (!realtimeSubscribed && document.visibilityState === "visible") void loadTeamKpi(true);
     };
-    updateFallback(); document.addEventListener("visibilitychange", updateFallback);
-    return () => { document.removeEventListener("visibilitychange", updateFallback); stopFallback(); };
+    document.addEventListener("visibilitychange", updateFallback);
+    return () => { document.removeEventListener("visibilitychange", updateFallback); };
   }, [loadTeamKpi, realtimeSubscribed]);
 
   const rows = report?.rows ?? [];
