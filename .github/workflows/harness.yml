@@ -47,6 +47,8 @@ jobs:
         run: createdb field_visits_test && PGDATABASE=field_visits_test bash scripts/field-visits-db/run-integration.sh
       - name: Fresh-apply Pipeline authority migrations and prove isolation
         run: createdb pipeline_test && PGDATABASE=pipeline_test bash scripts/pipeline-db/run-integration.sh
+      - name: Fresh-apply Distributor Status migration and prove concurrency, isolation, and 10k scale
+        run: createdb distributor_status_test && PGDATABASE=distributor_status_test bash scripts/distributor-status-db/run-integration.sh
 
   verify:
     runs-on: ubuntu-latest
@@ -73,5 +75,7 @@ jobs:
         run: npm run test:e2e:receivables
       - name: Run Field Visits and Attendance evidence browser flows
         run: npm run test:e2e:field-visits
+      - name: Run Distributor Status responsive authority flows
+        run: npm run test:e2e:distributors
       - run: npm run harness:guard
       - run: npm run harness:docs

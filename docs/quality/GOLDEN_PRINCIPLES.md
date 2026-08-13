@@ -17,6 +17,14 @@
 - Employee ownership is explicit and user-scoped.
 - Unknown records are preserved instead of guessed.
 - Admin reporting is server-authoritative.
+- One business concept has one authority; cross-domain displays never become duplicate truth.
+- Store orthogonal facts when product categories overlap; derive dashboard cards.
+- Every mutation declares an exact side-effect budget and every major screen a read budget.
+- Derived date alerts do not create generated work unless explicitly approved.
+- Admin import preview is not authority; commit revalidates, is idempotent, atomic, and never fuzzy-merges.
+- Important mutable aggregates require stale-write protection and cross-domain isolation tests.
+- Hot lists are explicit and bounded; binary/base64 business hydration is forbidden.
+- Authoritative business history is never lossily compressed or overwritten without audit.
 - Online critical success requires exact server confirmation.
 - Pending work remains recoverable after network, response, reload, or optional-schema failure.
 - Follow-up completion derives from confirmed source work; it is not fabricated.

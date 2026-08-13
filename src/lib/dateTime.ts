@@ -59,3 +59,11 @@ export function getCurrentISTTimestamp(): string {
 export function isSameDate(date1: string, date2: string): boolean {
   return date1 === date2;
 }
+
+/** Adds calendar days to an India business-date key without browser timezone drift. */
+export function addISTDateDays(dateKey: string, days: number): string {
+  if (!isValidISTDateKey(dateKey) || !Number.isInteger(days)) throw new Error("Invalid India business date offset");
+  const [year, month, day] = dateKey.split("-").map(Number);
+  const value = new Date(Date.UTC(year, month - 1, day + days));
+  return `${value.getUTCFullYear()}-${String(value.getUTCMonth() + 1).padStart(2, "0")}-${String(value.getUTCDate()).padStart(2, "0")}`;
+}

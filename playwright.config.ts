@@ -21,6 +21,7 @@ export default defineConfig({
       NEXT_PUBLIC_SUPABASE_URL: "https://e2e.supabase.co",
       NEXT_PUBLIC_SUPABASE_ANON_KEY: "e2e-anon-key",
       RECEIVABLES_V1_READY: "true",
+      DISTRIBUTOR_STATUS_V1_READY: "true",
     },
   },
 });

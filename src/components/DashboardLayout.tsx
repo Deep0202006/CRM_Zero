@@ -257,6 +257,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           keywords: ["payments", "collections", "receivables"],
         },
         {
+          icon: <CalendarDays size={17} />,
+          label: "Distributor Status",
+          path: isAdmin ? "/admin/payments/distributors" : "/payments/distributors",
+          description: "Operational status and renewals",
+          group: "Workspace",
+          keywords: ["distributor", "renewal", "installation", "training"],
+        },
+        {
           icon: <MessageCircle size={17} />,
           label: "Team Chat",
           path: "/chat",

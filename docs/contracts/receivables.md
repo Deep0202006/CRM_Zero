@@ -47,6 +47,8 @@ Cancelled balances are excluded from collectible outstanding, overdue, and aging
 
 Receivables never writes Tasks, Call Logs, Field Visits, `lead_payment_details`, Pipeline stages, generic Follow-ups, or Team Chat/push tables. Field Visit `payment_follow_up` and Pipeline Payment remain non-authoritative legacy mechanisms. My Day uses `/api/my-day/receivables` and a dedicated priority panel before ordinary queues.
 
+Distributor Status is an adjacent operational authority. A resolved Receivable may display its canonical distributor renewal date/state, but Receivables does not own or duplicate that date. Distributor `billing_status=billed` never creates or confirms a Receivable or Payment.
+
 ## RELEASE
 
 Migrations `033_receivables_v1.sql`, `034_receivables_production_completion.sql`, and `035_receivables_import_linearization.sql` are additive and review-only until owner approval. Apply them once, in order, through the Supabase migration mechanism; they are not advertised as rerunnable. Migration 034 adds the active non-Admin operational-assignee guard; migration 035 replaces only the import function with indexed transaction-local staging. Neither rewrites business rows. A disposable PostgreSQL 17.6 CI job matching the production major applies all migrations and executes money, idempotency, concurrency, state-machine, 5,000-row import success/rollback, assignment, metrics, pagination, and RLS tests. The fixture runner refuses the production project/host. Application deployment remains inert while required schema is not deployed. Production verification is read-only; no dummy financial records may be created and deleted.
