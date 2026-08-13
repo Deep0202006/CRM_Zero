@@ -1,9 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
 import * as XLSX from "xlsx";
+import { getCurrentISTDate } from "../../src/lib/dateTime";
 
 const adminId = "10000000-0000-4000-a000-000000000001";
 const employeeId = "20000000-0000-4000-a000-000000000001";
 const receivableId = "30000000-0000-4000-a000-000000000001";
+const today = getCurrentISTDate();
 
 function token(userId: string) {
   const encode = (value: unknown) => Buffer.from(JSON.stringify(value)).toString("base64url");
@@ -69,7 +71,7 @@ test("Admin Payment Collections intake supports manual receivable and spreadshee
   await page.getByLabel("Contact Person").fill("Anita");
   await page.getByLabel("Bill Amount").fill("₹84,500");
   await page.getByLabel("Bill Due Date").fill("2026-08-01");
-  await page.getByLabel("Payment Follow-up Date").fill("2026-08-12");
+  await page.getByLabel("Payment Follow-up Date").fill(today);
   await page.getByLabel("Assigned Employee").selectOption(employeeId);
   await page.getByRole("button", { name: "Create Receivable" }).click();
   await expect(page.getByText("Receivable created and confirmed.")).toBeVisible();
@@ -168,11 +170,11 @@ test("employee forms persist operational intent and terminal rows expose no coll
   await seedUser(page, "employee");
   await page.goto("/payments");
   await page.getByRole("button", { name: "Contacted" }).first().click();
-  await page.getByLabel("Next follow-up date").fill("2026-08-12");
+  await page.getByLabel("Next follow-up date").fill(today);
   await page.getByRole("button", { name: "Confirm Contacted" }).click();
   await expect(page.getByText("Collection action confirmed.")).toBeVisible();
   await page.getByRole("button", { name: "Promise to Pay" }).first().click();
-  await page.getByLabel("Promise date").fill("2026-08-12");
+  await page.getByLabel("Promise date").fill(today);
   await page.getByLabel("Promised amount").fill("\u20b984,500");
   await page.getByRole("button", { name: "Confirm Promise to Pay" }).click();
   await expect(page.getByText("Collection action confirmed.")).toBeVisible();
