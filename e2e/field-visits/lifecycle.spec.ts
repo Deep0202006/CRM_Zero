@@ -1,10 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
+import { getCurrentISTDate } from "../../src/lib/dateTime";
 
 const adminId = "10000000-0000-4000-a000-000000000001";
 const employeeId = "20000000-0000-4000-a000-000000000001";
 const leadId = "30000000-0000-4000-a000-000000000001";
 const attendanceId = "40000000-0000-4000-a000-000000000001";
-const today = "2026-08-12";
+const today = getCurrentISTDate();
 function token(id: string) { const e = (v: unknown) => Buffer.from(JSON.stringify(v)).toString("base64url"); return `${e({ alg: "none" })}.${e({ sub: id, exp: 1999999999 })}.e2e`; }
 
 async function seed(page: Page, role: "admin" | "employee", withAttendance = true) {
