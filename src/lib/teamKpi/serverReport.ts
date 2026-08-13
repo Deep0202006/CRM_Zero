@@ -12,6 +12,7 @@ import {
   type KpiUserRecord,
 } from "./aggregate";
 import type { TeamKpiResponse, TeamKpiSourceWarning } from "./contract";
+import type { AttendanceAuthorityRow } from "@/lib/attendance/authority";
 
 const PAGE_SIZE = 1000;
 const MAX_PAGES_PER_SOURCE = 100;
@@ -235,7 +236,7 @@ export async function loadTeamKpiServerReport(
     return { data: result.data as KpiUserRecord[] | null, error: result.error };
   });
 
-  const [userCapabilities, capabilities, calls, clientQueries, mappingRequests, legacyMappings, tasks, taskHistory, allocatedTargets] = await Promise.all([
+  const [userCapabilities, capabilities, attendance, calls, clientQueries, mappingRequests, legacyMappings, tasks, taskHistory, allocatedTargets] = await Promise.all([
     fetchCompatibleSource<KpiUserCapabilityRecord>("user capabilities", warnings, [{
       name: "canonical",
       loadPage: async (from, to) => {
@@ -258,6 +259,12 @@ export async function loadTeamKpiServerReport(
         return { data: result.data as KpiCapabilityRecord[] | null, error: result.error };
       },
     }]),
+    fetchRequiredSource<AttendanceAuthorityRow>("attendance", async (from, to) => {
+      const result = await client.from("attendance")
+        .select("attendance_id,user_id,date,clock_in,clock_out,latitude,longitude,selfie_captured,selfie_storage_path,selfie_uploaded_at,selfie_purged_at,selfie_purge_state")
+        .eq("date", dateKey).order("clock_in", { ascending: true }).range(from, to);
+      return { data: result.data as AttendanceAuthorityRow[] | null, error: result.error };
+    }),
     fetchCompatibleSource<KpiCallRecord>("calls", warnings, [{
       name: "canonical",
       loadPage: async (from, to) => {
@@ -434,6 +441,7 @@ export async function loadTeamKpiServerReport(
     taskHistory,
     taskIdsWithAnyCompletionHistory,
     allocatedTargets,
+    attendance,
     warnings,
     source: "server-aggregation",
   });

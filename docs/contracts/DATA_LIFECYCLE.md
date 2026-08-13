@@ -10,7 +10,7 @@ The owner-authorized initial cleanup is a separate operation frozen at `2026-08-
 
 ## INVARIANT
 
-Media expiry cannot delete or rewrite its business row. List screens do not automatically download evidence. `AVAILABLE`, `PURGED`, and `PENDING` are explicit states; `PURGED` never generates a signed URL or Storage retry. Cleanup is exact-key, bounded, idempotent, failure-recoverable, and cannot target unrelated buckets.
+Media expiry cannot delete or rewrite its business row or change attendance Present/Absent state. List screens do not automatically download evidence. `AVAILABLE`, `PURGED`, and `PENDING` are explicit states; `PURGED` never generates a signed URL or Storage retry. Cleanup is exact-key, bounded, idempotent, failure-recoverable, and cannot target unrelated buckets.
 
 ## KNOWN DEBT
 

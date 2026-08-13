@@ -61,14 +61,15 @@ describe("simple verified clock-out contract", () => {
     expect(modal).toContain("Closing the browser does not complete attendance.");
   });
 
-  test("admin attendance distinguishes statuses and keeps evidence out of CSV", () => {
-    expect(attendance).toContain('return record.clock_out ? "Logged out" : "Working"');
-    expect(attendance).toContain('if (!record) return "Absent"');
-    expect(attendance).toContain("Clock-in Selfie Recorded");
+  test("admin attendance uses server business rows and separates evidence", () => {
+    expect(attendance).toContain("/api/admin/attendance?date_from=");
+    expect(attendance).toContain("resolveAttendanceDay");
+    expect(attendance).toContain('resolved.present ? "Present" : "Absent"');
+    expect(attendance).toContain("Selfie expired");
     expect(attendance).not.toContain("Selfie URL");
     expect(attendance).not.toContain('a.selfie_url || ""');
     expect(attendance).toContain('timeZone: "Asia/Kolkata"');
-    expect(attendance).toContain('.split(", ").includes("admin")');
+    expect(attendance).not.toContain("db.attendance");
   });
 
   test("no migration or SQL implements this feature", () => {

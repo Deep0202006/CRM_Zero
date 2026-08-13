@@ -85,5 +85,11 @@ for (const migration of changedPaths().filter((file) => file.startsWith("supabas
 }
 requireInvariant(existsSync(resolve(root, "src/lib/__tests__/pipeline/pipelineHardeningMigration.test.ts")), "Pipeline cross-domain mutation assertions are required");
 requireInvariant(existsSync(resolve(root, "docs/contracts/RESOURCE_BUDGET.md")), "hot-query changes require the Resource Budget contract");
+const attendanceAuthority = readFileSync(resolve(root, "src/lib/attendance/authority.ts"), "utf8");
+const adminAttendance = readFileSync(resolve(root, "src/app/api/admin/attendance/route.ts"), "utf8");
+const teamKpiAggregation = readFileSync(resolve(root, "src/lib/teamKpi/aggregate.ts"), "utf8");
+requireInvariant(attendanceAuthority.includes("resolveAttendanceDay") && !/selfie_(?:url|storage_path|purged_at)[\s\S]{0,80}?present\s*:/.test(attendanceAuthority), "Attendance presence must be independent from evidence state");
+requireInvariant(!adminAttendance.includes("selfie_url") && !/\.select\(\s*["'`]\*["'`]\s*\)/.test(adminAttendance), "Attendance list authority cannot hydrate evidence payloads or SELECT star");
+requireInvariant(teamKpiAggregation.includes("resolveAttendanceDay"), "Team Attendance and Team KPI must share the canonical attendance resolver");
 if (failed) process.exit(1);
 console.log(`Invariant guard passed (${files.length} executable changed files scanned differentially).`);
