@@ -52,7 +52,7 @@ Revert the narrow product commit through a normal PR. No database or business-da
 
 - Existing 82 exact-deployment 400s supersede the prior “awaiting natural traffic” state.
 - Distributor/Payment work remains isolated in its separate worktree until Attendance is stable.
-- Required CI failed before product assertions because Next 16.2.9 Turbopack panicked in its task graph on both Windows and GitHub Linux. Playwright uses Next's documented `--webpack` dev mode; production `next build` remains unchanged and required.
+- Required Attendance CI failed before product assertions because Next 16.2.9 Turbopack's development compiler panicked in its task graph on both Windows and GitHub Linux. The Attendance step alone now runs the already-required, synthetic-environment production build through `next start`, serially. Previously green unrelated browser suites retain their existing development runner.
 
 ## Progress
 

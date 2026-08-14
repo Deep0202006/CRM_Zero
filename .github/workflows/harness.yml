@@ -55,8 +55,8 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     env:
-      NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: BUILD_TIME_PLACEHOLDER_KEY
+      NEXT_PUBLIC_SUPABASE_URL: https://e2e.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: e2e-anon-key
       SUPABASE_SERVICE_ROLE_KEY: BUILD_TIME_PLACEHOLDER_KEY
     steps:
       - uses: actions/checkout@v4
@@ -79,6 +79,8 @@ jobs:
         run: npm run test:e2e:field-visits
       - name: Run Attendance role-matrix write-to-read closure flows
         run: npm run test:e2e:attendance
+        env:
+          PLAYWRIGHT_E2E_WEBPACK: "true"
       - name: Run Distributor Status responsive authority flows
         run: npm run test:e2e:distributors
       - run: npm run harness:guard
