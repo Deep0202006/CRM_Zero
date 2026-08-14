@@ -12,7 +12,7 @@ Identify and stop the rapid Attendance 400 requests still occurring on productio
 
 ## Current state
 
-PR #37 deployed safe typed classification on production SHA `cd51032b61d340b2b5fc4c9655ce8b348136e4ed`. Production immediately identified distinct authentic schema-v2 operations rejected as `IST_CAPTURE_DATE` candidates by the route's sync-day equality check; the callers are pre-marker clients.
+Production SHA `906b9ad375e88f0dbccc06017f7ebae667634fb7` accepts authentic capture-date replay. Natural traffic then produced 7 successful confirms and 10 `LOCATION_REQUIRED` terminal 400s from only two queue-v2 operation IDs. Each terminal item was selected five times because the queue pass did not exclude passive `review_required` evidence, and office auto-attendance trusted potentially stale local capability shape before the server classified the account as field staff.
 
 ## Invariants
 
@@ -54,6 +54,7 @@ Revert the narrow product commit through a normal PR. No database or business-da
 - Distributor/Payment work remains isolated in its separate worktree until Attendance is stable.
 - Required Attendance CI failed before product assertions because Next 16.2.9 Turbopack's development compiler panicked in its task graph on both Windows and GitHub Linux. The Attendance step alone now runs the already-required, synthetic-environment production build through `next start`, serially. Previously green unrelated browser suites retain their existing development runner.
 - Production telemetry proved the remaining storm is `IST_DATE_MISMATCH` for distinct schema-v2 queued operations. The prior route compared capture date to synchronization day; the contract instead validates that `date` equals the IST date derived from immutable `clock_in`, without inventing a replay window.
+- Natural production traffic on SHA `906b9ad` proved a second terminal replay path: the loop counted `review_required` as passive but did not skip it during iteration. Browser lifecycle drains therefore reselected terminal `LOCATION_REQUIRED` rows. The affected queue-v2 payloads also prove client role classification must be server-authoritative before office auto-attendance is created.
 
 ## Progress
 
@@ -62,4 +63,5 @@ Revert the narrow product commit through a normal PR. No database or business-da
 - [x] Safe client-contract marker, typed route-stage telemetry, and regression tests complete.
 - [x] Local R3 release gate complete (488 Jest; focused role/closure; typecheck; lint; build; harness; Attendance E2E, with one cold-compile timeout passing on exact rerun).
 - [x] Production traffic classified: pre-marker schema-v2 queues fail at `business_date` with `IST_DATE_MISMATCH`.
-- [ ] Authentic capture-date replay correction released and naturally certified.
+- [x] Authentic capture-date replay correction released; 7 natural 2xx confirmations observed.
+- [ ] Passive-state selection, cross-tab serialization, and authoritative office-mode preflight released and naturally certified.

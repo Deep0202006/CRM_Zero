@@ -88,8 +88,15 @@ requireInvariant(existsSync(resolve(root, "docs/contracts/RESOURCE_BUDGET.md")),
 const attendanceAuthority = readFileSync(resolve(root, "src/lib/attendance/authority.ts"), "utf8");
 const adminAttendance = readFileSync(resolve(root, "src/app/api/admin/attendance/route.ts"), "utf8");
 const teamKpiAggregation = readFileSync(resolve(root, "src/lib/teamKpi/aggregate.ts"), "utf8");
+const attendanceQueue = readFileSync(resolve(root, "src/lib/db.ts"), "utf8");
+const authContext = readFileSync(resolve(root, "src/context/AuthContext.tsx"), "utf8");
+const attendancePage = readFileSync(resolve(root, "src/app/attendance/page.tsx"), "utf8");
 requireInvariant(attendanceAuthority.includes("resolveAttendanceDay") && !/selfie_(?:url|storage_path|purged_at)[\s\S]{0,80}?present\s*:/.test(attendanceAuthority), "Attendance presence must be independent from evidence state");
 requireInvariant(!adminAttendance.includes("selfie_url") && !/\.select\(\s*["'`]\*["'`]\s*\)/.test(adminAttendance), "Attendance list authority cannot hydrate evidence payloads or SELECT star");
 requireInvariant(teamKpiAggregation.includes("resolveAttendanceDay"), "Team Attendance and Team KPI must share the canonical attendance resolver");
+requireInvariant(attendanceQueue.includes("if (!shouldAttemptSyncQueueItem(item)) continue") && attendanceQueue.includes("isActiveSyncQueueItem(item) && retryIsDue"), "passive Attendance recovery evidence cannot be selected for automatic retry");
+requireInvariant(attendanceQueue.includes("withSyncQueueBrowserLock(() => confirmQueuedAttendanceInternal(attendanceId))") && attendanceQueue.includes("activeSyncQueueRun = withSyncQueueBrowserLock"), "Attendance direct and background confirmation must serialize across tabs");
+requireInvariant(authContext.indexOf('authority.mode !== "office_auto"') < authContext.indexOf("saveAttendanceWithEvidence(newRecord, null)"), "office auto-attendance requires server-authoritative mode");
+requireInvariant(attendancePage.includes("setAuthoritativeMode(result.mode)") && attendancePage.includes('authoritativeMode === "field_selfie"'), "online Attendance evidence mode must come from server authority");
 if (failed) process.exit(1);
 console.log(`Invariant guard passed (${files.length} executable changed files scanned differentially).`);

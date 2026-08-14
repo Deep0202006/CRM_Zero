@@ -235,4 +235,20 @@ describe("Attendance write to authoritative read closure", () => {
     expect(state.attendance[0]).toMatchObject({ date: "2026-08-12", clock_in: "2026-08-11T18:30:00.000Z", selfie_captured: true });
     expect(state.uploaded).toHaveLength(1);
   });
+
+  test("classifies a current field payload without location as a typed terminal failure", async () => {
+    const warning = jest.spyOn(console, "warn").mockImplementation(() => undefined);
+    const state = serviceFor(["field_ret", "ret_onboarding"]);
+    mockedCreateClient.mockReturnValue(state.service);
+    const date = getCurrentISTDate();
+    const form = new FormData();
+    form.set("queue_schema_version", "2");
+    form.set("attendance", JSON.stringify({ attendance_id: firstAttendanceId, user_id: userId, date, clock_in: `${date}T04:00:00.000Z`, clock_out: null, selfie_url: null, latitude: null, longitude: null }));
+    form.set("selfie", new Blob([new Uint8Array(1024)], { type: "image/jpeg" }), "attendance.jpg");
+    const response = await POST(new Request("http://localhost/api/attendance/confirm", { method: "POST", headers: { Authorization: "Bearer fixture", "X-ZeroData-Attendance-Contract": "attendance-queue-v2" }, body: form }));
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({ code: "ATTENDANCE_LOCATION_REQUIRED", reason: "LOCATION_REQUIRED" });
+    expect(state.attendance).toHaveLength(0);
+    warning.mockRestore();
+  });
 });

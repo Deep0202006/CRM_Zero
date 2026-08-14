@@ -1,19 +1,19 @@
 {
-  "verified_at": "2026-08-14T09:53:30Z",
-  "production_main_sha": "d22dd38cd4b1a13f44269de210a829bbcb69d75a",
+  "verified_at": "2026-08-14T12:57:40Z",
+  "production_main_sha": "906b9ad375e88f0dbccc06017f7ebae667634fb7",
   "vercel": {
-    "deployment_id": "dpl_J1fYAvV5q6MQY81MNFB8tagWrvUy",
+    "deployment_id": "dpl_Bb5KQFvnEg7zgKYhg6Jt8nnwgbUM",
     "state": "READY",
     "target": "production",
-    "sha": "d22dd38cd4b1a13f44269de210a829bbcb69d75a"
+    "sha": "906b9ad375e88f0dbccc06017f7ebae667634fb7"
   },
   "last_applied_owner_migration": null,
   "migration_history_note": "Not verified: remote migration history is empty and must not be inferred from local files.",
   "domain_readiness": {
-    "attendance": "DEPLOYED_AWAITING_NATURAL_WRITE_READ_CERTIFICATION"
+    "attendance": "DEPLOYED_LIVE_P0_TERMINAL_RETRY_REPAIR_IN_PROGRESS"
   },
   "open_incidents": [
-    "Attendance has no natural /api/attendance/confirm request yet on the deployed write-read closure release."
+    "Natural traffic on SHA 906b9ad produced 7 successful confirms and 10 LOCATION_REQUIRED terminal 400s from two operation IDs; each terminal item replayed five times."
   ],
   "resource_budget_incidents": []
 }

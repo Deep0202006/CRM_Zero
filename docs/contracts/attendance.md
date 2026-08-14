@@ -37,9 +37,11 @@ Attendance eligibility is derived from capabilities through `attendanceModeForCa
 | `admin_read_only` | No personal Attendance | Admin Attendance and Team KPI | Not applicable |
 | `not_eligible` | No Attendance | No employee Attendance | Not applicable |
 
+Office auto-attendance is created only after `/api/attendance/mine` returns the server-authoritative `office_auto` mode. While online, the Attendance screen also uses that response's mode to select the field-evidence or office flow. Cached capabilities remain the offline fallback, but they cannot downgrade a server field role into evidence-free office Attendance.
+
 ## INVARIANT
 
-Ownership is explicit. India business dates use shared IST logic: the submitted date must equal the IST date derived from the immutable `clock_in` capture timestamp. Synchronization time does not replace capture time, and no maximum replay window exists unless separately approved. Evidence availability never determines Present/Absent. A local row with an active/review queue item is not confirmed authority. A successful write is certified only after employee, Admin Attendance, and Team KPI resolve the same server row. Ordinary attendance lists exclude embedded image payloads. Realtime may trigger one deduplicated targeted refresh, never high-frequency polling. Do not fabricate, delete, mass-correct, or silently discard ambiguous records.
+Ownership is explicit. India business dates use shared IST logic: the submitted date must equal the IST date derived from the immutable `clock_in` capture timestamp. Synchronization time does not replace capture time, and no maximum replay window exists unless separately approved. Evidence availability never determines Present/Absent. A local row with an active/review queue item is not confirmed authority. `review_required`, `quarantined`, and other passive recovery evidence is never selected by an automatic queue pass; direct confirmation and background drains share one origin-wide lock. A successful write is certified only after employee, Admin Attendance, and Team KPI resolve the same server row. Ordinary attendance lists exclude embedded image payloads. Realtime may trigger one deduplicated targeted refresh, never high-frequency polling. Do not fabricate, delete, mass-correct, or silently discard ambiguous records.
 
 ## KNOWN DEBT
 

@@ -849,12 +849,22 @@ class SyncAttemptError extends Error {
 }
 
 const MAX_SYNC_RETRY_DELAY_MS = 60 * 60 * 1000;
+const SYNC_QUEUE_BROWSER_LOCK = "zerodata-sync-queue-v1";
 export function syncRetryDelayMs(retryCount: number): number {
   return Math.min(MAX_SYNC_RETRY_DELAY_MS, 60_000 * 2 ** Math.max(0, retryCount - 1));
 }
 
-function retryIsDue(item: SyncQueueItem): boolean {
-  return !item.next_retry_at || Date.parse(item.next_retry_at) <= Date.now();
+function retryIsDue(item: SyncQueueItem, now = Date.now()): boolean {
+  return !item.next_retry_at || Date.parse(item.next_retry_at) <= now;
+}
+
+export function shouldAttemptSyncQueueItem(item: SyncQueueItem, now = Date.now()): boolean {
+  return isActiveSyncQueueItem(item) && retryIsDue(item, now);
+}
+
+async function withSyncQueueBrowserLock<T>(work: () => Promise<T>): Promise<T> {
+  if (typeof navigator === "undefined" || !navigator.locks) return work();
+  return navigator.locks.request(SYNC_QUEUE_BROWSER_LOCK, { mode: "exclusive" }, work);
 }
 
 function isEventuallyRetryableBusinessItem(item: SyncQueueItem): boolean {
@@ -961,9 +971,14 @@ export type AttendanceQueueConfirmation =
   | { status: "confirmed"; attendance: LocalAttendance }
   | { status: "pending" | "review_required"; attendance: null };
 
-export async function confirmQueuedAttendance(attendanceId: string): Promise<AttendanceQueueConfirmation> {
+async function confirmQueuedAttendanceInternal(attendanceId: string): Promise<AttendanceQueueConfirmation> {
   const item = await db.sync_queue.where("idempotency_key").equals(`attendance:${attendanceId}`).first();
-  if (!item?.id || item.table_name !== "attendance" || item.action !== "INSERT") return { status: "review_required", attendance: null };
+  if (!item?.id || item.table_name !== "attendance" || item.action !== "INSERT") {
+    const acknowledged = await db.attendance.get(attendanceId);
+    return acknowledged ? { status: "confirmed", attendance: acknowledged } : { status: "review_required", attendance: null };
+  }
+  if (!isActiveSyncQueueItem(item)) return { status: "review_required", attendance: null };
+  if (!retryIsDue(item)) return { status: "pending", attendance: null };
   if (typeof navigator === "undefined" || !navigator.onLine || !isSupabaseConfigured) return { status: "pending", attendance: null };
   const [{ data: authenticated, error: authenticationError }, { data: sessionData }] = await Promise.all([supabase.auth.getUser(), supabase.auth.getSession()]);
   const authenticatedUserId = authenticated.user?.id;
@@ -986,6 +1001,10 @@ export async function confirmQueuedAttendance(attendanceId: string): Promise<Att
   } catch (error) {
     return { status: await preserveAttendanceQueueFailure(preparedItem, prepared, error), attendance: null };
   }
+}
+
+export function confirmQueuedAttendance(attendanceId: string): Promise<AttendanceQueueConfirmation> {
+  return withSyncQueueBrowserLock(() => confirmQueuedAttendanceInternal(attendanceId));
 }
 
 /**
@@ -1069,7 +1088,7 @@ async function processSyncQueueInternal(): Promise<void> {
   for (const item of items) {
     if (!item.id) continue;
     if (temporarilyExcludedSyncKeys.has(item.idempotency_key)) continue;
-    if (!retryIsDue(item)) continue;
+    if (!shouldAttemptSyncQueueItem(item)) continue;
     const itemOwnerId = item.owner_user_id ?? legacyOwnerId;
     if (!itemOwnerId || itemOwnerId !== authenticatedUserId) continue;
     if (!item.owner_user_id) {
@@ -1276,12 +1295,12 @@ export function processSyncQueue(): Promise<void> {
     return activeSyncQueueRun;
   }
 
-  activeSyncQueueRun = (async () => {
+  activeSyncQueueRun = withSyncQueueBrowserLock(async () => {
     do {
       syncQueueRerunRequested = false;
       await processSyncQueueInternal();
     } while (syncQueueRerunRequested);
-  })().finally(() => {
+  }).finally(() => {
     activeSyncQueueRun = null;
   });
   return activeSyncQueueRun;
