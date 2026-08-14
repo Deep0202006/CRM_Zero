@@ -1,11 +1,11 @@
 {
-  "verified_at": "2026-08-14T08:55:03Z",
-  "production_main_sha": "57028bf876f473c0c52f4100fce0f8030b4fba89",
+  "verified_at": "2026-08-14T09:53:30Z",
+  "production_main_sha": "d22dd38cd4b1a13f44269de210a829bbcb69d75a",
   "vercel": {
-    "deployment_id": "dpl_F7iY3V1yiPvY64z2W3AFxfnTUjcC",
+    "deployment_id": "dpl_J1fYAvV5q6MQY81MNFB8tagWrvUy",
     "state": "READY",
     "target": "production",
-    "sha": "57028bf876f473c0c52f4100fce0f8030b4fba89"
+    "sha": "d22dd38cd4b1a13f44269de210a829bbcb69d75a"
   },
   "last_applied_owner_migration": null,
   "migration_history_note": "Not verified: remote migration history is empty and must not be inferred from local files.",
@@ -13,7 +13,7 @@
     "attendance": "DEPLOYED_AWAITING_NATURAL_WRITE_READ_CERTIFICATION"
   },
   "open_incidents": [
-    "Attendance has no natural /api/attendance/confirm request yet on the deployed compatibility fix."
+    "Attendance has no natural /api/attendance/confirm request yet on the deployed write-read closure release."
   ],
   "resource_budget_incidents": []
 }

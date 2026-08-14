@@ -62,5 +62,6 @@ Revert the follow-up application commit through a PR. Queue normalization is non
 - [x] Read-only audit identified the remaining versioning, location, and write-to-read closure gaps.
 - [x] Write-to-read closure and role matrix proven in disposable fixtures.
 - [x] Implementation and focused verification complete.
-- [x] Full local R3 gates pass; PostgreSQL integration is delegated to required CI because this host has no `psql` or Docker.
-- [ ] Full R3 release gates and production observation complete.
+- [x] Full local R3 gates pass; PostgreSQL integration passed in required CI.
+- [x] PR #35 merged and exact production deployment `d22dd38cd4b1a13f44269de210a829bbcb69d75a` is READY; public canary is healthy.
+- [ ] Natural production write-to-read event observed and classified.
