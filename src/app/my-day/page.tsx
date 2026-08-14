@@ -34,6 +34,7 @@ import PaymentCollectionsPriorityPanel from "@/components/PaymentCollectionsPrio
 interface WeeklyDigestTaskPerformance { assigned_to: string; completed_count: number; total_count: number; }
 interface WeeklyDigest { week_start: string; data: { stuck_leads: { id: string; name: string; status: string; days_in_stage: number; assigned_to: string }[]; task_performance: WeeklyDigestTaskPerformance[]; upcoming_renewals: { id: string; name: string; renewal_date: string }[]; }; }
 interface DailySummary { genuine_calls_today: number; followup_calls_today: number; confirmed_genuine_call_ids: string[]; confirmed_followup_call_ids: string[]; normal_tasks_completed_today: number; followup_tasks_completed_today: number; total_tasks_completed_today: number; pending_followups: number; unique_completed_work: number; generated_at: string; }
+interface RenewalReminder { distributor_id: string; distributor_name: string; renewal_date: string; renewal_state: string; }
 
 export default function MyDayPage() {
   const { currentUser, capabilities, hasOnboarding, hasSupport, isFieldStaff, isAdmin } = useAuth();
@@ -58,7 +59,7 @@ export default function MyDayPage() {
   const [localFollowupCallsToday, setLocalFollowupCallsToday] = useState(0);
   const [paymentFollowUps, setPaymentFollowUps] = useState<PaymentFollowUpIdentity[]>([]);
   const confirmedPaymentFollowUps = useRef<{ date: string; rows: PaymentFollowUpIdentity[] }>({ date: "", rows: [] });
-  const [renewalReminders, setRenewalReminders] = useState<{ total: number; rows: any[] }>({ total: 0, rows: [] });
+  const [renewalReminders, setRenewalReminders] = useState<{ total: number; rows: RenewalReminder[] }>({ total: 0, rows: [] });
   
   const refreshRenewals = useCallback(async () => {
     if (!currentUser || !navigator.onLine || !isSupabaseConfigured) return;

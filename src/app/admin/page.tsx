@@ -96,7 +96,8 @@ export default function AdminPage() {
   };
 
   useEffect(() => {
-    loadAdminData();
+    const deferredLoad = window.setTimeout(() => { void loadAdminData(); }, 0);
+    return () => window.clearTimeout(deferredLoad);
   }, []);
 
   const handleToggleCapability = async (targetUserId: string, capCode: string, hasCap: boolean) => {
