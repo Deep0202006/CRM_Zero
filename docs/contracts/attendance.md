@@ -32,14 +32,14 @@ Attendance eligibility is derived from capabilities through `attendanceModeForCa
 
 | Mode | Write | Read | Evidence |
 |---|---|---|---|
-| `field_selfie` (`field_dist` or `field_ret`, non-Admin) | Own current Attendance | Own authoritative state; Admin reads all eligible staff | Selfie and location required for current queue schema |
-| `office_auto` (onboarding/support, non-field, non-Admin) | Own automatic Attendance | Own authoritative state; Admin reads all eligible staff | No selfie/location required |
+| `field_selfie` (`field_dist` or `field_ret`, non-Admin) | Own Attendance on its original IST capture date | Own authoritative state; Admin reads all eligible staff | Selfie and location required for current queue schema |
+| `office_auto` (onboarding/support, non-field, non-Admin) | Own Attendance on its original IST capture date | Own authoritative state; Admin reads all eligible staff | No selfie/location required |
 | `admin_read_only` | No personal Attendance | Admin Attendance and Team KPI | Not applicable |
 | `not_eligible` | No Attendance | No employee Attendance | Not applicable |
 
 ## INVARIANT
 
-Ownership is explicit. India business dates use shared IST logic. Evidence availability never determines Present/Absent. A local row with an active/review queue item is not confirmed authority. A successful write is certified only after employee, Admin Attendance, and Team KPI resolve the same server row. Ordinary attendance lists exclude embedded image payloads. Realtime may trigger one deduplicated targeted refresh, never high-frequency polling. Do not fabricate, delete, mass-correct, or silently discard ambiguous records.
+Ownership is explicit. India business dates use shared IST logic: the submitted date must equal the IST date derived from the immutable `clock_in` capture timestamp. Synchronization time does not replace capture time, and no maximum replay window exists unless separately approved. Evidence availability never determines Present/Absent. A local row with an active/review queue item is not confirmed authority. A successful write is certified only after employee, Admin Attendance, and Team KPI resolve the same server row. Ordinary attendance lists exclude embedded image payloads. Realtime may trigger one deduplicated targeted refresh, never high-frequency polling. Do not fabricate, delete, mass-correct, or silently discard ambiguous records.
 
 ## KNOWN DEBT
 

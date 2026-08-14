@@ -12,7 +12,7 @@ Identify and stop the rapid Attendance 400 requests still occurring on productio
 
 ## Current state
 
-PR #35 deployed queue compatibility and terminal/transient classification. The exact current production deployment is READY but has emitted 82 rapid HTTP 400 responses from `/api/attendance/confirm`; current logs do not expose a safe typed failure reason.
+PR #37 deployed safe typed classification on production SHA `cd51032b61d340b2b5fc4c9655ce8b348136e4ed`. Production immediately identified distinct authentic schema-v2 operations rejected as `IST_CAPTURE_DATE` candidates by the route's sync-day equality check; the callers are pre-marker clients.
 
 ## Invariants
 
@@ -53,6 +53,7 @@ Revert the narrow product commit through a normal PR. No database or business-da
 - Existing 82 exact-deployment 400s supersede the prior “awaiting natural traffic” state.
 - Distributor/Payment work remains isolated in its separate worktree until Attendance is stable.
 - Required Attendance CI failed before product assertions because Next 16.2.9 Turbopack's development compiler panicked in its task graph on both Windows and GitHub Linux. The Attendance step alone now runs the already-required, synthetic-environment production build through `next start`, serially. Previously green unrelated browser suites retain their existing development runner.
+- Production telemetry proved the remaining storm is `IST_DATE_MISMATCH` for distinct schema-v2 queued operations. The prior route compared capture date to synchronization day; the contract instead validates that `date` equals the IST date derived from immutable `clock_in`, without inventing a replay window.
 
 ## Progress
 
@@ -60,4 +61,5 @@ Revert the narrow product commit through a normal PR. No database or business-da
 - [x] Rapid exact-deployment replay pattern proven; typed reason awaits instrumented production traffic.
 - [x] Safe client-contract marker, typed route-stage telemetry, and regression tests complete.
 - [x] Local R3 release gate complete (488 Jest; focused role/closure; typecheck; lint; build; harness; Attendance E2E, with one cold-compile timeout passing on exact rerun).
-- [ ] Production traffic classified.
+- [x] Production traffic classified: pre-marker schema-v2 queues fail at `business_date` with `IST_DATE_MISMATCH`.
+- [ ] Authentic capture-date replay correction released and naturally certified.
