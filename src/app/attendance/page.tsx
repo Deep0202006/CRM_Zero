@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { db, saveAttendanceWithEvidence, LocalAttendance } from "@/lib/db";
+import { confirmQueuedAttendance, db, saveAttendanceWithEvidence, LocalAttendance } from "@/lib/db";
+import { supabase } from "@/lib/supabaseClient";
 import {
   Camera,
   CheckCircle,
@@ -16,6 +17,7 @@ import { Button } from "@/components/ui/Button";
 import Link from "next/link";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { getCurrentISTDate } from "@/lib/dateTime";
+import { captureAttendanceLocation, type AttendanceLocation } from "@/lib/attendance/location";
 
 function formatISTDateKey(dateKey: string) {
   const [year, month, day] = dateKey.split("-").map(Number);
@@ -32,6 +34,7 @@ export default function AttendancePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [confirmationState, setConfirmationState] = useState<"confirmed" | "pending" | "review_required" | "unavailable">("unavailable");
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -44,10 +47,32 @@ export default function AttendancePage() {
     if (!currentUser) return;
     try {
       const records = await db.attendance.where("user_id").equals(currentUser.user_id).toArray();
-      const today = records.find((r) => r.date === todayStr);
-      if (today) {
-        setTodayRecord(today);
-        setCapturedImage(today.selfie_url ?? null);
+      const local = records.find((record) => record.date === todayStr);
+      const queued = local ? await db.sync_queue.where("idempotency_key").equals(`attendance:${local.attendance_id}`).first() : null;
+      if (navigator.onLine) {
+        const { data } = await supabase.auth.getSession();
+        if (data.session?.access_token) {
+          const response = await fetch(`/api/attendance/mine?date=${todayStr}`, { headers: { Authorization: `Bearer ${data.session.access_token}` }, cache: "no-store" });
+          if (response.ok) {
+            const result = await response.json() as { attendance?: LocalAttendance[] };
+            const authoritative = result.attendance?.[0] ?? null;
+            if (authoritative) {
+              await db.attendance.put(authoritative);
+              setTodayRecord(authoritative);
+              setCapturedImage(null);
+              setConfirmationState("confirmed");
+              return;
+            }
+          }
+        }
+      }
+      if (local && queued) {
+        setTodayRecord(local);
+        setCapturedImage(local.selfie_url ?? null);
+        setConfirmationState(queued.recovery_state === "review_required" ? "review_required" : "pending");
+      } else {
+        setTodayRecord(null);
+        setConfirmationState("unavailable");
       }
     } catch (err) {
       console.error("Failed to query attendance record", err);
@@ -57,6 +82,19 @@ export default function AttendancePage() {
   useEffect(() => {
     loadTodayRecord();
   }, [currentUser]);
+
+  useEffect(() => {
+    const confirmed = (event: Event) => {
+      const attendance = (event as CustomEvent<LocalAttendance>).detail;
+      if (!attendance || attendance.user_id !== currentUser?.user_id || attendance.date !== todayStr) return;
+      setTodayRecord(attendance);
+      setConfirmationState("confirmed");
+      setSuccessMsg("Attendance confirmed by the server.");
+      window.setTimeout(() => { window.location.href = "/my-day"; }, 1400);
+    };
+    window.addEventListener("zerodata:attendance-confirmed", confirmed);
+    return () => window.removeEventListener("zerodata:attendance-confirmed", confirmed);
+  }, [currentUser?.user_id, todayStr]);
 
   const initCamera = async () => {
     if (!isFieldStaff || todayRecord) return;
@@ -101,11 +139,24 @@ export default function AttendancePage() {
     setErrorMsg(null);
 
     let selfieBlob: Blob | null = null;
+    let location: AttendanceLocation | null = null;
 
     if (isFieldStaff) {
       selfieBlob = await captureSelfie();
       if (!selfieBlob) {
         setErrorMsg("Could not capture selfie. Please allow camera access and try again.");
+        setIsLoading(false);
+        return;
+      }
+      if (!navigator.geolocation) {
+        setErrorMsg("Location is required for field attendance. Enable location services and try again.");
+        setIsLoading(false);
+        return;
+      }
+      try {
+        location = await captureAttendanceLocation(navigator.geolocation);
+      } catch {
+        setErrorMsg("Could not capture your location. Enable precise location access and try again.");
         setIsLoading(false);
         return;
       }
@@ -124,18 +175,23 @@ export default function AttendancePage() {
         clock_out: null,
         selfie_url: null,
         selfie_captured: Boolean(selfieBlob),
-        latitude: null,
-        longitude: null,
+        latitude: location?.latitude ?? null,
+        longitude: location?.longitude ?? null,
       };
 
       await saveAttendanceWithEvidence(newAttendance, selfieBlob);
-
-      setTodayRecord(newAttendance);
+      const confirmation = await confirmQueuedAttendance(newAttendance.attendance_id);
+      setTodayRecord(confirmation.attendance ?? newAttendance);
+      setConfirmationState(confirmation.status);
       if (selfieBlob) setCapturedImage(URL.createObjectURL(selfieBlob));
-      setSuccessMsg(isFieldStaff ? "Clock-in verified! Redirecting..." : "Clocked in! Redirecting...");
-      setTimeout(() => {
-        window.location.href = "/my-day";
-      }, 1400);
+      if (confirmation.status === "confirmed") {
+        setSuccessMsg(isFieldStaff ? "Attendance confirmed with selfie." : "Attendance confirmed.");
+        setTimeout(() => { window.location.href = "/my-day"; }, 1400);
+      } else if (confirmation.status === "pending") {
+        setSuccessMsg("Attendance is saved securely and awaiting server confirmation.");
+      } else {
+        setErrorMsg("Attendance is saved, but needs review before it can be confirmed. Keep this device data and contact an administrator.");
+      }
     } catch (err) {
       setErrorMsg("Clock-in failed. You may have already clocked in today.");
     } finally {
@@ -160,13 +216,14 @@ export default function AttendancePage() {
   }
 
   if (todayRecord) {
+    const confirmed = confirmationState === "confirmed";
     return (
       <div className="app-page">
-        <PageHeader eyebrow="Attendance" icon={<CheckCircle size={18} />} title="Attendance confirmed" description={formattedDate} />
+        <PageHeader eyebrow="Attendance" icon={confirmed ? <CheckCircle size={18} /> : <Clock size={18} />} title={confirmed ? "Attendance confirmed" : confirmationState === "review_required" ? "Attendance needs review" : "Attendance awaiting confirmation"} description={formattedDate} />
         <section className="mx-auto w-full max-w-xl overflow-hidden rounded-[var(--radius-xl)] border border-[var(--status-success)]/20 bg-[var(--surface-primary)] shadow-[var(--shadow-raised)]">
           <div className="bg-[var(--status-success-soft)] px-6 py-8 text-center">
             <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[var(--surface-primary)] text-[var(--status-success)] shadow-[var(--shadow-raised)]"><CheckCircle size={28} /></span>
-            <h2 className="mt-4 text-xl font-semibold">You are clocked in</h2>
+            <h2 className="mt-4 text-xl font-semibold">{confirmed ? "You are clocked in" : "Your attendance is retained"}</h2>
             <p className="mt-1 text-[13px] text-[var(--text-secondary)]">Recorded at {new Date(todayRecord.clock_in).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</p>
           </div>
           <div className="space-y-5 p-6">
@@ -178,7 +235,7 @@ export default function AttendancePage() {
               )}
               <div className="min-w-0">
                 <p className="truncate text-[14px] font-semibold text-[var(--text-primary)]">{currentUser?.name}</p>
-                <p className="mt-1 text-[12px] text-[var(--text-muted)]">{isFieldStaff ? "Field attendance verified with selfie" : "Office attendance recorded"}</p>
+                <p className="mt-1 text-[12px] text-[var(--text-muted)]">{confirmed ? (isFieldStaff ? "Field attendance verified with selfie" : "Office attendance recorded") : confirmationState === "review_required" ? "Server review is required; automatic retry has stopped" : "The durable queue will retry with bounded backoff"}</p>
               </div>
             </div>
             <Link href="/my-day" className="block"><Button className="w-full" icon={<ArrowRight size={15} />}>Continue to My Day</Button></Link>

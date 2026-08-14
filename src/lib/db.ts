@@ -1,7 +1,7 @@
 import Dexie, { type Table } from "dexie";
 import { LeadSegment, LeadStatus } from "./validation";
 import { supabase, isSupabaseConfigured } from "./supabaseClient";
-import { prepareSyncPayload } from "./syncPayload";
+import { ATTENDANCE_QUEUE_SCHEMA_VERSION, prepareSyncPayload, serializeAttendanceQueuePayload } from "./syncPayload";
 import { isActiveSyncQueueItem, isLegacyPipelineStatusMutation, LEGACY_PIPELINE_STATUS_ERROR, preserveLegacyNonStatusUpdate } from "./pipeline/legacyQueue";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -320,6 +320,7 @@ export interface SyncQueueItem {
   action: "INSERT" | "UPDATE" | "DELETE";
   data: object;
   timestamp: string;
+  queue_schema_version?: number;
   retry_count?: number;  // Part 6 — per-item retry tracking
   last_error?: string;   // Part 6 — surfaces dead-letter failures in UI
   next_retry_at?: string;
@@ -687,11 +688,11 @@ export async function saveAttendanceWithEvidence(attendance: LocalAttendance, ev
       owner_user_id: claimSyncQueueOwnership(),
       table_name: "attendance",
       action: "INSERT",
-      data: { ...attendance, selfie_url: null, selfie_blob: evidence },
+      data: serializeAttendanceQueuePayload(attendance, evidence),
       timestamp: new Date().toISOString(),
+      queue_schema_version: ATTENDANCE_QUEUE_SCHEMA_VERSION,
     });
   });
-  if (typeof navigator !== "undefined" && navigator.onLine) void processSyncQueue();
 }
 
 export async function countActiveSyncQueueItems(): Promise<number> {
@@ -914,16 +915,77 @@ async function confirmAttendance(item: SyncQueueItem, accessToken: string): Prom
   const business = { ...payload };
   delete business.selfie_blob;
   form.set("attendance", JSON.stringify({ ...business, selfie_url: null }));
+  form.set("queue_schema_version", String(item.queue_schema_version ?? 1));
   if (evidence) form.set("selfie", new File([evidence], "attendance.jpg", { type: evidence.type || "image/jpeg" }));
   const response = await fetch("/api/attendance/confirm", { method: "POST", headers: { Authorization: `Bearer ${accessToken}` }, body: form, cache: "no-store" });
-  let result: { ok?: boolean; code?: string; attendance_id?: string; attendance?: Record<string, unknown> };
+  let result: { ok?: boolean; code?: string; operation_id?: string; attendance_id?: string; attendance?: Record<string, unknown> };
   try { result = await response.json() as typeof result; }
   catch { throw new SyncAttemptError("Attendance confirmation returned an unreadable response.", true); }
   const expectedId = String(payload.attendance_id ?? "");
-  if (!response.ok || !result.ok || !["ATTENDANCE_CONFIRMED", "ATTENDANCE_ALREADY_CONFIRMED"].includes(result.code ?? "") || result.attendance_id !== expectedId) {
+  const operationId = result.operation_id ?? result.attendance_id;
+  if (!response.ok || !result.ok || !["ATTENDANCE_CONFIRMED", "ATTENDANCE_ALREADY_CONFIRMED"].includes(result.code ?? "") || operationId !== expectedId || !result.attendance?.attendance_id) {
     throw new SyncAttemptError(`Attendance confirmation failed (${result.code ?? response.status}).`, response.status === 408 || response.status === 429 || response.status >= 500);
   }
-  return result.attendance ?? business;
+  return result.attendance;
+}
+
+async function acknowledgeAttendanceQueueItem(item: SyncQueueItem, confirmed: Record<string, unknown>): Promise<void> {
+  const submittedId = String(toDynamicRow(item.data).attendance_id ?? "");
+  const canonicalId = String(confirmed.attendance_id ?? "");
+  if (!submittedId || !canonicalId) throw new SyncAttemptError("Attendance confirmation identity is incomplete.", true);
+  await db.transaction("rw", [db.attendance, db.sync_queue], async () => {
+    if (submittedId !== canonicalId) await db.attendance.delete(submittedId);
+    await db.attendance.put(confirmed as unknown as LocalAttendance);
+    if (item.id) await db.sync_queue.delete(item.id);
+  });
+  if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("zerodata:attendance-confirmed", { detail: confirmed }));
+}
+
+async function preserveAttendanceQueueFailure(item: SyncQueueItem, prepared: ReturnType<typeof prepareSyncPayload>, error: unknown): Promise<"pending" | "review_required"> {
+  if (!item.id) return "review_required";
+  const retryable = !(error instanceof SyncAttemptError) || error.retryable;
+  const retryCount = retryable ? (item.retry_count ?? 0) + 1 : Math.max(5, item.retry_count ?? 0);
+  await db.sync_queue.update(item.id, {
+    data: prepared.data,
+    queue_schema_version: prepared.queueSchemaVersion,
+    retry_count: retryCount,
+    last_error: error instanceof Error ? error.message : String(error),
+    ...(retryable
+      ? { next_retry_at: new Date(Date.now() + syncRetryDelayMs(retryCount)).toISOString() }
+      : { recovery_state: "review_required", recovery_reason: "PERMANENT_ATTENDANCE_CONFIRMATION_FAILURE", recovery_marked_at: new Date().toISOString(), next_retry_at: undefined }),
+  });
+  return retryable ? "pending" : "review_required";
+}
+
+export type AttendanceQueueConfirmation =
+  | { status: "confirmed"; attendance: LocalAttendance }
+  | { status: "pending" | "review_required"; attendance: null };
+
+export async function confirmQueuedAttendance(attendanceId: string): Promise<AttendanceQueueConfirmation> {
+  const item = await db.sync_queue.where("idempotency_key").equals(`attendance:${attendanceId}`).first();
+  if (!item?.id || item.table_name !== "attendance" || item.action !== "INSERT") return { status: "review_required", attendance: null };
+  if (typeof navigator === "undefined" || !navigator.onLine || !isSupabaseConfigured) return { status: "pending", attendance: null };
+  const [{ data: authenticated, error: authenticationError }, { data: sessionData }] = await Promise.all([supabase.auth.getUser(), supabase.auth.getSession()]);
+  const authenticatedUserId = authenticated.user?.id;
+  const accessToken = sessionData.session?.access_token;
+  const itemOwnerId = item.owner_user_id ?? localStorage.getItem(OUTBOX_OWNER_KEY) ?? localStorage.getItem("authenticated_user_id");
+  if (authenticationError || !authenticatedUserId || !accessToken || itemOwnerId !== authenticatedUserId) return { status: "pending", attendance: null };
+  if (!item.owner_user_id) await db.sync_queue.update(item.id, { owner_user_id: authenticatedUserId });
+  const prepared = prepareSyncPayload(item.table_name, item.data, item.queue_schema_version);
+  if (prepared.supported === false) {
+    await db.sync_queue.update(item.id, { retry_count: Math.max(5, item.retry_count ?? 0), last_error: "Unsupported Attendance queue schema; update the app or contact an administrator.", recovery_state: "review_required", recovery_reason: "UNSUPPORTED_ATTENDANCE_QUEUE_SCHEMA", recovery_marked_at: new Date().toISOString(), next_retry_at: undefined });
+    return { status: "review_required", attendance: null };
+  }
+  if (prepared.changed) await db.sync_queue.update(item.id, { data: prepared.data, queue_schema_version: prepared.queueSchemaVersion, retry_count: 0, last_error: prepared.repairReason ? `Payload repaired: ${prepared.repairReason}` : undefined });
+  const preparedItem = { ...item, data: prepared.data, queue_schema_version: prepared.queueSchemaVersion };
+  try {
+    const confirmed = await confirmAttendance(preparedItem, accessToken);
+    await acknowledgeAttendanceQueueItem(preparedItem, confirmed);
+    if ((await countActiveSyncQueueItems()) === 0) localStorage.removeItem(OUTBOX_OWNER_KEY);
+    return { status: "confirmed", attendance: confirmed as unknown as LocalAttendance };
+  } catch (error) {
+    return { status: await preserveAttendanceQueueFailure(preparedItem, prepared, error), attendance: null };
+  }
 }
 
 /**
@@ -1022,24 +1084,31 @@ async function processSyncQueueInternal(): Promise<void> {
     // Attendance inserts, including legacy queued data URLs, converge through
     // the stable-ID server confirmation route. Generic Supabase insert is forbidden.
     if (item.table_name === "attendance" && item.action === "INSERT") {
-      const prepared = prepareSyncPayload(item.table_name, item.data);
+      const prepared = prepareSyncPayload(item.table_name, item.data, item.queue_schema_version);
+      if (prepared.supported === false) {
+        await db.sync_queue.update(item.id, {
+          retry_count: Math.max(5, item.retry_count ?? 0),
+          last_error: "Unsupported Attendance queue schema; update the app or contact an administrator.",
+          recovery_state: "review_required",
+          recovery_reason: "UNSUPPORTED_ATTENDANCE_QUEUE_SCHEMA",
+          recovery_marked_at: new Date().toISOString(),
+          next_retry_at: undefined,
+        });
+        continue;
+      }
       if (prepared.changed) {
         await db.sync_queue.update(item.id, {
           data: prepared.data,
+          queue_schema_version: prepared.queueSchemaVersion,
           retry_count: 0,
           last_error: prepared.repairReason ? `Payload repaired: ${prepared.repairReason}` : undefined,
         });
       }
       try {
-        const confirmed = await confirmAttendance({ ...item, data: prepared.data }, accessToken);
-        await db.transaction("rw", [db.attendance, db.sync_queue], async () => {
-          await db.attendance.update(String(toDynamicRow(prepared.data).attendance_id), confirmed as Partial<LocalAttendance>);
-          await db.sync_queue.delete(item.id!);
-        });
+        const confirmed = await confirmAttendance({ ...item, data: prepared.data, queue_schema_version: prepared.queueSchemaVersion }, accessToken);
+        await acknowledgeAttendanceQueueItem({ ...item, data: prepared.data, queue_schema_version: prepared.queueSchemaVersion }, confirmed);
       } catch (error) {
-        const retryable = !(error instanceof SyncAttemptError) || error.retryable;
-        const retryCount = retryable ? (item.retry_count ?? 0) + 1 : Math.max(5, item.retry_count ?? 0);
-        await db.sync_queue.update(item.id, { data: prepared.data, retry_count: retryCount, last_error: error instanceof Error ? error.message : String(error), ...(retryable ? { next_retry_at: new Date(Date.now() + syncRetryDelayMs(retryCount)).toISOString() } : { recovery_state: "review_required", recovery_reason: "PERMANENT_ATTENDANCE_CONFIRMATION_FAILURE", recovery_marked_at: new Date().toISOString(), next_retry_at: undefined }) });
+        await preserveAttendanceQueueFailure({ ...item, data: prepared.data, queue_schema_version: prepared.queueSchemaVersion }, prepared, error);
       }
       continue;
     }

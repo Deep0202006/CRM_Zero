@@ -4,7 +4,12 @@ export interface PreparedSyncPayload {
   data: Record<string, unknown>;
   changed: boolean;
   repairReason?: string;
+  queueSchemaVersion?: number;
+  supported?: boolean;
 }
+
+export const ATTENDANCE_QUEUE_SCHEMA_VERSION = 2;
+export const LEGACY_ATTENDANCE_QUEUE_SCHEMA_VERSION = 1;
 
 function asRecord(value: object): Record<string, unknown> {
   return Object.fromEntries(Object.entries(value));
@@ -31,6 +36,18 @@ export function normalizeAttendanceConfirmationPayload(value: object): PreparedS
   return { data, changed: removed.length > 0, ...(removed.length ? { repairReason: "removed local attendance evidence metadata" } : {}) };
 }
 
+export function serializeAttendanceQueuePayload(value: object, evidence: Blob | null): Record<string, unknown> {
+  const normalized = normalizeAttendanceConfirmationPayload(value);
+  return { ...normalized.data, selfie_url: null, selfie_blob: evidence };
+}
+
+export function parseAttendanceQueueSchemaVersion(value: FormDataEntryValue | null): number | null {
+  if (value === null) return LEGACY_ATTENDANCE_QUEUE_SCHEMA_VERSION;
+  if (value === String(LEGACY_ATTENDANCE_QUEUE_SCHEMA_VERSION)) return LEGACY_ATTENDANCE_QUEUE_SCHEMA_VERSION;
+  if (value === String(ATTENDANCE_QUEUE_SCHEMA_VERSION)) return ATTENDANCE_QUEUE_SCHEMA_VERSION;
+  return null;
+}
+
 /**
  * Repairs legacy offline payloads before they are sent to Supabase.
  *
@@ -39,8 +56,22 @@ export function normalizeAttendanceConfirmationPayload(value: object): PreparedS
  * while every remote insert failed. The repair is deterministic and preserves the
  * human-readable client identity in dedicated text columns.
  */
-export function prepareSyncPayload(tableName: string, value: object): PreparedSyncPayload {
-  if (tableName === "attendance") return normalizeAttendanceConfirmationPayload(value);
+export function prepareSyncPayload(tableName: string, value: object, queueSchemaVersion?: number): PreparedSyncPayload {
+  if (tableName === "attendance") {
+    const sourceVersion = queueSchemaVersion ?? LEGACY_ATTENDANCE_QUEUE_SCHEMA_VERSION;
+    if (![LEGACY_ATTENDANCE_QUEUE_SCHEMA_VERSION, ATTENDANCE_QUEUE_SCHEMA_VERSION].includes(sourceVersion)) {
+      return { data: asRecord(value), changed: false, queueSchemaVersion: sourceVersion, supported: false };
+    }
+    const normalized = normalizeAttendanceConfirmationPayload(value);
+    const upgraded = sourceVersion !== ATTENDANCE_QUEUE_SCHEMA_VERSION;
+    return {
+      ...normalized,
+      changed: normalized.changed || upgraded,
+      queueSchemaVersion: ATTENDANCE_QUEUE_SCHEMA_VERSION,
+      supported: true,
+      ...((normalized.changed || upgraded) ? { repairReason: upgraded ? "upgraded legacy attendance queue schema" : normalized.repairReason } : {}),
+    };
+  }
   const data = asRecord(value);
   let changed = false;
   const reasons: string[] = [];

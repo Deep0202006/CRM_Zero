@@ -30,9 +30,10 @@ async function seed(page: Page, role: "admin" | "employee", withAttendance = tru
   }, { id, role, accessToken: token(id), leadId, attendanceId, today, withAttendance });
 }
 
-async function mockSupabase(page: Page, userId = employeeId) {
+async function mockSupabase(page: Page, userId = employeeId, withAttendance = true) {
   await page.route("https://e2e.supabase.co/**", route => route.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
   await page.route("https://e2e.supabase.co/auth/v1/user", route => route.fulfill({ json: { id: userId, aud: "authenticated", role: "authenticated", email: "employee@example.test", app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() } }));
+  await page.route("**/api/attendance/mine**", route => route.fulfill({ json: { ok: true, date: today, user_id: userId, mode: "field_selfie", attendance: withAttendance ? [{ attendance_id: attendanceId, user_id: userId, date: today, clock_in: new Date().toISOString(), clock_out: null, selfie_captured: true }] : [] } }));
 }
 
 test("Admin Visits Overview is bounded, responsive, legacy-safe, and loads evidence only on click", async ({ page }) => {
@@ -75,7 +76,9 @@ test("Retailer form requires Address and never exposes Payment done", async ({ p
 });
 
 test("offline attendance stores a Blob outbox with no embedded row payload and later confirms same ID", async ({ page, context }) => {
-  await mockSupabase(page);
+  await mockSupabase(page, employeeId, false);
+  await context.grantPermissions(["geolocation"], { origin: "http://127.0.0.1:3111" });
+  await context.setGeolocation({ latitude: 18.5204, longitude: 73.8567, accuracy: 12 });
   await page.addInitScript(() => {
     Object.defineProperty(HTMLVideoElement.prototype, "videoWidth", { configurable: true, get: () => 480 });
     Object.defineProperty(HTMLVideoElement.prototype, "videoHeight", { configurable: true, get: () => 480 });
@@ -91,9 +94,9 @@ test("offline attendance stores a Blob outbox with no embedded row payload and l
     const tx = db.transaction(["attendance", "sync_queue"], "readonly");
     const row = await new Promise<Record<string, unknown>>((resolve) => { const q = tx.objectStore("attendance").getAll(); q.onsuccess = () => resolve(q.result[0] as Record<string, unknown>); });
     const queue = await new Promise<{ data?: Record<string, unknown> } | undefined>((resolve) => { const q = tx.objectStore("sync_queue").getAll(); q.onsuccess = () => resolve((q.result as Array<{ table_name?: string; data?: Record<string, unknown> }>).find((item) => item.table_name === "attendance")); });
-    return { row, hasBlob: queue?.data?.selfie_blob instanceof Blob, queuedId: queue?.data?.attendance_id };
+    return { row, hasBlob: queue?.data?.selfie_blob instanceof Blob, queuedId: queue?.data?.attendance_id, queueVersion: (queue as { queue_schema_version?: number } | undefined)?.queue_schema_version };
   });
-  expect(offline.row.selfie_url).toBeNull(); expect(offline.row.selfie_captured).toBe(true); expect(offline.hasBlob).toBe(true); expect(offline.queuedId).toBe(offline.row.attendance_id);
+  expect(offline.row.selfie_url).toBeNull(); expect(offline.row.selfie_captured).toBe(true); expect(offline.row.latitude).toBe(18.5204); expect(offline.row.longitude).toBe(73.8567); expect(offline.hasBlob).toBe(true); expect(offline.queuedId).toBe(offline.row.attendance_id); expect(offline.queueVersion).toBe(2);
   await page.route("**/api/attendance/confirm", async route => { const id = offline.row.attendance_id; await route.fulfill({ json: { ok: true, code: "ATTENDANCE_CONFIRMED", attendance_id: id, attendance: { attendance_id: id, user_id: employeeId, date: today, clock_in: offline.row.clock_in, clock_out: null, selfie_captured: true, selfie_storage_path: `attendance/${employeeId}/${today}/${id}.jpg`, selfie_uploaded_at: new Date().toISOString(), selfie_purged_at: null } } }); });
   await context.setOffline(false); await page.evaluate(() => window.dispatchEvent(new Event("online"))); await page.waitForURL("**/my-day"); await page.reload(); await page.waitForTimeout(1000);
   const after = await page.evaluate(async () => { const request = indexedDB.open("CRMDatabase"); const db = await new Promise<IDBDatabase>((resolve, reject) => { request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); }); const tx = db.transaction(["attendance", "sync_queue"], "readonly"); const rows = await new Promise<Array<Record<string, unknown>>>((resolve) => { const q = tx.objectStore("attendance").getAll(); q.onsuccess = () => resolve(q.result as Array<Record<string, unknown>>); }); const queue = await new Promise<Array<{ table_name?: string }>>((resolve) => { const q = tx.objectStore("sync_queue").getAll(); q.onsuccess = () => resolve(q.result as Array<{ table_name?: string }>); }); return { row: rows[0], attendanceQueue: queue.filter(item => item.table_name === "attendance").length, queue }; });

@@ -45,6 +45,8 @@ jobs:
         run: bash scripts/receivables-db/run-integration.sh
       - name: Fresh-apply Field Visits lifecycle migration and prove historic compatibility
         run: createdb field_visits_test && PGDATABASE=field_visits_test bash scripts/field-visits-db/run-integration.sh
+      - name: Prove Attendance uniqueness and permanent-row evidence lifecycle
+        run: createdb attendance_test && PGDATABASE=attendance_test bash scripts/attendance-db/run-integration.sh
       - name: Fresh-apply Pipeline authority migrations and prove isolation
         run: createdb pipeline_test && PGDATABASE=pipeline_test bash scripts/pipeline-db/run-integration.sh
       - name: Fresh-apply Distributor Status migration and prove concurrency, isolation, and 10k scale
@@ -75,6 +77,8 @@ jobs:
         run: npm run test:e2e:receivables
       - name: Run Field Visits and Attendance evidence browser flows
         run: npm run test:e2e:field-visits
+      - name: Run Attendance role-matrix write-to-read closure flows
+        run: npm run test:e2e:attendance
       - name: Run Distributor Status responsive authority flows
         run: npm run test:e2e:distributors
       - run: npm run harness:guard

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { db, transactionalMutation, LocalUser, pullDownSync, processSyncQueue, countActiveSyncQueueItems } from "@/lib/db";
+import { confirmQueuedAttendance, db, LocalUser, pullDownSync, processSyncQueue, countActiveSyncQueueItems, saveAttendanceWithEvidence } from "@/lib/db";
 import { supabase } from "@/lib/supabaseClient";
 import { getCurrentISTDate } from "@/lib/dateTime";
 import { syncFieldVisits } from "@/lib/fieldVisits/sync";
@@ -178,7 +178,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.log("User not in local DB, fetching from Supabase...");
           const { data: remoteUser, error: remoteError } = await supabase
             .from("users")
-            .select("*")
+            .select("user_id,name,email,phone,is_active,manager_id,created_at")
             .eq("user_id", data.user.id)
             .single();
             
@@ -195,7 +195,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             // Also fetch capabilities
             const { data: remoteCaps } = await supabase
               .from("user_capabilities")
-              .select("*")
+              .select("id,user_id,capability_code,assigned_by,assigned_at")
               .eq("user_id", newUser.user_id);
               
             if (remoteCaps && remoteCaps.length > 0) {
@@ -334,7 +334,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             latitude: null,
             longitude: null
           };
-          await transactionalMutation("attendance", "INSERT", newRecord);
+          await saveAttendanceWithEvidence(newRecord, null);
+          await confirmQueuedAttendance(newRecord.attendance_id);
         }
       } catch (err) {
         console.error("Auto attendance logging failed", err);
