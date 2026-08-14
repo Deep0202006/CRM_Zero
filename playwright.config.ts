@@ -3,6 +3,7 @@ import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: false,
+  workers: process.env.PLAYWRIGHT_E2E_WEBPACK === "true" ? 1 : undefined,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? "github" : "list",
   use: {
@@ -12,7 +13,9 @@ export default defineConfig({
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {
-    command: "npm run dev -- --hostname 127.0.0.1 --port 3111",
+    command: process.env.PLAYWRIGHT_E2E_WEBPACK === "true"
+      ? "node scripts/e2e/start-server.mjs"
+      : "npm run dev -- --hostname 127.0.0.1 --port 3111",
     url: "http://127.0.0.1:3111/login",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

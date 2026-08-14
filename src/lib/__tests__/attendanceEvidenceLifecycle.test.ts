@@ -35,6 +35,7 @@ describe("attendance evidence lifecycle", () => {
     expect(db).toContain('idempotency_key: `attendance:${attendance.attendance_id}`');
     expect(db).toContain("payload.selfie_blob ?? payload.selfie_url");
     expect(db).toContain('fetch("/api/attendance/confirm"');
+    expect(db).toContain('"X-ZeroData-Attendance-Contract": "attendance-queue-v2"');
     expect(db).toContain("if (item.id) await db.sync_queue.delete(item.id)");
     const fieldBranch = route.slice(route.indexOf("const evidence = selfie as Blob"));
     expect(fieldBranch.indexOf(".storage.from(SELFIE_BUCKET).upload")).toBeLessThan(fieldBranch.indexOf('.from("attendance").insert'));

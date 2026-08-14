@@ -917,14 +917,14 @@ async function confirmAttendance(item: SyncQueueItem, accessToken: string): Prom
   form.set("attendance", JSON.stringify({ ...business, selfie_url: null }));
   form.set("queue_schema_version", String(item.queue_schema_version ?? 1));
   if (evidence) form.set("selfie", new File([evidence], "attendance.jpg", { type: evidence.type || "image/jpeg" }));
-  const response = await fetch("/api/attendance/confirm", { method: "POST", headers: { Authorization: `Bearer ${accessToken}` }, body: form, cache: "no-store" });
-  let result: { ok?: boolean; code?: string; operation_id?: string; attendance_id?: string; attendance?: Record<string, unknown> };
+  const response = await fetch("/api/attendance/confirm", { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "X-ZeroData-Attendance-Contract": "attendance-queue-v2" }, body: form, cache: "no-store" });
+  let result: { ok?: boolean; code?: string; reason?: string; operation_id?: string; attendance_id?: string; attendance?: Record<string, unknown> };
   try { result = await response.json() as typeof result; }
   catch { throw new SyncAttemptError("Attendance confirmation returned an unreadable response.", true); }
   const expectedId = String(payload.attendance_id ?? "");
   const operationId = result.operation_id ?? result.attendance_id;
   if (!response.ok || !result.ok || !["ATTENDANCE_CONFIRMED", "ATTENDANCE_ALREADY_CONFIRMED"].includes(result.code ?? "") || operationId !== expectedId || !result.attendance?.attendance_id) {
-    throw new SyncAttemptError(`Attendance confirmation failed (${result.code ?? response.status}).`, response.status === 408 || response.status === 429 || response.status >= 500);
+    throw new SyncAttemptError(`Attendance confirmation failed (${result.reason ?? result.code ?? response.status}).`, response.status === 408 || response.status === 429 || response.status >= 500);
   }
   return result.attendance;
 }
