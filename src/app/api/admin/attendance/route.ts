@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { isValidISTDateKey } from "@/lib/dateTime";
 import type { AttendanceAuthorityRow } from "@/lib/attendance/authority";
+import { isAttendanceEligible } from "@/lib/attendance/roles";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,29 +14,20 @@ function active(value: unknown) { return value === true || value === 1 || (typeo
 function fail(status: number, code: string) { return NextResponse.json({ code }, { status, headers: { "Cache-Control": "no-store" } }); }
 
 async function readRegister(service: SupabaseClient, dateFrom: string, dateTo: string) {
-  const pageSize = 1000;
-  const users: Array<{ user_id: string; name: string; is_active: unknown }> = [];
-  const capabilities: Array<{ user_id: string; capability_code: string }> = [];
-  const attendance: AttendanceAuthorityRow[] = [];
-  for (let from = 0; ; from += pageSize) {
-    const { data, error } = await service.from("users").select("user_id,name,is_active").eq("is_active", true).order("user_id").range(from, from + pageSize - 1);
-    if (error) return { error };
-    users.push(...(data ?? []));
-    if ((data?.length ?? 0) < pageSize) break;
-  }
-  for (let from = 0; ; from += pageSize) {
-    const { data, error } = await service.from("user_capabilities").select("user_id,capability_code").order("user_id").range(from, from + pageSize - 1);
-    if (error) return { error };
-    capabilities.push(...(data ?? []));
-    if ((data?.length ?? 0) < pageSize) break;
-  }
-  for (let from = 0; ; from += pageSize) {
-    const { data, error } = await service.from("attendance").select("attendance_id,user_id,date,clock_in,clock_out,latitude,longitude,selfie_captured,selfie_storage_path,selfie_uploaded_at,selfie_purged_at,selfie_purge_state").gte("date", dateFrom).lte("date", dateTo).order("clock_in").order("attendance_id").range(from, from + pageSize - 1);
-    if (error) return { error };
-    attendance.push(...((data ?? []) as AttendanceAuthorityRow[]));
-    if ((data?.length ?? 0) < pageSize) break;
-  }
-  return { users, capabilities, attendance };
+  const limit = 1000;
+  const [users, capabilities, attendance] = await Promise.all([
+    service.from("users").select("user_id,name,is_active", { count: "exact" }).eq("is_active", true).order("user_id").range(0, limit - 1),
+    service.from("user_capabilities").select("user_id,capability_code", { count: "exact" }).order("user_id").range(0, limit - 1),
+    service.from("attendance").select("attendance_id,user_id,date,clock_in,clock_out,latitude,longitude,selfie_captured,selfie_storage_path,selfie_uploaded_at,selfie_purged_at,selfie_purge_state", { count: "exact" }).gte("date", dateFrom).lte("date", dateTo).order("clock_in").order("attendance_id").range(0, limit - 1),
+  ]);
+  const error = users.error ?? capabilities.error ?? attendance.error;
+  if (error) return { error };
+  if ((users.count ?? 0) > limit || (capabilities.count ?? 0) > limit || (attendance.count ?? 0) > limit) return { error: new Error("ATTENDANCE_REGISTER_LIMIT_EXCEEDED") };
+  return {
+    users: (users.data ?? []) as Array<{ user_id: string; name: string; is_active: unknown }>,
+    capabilities: (capabilities.data ?? []) as Array<{ user_id: string; capability_code: string }>,
+    attendance: (attendance.data ?? []) as AttendanceAuthorityRow[],
+  };
 }
 
 export async function GET(request: NextRequest) {
@@ -60,12 +52,13 @@ export async function GET(request: NextRequest) {
   const register = await readRegister(service, dateFrom, dateTo);
   if (register.error || !register.users || !register.capabilities || !register.attendance) return fail(502, "ATTENDANCE_AUTHORITY_UNAVAILABLE");
   const { users, capabilities, attendance: rows } = register;
-  const adminIds = new Set(capabilities.filter((row) => row.capability_code === "admin").map((row) => row.user_id));
-  const staff = users.filter((user) => !adminIds.has(user.user_id)).sort((a, b) => a.name.localeCompare(b.name));
+  const capabilitiesByUser = new Map<string, string[]>();
+  for (const item of capabilities) capabilitiesByUser.set(item.user_id, [...(capabilitiesByUser.get(item.user_id) ?? []), item.capability_code]);
+  const staff = users.filter((user) => isAttendanceEligible(capabilitiesByUser.get(user.user_id) ?? [])).sort((a, b) => a.name.localeCompare(b.name));
   return NextResponse.json({
     date_from: dateFrom,
     date_to: dateTo,
-    users: staff.map((user) => ({ user_id: user.user_id, name: user.name, capabilities: capabilities.filter((item) => item.user_id === user.user_id).map((item) => item.capability_code) })),
+    users: staff.map((user) => ({ user_id: user.user_id, name: user.name, capabilities: capabilitiesByUser.get(user.user_id) ?? [] })),
     attendance: rows,
   }, { headers: { "Cache-Control": "no-store, max-age=0" } });
 }

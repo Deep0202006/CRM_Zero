@@ -37,9 +37,10 @@ describe("attendance business authority", () => {
   test("admin API is bounded, explicit, and never hydrates embedded selfie payload", () => {
     const route = fs.readFileSync(path.join(process.cwd(), "src/app/api/admin/attendance/route.ts"), "utf8");
     expect(route).toContain("ATTENDANCE_RANGE_TOO_LARGE");
-    expect(route).toContain("const pageSize = 1000");
-    expect(route).toContain(".range(from, from + pageSize - 1)");
-    expect(route).toContain('select("attendance_id,user_id,date,clock_in,clock_out,latitude,longitude,selfie_captured,selfie_storage_path,selfie_uploaded_at,selfie_purged_at,selfie_purge_state")');
+    expect(route).toContain("const limit = 1000");
+    expect(route).toContain(".range(0, limit - 1)");
+    expect(route).toContain("ATTENDANCE_REGISTER_LIMIT_EXCEEDED");
+    expect(route).toContain('select("attendance_id,user_id,date,clock_in,clock_out,latitude,longitude,selfie_captured,selfie_storage_path,selfie_uploaded_at,selfie_purged_at,selfie_purge_state", { count: "exact" })');
     expect(route).not.toContain("selfie_url");
     expect(route).not.toContain('select("*")');
   });

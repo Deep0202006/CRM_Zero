@@ -2,7 +2,13 @@ import fs from "node:fs";
 import path from "node:path";
 import { attendanceEvidencePath, retentionCutoff } from "@/lib/fieldVisits/retention";
 import { INITIAL_PURGE_CUTOFF_IST, INITIAL_PURGE_CUTOFF_UTC } from "@/lib/fieldVisits/initialPurge";
-import { normalizeAttendanceConfirmationPayload } from "@/lib/syncPayload";
+import {
+  ATTENDANCE_QUEUE_SCHEMA_VERSION,
+  normalizeAttendanceConfirmationPayload,
+  parseAttendanceQueueSchemaVersion,
+  prepareSyncPayload,
+  serializeAttendanceQueuePayload,
+} from "@/lib/syncPayload";
 
 const read = (file: string) => fs.readFileSync(path.join(process.cwd(), file), "utf8");
 
@@ -29,7 +35,7 @@ describe("attendance evidence lifecycle", () => {
     expect(db).toContain('idempotency_key: `attendance:${attendance.attendance_id}`');
     expect(db).toContain("payload.selfie_blob ?? payload.selfie_url");
     expect(db).toContain('fetch("/api/attendance/confirm"');
-    expect(db).toContain("await db.sync_queue.delete(item.id!)");
+    expect(db).toContain("if (item.id) await db.sync_queue.delete(item.id)");
     const fieldBranch = route.slice(route.indexOf("const evidence = selfie as Blob"));
     expect(fieldBranch.indexOf(".storage.from(SELFIE_BUCKET).upload")).toBeLessThan(fieldBranch.indexOf('.from("attendance").insert'));
     expect(route).toContain("ATTENDANCE_ALREADY_CONFIRMED");
@@ -50,6 +56,40 @@ describe("attendance evidence lifecycle", () => {
     expect(repaired.data).not.toHaveProperty("selfie_storage_path");
     expect(read("src/lib/db.ts")).toContain("const prepared = prepareSyncPayload(item.table_name, item.data)");
     expect(read("src/lib/db.ts")).toContain('recovery_state: "review_required"');
+  });
+
+  test("versions current queues and upgrades the previous persisted envelope", () => {
+    const payload = {
+      attendance_id: "00000000-0000-4000-8000-000000000001",
+      user_id: "00000000-0000-4000-8000-000000000002",
+      date: "2026-08-14",
+      clock_in: "2026-08-14T04:00:00.000Z",
+      selfie_captured: true,
+      selfie_url: null,
+    };
+    const evidence = new Blob([new Uint8Array(32)], { type: "image/jpeg" });
+    const current = serializeAttendanceQueuePayload(payload, evidence);
+    expect(current).toMatchObject({ attendance_id: payload.attendance_id, selfie_url: null, selfie_blob: evidence });
+    expect(current).not.toHaveProperty("selfie_captured");
+    expect(prepareSyncPayload("attendance", current, ATTENDANCE_QUEUE_SCHEMA_VERSION)).toMatchObject({ changed: false, supported: true, queueSchemaVersion: ATTENDANCE_QUEUE_SCHEMA_VERSION });
+
+    const previous = prepareSyncPayload("attendance", { ...payload, selfie_url: "data:image/jpeg;base64,AA==" });
+    expect(previous).toMatchObject({ changed: true, supported: true, queueSchemaVersion: ATTENDANCE_QUEUE_SCHEMA_VERSION });
+    expect(previous.data).toMatchObject({ attendance_id: payload.attendance_id, selfie_url: "data:image/jpeg;base64,AA==" });
+    expect(previous.data).not.toHaveProperty("selfie_captured");
+    expect(prepareSyncPayload("attendance", current, 99)).toMatchObject({ changed: false, supported: false, queueSchemaVersion: 99 });
+    expect(parseAttendanceQueueSchemaVersion(null)).toBe(1);
+    expect(parseAttendanceQueueSchemaVersion("2")).toBe(2);
+    expect(parseAttendanceQueueSchemaVersion("99")).toBeNull();
+  });
+
+  test("unsupported Attendance envelopes stop before HTTP and preserve review evidence", () => {
+    const db = read("src/lib/db.ts");
+    const unsupported = db.indexOf('recovery_reason: "UNSUPPORTED_ATTENDANCE_QUEUE_SCHEMA"');
+    const confirmation = db.indexOf("const confirmed = await confirmAttendance", unsupported);
+    expect(unsupported).toBeGreaterThan(0);
+    expect(db.slice(unsupported, confirmation)).toMatch(/return \{ status: "review_required"|continue;/);
+    expect(db).toContain("queue_schema_version: ATTENDANCE_QUEUE_SCHEMA_VERSION");
   });
 
   test("ordinary hydration cannot carry legacy embedded payloads", () => {

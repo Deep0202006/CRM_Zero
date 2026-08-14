@@ -2,7 +2,8 @@ create schema if not exists public;
 create table public.users (user_id uuid primary key);
 create table public.attendance (
   attendance_id uuid primary key, user_id uuid not null references public.users(user_id), date date not null,
-  clock_in timestamptz not null, clock_out timestamptz, selfie_url text, latitude double precision, longitude double precision
+  clock_in timestamptz not null, clock_out timestamptz, selfie_url text, latitude double precision, longitude double precision,
+  constraint unique_user_attendance_date unique(user_id,date)
 );
 create table public.field_visits (
   visit_id uuid primary key, lead_id text not null, user_id uuid not null references public.users(user_id), visit_date date not null,

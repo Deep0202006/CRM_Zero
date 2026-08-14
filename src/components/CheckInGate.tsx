@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { db } from "@/lib/db";
 import { getCurrentISTDate } from "@/lib/dateTime";
+import { supabase } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/Button";
 import Link from "next/link";
 import { ShieldAlert, LogIn } from "lucide-react";
@@ -20,9 +20,12 @@ export function CheckInGate({ children }: { children: React.ReactNode }) {
       }
       try {
         const todayStr = getCurrentISTDate();
-        const records = await db.attendance.where("user_id").equals(currentUser.user_id).toArray();
-        const clockedInToday = records.some((r) => r.date === todayStr);
-        setHasClockedIn(clockedInToday);
+        const { data } = await supabase.auth.getSession();
+        if (!data.session?.access_token) throw new Error("Authentication required");
+        const response = await fetch(`/api/attendance/mine?date=${todayStr}`, { headers: { Authorization: `Bearer ${data.session.access_token}` }, cache: "no-store" });
+        if (!response.ok) throw new Error("Attendance authority unavailable");
+        const result = await response.json() as { user_id?: string; attendance?: Array<{ user_id: string; date: string }> };
+        setHasClockedIn(result.user_id === currentUser.user_id && (result.attendance ?? []).some((row) => row.user_id === currentUser.user_id && row.date === todayStr));
       } catch (err) {
         console.error("Failed to verify clock-in status", err);
         setHasClockedIn(false);
