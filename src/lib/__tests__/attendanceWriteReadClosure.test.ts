@@ -183,7 +183,7 @@ describe("Attendance write to authoritative read closure", () => {
     form.set("attendance", JSON.stringify({
       attendance_id: firstAttendanceId,
       user_id: userId,
-      date: "2000-01-01",
+      date: "2000-01-02",
       clock_in: "2000-01-01T04:00:00.000Z",
       clock_out: null,
       selfie_url: null,
@@ -196,15 +196,43 @@ describe("Attendance write to authoritative read closure", () => {
       body: form,
     }));
     expect(response.status).toBe(400);
-    expect(await response.json()).toMatchObject({ code: "ATTENDANCE_VALIDATION_FAILED", reason: "IST_DATE_MISMATCH" });
+    expect(await response.json()).toMatchObject({ code: "ATTENDANCE_VALIDATION_FAILED", reason: "IST_CAPTURE_DATE_MISMATCH" });
     expect(warning).toHaveBeenCalledWith("ATTENDANCE_CONFIRM_FAILURE", expect.objectContaining({
       operation_id: firstAttendanceId,
       client_contract: "attendance-queue-v2",
       queue_schema_version: "2",
       stage: "business_date",
-      reason: "IST_DATE_MISMATCH",
+      reason: "IST_CAPTURE_DATE_MISMATCH",
     }));
     expect(JSON.stringify(warning.mock.calls)).not.toContain(userId);
     warning.mockRestore();
+  });
+
+  test("confirms an authentic two-day queued field operation on its original IST business date", async () => {
+    const state = serviceFor(["field_ret", "ret_onboarding", "ret_support"]);
+    mockedCreateClient.mockReturnValue(state.service);
+    const form = new FormData();
+    form.set("queue_schema_version", "2");
+    form.set("attendance", JSON.stringify({
+      attendance_id: firstAttendanceId,
+      user_id: userId,
+      date: "2026-08-12",
+      clock_in: "2026-08-11T18:30:00.000Z",
+      clock_out: null,
+      selfie_url: null,
+      latitude: 18.5204,
+      longitude: 73.8567,
+    }));
+    form.set("selfie", new Blob([new Uint8Array(1024)], { type: "image/jpeg" }), "attendance.jpg");
+    const response = await POST(new Request("http://localhost/api/attendance/confirm", {
+      method: "POST",
+      headers: { Authorization: "Bearer fixture", "X-ZeroData-Attendance-Contract": "attendance-queue-v2" },
+      body: form,
+    }));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ code: "ATTENDANCE_CONFIRMED", operation_id: firstAttendanceId });
+    expect(state.attendance).toHaveLength(1);
+    expect(state.attendance[0]).toMatchObject({ date: "2026-08-12", clock_in: "2026-08-11T18:30:00.000Z", selfie_captured: true });
+    expect(state.uploaded).toHaveLength(1);
   });
 });

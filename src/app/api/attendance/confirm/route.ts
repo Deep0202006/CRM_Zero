@@ -1,7 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { attendanceEvidencePath, SELFIE_BUCKET } from "@/lib/fieldVisits/retention";
-import { getCurrentISTDate } from "@/lib/dateTime";
+import { getISTDateKey, isValidISTDateKey } from "@/lib/dateTime";
 import { ATTENDANCE_QUEUE_SCHEMA_VERSION, normalizeAttendanceConfirmationPayload, parseAttendanceQueueSchemaVersion } from "@/lib/syncPayload";
 import { attendanceModeForCapabilities } from "@/lib/attendance/roles";
 
@@ -94,7 +94,9 @@ export async function POST(request: Request) {
     return fail(400, "ATTENDANCE_VALIDATION_FAILED", { ...telemetry, stage: "schema", reason: `SCHEMA_${issueTypes || "INVALID"}` });
   }
   if (parsed.data.user_id !== auth.data.user.id) return fail(400, "ATTENDANCE_VALIDATION_FAILED", { ...telemetry, stage: "identity", reason: "AUTH_USER_MISMATCH" });
-  if (parsed.data.date !== getCurrentISTDate()) return fail(400, "ATTENDANCE_VALIDATION_FAILED", { ...telemetry, stage: "business_date", reason: "IST_DATE_MISMATCH" });
+  if (!isValidISTDateKey(parsed.data.date) || getISTDateKey(parsed.data.clock_in) !== parsed.data.date) {
+    return fail(400, "ATTENDANCE_VALIDATION_FAILED", { ...telemetry, stage: "business_date", reason: "IST_CAPTURE_DATE_MISMATCH" });
+  }
   const attendance = parsed.data;
   const selfie = form.get("selfie");
   const [{ data: account }, { data: capabilities }, { data: existingById, error: existingIdError }, { data: existingByDate, error: existingDateError }] = await Promise.all([
