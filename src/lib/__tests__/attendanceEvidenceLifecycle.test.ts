@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { attendanceEvidencePath, retentionCutoff } from "@/lib/fieldVisits/retention";
 import { INITIAL_PURGE_CUTOFF_IST, INITIAL_PURGE_CUTOFF_UTC } from "@/lib/fieldVisits/initialPurge";
+import { normalizeAttendanceConfirmationPayload } from "@/lib/syncPayload";
 
 const read = (file: string) => fs.readFileSync(path.join(process.cwd(), file), "utf8");
 
@@ -34,6 +35,21 @@ describe("attendance evidence lifecycle", () => {
     expect(route).toContain("ATTENDANCE_ALREADY_CONFIRMED");
     expect(route).toContain("sameObject(client, path, evidence)");
     expect(route).not.toMatch(/selfie_url:\s*(selfie|raw|evidence)/);
+  });
+
+  test("current and legacy evidence metadata are repaired without losing business identity or evidence", () => {
+    const payload = {
+      attendance_id: "00000000-0000-4000-8000-000000000001", user_id: "00000000-0000-4000-8000-000000000002",
+      date: "2026-08-14", clock_in: "2026-08-14T04:00:00.000Z", selfie_url: "data:image/jpeg;base64,AA==",
+      selfie_captured: true, selfie_storage_path: "attendance/old/key.jpg", selfie_uploaded_at: "2026-08-14T04:00:00.000Z",
+    };
+    const repaired = normalizeAttendanceConfirmationPayload(payload);
+    expect(repaired.changed).toBe(true);
+    expect(repaired.data).toMatchObject({ attendance_id: payload.attendance_id, user_id: payload.user_id, date: payload.date, selfie_url: payload.selfie_url });
+    expect(repaired.data).not.toHaveProperty("selfie_captured");
+    expect(repaired.data).not.toHaveProperty("selfie_storage_path");
+    expect(read("src/lib/db.ts")).toContain("const prepared = prepareSyncPayload(item.table_name, item.data)");
+    expect(read("src/lib/db.ts")).toContain('recovery_state: "review_required"');
   });
 
   test("ordinary hydration cannot carry legacy embedded payloads", () => {

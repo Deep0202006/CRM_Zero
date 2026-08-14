@@ -2,6 +2,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { attendanceEvidencePath, SELFIE_BUCKET } from "@/lib/fieldVisits/retention";
 import { getCurrentISTDate } from "@/lib/dateTime";
+import { normalizeAttendanceConfirmationPayload } from "@/lib/syncPayload";
 
 export const runtime = "nodejs";
 const MAX_EVIDENCE_BYTES = 8 * 1024 * 1024;
@@ -37,7 +38,10 @@ export async function POST(request: Request) {
   if (typeof raw !== "string") return fail(400, "ATTENDANCE_REQUEST_INVALID");
   let json: unknown;
   try { json = JSON.parse(raw); } catch { return fail(400, "ATTENDANCE_REQUEST_INVALID"); }
-  const parsed = schema.safeParse(json);
+  const compatiblePayload = json && typeof json === "object" && !Array.isArray(json)
+    ? normalizeAttendanceConfirmationPayload(json)
+    : { data: json };
+  const parsed = schema.safeParse(compatiblePayload.data);
   if (!parsed.success || parsed.data.user_id !== auth.data.user.id || parsed.data.date !== getCurrentISTDate()) return fail(400, "ATTENDANCE_VALIDATION_FAILED");
   const attendance = parsed.data;
   const selfie = form.get("selfie");

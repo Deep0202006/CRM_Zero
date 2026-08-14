@@ -14,6 +14,23 @@ function nonEmptyText(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
+const ATTENDANCE_TRANSPORT_METADATA = [
+  "selfie_captured",
+  "selfie_storage_path",
+  "selfie_uploaded_at",
+  "selfie_purged_at",
+  "selfie_purge_state",
+  "selfie_purge_started_at",
+] as const;
+
+/** Removes only locally-derived evidence lifecycle metadata from an attendance command. */
+export function normalizeAttendanceConfirmationPayload(value: object): PreparedSyncPayload {
+  const data = asRecord(value);
+  const removed = ATTENDANCE_TRANSPORT_METADATA.filter((key) => Object.prototype.hasOwnProperty.call(data, key));
+  for (const key of removed) delete data[key];
+  return { data, changed: removed.length > 0, ...(removed.length ? { repairReason: "removed local attendance evidence metadata" } : {}) };
+}
+
 /**
  * Repairs legacy offline payloads before they are sent to Supabase.
  *
@@ -23,6 +40,7 @@ function nonEmptyText(value: unknown): string | null {
  * human-readable client identity in dedicated text columns.
  */
 export function prepareSyncPayload(tableName: string, value: object): PreparedSyncPayload {
+  if (tableName === "attendance") return normalizeAttendanceConfirmationPayload(value);
   const data = asRecord(value);
   let changed = false;
   const reasons: string[] = [];

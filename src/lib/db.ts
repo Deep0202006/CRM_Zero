@@ -1022,16 +1022,24 @@ async function processSyncQueueInternal(): Promise<void> {
     // Attendance inserts, including legacy queued data URLs, converge through
     // the stable-ID server confirmation route. Generic Supabase insert is forbidden.
     if (item.table_name === "attendance" && item.action === "INSERT") {
+      const prepared = prepareSyncPayload(item.table_name, item.data);
+      if (prepared.changed) {
+        await db.sync_queue.update(item.id, {
+          data: prepared.data,
+          retry_count: 0,
+          last_error: prepared.repairReason ? `Payload repaired: ${prepared.repairReason}` : undefined,
+        });
+      }
       try {
-        const confirmed = await confirmAttendance(item, accessToken);
+        const confirmed = await confirmAttendance({ ...item, data: prepared.data }, accessToken);
         await db.transaction("rw", [db.attendance, db.sync_queue], async () => {
-          await db.attendance.update(String(toDynamicRow(item.data).attendance_id), confirmed as Partial<LocalAttendance>);
+          await db.attendance.update(String(toDynamicRow(prepared.data).attendance_id), confirmed as Partial<LocalAttendance>);
           await db.sync_queue.delete(item.id!);
         });
       } catch (error) {
         const retryable = !(error instanceof SyncAttemptError) || error.retryable;
         const retryCount = retryable ? (item.retry_count ?? 0) + 1 : Math.max(5, item.retry_count ?? 0);
-        await db.sync_queue.update(item.id, { retry_count: retryCount, last_error: error instanceof Error ? error.message : String(error), ...(retryable ? { next_retry_at: new Date(Date.now() + syncRetryDelayMs(retryCount)).toISOString() } : { recovery_state: "review_required", recovery_reason: "PERMANENT_ATTENDANCE_CONFIRMATION_FAILURE", recovery_marked_at: new Date().toISOString(), next_retry_at: undefined }) });
+        await db.sync_queue.update(item.id, { data: prepared.data, retry_count: retryCount, last_error: error instanceof Error ? error.message : String(error), ...(retryable ? { next_retry_at: new Date(Date.now() + syncRetryDelayMs(retryCount)).toISOString() } : { recovery_state: "review_required", recovery_reason: "PERMANENT_ATTENDANCE_CONFIRMATION_FAILURE", recovery_marked_at: new Date().toISOString(), next_retry_at: undefined }) });
       }
       continue;
     }
