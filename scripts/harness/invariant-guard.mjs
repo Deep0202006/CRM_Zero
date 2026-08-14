@@ -98,5 +98,14 @@ requireInvariant(attendanceQueue.includes("if (!shouldAttemptSyncQueueItem(item)
 requireInvariant(attendanceQueue.includes("withSyncQueueBrowserLock(() => confirmQueuedAttendanceInternal(attendanceId))") && attendanceQueue.includes("activeSyncQueueRun = withSyncQueueBrowserLock"), "Attendance direct and background confirmation must serialize across tabs");
 requireInvariant(authContext.indexOf('authority.mode !== "office_auto"') < authContext.indexOf("saveAttendanceWithEvidence(newRecord, null)"), "office auto-attendance requires server-authoritative mode");
 requireInvariant(attendancePage.includes("setAuthoritativeMode(result.mode)") && attendancePage.includes('authoritativeMode === "field_selfie"'), "online Attendance evidence mode must come from server authority");
+const criticalRoutes = ["src/app/admin/payments/page.tsx", "src/app/admin/payments/distributors/page.tsx", "src/app/payments/page.tsx", "src/app/payments/distributors/page.tsx"];
+for (const route of criticalRoutes) requireInvariant(existsSync(resolve(root, route)), `critical route missing: ${route}`);
+const navigation = readFileSync(resolve(root, "src/components/DashboardLayout.tsx"), "utf8");
+for (const href of ["/admin/payments", "/payments", "/admin/payments/distributors", "/payments/distributors"]) requireInvariant(navigation.includes(href), `critical navigation target missing: ${href}`);
+const distributorMetricsRoute = readFileSync(resolve(root, "src/app/api/distributors/metrics/route.ts"), "utf8");
+const receivablesAdminRoute = readFileSync(resolve(root, "src/app/api/receivables/admin/route.ts"), "utf8");
+requireInvariant((distributorMetricsRoute.match(/distributor_status_metrics_v1/g) ?? []).length === 1, "Distributor cards must use one metrics RPC");
+requireInvariant(distributorMetricsRoute.includes("listEligibleOperationalEmployees") && receivablesAdminRoute.includes("listEligibleOperationalEmployees"), "Payment and Distributor employee selectors must share canonical authority");
+requireInvariant(!distributorMetricsRoute.includes("distributorReady") && !readFileSync(resolve(root, "src/app/api/distributors/route.ts"), "utf8").includes("distributorReady"), "Distributor empty state cannot depend on a hardcoded readiness flag");
 if (failed) process.exit(1);
 console.log(`Invariant guard passed (${files.length} executable changed files scanned differentially).`);

@@ -18,6 +18,9 @@
 - Unknown records are preserved instead of guessed.
 - Admin reporting is server-authoritative.
 - One business concept has one authority; cross-domain displays never become duplicate truth.
+- Define an incident as user-observed failure, expected authority, write path, read path, and acceptance invariant before implementation; unrelated policy cannot block the incident.
+- A successful important write is not certified until every authoritative reader converges for every distinct authorized role shape.
+- Never invent business policy to close a bug when the current contract already defines the requested flow.
 - Store orthogonal facts when product categories overlap; derive dashboard cards.
 - Every mutation declares an exact side-effect budget and every major screen a read budget.
 - Derived date alerts do not create generated work unless explicitly approved.
@@ -37,6 +40,7 @@
 ## CURRENT
 
 These principles are derived from current contract modules, confirmation routes, sync logic, and regression tests.
+Required main CI stays green; production releases use a clean branch, PR, required CI, merge, and exact-SHA deployment verification.
 
 ## KNOWN DEBT
 

@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
@@ -22,18 +22,30 @@ export function RenewalEditorModal({
   const [submitting, setSubmitting] = useState(false);
   const [record, setRecord] = useState<DistributorStatusRow | null>(null);
   const [loading, setLoading] = useState(false);
+  const operationId = useRef("");
 
-  // Fetch record when modal opens
-  if (open && distributorId && record?.distributor_id !== distributorId && !loading) {
-    setLoading(true);
-    authFetch(`/api/distributors/${distributorId}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.record) setRecord(data.record);
+  useEffect(() => {
+    if (!open || !distributorId) return;
+    let active = true;
+    const timer = window.setTimeout(() => {
+      setLoading(true);
+      setRecord(null);
+      setError("");
+      operationId.current = "";
+      void authFetch(`/api/distributors/${distributorId}`)
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message ?? "Failed to load distributor details.");
+        return data;
       })
-      .catch(() => setError("Failed to load distributor details."))
-      .finally(() => setLoading(false));
-  }
+      .then((data) => {
+        if (active && data.record) setRecord(data.record);
+      })
+      .catch((cause) => { if (active) setError(cause instanceof Error ? cause.message : "Failed to load distributor details."); })
+        .finally(() => { if (active) setLoading(false); });
+    }, 0);
+    return () => { active = false; window.clearTimeout(timer); };
+  }, [authFetch, distributorId, open]);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -44,16 +56,17 @@ export function RenewalEditorModal({
     try {
       const value = Object.fromEntries(new FormData(form).entries());
       const payload = {
-        ...record,
+        distributor_id: record.distributor_id,
         renewal_date: value.renewal_date || null,
         note: value.note || "",
         expected_version: record.version,
       };
+      operationId.current ||= crypto.randomUUID();
 
       const response = await authFetch("/api/distributors/commands", {
         method: "POST",
         body: JSON.stringify({
-          operation_id: crypto.randomUUID(),
+          operation_id: operationId.current,
           operation_type: "renew",
           payload,
         }),
@@ -61,6 +74,7 @@ export function RenewalEditorModal({
 
       const result = await response.json();
       if (!response.ok) throw new Error(result.message ?? result.code);
+      operationId.current = "";
       onSave();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Renewal failed.");

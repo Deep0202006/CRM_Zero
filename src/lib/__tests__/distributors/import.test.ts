@@ -1,3 +1,27 @@
-import {parseDistributorTable} from "@/lib/distributors/import";
-const headers=["Distributor Name","Assigned Employee Email","Installation Status","Installation Date","Training Status","Training Date","Activity Status","Billing Status","Bill Date","Bill Reference","Renewal Date","Distributor Reference"];
-describe("Distributor Status import",()=>{test("accepts Unicode and independent billed/active facts",()=>{const result=parseDistributorTable([headers,["श्री गणेश","employee@example.com","done","13/08/2026","done","2026-08-13","active","billed","2026-08-13","INV-1","2027-08-13","D-1"]]);expect(result.invalid).toHaveLength(0);expect(result.rows[0]).toMatchObject({distributorName:"श्री गणेश",activityStatus:"active",billingStatus:"billed",renewalDate:"2027-08-13"})});test.each([["pending","done","not_applicable"],["done","pending","active"]])("rejects invalid state warfare",(installation,training,activity)=>{const result=parseDistributorTable([headers,["A","employee@example.com",installation,"",training,"",activity,"not_billed","","","",""]]);expect(result.rows).toHaveLength(0);expect(result.invalid[0].reason).toMatch(/Training|Activity/)});test("rejects impossible dates and duplicate headers",()=>{expect(parseDistributorTable([headers,["A","employee@example.com","pending","","pending","","not_applicable","not_billed","","","2026-02-30",""]]).invalid).toHaveLength(1);expect(()=>parseDistributorTable([[...headers.slice(0,-1),"Distributor Name"]])).toThrow(/Duplicate/)})});
+import { DISTRIBUTOR_IMPORT_HEADERS, parseDistributorTable } from "@/lib/distributors/import";
+
+const headers = [...DISTRIBUTOR_IMPORT_HEADERS];
+const valid = ["Shree Ganesh", "employee@example.com", "done", "13/08/2026", "done", "2026-08-13", "done", "2026-08-13", "active", "billed", "2026-08-13", "INV-1", "2027-08-13", "D-1"];
+
+describe("Distributor Status import", () => {
+  test("accepts mapping, renewal and independent billed/active facts", () => {
+    const result = parseDistributorTable([headers, valid]);
+    expect(result.invalid).toHaveLength(0);
+    expect(result.rows[0]).toMatchObject({ mappingStatus: "done", mappedDate: "2026-08-13", activityStatus: "active", billingStatus: "billed", renewalDate: "2027-08-13" });
+  });
+  test.each([
+    [["pending", "done", "pending"], /Training/],
+    [["done", "pending", "done"], /Mapping/],
+  ])("rejects invalid lifecycle combinations", ([installation, training, mapping], message) => {
+    const row = [...valid]; row[2] = installation; row[4] = training; row[6] = mapping; row[7] = ""; row[8] = "not_applicable";
+    const result = parseDistributorTable([headers, row]);
+    expect(result.rows).toHaveLength(0); expect(result.invalid[0].reason).toMatch(message);
+  });
+  test("requires explicit mapping and rejects impossible dates", () => {
+    const missing = [...valid]; missing[6] = "";
+    expect(parseDistributorTable([headers, missing]).invalid[0].reason).toMatch(/Mapping Status/);
+    const impossible = [...valid]; impossible[12] = "2026-02-30";
+    expect(parseDistributorTable([headers, impossible]).invalid).toHaveLength(1);
+  });
+  test("rejects duplicate headers", () => expect(() => parseDistributorTable([[...headers.slice(0, -1), "Distributor Name"]])).toThrow(/Duplicate/));
+});

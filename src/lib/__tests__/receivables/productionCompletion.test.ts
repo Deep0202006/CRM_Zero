@@ -48,10 +48,26 @@ describe("Receivables production completion contracts", () => {
     const importRoute = read("src/app/api/receivables/import/route.ts");
     const migration = read("supabase/migrations/034_receivables_production_completion.sql");
     expect(adminRoute).toContain("assignees");
-    expect(adminRoute).toContain('capability_code","admin');
+    expect(adminRoute).toContain("listEligibleOperationalEmployees");
+    expect(read("src/lib/employees/server.ts")).toContain('capability_code", "admin');
+    expect(read("src/lib/employees/server.ts")).toContain("MAX_OPERATIONAL_EMPLOYEES");
     expect(commandRoute).toContain('error.code==="ZD001"');
     expect(commandRoute).toContain("INVALID_ASSIGNEE");
     expect(importRoute).toContain("IMPORT_EMPLOYEE_CHANGED");
     expect(migration).toContain("receivables_operational_assignee_guard_v1");
+  });
+
+  test("employee collections refresh on meaningful browser events without polling", () => {
+    const page = read("src/app/payments/page.tsx");
+    expect(page).not.toContain("setInterval");
+    expect(page).toContain('window.addEventListener("online",refresh)');
+    expect(page).toContain('document.addEventListener("visibilitychange",visible)');
+  });
+
+  test("optional Distributor and renewal failures remain visible without suppressing money authority", () => {
+    expect(read("src/app/api/receivables/admin/route.ts")).toContain("distributor_status_error");
+    expect(read("src/app/admin/payments/page.tsx")).toContain("Financial detail is unaffected.");
+    expect(read("src/app/api/my-day/receivables/route.ts")).toContain("renewals_error");
+    expect(read("src/components/PaymentCollectionsPriorityPanel.tsx")).toContain("Payment Collection data remains authoritative.");
   });
 });

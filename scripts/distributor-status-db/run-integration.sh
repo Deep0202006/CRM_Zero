@@ -5,6 +5,7 @@ fingerprint="${PGHOST:-} ${PGDATABASE:-} ${DATABASE_URL:-} ${SUPABASE_URL:-}"
 if [[ "$fingerprint" == *"$production_ref"* ]] || [[ "${PGHOST:-}" == *.supabase.co ]]; then echo "Refusing production Distributor Status fixtures." >&2;exit 86;fi
 psql -v ON_ERROR_STOP=1 -f scripts/distributor-status-db/fixture.sql
 psql -v ON_ERROR_STOP=1 -f supabase/migrations/039_distributor_status_v1.sql
+psql -v ON_ERROR_STOP=1 -f supabase/migrations/040_distributor_status_v2.sql
 psql -v ON_ERROR_STOP=1 -f scripts/distributor-status-db/integration.sql
 base="'distributor_id','40000000-0000-4000-a000-000000000001','expected_version',3,'distributor_name','Alpha Distributor','distributor_reference','ALPHA-1','identity_key','code:alpha-1','lead_id','','phone','','assigned_to','20000000-0000-4000-a000-000000000002','installation_status','done','installation_completed_at',current_date::text,'training_status','done','training_completed_at',current_date::text,'activity_status','active','billing_status','billed','billed_at',current_date::text,'bill_reference','INV-1','renewal_date',(select renewal_date::text from distributor_accounts where distributor_id='40000000-0000-4000-a000-000000000001')"
 psql -v ON_ERROR_STOP=1 -Atc "set role service_role;select public.distributor_status_command_v1(gen_random_uuid(),'10000000-0000-4000-a000-000000000001','update',repeat('d',64),jsonb_build_object($base,'city','Mumbai'));" >/tmp/distributor-a.out & first=$!
@@ -34,3 +35,5 @@ import_rows="jsonb_build_array(jsonb_build_object('rowNumber',2,'classification'
 import_sql="set role service_role;select public.import_distributor_status_v1('30000000-0000-4000-a000-000000000043','10000000-0000-4000-a000-000000000001',repeat('a',64),'parallel.xlsx',$import_rows);"
 run_parallel_same_operation import "$import_sql"
 psql -Atc "select case when count(*)=1 then 'ok' else 'bad' end from distributor_accounts where distributor_id='40000000-0000-4000-a000-000000000043';select case when count(*)=1 then 'ok' else 'bad' end from distributor_import_batches where operation_id='30000000-0000-4000-a000-000000000043';" | grep -qv '^bad$'
+psql -v ON_ERROR_STOP=1 -f supabase/migrations/041_distributor_mapped_status.sql
+psql -v ON_ERROR_STOP=1 -f scripts/distributor-status-db/mapping-integration.sql
