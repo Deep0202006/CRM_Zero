@@ -77,11 +77,11 @@ jobs:
         run: npm run test:e2e:receivables
       - name: Run Field Visits and Attendance evidence browser flows
         run: npm run test:e2e:field-visits
+      - name: Run Distributor Status responsive authority flows
+        run: npm run test:e2e:distributors
       - name: Run Attendance role-matrix write-to-read closure flows
         run: npm run test:e2e:attendance
         env:
           PLAYWRIGHT_E2E_WEBPACK: "true"
-      - name: Run Distributor Status responsive authority flows
-        run: npm run test:e2e:distributors
       - run: npm run harness:guard
       - run: npm run harness:docs
