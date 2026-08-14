@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { confirmQueuedAttendance, db, LocalUser, pullDownSync, processSyncQueue, countActiveSyncQueueItems, saveAttendanceWithEvidence } from "@/lib/db";
+import { confirmQueuedAttendance, db, type LocalAttendance, LocalUser, pullDownSync, processSyncQueue, countActiveSyncQueueItems, saveAttendanceWithEvidence } from "@/lib/db";
 import { supabase } from "@/lib/supabaseClient";
 import { getCurrentISTDate } from "@/lib/dateTime";
 import { syncFieldVisits } from "@/lib/fieldVisits/sync";
@@ -318,9 +318,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Auto-log attendance for office staff
   useEffect(() => {
     const logOfficeAttendance = async () => {
-      if (!currentUser || !isOfficeStaff) return;
+      if (!currentUser || !isOfficeStaff || !navigator.onLine) return;
       try {
         const todayStr = getCurrentISTDate();
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (!sessionData.session?.access_token) return;
+        const authorityResponse = await fetch(`/api/attendance/mine?date=${todayStr}`, {
+          headers: { Authorization: `Bearer ${sessionData.session.access_token}` },
+          cache: "no-store",
+        });
+        if (!authorityResponse.ok) return;
+        const authority = await authorityResponse.json() as { mode?: string; attendance?: LocalAttendance[] };
+        if (authority.mode !== "office_auto") return;
+        const confirmed = authority.attendance?.[0];
+        if (confirmed) {
+          await db.attendance.put(confirmed);
+          return;
+        }
         const records = await db.attendance.where("user_id").equals(currentUser.user_id).toArray();
         const hasToday = records.some(r => r.date === todayStr);
         if (!hasToday) {

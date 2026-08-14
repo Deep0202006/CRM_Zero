@@ -35,6 +35,7 @@ export default function AttendancePage() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [confirmationState, setConfirmationState] = useState<"confirmed" | "pending" | "review_required" | "unavailable">("unavailable");
+  const [authoritativeMode, setAuthoritativeMode] = useState<"field_selfie" | "office_auto" | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -42,6 +43,8 @@ export default function AttendancePage() {
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
 
   const todayStr = getCurrentISTDate();
+  const requiresFieldEvidence = authoritativeMode === "field_selfie" || (authoritativeMode === null && isFieldStaff);
+  const usesOfficeAttendance = authoritativeMode === "office_auto" || (authoritativeMode === null && isOfficeStaff);
 
   const loadTodayRecord = async () => {
     if (!currentUser) return;
@@ -54,7 +57,8 @@ export default function AttendancePage() {
         if (data.session?.access_token) {
           const response = await fetch(`/api/attendance/mine?date=${todayStr}`, { headers: { Authorization: `Bearer ${data.session.access_token}` }, cache: "no-store" });
           if (response.ok) {
-            const result = await response.json() as { attendance?: LocalAttendance[] };
+            const result = await response.json() as { mode?: "field_selfie" | "office_auto"; attendance?: LocalAttendance[] };
+            if (result.mode === "field_selfie" || result.mode === "office_auto") setAuthoritativeMode(result.mode);
             const authoritative = result.attendance?.[0] ?? null;
             if (authoritative) {
               await db.attendance.put(authoritative);
@@ -97,7 +101,7 @@ export default function AttendancePage() {
   }, [currentUser?.user_id, todayStr]);
 
   const initCamera = async () => {
-    if (!isFieldStaff || todayRecord) return;
+    if (!requiresFieldEvidence || todayRecord) return;
     setErrorMsg(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -115,13 +119,13 @@ export default function AttendancePage() {
   };
 
   useEffect(() => {
-    if (isFieldStaff && !todayRecord && currentUser) initCamera();
+    if (requiresFieldEvidence && !todayRecord && currentUser) initCamera();
     return () => {
       if (videoRef.current?.srcObject) {
         (videoRef.current.srcObject as MediaStream).getTracks().forEach((t) => t.stop());
       }
     };
-  }, [isFieldStaff, todayRecord, currentUser]);
+  }, [requiresFieldEvidence, todayRecord, currentUser]);
 
   const captureSelfie = async (): Promise<Blob | null> => {
     if (!videoRef.current || !canvasRef.current) return null;
@@ -141,7 +145,7 @@ export default function AttendancePage() {
     let selfieBlob: Blob | null = null;
     let location: AttendanceLocation | null = null;
 
-    if (isFieldStaff) {
+    if (requiresFieldEvidence) {
       selfieBlob = await captureSelfie();
       if (!selfieBlob) {
         setErrorMsg("Could not capture selfie. Please allow camera access and try again.");
@@ -185,7 +189,7 @@ export default function AttendancePage() {
       setConfirmationState(confirmation.status);
       if (selfieBlob) setCapturedImage(URL.createObjectURL(selfieBlob));
       if (confirmation.status === "confirmed") {
-        setSuccessMsg(isFieldStaff ? "Attendance confirmed with selfie." : "Attendance confirmed.");
+        setSuccessMsg(requiresFieldEvidence ? "Attendance confirmed with selfie." : "Attendance confirmed.");
         setTimeout(() => { window.location.href = "/my-day"; }, 1400);
       } else if (confirmation.status === "pending") {
         setSuccessMsg("Attendance is saved securely and awaiting server confirmation.");
@@ -235,7 +239,7 @@ export default function AttendancePage() {
               )}
               <div className="min-w-0">
                 <p className="truncate text-[14px] font-semibold text-[var(--text-primary)]">{currentUser?.name}</p>
-                <p className="mt-1 text-[12px] text-[var(--text-muted)]">{confirmed ? (isFieldStaff ? "Field attendance verified with selfie" : "Office attendance recorded") : confirmationState === "review_required" ? "Server review is required; automatic retry has stopped" : "The durable queue will retry with bounded backoff"}</p>
+                <p className="mt-1 text-[12px] text-[var(--text-muted)]">{confirmed ? (requiresFieldEvidence ? "Field attendance verified with selfie" : "Office attendance recorded") : confirmationState === "review_required" ? "Server review is required; automatic retry has stopped" : "The durable queue will retry with bounded backoff"}</p>
               </div>
             </div>
             <Link href="/my-day" className="block"><Button className="w-full" icon={<ArrowRight size={15} />}>Continue to My Day</Button></Link>
@@ -245,7 +249,7 @@ export default function AttendancePage() {
     );
   }
 
-  if (isOfficeStaff) {
+  if (usesOfficeAttendance) {
     return (
       <div className="app-page">
         <PageHeader eyebrow="Attendance" icon={<Clock size={18} />} title="Start your workday" description={formattedDate} />

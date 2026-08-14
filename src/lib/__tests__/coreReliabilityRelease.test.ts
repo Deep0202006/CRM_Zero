@@ -50,7 +50,7 @@ describe("core reliability release contracts", () => {
     expect(database).toContain('remoteTableName === "call_logs" && authenticatedUserId');
     expect(database).toContain("syncRetryDelayMs");
     expect(database).toContain('recovery_state: "review_required"');
-    expect(database).toContain("if (!retryIsDue(item)) continue");
+    expect(database).toContain("if (!shouldAttemptSyncQueueItem(item)) continue");
     expect(read("src/app/call-logs/page.tsx")).toContain('idempotency_key: `call-log:${logId}`');
   });
 

@@ -89,3 +89,42 @@ test("date changes never resolve stale attendance as absent", async ({ page }) =
   await page.waitForTimeout(600);
   await expect(page.getByRole("cell", { name: "Present", exact: true })).toHaveCount(1);
 });
+
+test("stale local office capability cannot create evidence-free Attendance for a server field role", async ({ page }) => {
+  const employee = "10000000-0000-4000-a000-000000000020";
+  let authorityPreflights = 0;
+  await page.route("https://e2e.supabase.co/**", (route) => route.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
+  await page.route("**/api/attendance/mine?**", (route) => { authorityPreflights += 1; return route.fulfill({ json: { ok: true, user_id: employee, date: "2026-08-14", mode: "field_selfie", attendance: [] } }); });
+  await page.goto("/login");
+  await expect.poll(() => page.evaluate(async () => {
+    const request = indexedDB.open("CRMDatabase");
+    const database = await new Promise<IDBDatabase>((resolve, reject) => { request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });
+    const ready = database.objectStoreNames.contains("users") && database.objectStoreNames.contains("user_capabilities");
+    database.close();
+    return ready;
+  })).toBe(true);
+  await page.evaluate(async ({ id, accessToken }) => {
+    const request = indexedDB.open("CRMDatabase");
+    const database = await new Promise<IDBDatabase>((resolve, reject) => { request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });
+    const transaction = database.transaction(["users", "user_capabilities"], "readwrite");
+    transaction.objectStore("users").put({ user_id: id, name: "Field Employee", email: "field@example.test", is_active: 1, created_at: new Date().toISOString() });
+    transaction.objectStore("user_capabilities").put({ id: `${id}-stale-office`, user_id: id, capability_code: "ret_onboarding", assigned_at: new Date().toISOString() });
+    await new Promise<void>((resolve, reject) => { transaction.oncomplete = () => resolve(); transaction.onerror = () => reject(transaction.error); });
+    database.close();
+    localStorage.setItem("authenticated_user_id", id);
+    localStorage.setItem("sb-e2e-auth-token", JSON.stringify({ access_token: accessToken, refresh_token: "e2e", expires_at: 1999999999, expires_in: 999999999, token_type: "bearer", user: { id, aud: "authenticated", role: "authenticated", email: "field@example.test", app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() } }));
+  }, { id: employee, accessToken: token(employee) });
+  await page.reload();
+  await page.waitForURL("**/attendance");
+  await expect.poll(() => authorityPreflights).toBeGreaterThan(0);
+  await expect(page.getByText("Field verification")).toBeVisible();
+  await expect.poll(() => page.evaluate(async () => {
+    const request = indexedDB.open("CRMDatabase");
+    const database = await new Promise<IDBDatabase>((resolve, reject) => { request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });
+    const transaction = database.transaction("sync_queue", "readonly");
+    const countRequest = transaction.objectStore("sync_queue").count();
+    const count = await new Promise<number>((resolve, reject) => { countRequest.onsuccess = () => resolve(countRequest.result); countRequest.onerror = () => reject(countRequest.error); });
+    database.close();
+    return count;
+  })).toBe(0);
+});
