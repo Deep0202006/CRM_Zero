@@ -1,11 +1,11 @@
 {
-  "verified_at": "2026-08-15T10:40:34Z",
-  "production_main_sha": "5aa8a5a1b9f2e1334d1d6bc70a52d7c7873a2f9a",
+  "verified_at": "2026-08-15T12:59:48Z",
+  "production_main_sha": "c15674ac52eac68d7ff8e6445ab74e1e000ec459",
   "vercel": {
-    "deployment_id": "dpl_WwZCfhH8ivHUagTtRnH33JxXhLYs",
+    "deployment_id": "dpl_4czf5STDLL7h5yszXqobqLQAYbnb",
     "state": "READY",
     "target": "production",
-    "sha": "5aa8a5a1b9f2e1334d1d6bc70a52d7c7873a2f9a"
+    "sha": "c15674ac52eac68d7ff8e6445ab74e1e000ec459"
   },
   "last_applied_owner_migration": "043_APPLIED_AND_VERIFIED",
   "migration_history_note": "Not verified: remote migration history is empty and must not be inferred from local files.",
@@ -20,7 +20,10 @@
     "pipeline_authority": "COMPLETE",
     "pipeline_global_visibility": "COMPLETE",
     "pipeline_canonical_create_lead": "COMPLETE",
-    "pipeline_converted_duplicate_prevention": "COMPLETE"
+    "pipeline_converted_duplicate_prevention": "COMPLETE",
+    "visual_intelligence_my_day": "COMPLETE_PRESENTATION_ONLY_PRODUCTION_SMOKE",
+    "visual_intelligence_team_kpi": "COMPLETE_PRESENTATION_ONLY_PRODUCTION_SMOKE",
+    "visual_intelligence_visits": "COMPLETE_PRESENTATION_ONLY_PRODUCTION_SMOKE"
   },
   "attendance_live_certification": {
     "business_date": "2026-08-15",
@@ -100,6 +103,35 @@
     "production_dummy_rows": 0,
     "financial_mutations": 0,
     "cross_domain_mutations": 0,
+    "p0": 0,
+    "p1": 0
+  },
+  "visual_intelligence_release": {
+    "pr": 47,
+    "certified_pr_head": "b271ab9d7ab5b172edac607e8e1b5ed572513cd6",
+    "merge_sha": "c15674ac52eac68d7ff8e6445ab74e1e000ec459",
+    "deployment_id": "dpl_4czf5STDLL7h5yszXqobqLQAYbnb",
+    "chart_engine": "recharts@3.9.1",
+    "new_runtime_dependencies": 0,
+    "new_client_business_requests": {
+      "my_day": 0,
+      "team_kpi": 0,
+      "visits": 0
+    },
+    "supabase_db_query_delta": 0,
+    "polling_added": 0,
+    "realtime_channels_added": 0,
+    "storage_reads_added": 0,
+    "production_business_mutations": 0,
+    "database_migration": false,
+    "visual_review": "PASS_MOBILE_DESKTOP_LIGHT_DARK",
+    "browser_console_errors": 0,
+    "analytics_async_chunks_raw_bytes": 93202,
+    "analytics_async_chunks_gzip_bytes": 25677,
+    "known_truth_constraints": [
+      "Team KPI renders a same-day pulse because the authoritative response has no historical series.",
+      "Visits composition and activity visuals explicitly represent the existing bounded page of at most 50 rows."
+    ],
     "p0": 0,
     "p1": 0
   },
