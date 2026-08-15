@@ -37,3 +37,23 @@ export interface DistributorMetrics {
   inactive: number;
   billed: number;
 }
+
+export type RenewalFilter = "all" | "overdue" | "today" | "tomorrow" | "in_two_days" | "upcoming" | "not_set";
+
+export interface RenewalMetrics {
+  overdue: number;
+  today: number;
+  tomorrow: number;
+  in_two_days: number;
+}
+
+export interface RenewalListRow {
+  distributor_id: string;
+  distributor_name: string;
+  assigned_to: string;
+  assigned_employee_name: string;
+  renewal_date: string | null;
+  renewal_state: RenewalState;
+  version: number;
+  updated_at: string;
+}

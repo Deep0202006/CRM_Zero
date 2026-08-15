@@ -258,6 +258,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         },
         {
           icon: <CalendarDays size={17} />,
+          label: "Renewals",
+          path: isAdmin ? "/admin/payments/renewals" : "/payments/renewals",
+          description: "Assigned distributor renewal dates",
+          group: "Workspace",
+          keywords: ["payment", "renewal", "due", "overdue"],
+        },
+        {
+          icon: <CalendarDays size={17} />,
           label: "Distributor Status",
           path: isAdmin ? "/admin/payments/distributors" : "/payments/distributors",
           description: "Operational status and renewals",

@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "facts": {
+    "attendance": "public.attendance server rows",
+    "distributor_assignment": "public.distributor_accounts.assigned_to",
+    "renewal": "public.distributor_accounts.renewal_date",
+    "receivables": "public.receivables",
+    "payments": "public.receivable_payments",
+    "pipeline_stage": "canonical Lead/Pipeline authority",
+    "calls": "public.call_logs",
+    "field_visits": "public.field_visits"
+  }
+}

@@ -38,6 +38,9 @@ function findings(source, file) {
   if (clientCode && /\.from\(\s*["'`](?:receivables|receivable_payments)["'`]\s*\)[\s\S]{0,300}?\.(?:insert|upsert|update|delete)\s*\(/i.test(text)) hits.push("direct browser financial write bypasses Receivables command API");
 
   const normalizedFile = file.replaceAll("\\", "/").toLowerCase();
+  const protectedBusinessRead = normalizedFile.includes("/payments/") || normalizedFile.includes("/api/distributors/") || normalizedFile.includes("/components/distributors/");
+  if (protectedBusinessRead && /\.select\(\s*["'`]\*["'`]\s*\)/i.test(text)) hits.push("protected hot path SELECT star");
+  if (protectedBusinessRead && /\bsetInterval\s*\(/i.test(text)) hits.push("protected business screen polling");
   if (clientCode && /\.from\(\s*["'`]leads["'`]\s*\)[\s\S]{0,300}?\.update\s*\(/i.test(text)) hits.push("direct browser Pipeline mutation bypasses authority");
   if (!normalizedFile.includes("/__tests__/") && (normalizedFile.includes("/pipeline/") || normalizedFile.includes("/onboarding/")) && /from\s+["'][^"']*(?:task|calllogs|fieldvisits|receivables)[^"']*["']/i.test(text)) hits.push("Pipeline imports cross-domain write helper");
   if (normalizedFile.endsWith("src/app/api/call-logs/confirm/route.ts") && /\.from\(\s*["'`]leads["'`]\s*\)[\s\S]{0,300}?\.(?:insert|upsert)\s*\(/i.test(text)) hits.push("Call confirmation creates Lead");
@@ -98,6 +101,10 @@ requireInvariant(
   normalizeSqlArtifact(readFileSync(resolve(root, "owner-041.sql"), "utf8")) === normalizeSqlArtifact(readFileSync(resolve(root, "supabase/migrations/041_distributor_mapped_status.sql"), "utf8")),
   "owner-041.sql must remain semantically identical to migration 041"
 );
+requireInvariant(
+  normalizeSqlArtifact(readFileSync(resolve(root, "owner-042.sql"), "utf8")) === normalizeSqlArtifact(readFileSync(resolve(root, "supabase/migrations/042_payment_collection_renewals.sql"), "utf8")),
+  "owner-042.sql must remain semantically identical to migration 042"
+);
 const attendanceAuthority = readFileSync(resolve(root, "src/lib/attendance/authority.ts"), "utf8");
 const adminAttendance = readFileSync(resolve(root, "src/app/api/admin/attendance/route.ts"), "utf8");
 const teamKpiAggregation = readFileSync(resolve(root, "src/lib/teamKpi/aggregate.ts"), "utf8");
@@ -111,14 +118,30 @@ requireInvariant(attendanceQueue.includes("if (!shouldAttemptSyncQueueItem(item)
 requireInvariant(attendanceQueue.includes("withSyncQueueBrowserLock(() => confirmQueuedAttendanceInternal(attendanceId))") && attendanceQueue.includes("activeSyncQueueRun = withSyncQueueBrowserLock"), "Attendance direct and background confirmation must serialize across tabs");
 requireInvariant(authContext.indexOf('authority.mode !== "office_auto"') < authContext.indexOf("saveAttendanceWithEvidence(newRecord, null)"), "office auto-attendance requires server-authoritative mode");
 requireInvariant(attendancePage.includes("setAuthoritativeMode(result.mode)") && attendancePage.includes('authoritativeMode === "field_selfie"'), "online Attendance evidence mode must come from server authority");
-const criticalRoutes = ["src/app/admin/payments/page.tsx", "src/app/admin/payments/distributors/page.tsx", "src/app/payments/page.tsx", "src/app/payments/distributors/page.tsx"];
+const criticalRoutes = ["src/app/admin/payments/page.tsx", "src/app/admin/payments/renewals/page.tsx", "src/app/admin/payments/distributors/page.tsx", "src/app/payments/page.tsx", "src/app/payments/renewals/page.tsx", "src/app/payments/distributors/page.tsx"];
 for (const route of criticalRoutes) requireInvariant(existsSync(resolve(root, route)), `critical route missing: ${route}`);
 const navigation = readFileSync(resolve(root, "src/components/DashboardLayout.tsx"), "utf8");
-for (const href of ["/admin/payments", "/payments", "/admin/payments/distributors", "/payments/distributors"]) requireInvariant(navigation.includes(href), `critical navigation target missing: ${href}`);
+for (const href of ["/admin/payments", "/payments", "/admin/payments/renewals", "/payments/renewals", "/admin/payments/distributors", "/payments/distributors"]) requireInvariant(navigation.includes(href), `critical navigation target missing: ${href}`);
 const distributorMetricsRoute = readFileSync(resolve(root, "src/app/api/distributors/metrics/route.ts"), "utf8");
 const receivablesAdminRoute = readFileSync(resolve(root, "src/app/api/receivables/admin/route.ts"), "utf8");
 requireInvariant((distributorMetricsRoute.match(/distributor_status_metrics_v1/g) ?? []).length === 1, "Distributor cards must use one metrics RPC");
 requireInvariant(distributorMetricsRoute.includes("listEligibleOperationalEmployees") && receivablesAdminRoute.includes("listEligibleOperationalEmployees"), "Payment and Distributor employee selectors must share canonical authority");
 requireInvariant(!distributorMetricsRoute.includes("distributorReady") && !readFileSync(resolve(root, "src/app/api/distributors/route.ts"), "utf8").includes("distributorReady"), "Distributor empty state cannot depend on a hardcoded readiness flag");
+const authorityRegistry = JSON.parse(readFileSync(resolve(root, "docs/os/AUTHORITY_REGISTRY.json"), "utf8"));
+requireInvariant(authorityRegistry.facts?.renewal === "public.distributor_accounts.renewal_date", "Renewal authority registry must remain canonical");
+const renewalMigration = readFileSync(resolve(root, "supabase/migrations/042_payment_collection_renewals.sql"), "utf8").replace(/--.*$/gm, "");
+requireInvariant(!/\b(?:create|alter)\s+table\b|\bcreate\s+(?:unique\s+)?index\b/i.test(renewalMigration), "Renewals cannot create duplicate storage or a speculative index");
+requireInvariant(!/\b(?:insert\s+into|update|delete\s+from|truncate)\b/i.test(renewalMigration), "Renewal read migration cannot mutate business data");
+requireInvariant(renewalMigration.includes("greatest(1,least(coalesce(p_page_size,50),50))"), "Renewal list must remain bounded to 50 rows");
+const renewalRoute = readFileSync(resolve(root, "src/app/api/distributors/renewals/route.ts"), "utf8");
+requireInvariant((renewalRoute.match(/distributor_renewal_metrics_v1/g) ?? []).length === 1, "Renewal cards must use one metrics RPC");
+requireInvariant((renewalRoute.match(/distributor_renewals_list_v1/g) ?? []).length === 1, "Renewal table must use one bounded list RPC");
+requireInvariant(renewalRoute.includes("distributorReadError") && !/catch[\s\S]{0,160}(?:rows\s*:\s*\[\]|return\s+\[\])/i.test(renewalRoute), "Renewal API errors cannot silently become empty data");
+const renewalPage = readFileSync(resolve(root, "src/components/distributors/PaymentRenewalsPage.tsx"), "utf8");
+requireInvariant(renewalPage.includes("view=metrics") && renewalPage.includes("view=list") && renewalPage.includes("pageSize=50"), "Renewal screen must declare its two-request 50-row budget");
+requireInvariant(!/setInterval|\.select\(\s*["'`]\*["'`]\s*\)/i.test(renewalPage), "Renewal screen cannot poll or SELECT star");
+requireInvariant(renewalPage.includes("Unable to load renewals") && renewalPage.includes("No renewal dates set yet"), "Renewal empty and server-error states must remain distinct");
+const distributorCommandRoute = readFileSync(resolve(root, "src/app/api/distributors/commands/route.ts"), "utf8");
+requireInvariant((distributorCommandRoute.match(/distributor_status_command_v1/g) ?? []).length === 1 && !/\.rpc\(\s*["'`]receivable/i.test(distributorCommandRoute), "Distributor mutations cannot call financial authority");
 if (failed) process.exit(1);
 console.log(`Invariant guard passed (${files.length} executable changed files scanned differentially).`);

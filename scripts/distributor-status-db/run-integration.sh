@@ -51,3 +51,7 @@ wait "$exact_edit"
 grep -q 'DISTRIBUTOR_CONFLICT' <<<"$exact_out"
 
 psql -v ON_ERROR_STOP=1 -f scripts/distributor-status-db/mapping-integration.sql
+psql -X -v ON_ERROR_STOP=1 -f owner-042-precheck.sql
+psql -X -v ON_ERROR_STOP=1 -f owner-042.sql
+psql -X -v ON_ERROR_STOP=1 -f owner-042-postcheck.sql
+psql -v ON_ERROR_STOP=1 -f scripts/distributor-status-db/renewal-integration.sql
