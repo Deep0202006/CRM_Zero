@@ -1,6 +1,11 @@
 \set ON_ERROR_STOP on
 set role service_role;
 
+insert into public.users(user_id,name,email,is_active)
+values('20000000-0000-4000-a000-000000000004','Renewal Closure Employee','renewal-closure@example.test',true);
+update public.distributor_accounts set assigned_to='20000000-0000-4000-a000-000000000004'
+where distributor_id='40000000-0000-4000-a000-000000000050';
+
 do $$
 declare admin_metrics jsonb; employee_metrics jsonb; expected_admin jsonb; expected_employee jsonb; today_ist date=(now() at time zone 'Asia/Kolkata')::date;
 begin
@@ -42,13 +47,13 @@ do $$
 declare target_id uuid='40000000-0000-4000-a000-000000000050'; current_version bigint; result jsonb; today_ist date=(now() at time zone 'Asia/Kolkata')::date;
 begin
  select version into current_version from public.distributor_accounts where distributor_id=target_id;
- result:=public.distributor_status_command_v1(gen_random_uuid(),'20000000-0000-4000-a000-000000000001','renew',repeat('d',64),jsonb_build_object('distributor_id',target_id,'expected_version',current_version,'renewal_date',(today_ist+1)::text,'note','closure'));
+ result:=public.distributor_status_command_v1(gen_random_uuid(),'20000000-0000-4000-a000-000000000004','renew',repeat('d',64),jsonb_build_object('distributor_id',target_id,'expected_version',current_version,'renewal_date',(today_ist+1)::text,'note','closure'));
  if not coalesce((result->>'success')::boolean,false) then raise exception 'renewal closure write failed: %',result; end if;
  if (select renewal_date from public.distributor_accounts where distributor_id=target_id)<>today_ist+1 then raise exception 'canonical renewal mismatch'; end if;
- if not exists(select 1 from jsonb_array_elements(public.distributor_renewals_list_v1('20000000-0000-4000-a000-000000000001',false,'tomorrow',1,50)->'rows') r where r->>'distributor_id'=target_id::text) then raise exception 'Payment Collection closure failed'; end if;
+ if not exists(select 1 from jsonb_array_elements(public.distributor_renewals_list_v1('20000000-0000-4000-a000-000000000004',false,'tomorrow',1,50)->'rows') r where r->>'distributor_id'=target_id::text) then raise exception 'Payment Collection closure failed'; end if;
  if not exists(select 1 from jsonb_array_elements(public.distributor_renewals_list_v1('10000000-0000-4000-a000-000000000001',true,'tomorrow',1,50)->'rows') r where r->>'distributor_id'=target_id::text and r->>'renewal_date'=(today_ist+1)::text) then raise exception 'Admin renewal closure failed'; end if;
- if not exists(select 1 from jsonb_array_elements(public.distributor_renewals_due_v1('20000000-0000-4000-a000-000000000001',false,50)->'rows') r where r->>'distributor_id'=target_id::text and r->>'renewal_state'='renewal_due_tomorrow') then raise exception 'My Day closure failed'; end if;
- if not exists(select 1 from public.distributor_status_events where distributor_id=target_id and event_type='renewal_date_updated' and actor_id='20000000-0000-4000-a000-000000000001' and new_renewal_date=today_ist+1) then raise exception 'renewal audit missing'; end if;
+ if not exists(select 1 from jsonb_array_elements(public.distributor_renewals_due_v1('20000000-0000-4000-a000-000000000004',false,50)->'rows') r where r->>'distributor_id'=target_id::text and r->>'renewal_state'='renewal_due_tomorrow') then raise exception 'My Day closure failed'; end if;
+ if not exists(select 1 from public.distributor_status_events where distributor_id=target_id and event_type='renewal_date_updated' and actor_id='20000000-0000-4000-a000-000000000004' and new_renewal_date=today_ist+1) then raise exception 'renewal audit missing'; end if;
  if exists(select 1 from protected_writes where writes<>0) then raise exception 'renewal crossed protected write set'; end if;
 end $$;
 
@@ -57,7 +62,7 @@ declare target_id uuid='40000000-0000-4000-a000-000000000050'; stale_version big
 begin
  select version into stale_version from public.distributor_accounts where distributor_id=target_id;
  admin_result:=public.distributor_status_command_v1(gen_random_uuid(),'10000000-0000-4000-a000-000000000001','renew',repeat('e',64),jsonb_build_object('distributor_id',target_id,'expected_version',stale_version,'renewal_date',(today_ist+2)::text,'note','admin concurrency'));
- employee_result:=public.distributor_status_command_v1(gen_random_uuid(),'20000000-0000-4000-a000-000000000001','renew',repeat('f',64),jsonb_build_object('distributor_id',target_id,'expected_version',stale_version,'renewal_date',(today_ist+1)::text,'note','stale employee'));
+ employee_result:=public.distributor_status_command_v1(gen_random_uuid(),'20000000-0000-4000-a000-000000000004','renew',repeat('f',64),jsonb_build_object('distributor_id',target_id,'expected_version',stale_version,'renewal_date',(today_ist+1)::text,'note','stale employee'));
  if not coalesce((admin_result->>'success')::boolean,false) or employee_result->>'code'<>'DISTRIBUTOR_CONFLICT' or not (employee_result ? 'current') then raise exception 'Admin/employee concurrency contract failed: %, %',admin_result,employee_result; end if;
  if (select renewal_date from public.distributor_accounts where distributor_id=target_id)<>today_ist+2 then raise exception 'Stale employee overwrote Admin renewal'; end if;
 end $$;
