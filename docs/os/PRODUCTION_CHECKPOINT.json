@@ -1,13 +1,13 @@
 {
-  "verified_at": "2026-08-15T09:05:44Z",
-  "production_main_sha": "623d4ecb6fffd2aa3d966e52779ce85c84d1d176",
+  "verified_at": "2026-08-15T10:40:34Z",
+  "production_main_sha": "5aa8a5a1b9f2e1334d1d6bc70a52d7c7873a2f9a",
   "vercel": {
-    "deployment_id": "dpl_J4ZkQaoZ4MU7w8Ca8Utau3wqE1Mt",
+    "deployment_id": "dpl_WwZCfhH8ivHUagTtRnH33JxXhLYs",
     "state": "READY",
     "target": "production",
-    "sha": "623d4ecb6fffd2aa3d966e52779ce85c84d1d176"
+    "sha": "5aa8a5a1b9f2e1334d1d6bc70a52d7c7873a2f9a"
   },
-  "last_applied_owner_migration": "042_APPLIED_AND_VERIFIED",
+  "last_applied_owner_migration": "043_APPLIED_AND_VERIFIED",
   "migration_history_note": "Not verified: remote migration history is empty and must not be inferred from local files.",
   "domain_readiness": {
     "attendance": "COMPLETE_NATURALLY_LIVE_CERTIFIED",
@@ -16,7 +16,11 @@
     "mapped": "DEPLOYED_AND_CERTIFIED_NO_FABRICATED_LEGACY_STATE",
     "renewal": "COMPLETE_READ_ONLY_PRODUCTION_SMOKE",
     "payment_collection_renewals": "COMPLETE_READ_ONLY_PRODUCTION_SMOKE",
-    "my_day": "COMPLETE_READ_ONLY_PRODUCTION_SMOKE"
+    "my_day": "COMPLETE_READ_ONLY_PRODUCTION_SMOKE",
+    "pipeline_authority": "COMPLETE",
+    "pipeline_global_visibility": "COMPLETE",
+    "pipeline_canonical_create_lead": "COMPLETE",
+    "pipeline_converted_duplicate_prevention": "COMPLETE"
   },
   "attendance_live_certification": {
     "business_date": "2026-08-15",
@@ -61,6 +65,32 @@
     "distributor_rows": 0,
     "renewal_dates": 0,
     "initial_requests": 2,
+    "max_page": 50,
+    "polling": 0,
+    "hot_select_star": 0,
+    "unbounded_reads": 0,
+    "n_plus_one": 0,
+    "production_business_rows_deleted": 0,
+    "production_dummy_rows": 0,
+    "financial_mutations": 0,
+    "cross_domain_mutations": 0,
+    "p0": 0,
+    "p1": 0
+  },
+  "pipeline_authority_release": {
+    "pr": 45,
+    "certified_pr_head": "575d926a00c5d8e83d06a73d48529d1169a763eb",
+    "merge_sha": "5aa8a5a1b9f2e1334d1d6bc70a52d7c7873a2f9a",
+    "migration_043": "APPLIED_AND_VERIFIED",
+    "canonical_create_objects": 6,
+    "lead_rows": 41,
+    "converted_rows": 17,
+    "pooja_matches": 1,
+    "employee_visible_rows": 41,
+    "admin_visible_rows": 41,
+    "authenticated_direct_insert": false,
+    "non_pipeline_creation_paths": 0,
+    "initial_requests": 1,
     "max_page": 50,
     "polling": 0,
     "hot_select_star": 0,
