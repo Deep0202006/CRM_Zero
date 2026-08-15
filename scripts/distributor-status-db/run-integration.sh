@@ -35,7 +35,10 @@ import_rows="jsonb_build_array(jsonb_build_object('rowNumber',2,'classification'
 import_sql="set role service_role;select public.import_distributor_status_v1('30000000-0000-4000-a000-000000000043','10000000-0000-4000-a000-000000000001',repeat('a',64),'parallel.xlsx',$import_rows);"
 run_parallel_same_operation import "$import_sql"
 psql -Atc "select case when count(*)=1 then 'ok' else 'bad' end from distributor_accounts where distributor_id='40000000-0000-4000-a000-000000000043';select case when count(*)=1 then 'ok' else 'bad' end from distributor_import_batches where operation_id='30000000-0000-4000-a000-000000000043';" | grep -qv '^bad$'
-psql -v ON_ERROR_STOP=1 -f supabase/migrations/041_distributor_mapped_status.sql
+psql -X -v ON_ERROR_STOP=1 -f owner-041-precheck.sql
+psql -X -v ON_ERROR_STOP=1 -f owner-041.sql
+psql -X -v ON_ERROR_STOP=1 -f owner-041-postcheck.sql
+psql -X -v ON_ERROR_STOP=1 -Atc "select count(*) from information_schema.columns where table_schema='public' and table_name='distributor_accounts' and column_name in ('mapping_status','mapped_at');" | grep -q '^2$'
 
 # A preview-classified exact duplicate must conflict if a manual edit commits
 # before the import linearizes; it may never be silently skipped as unchanged.

@@ -70,3 +70,10 @@ test("J chat message mutation fails", () => {
   assert.notEqual(run("scripts/harness/invariant-guard.mjs", [deletion]).status, 0);
   assert.notEqual(run("scripts/harness/invariant-guard.mjs", [editing]).status, 0);
 });
+
+test("K an owner SQL artifact with a client meta-command fails", () => {
+  const path = fixture("owner-invalid.sql", `\\set ON_ERROR_STOP on\nselect 1;`);
+  const result = run("scripts/harness/invariant-guard.mjs", [path]);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /OWNER_SQL_IS_PURE_POSTGRESQL/);
+});

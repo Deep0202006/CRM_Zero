@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { extname, resolve } from "node:path";
 import { baselineRef, changedPaths, git, root } from "./common.mjs";
 
@@ -85,6 +85,19 @@ for (const migration of changedPaths().filter((file) => file.startsWith("supabas
 }
 requireInvariant(existsSync(resolve(root, "src/lib/__tests__/pipeline/pipelineHardeningMigration.test.ts")), "Pipeline cross-domain mutation assertions are required");
 requireInvariant(existsSync(resolve(root, "docs/contracts/RESOURCE_BUDGET.md")), "hot-query changes require the Resource Budget contract");
+const ownerSqlFiles = [
+  ...readdirSync(root).filter((file) => /^owner-.*\.sql$/i.test(file)),
+  ...requested.filter((file) => /^owner-.*\.sql$/i.test(file.replaceAll("\\", "/").split("/").at(-1) ?? "")),
+];
+for (const ownerSqlFile of ownerSqlFiles) {
+  const ownerSql = readFileSync(resolve(root, ownerSqlFile), "utf8");
+  requireInvariant(!/^\s*\\/m.test(ownerSql), `${ownerSqlFile} must be pure PostgreSQL for Supabase SQL Editor (OWNER_SQL_IS_PURE_POSTGRESQL)`);
+}
+const normalizeSqlArtifact = (sql) => sql.replace(/\r\n/g, "\n").trimEnd();
+requireInvariant(
+  normalizeSqlArtifact(readFileSync(resolve(root, "owner-041.sql"), "utf8")) === normalizeSqlArtifact(readFileSync(resolve(root, "supabase/migrations/041_distributor_mapped_status.sql"), "utf8")),
+  "owner-041.sql must remain semantically identical to migration 041"
+);
 const attendanceAuthority = readFileSync(resolve(root, "src/lib/attendance/authority.ts"), "utf8");
 const adminAttendance = readFileSync(resolve(root, "src/app/api/admin/attendance/route.ts"), "utf8");
 const teamKpiAggregation = readFileSync(resolve(root, "src/lib/teamKpi/aggregate.ts"), "utf8");
