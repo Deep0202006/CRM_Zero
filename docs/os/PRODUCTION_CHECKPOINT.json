@@ -1,16 +1,21 @@
 {
-  "verified_at": "2026-08-15T05:24:16Z",
-  "production_main_sha": "51613cdcdeeb9845f74e808304107d364efdce62",
+  "verified_at": "2026-08-15T06:41:17Z",
+  "production_main_sha": "fcb8ce2b8aa0f957d6aa7308b2a215516a858bf4",
   "vercel": {
-    "deployment_id": "dpl_DsiDAvuMtUMCt8vXxz7TbyRrA2Bb",
+    "deployment_id": "dpl_4EjXPEjai3qRJtAAVmBkfB5KucnH",
     "state": "READY",
     "target": "production",
-    "sha": "51613cdcdeeb9845f74e808304107d364efdce62"
+    "sha": "fcb8ce2b8aa0f957d6aa7308b2a215516a858bf4"
   },
-  "last_applied_owner_migration": null,
+  "last_applied_owner_migration": "041_APPLIED_AND_VERIFIED",
   "migration_history_note": "Not verified: remote migration history is empty and must not be inferred from local files.",
   "domain_readiness": {
-    "attendance": "COMPLETE_NATURALLY_LIVE_CERTIFIED"
+    "attendance": "COMPLETE_NATURALLY_LIVE_CERTIFIED",
+    "payment_collection": "COMPLETE_READ_ONLY_PRODUCTION_SMOKE",
+    "distributor_status": "COMPLETE_READ_ONLY_PRODUCTION_SMOKE",
+    "mapped": "DEPLOYED_AND_CERTIFIED_NO_FABRICATED_LEGACY_STATE",
+    "renewal": "COMPLETE_READ_ONLY_PRODUCTION_SMOKE",
+    "my_day": "COMPLETE_READ_ONLY_PRODUCTION_SMOKE"
   },
   "attendance_live_certification": {
     "business_date": "2026-08-15",
@@ -23,6 +28,27 @@
     "team_kpi_closure": "PASS",
     "duplicate_rows": 0,
     "dummy_production_rows": 0
+  },
+  "distributor_payment_release": {
+    "pr": 40,
+    "certified_pr_head": "7c3b048e6cbe304580453a7705df5f02dfb1dd42",
+    "merge_sha": "fcb8ce2b8aa0f957d6aa7308b2a215516a858bf4",
+    "migration_041": "APPLIED_AND_CERTIFIED",
+    "mapping_columns": 2,
+    "distributor_rows": 0,
+    "mapped_rows": 0,
+    "mapped_at_rows": 0,
+    "receivables": 0,
+    "receivable_payments": 0,
+    "eligible_operational_employees": 7,
+    "initial_distributor_requests": "2: one metrics/directory request plus one 50-row paginated list request",
+    "polling": 0,
+    "hot_select_star": 0,
+    "unbounded_reads": 0,
+    "n_plus_one": 0,
+    "production_business_rows_deleted": 0,
+    "production_dummy_rows": 0,
+    "cross_domain_mutations": 0
   },
   "open_incidents": [],
   "resource_budget_incidents": []
