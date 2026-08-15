@@ -6,7 +6,7 @@ Visits validate stable UUIDs, IST dates, segment/outcome rules, ownership, human
 
 ## INVARIANT
 
-Never delete visits or clear visit/media stores. Retry the same visit ID. Evidence cannot block or undo a confirmed visit. Sync is owner-scoped and serializes duplicate attempts. Evidence objects expire five days after successful upload without deleting business rows. List screens never auto-fetch selfie files. Field-visit outcomes never mutate financial, Pipeline, or Call authority.
+Never delete visits or clear visit/media stores. Retry the same visit ID. Evidence cannot block or undo a confirmed visit. Sync is owner-scoped and serializes duplicate attempts. Terminal HTTP 4xx is preserved as `review_required` with zero automatic retries; network, 408, 429, and 5xx failures use bounded exponential backoff. Evidence objects expire five days after successful upload without deleting business rows. List screens never auto-fetch selfie files. Field-visit outcomes never mutate financial, Pipeline, or Call authority.
 
 ## KNOWN DEBT
 

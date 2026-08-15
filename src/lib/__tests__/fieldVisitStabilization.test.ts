@@ -55,7 +55,9 @@ describe("field visit stabilization", () => {
     expect(sync).toContain("while (syncRequests.length)");
     expect(sync).toContain('if (mode === "new") duplicate.mode = "new"');
     expect(sync).toContain("activeRequest");
-    expect(sync).toContain('visit.confirmation_mode === "new" ? "new" : mode');
+    expect(sync).toContain("const effectiveMode = mode");
+    expect(sync).toContain('sync_stage === "review_required"');
+    expect(sync).toContain("MAX_TRANSIENT_ATTEMPTS");
     expect(read("src/app/visits/new/retailer/page.tsx")).toContain('confirmation_mode: "new"');
     expect(read("src/app/visits/new/distributor/page.tsx")).toContain('confirmation_mode: "new"');
     expect(sync).toContain("result.visit_id !== visit.visit_id");

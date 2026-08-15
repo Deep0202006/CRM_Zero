@@ -86,6 +86,8 @@ function startSyncDrain(): void {
   });
 }
 let listenersRegistered = false;
+const MAX_TRANSIENT_ATTEMPTS = 5;
+const BASE_RETRY_DELAY_MS = 30_000;
 
 function emptySummary(): FieldVisitSyncSummary {
   return { locallyFound: 0, confirmed: 0, alreadyConfirmed: 0, evidencePending: 0, attendanceBlocked: 0, referenceCompatibleRecoveries: 0, failed: 0, failureCodes: [] };
@@ -93,6 +95,26 @@ function emptySummary(): FieldVisitSyncSummary {
 
 function safeCode(value: unknown): FieldVisitSafeCode {
   return typeof value === "string" && value in SAFE_MESSAGES ? value as FieldVisitSafeCode : "UNKNOWN_SYNC_FAILURE";
+}
+
+export function isTransientFieldVisitFailure(status: number | undefined): boolean {
+  return status === 408 || status === 429 || Boolean(status && status >= 500);
+}
+
+function nextRetryAt(attempts: number): string {
+  const exponent = Math.max(0, Math.min(attempts - 1, 4));
+  return new Date(Date.now() + BASE_RETRY_DELAY_MS * (2 ** exponent)).toISOString();
+}
+
+function isDue(visit: LocalFieldVisit, now = Date.now()): boolean {
+  return !visit.next_sync_attempt_at || Date.parse(visit.next_sync_attempt_at) <= now;
+}
+
+function isAutomaticallyRetryable(visit: LocalFieldVisit, now = Date.now()): boolean {
+  if (visit.sync_stage === "review_required" || !isDue(visit, now)) return false;
+  return visit.sync_status === "pending_sync" || visit.sync_status === "sync_failed"
+    || visit.sync_stage === "pending_visit" || visit.sync_stage === "sync_failed"
+    || visit.sync_stage === "visit_confirmed_evidence_pending" || visit.sync_stage === "visit_confirmed_link_pending";
 }
 
 async function mediaToBlob(media: Blob | string): Promise<Blob> {
@@ -167,7 +189,7 @@ async function runSyncCycle(onlyVisitId?: string, ownerUserId?: string, mode: "n
   const ownVisits = await db.field_visits.where("user_id").equals(authenticatedUserId).toArray();
   const visits = ownVisits.filter((visit, index, rows) =>
     (!onlyVisitId || visit.visit_id === onlyVisitId) &&
-    (visit.sync_status === "pending_sync" || visit.sync_status === "sync_failed" || visit.sync_stage === "pending_visit" || visit.sync_stage === "sync_failed" || visit.sync_stage === "visit_confirmed_evidence_pending" || visit.sync_stage === "visit_confirmed_link_pending") &&
+    isAutomaticallyRetryable(visit) &&
     rows.findIndex((candidate) => candidate.visit_id === visit.visit_id) === index,
   );
   summary.locallyFound = visits.length;
@@ -193,7 +215,7 @@ async function runSyncCycle(onlyVisitId?: string, ownerUserId?: string, mode: "n
     });
     try {
       const mediaRecord = (await db.field_visit_media.where("visit_id").equals(visit.visit_id).toArray())[0] ?? null;
-      const effectiveMode = visit.confirmation_mode === "new" ? "new" : mode;
+      const effectiveMode = mode;
       const form = new FormData();
       form.set("mode", effectiveMode);
       form.set("visit", JSON.stringify(buildFieldVisitConfirmPayload(visit)));
@@ -209,7 +231,13 @@ async function runSyncCycle(onlyVisitId?: string, ownerUserId?: string, mode: "n
       });
       let result: ConfirmResponse;
       try { result = await response.json() as ConfirmResponse; }
-      catch { throw new Error("NETWORK_OR_SERVER_RESPONSE_FAILED"); }
+      catch {
+        const code = "NETWORK_OR_SERVER_RESPONSE_FAILED";
+        await markFailure(visit.visit_id, code, isTransientFieldVisitFailure(response.status));
+        summary.failed++;
+        summary.failureCodes = [...new Set([...summary.failureCodes, code])] as FieldVisitSafeCode[];
+        continue;
+      }
 
       if (result.visit_id && result.visit_id !== visit.visit_id) throw new Error("VISIT_CONFIRMATION_FAILED");
       const warnings = (result.warning_codes ?? []).map(safeCode);
@@ -223,6 +251,7 @@ async function runSyncCycle(onlyVisitId?: string, ownerUserId?: string, mode: "n
           selfie_storage_path: result.selfie_storage_path ?? visit.selfie_storage_path,
           sync_error_code: retainedWarning,
           sync_error_message: retainedWarning ? SAFE_MESSAGES[retainedWarning] : undefined,
+          next_sync_attempt_at: undefined,
         });
         if (result.already_confirmed) summary.alreadyConfirmed++;
         else summary.confirmed++;
@@ -232,12 +261,13 @@ async function runSyncCycle(onlyVisitId?: string, ownerUserId?: string, mode: "n
               confirmation_mode: "recovery",
           sync_error_code: "EVIDENCE_UPLOAD_FAILED",
           sync_error_message: SAFE_MESSAGES.EVIDENCE_UPLOAD_FAILED,
+          next_sync_attempt_at: undefined,
         });
         summary.evidencePending++;
         summary.failureCodes = [...new Set([...summary.failureCodes, "EVIDENCE_UPLOAD_FAILED"])] as FieldVisitSafeCode[];
       } else {
         const code = safeCode(result.code);
-        await markFailure(visit.visit_id, code);
+        await markFailure(visit.visit_id, code, isTransientFieldVisitFailure(response.status));
         if (code === "ATTENDANCE_NOT_CONFIRMED" || code === "ATTENDANCE_INTEGRITY_ERROR") summary.attendanceBlocked++;
         summary.failed++;
         summary.failureCodes = [...new Set([...summary.failureCodes, code])];
@@ -246,7 +276,7 @@ async function runSyncCycle(onlyVisitId?: string, ownerUserId?: string, mode: "n
       const code = error instanceof TypeError
         ? "NETWORK_OR_SERVER_RESPONSE_FAILED"
         : error instanceof Error ? safeCode(error.message) : "UNKNOWN_SYNC_FAILURE";
-      await markFailure(visit.visit_id, code);
+      await markFailure(visit.visit_id, code, error instanceof TypeError);
       summary.failed++;
       summary.failureCodes = [...new Set([...summary.failureCodes, code])];
     }
@@ -266,39 +296,46 @@ export async function supplyQueuedVisitAddress(visitId: string, ownerUserId: str
     sync_stage: "pending_visit",
     sync_error_code: undefined,
     sync_error_message: undefined,
+    next_sync_attempt_at: undefined,
     updated_at: new Date().toISOString(),
   });
 }
 
-async function markFailure(visitId: string, code: FieldVisitSafeCode) {
+async function markFailure(visitId: string, code: FieldVisitSafeCode, transient = false) {
   const current = await db.field_visits.get(visitId);
   if (current?.sync_stage === "visit_confirmed_evidence_pending" || current?.sync_stage === "visit_confirmed_link_pending") {
+    const attempts = current.sync_attempt_count ?? 0;
+    const retryable = transient && attempts < MAX_TRANSIENT_ATTEMPTS;
     await db.field_visits.update(visitId, {
       sync_status: "synced",
-      sync_stage: current.sync_stage,
+      sync_stage: retryable ? current.sync_stage : "review_required",
       sync_error_code: code,
       sync_error_message: SAFE_MESSAGES[code],
+      next_sync_attempt_at: retryable ? nextRetryAt(attempts) : undefined,
     });
     return;
   }
+  const attempts = current?.sync_attempt_count ?? 0;
+  const retryable = transient && attempts < MAX_TRANSIENT_ATTEMPTS;
   await db.field_visits.update(visitId, {
     sync_status: "sync_failed",
-    sync_stage: "sync_failed",
+    sync_stage: retryable ? "sync_failed" : "review_required",
     sync_error_code: code,
     sync_error_message: SAFE_MESSAGES[code],
+    next_sync_attempt_at: retryable ? nextRetryAt(attempts) : undefined,
   });
 }
 
 async function markKnownUserFailures(onlyVisitId: string | undefined, ownerUserId: string | undefined, code: FieldVisitSafeCode): Promise<number> {
   if (onlyVisitId) {
-    await markFailure(onlyVisitId, code);
+    await markFailure(onlyVisitId, code, true);
     return 1;
   }
   const knownOwner = ownerUserId ?? (typeof localStorage !== "undefined" ? localStorage.getItem("authenticated_user_id") ?? undefined : undefined);
   if (!knownOwner) return 0;
   const rows = await db.field_visits.where("user_id").equals(knownOwner).toArray();
-  const retryable = rows.filter((visit) => visit.sync_status === "pending_sync" || visit.sync_status === "sync_failed" || visit.sync_stage === "pending_visit" || visit.sync_stage === "sync_failed" || visit.sync_stage === "visit_confirmed_evidence_pending" || visit.sync_stage === "visit_confirmed_link_pending");
-  await Promise.all(retryable.map((visit) => markFailure(visit.visit_id, code)));
+  const retryable = rows.filter((visit) => isAutomaticallyRetryable(visit));
+  await Promise.all(retryable.map((visit) => markFailure(visit.visit_id, code, true)));
   return retryable.length;
 }
 
