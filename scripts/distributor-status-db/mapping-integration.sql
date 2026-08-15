@@ -10,6 +10,15 @@ do $$
 declare result jsonb;
 begin
  result:=public.distributor_status_command_v1(
+  '30000000-0000-4000-a000-000000000054','10000000-0000-4000-a000-000000000001','create',repeat('7',64),
+  jsonb_build_object('distributor_id','40000000-0000-4000-a000-000000000054','distributor_name','Legacy Client Create','distributor_reference','LEG-54','identity_key','code:leg-54','lead_id','','phone','','city','','assigned_to','20000000-0000-4000-a000-000000000001','installation_status','pending','installation_completed_at','','training_status','pending','training_completed_at','','activity_status','not_applicable','billing_status','not_billed','billed_at','','bill_reference','','renewal_date','','note','pre-041 payload'));
+ if not coalesce((result->>'success')::boolean,false) or result#>>'{record,mapping_status}'<>'pending' then raise exception 'pre-041 create compatibility failed: %',result; end if;
+end $$;
+
+do $$
+declare result jsonb;
+begin
+ result:=public.distributor_status_command_v1(
   '30000000-0000-4000-a000-000000000050','10000000-0000-4000-a000-000000000001','create',repeat('1',64),
   jsonb_build_object('distributor_id','40000000-0000-4000-a000-000000000050','distributor_name','Mapped Contract','distributor_reference','MAP-50','identity_key','code:map-50','lead_id','','phone','','city','','assigned_to','20000000-0000-4000-a000-000000000001','installation_status','done','installation_completed_at',current_date::text,'training_status','done','training_completed_at',current_date::text,'mapping_status','pending','mapped_at','','activity_status','active','billing_status','not_billed','billed_at','','bill_reference','','renewal_date',(current_date+2)::text,'note','mapping fixture'));
  if not coalesce((result->>'success')::boolean,false) then raise exception 'current create failed: %',result; end if;
@@ -35,9 +44,28 @@ begin
  if (public.distributor_status_metrics_v1('10000000-0000-4000-a000-000000000001',true)->>'mapped')::integer<>1 then raise exception 'mapped metric failed'; end if;
 end $$;
 
+do $$
+declare result jsonb; current_version bigint;
+begin
+ select version into current_version from public.distributor_accounts where distributor_id='40000000-0000-4000-a000-000000000050';
+ result:=public.distributor_status_command_v1(
+  '30000000-0000-4000-a000-000000000055','10000000-0000-4000-a000-000000000001','update',repeat('8',64),
+  jsonb_build_object('distributor_id','40000000-0000-4000-a000-000000000050','expected_version',current_version,'distributor_name','Mapped Contract','distributor_reference','MAP-50','identity_key','code:map-50','lead_id','','phone','','city','','assigned_to','20000000-0000-4000-a000-000000000001','installation_status','done','installation_completed_at',current_date::text,'training_status','done','training_completed_at',current_date::text,'activity_status','active','billing_status','billed','billed_at',current_date::text,'bill_reference','B-50','renewal_date',(current_date+2)::text,'note','pre-041 update'));
+ if not coalesce((result->>'success')::boolean,false) or result#>>'{record,mapping_status}'<>'done' or result#>>'{record,mapped_at}'<>current_date::text then raise exception 'pre-041 update erased mapping truth: %',result; end if;
+end $$;
+
 -- Scale rows are disposable fixtures. Give a representative subset explicit
 -- mapping truth so the 10k Mapped projection/filter plan is exercised without
 -- changing the migration's no-backfill contract.
+do $$
+declare result jsonb; rows jsonb;
+begin
+ rows:=jsonb_build_array(jsonb_build_object('rowNumber',1,'classification','NEW','payload',jsonb_build_object(
+  'distributor_id','40000000-0000-4000-a000-000000000056','distributor_name','Legacy Client Import','distributor_reference','LEG-56','identity_key','code:leg-56','assigned_to','20000000-0000-4000-a000-000000000001','installation_status','pending','installation_completed_at',null,'training_status','pending','training_completed_at',null,'activity_status','not_applicable','billing_status','not_billed','billed_at',null,'bill_reference','','renewal_date',null)));
+ result:=public.import_distributor_status_v1('30000000-0000-4000-a000-000000000056','10000000-0000-4000-a000-000000000001',repeat('9',64),'pre-041.xlsx',rows);
+ if (result->>'created_count')::integer<>1 or (select mapping_status from public.distributor_accounts where distributor_id='40000000-0000-4000-a000-000000000056')<>'pending' then raise exception 'pre-041 import compatibility failed: %',result; end if;
+end $$;
+
 update public.distributor_accounts
 set mapping_status='done', mapped_at=current_date
 where distributor_name like 'Scale %' and mod(hashtext(identity_key)::bigint,4)=0;
@@ -71,7 +99,7 @@ begin
  denied:=public.distributor_status_command_v1(gen_random_uuid(),'20000000-0000-4000-a000-000000000002','renew',repeat('4',64),jsonb_build_object('distributor_id','40000000-0000-4000-a000-000000000050','expected_version',current_version+1,'renewal_date',current_date::text,'note','wrong owner'));
  stale:=public.distributor_status_command_v1(gen_random_uuid(),'20000000-0000-4000-a000-000000000001','renew',repeat('5',64),jsonb_build_object('distributor_id','40000000-0000-4000-a000-000000000050','expected_version',current_version,'renewal_date',current_date::text,'note','stale'));
  if not coalesce((result->>'success')::boolean,false) or replay<>result then raise exception 'employee renewal/idempotency failed: %, %',result,replay; end if;
- if denied->>'code'<>'DISTRIBUTOR_NOT_ASSIGNED' or stale->>'code'<>'DISTRIBUTOR_CONFLICT' then raise exception 'renewal authorization/concurrency failed: %, %',denied,stale; end if;
+ if denied->>'code'<>'DISTRIBUTOR_NOT_ASSIGNED' or denied ? 'current' or stale->>'code'<>'DISTRIBUTOR_CONFLICT' then raise exception 'renewal authorization/concurrency failed: %, %',denied,stale; end if;
  if (public.distributor_renewals_due_v1('20000000-0000-4000-a000-000000000001',false,5)->>'total')::integer<1 then raise exception 'My Day renewal projection failed'; end if;
 end $$;
 

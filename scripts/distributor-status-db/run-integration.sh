@@ -36,4 +36,15 @@ import_sql="set role service_role;select public.import_distributor_status_v1('30
 run_parallel_same_operation import "$import_sql"
 psql -Atc "select case when count(*)=1 then 'ok' else 'bad' end from distributor_accounts where distributor_id='40000000-0000-4000-a000-000000000043';select case when count(*)=1 then 'ok' else 'bad' end from distributor_import_batches where operation_id='30000000-0000-4000-a000-000000000043';" | grep -qv '^bad$'
 psql -v ON_ERROR_STOP=1 -f supabase/migrations/041_distributor_mapped_status.sql
+
+# A preview-classified exact duplicate must conflict if a manual edit commits
+# before the import linearizes; it may never be silently skipped as unchanged.
+exact_version="$(psql -Atc "select version from distributor_accounts where distributor_id='40000000-0000-4000-a000-000000000001'")"
+psql -v ON_ERROR_STOP=1 -Atc "begin;update distributor_accounts set city='Exact duplicate race',version=version+1,updated_at=now() where distributor_id='40000000-0000-4000-a000-000000000001';select pg_sleep(2);commit;" >/tmp/distributor-exact-edit.out & exact_edit=$!
+sleep 0.5
+exact_rows="jsonb_build_array(jsonb_build_object('rowNumber',2,'classification','EXACT_DUPLICATE','payload',jsonb_build_object('distributor_id','40000000-0000-4000-a000-000000000001','expected_version',$exact_version,'assigned_to','20000000-0000-4000-a000-000000000002','mapping_status','pending','installation_status','done','training_status','done')))"
+exact_out="$(psql -v ON_ERROR_STOP=1 -Atc "set role service_role;select public.import_distributor_status_v1(gen_random_uuid(),'10000000-0000-4000-a000-000000000001',repeat('f',64),'exact-race.xlsx',$exact_rows);")"
+wait "$exact_edit"
+grep -q 'DISTRIBUTOR_CONFLICT' <<<"$exact_out"
+
 psql -v ON_ERROR_STOP=1 -f scripts/distributor-status-db/mapping-integration.sql

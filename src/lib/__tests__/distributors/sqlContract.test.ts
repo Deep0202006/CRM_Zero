@@ -24,6 +24,7 @@ describe("Distributor Status SQL/authority contract", () => {
     expect(sql).toMatch(/for update[\s\S]*DISTRIBUTOR_CONFLICT/);
     expect(sql).toContain("v_admin or v_row.assigned_to=p_actor_id");
     expect(sql).toContain("version=version+1");
+    expect(sql.indexOf("DISTRIBUTOR_NOT_ASSIGNED")).toBeLessThan(sql.indexOf("DISTRIBUTOR_CONFLICT','current'"));
   });
   test("manual renewal changes only canonical renewal authority", () => {
     const renewStart = sql.indexOf("if p_operation_type='renew' then");
@@ -34,7 +35,16 @@ describe("Distributor Status SQL/authority contract", () => {
   test("canonical identity rejects exact duplicates without fuzzy merging", () => { expect(baseSql).toContain("create unique index distributor_identity_unique_idx"); expect(routes).not.toMatch(/levenshtein|similarity|fuzzy/i); });
   test("employees read assigned rows and cannot directly mutate", () => { expect(baseSql).toContain("assigned_to=auth.uid()"); expect(baseSql).toMatch(/revoke insert,update,delete on public\.distributor_accounts from anon,authenticated/); });
   test("imports are bounded, staged, atomic, mapped and server-revalidated", () => { for (const token of ["jsonb_array_length(p_rows) not between 1 and 5000", "create temporary table distributor_import_stage", "INVALID_ASSIGNEE", "mapping_status", "INVALID_STATUS_COMBINATION"]) expect(sql).toContain(token); expect(sql).not.toMatch(/delete\s+from/i); });
+  test("owner-first migration remains compatible with the running pre-041 application", () => {
+    expect(sql).toContain("coalesce(p_payload->>'mapping_status','pending')");
+    expect(sql).toContain("case when p_payload ? 'mapping_status'");
+    expect(sql).toContain("case when v_payload ? 'mapping_status'");
+    expect(sql).toContain("case when v_payload ? 'mapped_at'");
+  });
+  test("imports acquire update locks in deterministic identity order", () => {
+    expect(sql).toContain("where classification in ('UPDATE','EXACT_DUPLICATE') order by (payload->>'distributor_id')::uuid");
+  });
   test("hot reads are explicit, bounded, and never poll", () => { expect(routes).not.toContain('select("*")'); expect(routes).toContain("max(50)"); expect(routes).not.toMatch(/setInterval|selfie|base64|blob/i); });
-  test("missing table, function, or mapped columns are typed as capability missing", () => { expect(fs.readFileSync(path.join(process.cwd(), "src/lib/distributors/server.ts"), "utf8")).toMatch(/42P01[\s\S]*42703[\s\S]*PGRST202[\s\S]*PGRST204/); });
+  test("missing table, function, or mapped columns are typed as capability missing", () => { expect(fs.readFileSync(path.join(process.cwd(), "src/lib/distributors/server.ts"), "utf8")).toMatch(/42P01[\s\S]*42703[\s\S]*PGRST202[\s\S]*PGRST204[\s\S]*PGRST205/); });
   test("migration cannot mutate protected or financial domains", () => { for (const table of ["receivables", "receivable_payments", "tasks", "call_logs", "field_visits", "attendance", "messages", "leads"]) expect(sql).not.toMatch(new RegExp(`(?:insert\\s+into|update|delete\\s+from)\\s+public\\.${table}\\b`, "i")); });
 });
