@@ -1,5 +1,6 @@
 import { apiError, contextFor, isReceivablesReady } from "@/lib/receivables/server";
 import { listEligibleOperationalEmployees } from "@/lib/employees/server";
+import { isDistributorCapabilityMissing } from "@/lib/distributors/server";
 
 export const dynamic = "force-dynamic";
 
@@ -19,9 +20,11 @@ export async function GET(request: Request) {
     if (receivableResult.error || paymentResult.error || activityResult.error || !receivableResult.data) return apiError(404, "RECEIVABLE_NOT_FOUND", "Receivable detail is unavailable.");
     let distributorStatus = null;
     let distributorStatusError: "CAPABILITY_MISSING" | "READ_FAILED" | null = null;
-    if (identityResult.data?.distributor_identity_key) {
+    if (identityResult.error) {
+      distributorStatusError = isDistributorCapabilityMissing(identityResult.error) ? "CAPABILITY_MISSING" : "READ_FAILED";
+    } else if (identityResult.data?.distributor_identity_key) {
       const matches = await context.service.from("distributor_accounts").select("distributor_id,renewal_date").eq("identity_key", identityResult.data.distributor_identity_key).limit(2);
-      if (matches.error) distributorStatusError = ["42P01", "42703", "PGRST202"].includes(matches.error.code ?? "") ? "CAPABILITY_MISSING" : "READ_FAILED";
+      if (matches.error) distributorStatusError = isDistributorCapabilityMissing(matches.error) ? "CAPABILITY_MISSING" : "READ_FAILED";
       else if (matches.data?.length === 1) distributorStatus = { ...matches.data[0], renewal_state: null };
     }
     return Response.json({

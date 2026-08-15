@@ -66,6 +66,8 @@ describe("Receivables production completion contracts", () => {
 
   test("optional Distributor and renewal failures remain visible without suppressing money authority", () => {
     expect(read("src/app/api/receivables/admin/route.ts")).toContain("distributor_status_error");
+    expect(read("src/app/api/receivables/admin/route.ts")).toContain("identityResult.error");
+    expect(read("src/lib/distributors/server.ts")).toContain("PGRST205");
     expect(read("src/app/admin/payments/page.tsx")).toContain("Financial detail is unaffected.");
     expect(read("src/app/api/my-day/receivables/route.ts")).toContain("renewals_error");
     expect(read("src/components/PaymentCollectionsPriorityPanel.tsx")).toContain("Payment Collection data remains authoritative.");

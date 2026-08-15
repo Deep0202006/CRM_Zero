@@ -1,9 +1,16 @@
 import { DISTRIBUTOR_IMPORT_HEADERS, parseDistributorTable } from "@/lib/distributors/import";
+import fs from "node:fs";
+import path from "node:path";
 
 const headers = [...DISTRIBUTOR_IMPORT_HEADERS];
 const valid = ["Shree Ganesh", "employee@example.com", "done", "13/08/2026", "done", "2026-08-13", "done", "2026-08-13", "active", "billed", "2026-08-13", "INV-1", "2027-08-13", "D-1"];
 
 describe("Distributor Status import", () => {
+  test("import UI ignores stale async parse completions", () => {
+    const source = fs.readFileSync(path.join(process.cwd(), "src/components/distributors/DistributorImportModal.tsx"), "utf8");
+    expect(source).toContain("parseGeneration.current += 1");
+    expect(source).toContain("generation !== parseGeneration.current");
+  });
   test("accepts mapping, renewal and independent billed/active facts", () => {
     const result = parseDistributorTable([headers, valid]);
     expect(result.invalid).toHaveLength(0);

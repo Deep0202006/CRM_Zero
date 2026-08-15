@@ -12,6 +12,7 @@ interface Preview { rows: Array<DistributorImportRow & { classification: string;
 
 export function DistributorImportModal({ open, authFetch, onClose, onImported }: { open: boolean; authFetch: (url: string, init?: RequestInit) => Promise<Response>; onClose: () => void; onImported: () => Promise<void> }) {
   const input = useRef<HTMLInputElement>(null);
+  const parseGeneration = useRef(0);
   const [file, setFile] = useState<File | null>(null);
   const [rows, setRows] = useState<DistributorImportRow[]>([]);
   const [invalid, setInvalid] = useState<Array<{ rowNumber: number; reason: string }>>([]);
@@ -19,9 +20,9 @@ export function DistributorImportModal({ open, authFetch, onClose, onImported }:
   const [operationId, setOperationId] = useState("");
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
-  function reset() { setFile(null); setRows([]); setInvalid([]); setPreview(null); setOperationId(""); setStatus(""); if (input.current) input.current.value = ""; }
+  function reset() { parseGeneration.current += 1; setFile(null); setRows([]); setInvalid([]); setPreview(null); setOperationId(""); setStatus(""); if (input.current) input.current.value = ""; }
   async function parse(fileValue: File) {
-    reset(); setFile(fileValue); setBusy(true);
+    reset(); const generation = parseGeneration.current; setFile(fileValue); setBusy(true);
     try {
       if (fileValue.size > MAX_DISTRIBUTOR_IMPORT_BYTES) throw new Error("Maximum file size is 10 MB.");
       if (!/\.(xlsx|xls|csv)$/i.test(fileValue.name)) throw new Error("Choose an XLSX, XLS, or CSV file.");
@@ -32,8 +33,9 @@ export function DistributorImportModal({ open, authFetch, onClose, onImported }:
       const response = await authFetch("/api/distributors/import", { method: "POST", body: JSON.stringify({ mode: "preview", operation_id: operation, filename: fileValue.name, rows: parsed.rows }) });
       const result = await response.json();
       if (!response.ok) throw new Error(result.message ?? "Preview unavailable.");
+      if (generation !== parseGeneration.current) return;
       setRows(parsed.rows); setInvalid(parsed.invalid); setOperationId(operation); setPreview(result); setStatus("Authoritative preview complete. Nothing has been written.");
-    } catch (cause) { setStatus(cause instanceof Error ? cause.message : "File could not be parsed."); if (input.current) input.current.value = ""; } finally { setBusy(false); }
+    } catch (cause) { if (generation === parseGeneration.current) { setStatus(cause instanceof Error ? cause.message : "File could not be parsed."); if (input.current) input.current.value = ""; } } finally { if (generation === parseGeneration.current) setBusy(false); }
   }
   async function confirm() {
     if (!preview || !file) return; setBusy(true);

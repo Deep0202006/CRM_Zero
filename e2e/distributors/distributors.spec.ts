@@ -33,11 +33,40 @@ for (const viewport of [{ name: "desktop", width: 1280, height: 900 }, { name: "
 
 test("Admin edit exposes assignment, mapping and independent status controls", async ({ page }) => {
   await mock(page); await page.route("**/api/distributors/commands", (route) => route.fulfill({ json: { success: true, record: { ...row, version: 3 } } })); await seed(page, admin, true); await page.goto("/admin/payments/distributors");
-  await page.getByText("Alpha Distributor").click(); const dialog = page.getByRole("dialog");
+  await page.getByRole("button", { name: "Edit Alpha Distributor" }).click(); const dialog = page.getByRole("dialog");
   await expect(dialog.locator('select[name="assigned_to"] option')).toHaveCount(2);
   await expect(dialog.locator('select[name="mapping_status"]')).toHaveValue("done");
   await expect(dialog.locator('input[name="mapped_at"]')).toHaveValue("2026-08-03");
   await expect(dialog).toContainText("does not create or modify a Receivable");
+});
+
+test("Admin Set Renewal sends the minimal renewal command", async ({ page }) => {
+  await mock(page); let commandBody = "";
+  await page.route("**/api/distributors/commands", async (route) => { commandBody = route.request().postData() ?? "{}"; await route.fulfill({ json: { success: true, record: { ...row, renewal_date: "2026-09-01", version: 3 } } }); });
+  await seed(page, admin, true); await page.goto("/admin/payments/distributors");
+  await page.getByRole("button", { name: "Edit Alpha Distributor" }).click(); const dialog = page.getByRole("dialog");
+  await dialog.locator('input[name="renewal_date"]').fill("2026-09-01"); await dialog.getByRole("button", { name: "Set Renewal" }).click();
+  const command = JSON.parse(commandBody) as { operation_type: string; payload: Record<string, unknown> };
+  expect(command).toMatchObject({ operation_type: "renew", payload: { distributor_id: distributorId, expected_version: 2, renewal_date: "2026-09-01" } });
+  expect(Object.keys(command.payload).sort()).toEqual(["distributor_id", "expected_version", "note", "renewal_date"]);
+});
+
+test("Admin Save Status sends the complete versioned operational command", async ({ page }) => {
+  await mock(page); let commandBody = "";
+  await page.route("**/api/distributors/commands", async (route) => { commandBody = route.request().postData() ?? "{}"; await route.fulfill({ json: { success: true, record: { ...row, activity_status: "inactive", billing_status: "not_billed", version: 3 } } }); });
+  await seed(page, admin, true); await page.goto("/admin/payments/distributors");
+  await page.getByRole("button", { name: "Edit Alpha Distributor" }).click(); const dialog = page.getByRole("dialog");
+  await dialog.locator('select[name="activity_status"]').selectOption("inactive"); await dialog.locator('select[name="billing_status"]').selectOption("not_billed");
+  await dialog.getByRole("button", { name: "Save Status" }).click();
+  const command = JSON.parse(commandBody) as { operation_type: string; payload: Record<string, unknown> };
+  expect(command.operation_type).toBe("update");
+  expect(command.payload).toMatchObject({ distributor_id: distributorId, expected_version: 2, assigned_to: employee, mapping_status: "done", activity_status: "inactive", billing_status: "not_billed" });
+});
+
+test("Admin distributor editor is keyboard reachable", async ({ page }) => {
+  await mock(page); await seed(page, admin, true); await page.goto("/admin/payments/distributors");
+  const edit = page.getByRole("button", { name: "Edit Alpha Distributor" }); await edit.focus(); await page.keyboard.press("Enter");
+  await expect(page.getByRole("dialog")).toBeVisible();
 });
 
 test("assigned employee manually updates canonical renewal with minimal versioned command", async ({ page }) => {

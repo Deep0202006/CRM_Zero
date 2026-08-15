@@ -1,6 +1,6 @@
 import { addISTDateDays } from "@/lib/dateTime";
 import { renewalState, validateStatusCombination } from "@/lib/distributors/domain";
-import { distributorListSchema } from "@/lib/distributors/validation";
+import { distributorListSchema, distributorRenewSchema } from "@/lib/distributors/validation";
 
 describe("Distributor Status domain", () => {
   test.each([["2026-08-16", "renewal_upcoming"], ["2026-08-15", "renewal_due_in_2_days"], ["2026-08-14", "renewal_due_tomorrow"], ["2026-08-13", "renewal_due_today"], ["2026-08-12", "renewal_overdue"], [null, "none"]])("derives IST renewal state for %s", (date, state) => expect(renewalState(date, "2026-08-13")).toBe(state));
@@ -16,5 +16,8 @@ describe("Distributor Status domain", () => {
     expect(distributorListSchema.safeParse({ activity: "made_up" }).success).toBe(false);
     expect(distributorListSchema.safeParse({ assignedTo: "employee-name" }).success).toBe(false);
     expect(distributorListSchema.safeParse({ mapping: "done", pageSize: "50" }).success).toBe(true);
+  });
+  test("command dates reject impossible calendar days before PostgreSQL", () => {
+    expect(distributorRenewSchema.safeParse({ distributor_id: "40000000-0000-4000-a000-000000000001", expected_version: 1, renewal_date: "2026-02-31", note: "" }).success).toBe(false);
   });
 });

@@ -1,8 +1,9 @@
 import { z } from "zod";
 import { activityStatuses, billingStatuses, installationStatuses, mappingStatuses, trainingStatuses, validateStatusCombination } from "./domain";
+import { isValidISTDateKey } from "@/lib/dateTime";
 
 const uuid = z.string().uuid();
-const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const date = z.string().refine(isValidISTDateKey, "Enter a valid calendar date.");
 const optionalDate = z.union([date, z.literal(""), z.null()]).transform((value) => value || null);
 const commonFields = {
   distributor_name: z.string().trim().min(1).max(200),

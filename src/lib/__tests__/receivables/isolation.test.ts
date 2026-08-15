@@ -19,5 +19,8 @@ describe("receivables financial boundary", () => {
     const page = read("src/app/my-day/page.tsx");
     expect(page).toContain("PaymentCollectionsPriorityPanel");
     expect(page.indexOf("<PaymentCollectionsPriorityPanel")).toBeLessThan(page.indexOf("followUpsToday.length"));
+    const panel = read("src/components/PaymentCollectionsPriorityPanel.tsx");
+    expect(panel).toContain("scheduleRollover()");
+    expect(panel).not.toContain("setInterval");
   });
 });

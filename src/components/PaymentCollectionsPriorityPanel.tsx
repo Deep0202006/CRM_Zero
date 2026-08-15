@@ -44,8 +44,12 @@ export default function PaymentCollectionsPriorityPanel() {
   useEffect(() => {
     const initial = window.setTimeout(() => void refresh(), 0);
     const visible = () => { if (document.visibilityState === "visible") void refresh(); };
-    const rollover = getISTBusinessDayBounds(getCurrentISTDate());
-    const timer = window.setTimeout(() => void refresh(), Math.max(1000, new Date(rollover.endsAt).getTime() - Date.now() + 250));
+    let timer = 0;
+    const scheduleRollover = () => {
+      const rollover = getISTBusinessDayBounds(getCurrentISTDate());
+      timer = window.setTimeout(() => { void refresh(); scheduleRollover(); }, Math.max(1000, new Date(rollover.endsAt).getTime() - Date.now() + 250));
+    };
+    scheduleRollover();
     window.addEventListener("online", refresh);
     window.addEventListener("focus", refresh);
     document.addEventListener("visibilitychange", visible);
