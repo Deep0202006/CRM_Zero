@@ -153,7 +153,7 @@ export default function FieldVisitsPage() {
     }
   };
 
-  const recoverableVisits = visits.filter((visit) => visit.user_id === currentUser?.user_id && (visit.sync_status === "pending_sync" || visit.sync_status === "sync_failed" || visit.sync_stage === "pending_visit" || visit.sync_stage === "address_required" || visit.sync_stage === "sync_failed" || visit.sync_stage === "visit_confirmed_evidence_pending" || visit.sync_stage === "visit_confirmed_link_pending"));
+  const recoverableVisits = visits.filter((visit) => visit.user_id === currentUser?.user_id && visit.sync_stage !== "review_required" && (visit.sync_status === "pending_sync" || visit.sync_status === "sync_failed" || visit.sync_stage === "pending_visit" || visit.sync_stage === "address_required" || visit.sync_stage === "sync_failed" || visit.sync_stage === "visit_confirmed_evidence_pending" || visit.sync_stage === "visit_confirmed_link_pending"));
   const recoverUnsyncedVisits = async () => {
     setRetryingVisitId("ALL");
     try {
@@ -192,16 +192,19 @@ export default function FieldVisitsPage() {
           title="My field visits"
           items={visits.map((visit) => {
             const addressRequired = visit.sync_stage === "address_required" || visit.sync_error_code === "ADDRESS_REQUIRED";
-            const retryable = !addressRequired && (visit.sync_status === "pending_sync" || visit.sync_status === "sync_failed" || visit.sync_stage === "pending_visit" || visit.sync_stage === "sync_failed" || visit.sync_stage === "visit_confirmed_evidence_pending" || visit.sync_stage === "visit_confirmed_link_pending");
+            const reviewRequired = visit.sync_stage === "review_required";
+            const retryable = !addressRequired && !reviewRequired && (visit.sync_status === "pending_sync" || visit.sync_status === "sync_failed" || visit.sync_stage === "pending_visit" || visit.sync_stage === "sync_failed" || visit.sync_stage === "visit_confirmed_evidence_pending" || visit.sync_stage === "visit_confirmed_link_pending");
             const status = visit.sync_stage === "visit_confirmed_evidence_pending"
               ? { text: "Confirmed — evidence pending", variant: "warning" as const }
               : visit.sync_stage === "visit_confirmed_link_pending"
                 ? { text: "Confirmed", variant: "success" as const }
               : visit.sync_error_code === "BUSINESS_REFERENCE_WARNING" && (visit.sync_status === "synced" || visit.sync_stage === "synced")
                 ? { text: "Confirmed", variant: "success" as const }
+              : reviewRequired
+                ? { text: visit.sync_status === "synced" ? "Confirmed — review required" : "Review required", variant: "danger" as const }
               : visit.sync_status === "synced" || visit.sync_stage === "synced"
                 ? { text: "Confirmed", variant: "success" as const }
-                : visit.sync_error_code === "ATTENDANCE_NOT_CONFIRMED" || visit.sync_error_code === "ATTENDANCE_INTEGRITY_ERROR"
+              : visit.sync_error_code === "ATTENDANCE_NOT_CONFIRMED" || visit.sync_error_code === "ATTENDANCE_INTEGRITY_ERROR"
                   ? { text: "Needs retry", variant: "danger" as const }
                   : visit.sync_error_code === "NETWORK_UNAVAILABLE"
                     ? { text: "Saved offline", variant: "warning" as const }

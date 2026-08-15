@@ -188,12 +188,13 @@ export interface LocalFieldVisit {
   segment_type?: string | null;
   follow_up_date?: string | null;
   sync_status?: 'pending_sync' | 'synced' | 'sync_failed';
-  sync_stage?: 'pending_visit' | 'address_required' | 'visit_confirmed_evidence_pending' | 'visit_confirmed_link_pending' | 'synced' | 'sync_failed';
+  sync_stage?: 'pending_visit' | 'address_required' | 'visit_confirmed_evidence_pending' | 'visit_confirmed_link_pending' | 'review_required' | 'synced' | 'sync_failed';
   confirmation_mode?: 'new' | 'recovery';
   sync_error_code?: string;
   sync_error_message?: string;
   sync_attempt_count?: number;
   last_sync_attempt_at?: string;
+  next_sync_attempt_at?: string;
   created_at: string;
   updated_at: string;
 }

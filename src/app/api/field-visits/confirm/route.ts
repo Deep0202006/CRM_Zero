@@ -64,6 +64,7 @@ type SafeCode =
 type SafeWarning = "BUSINESS_REFERENCE_WARNING" | "ATTENDANCE_LINK_PENDING" | "OPTIONAL_SCHEMA_MISMATCH";
 
 function response(status: number, code: SafeCode, message: string, extra: Record<string, unknown> = {}) {
+  if (status >= 400 && status < 500) console.warn("Field visit confirmation rejected", { status, code, reason: message });
   return Response.json({ ok: false, code, message, ...extra }, { status, headers: { "Cache-Control": "no-store" } });
 }
 

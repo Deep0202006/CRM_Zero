@@ -104,6 +104,7 @@ describe("final field visit recovery compatibility", () => {
     expect(route).toContain('code === "42501"');
     expect(route).toContain('insertError?.code === "23505"');
     expect(read("src/lib/fieldVisits/sync.ts")).toContain("NETWORK_OR_SERVER_RESPONSE_FAILED");
+    expect(route).toContain('console.warn("Field visit confirmation rejected", { status, code, reason: message })');
   });
 
   it("preserves unrelated data and every recovery trigger", () => {
