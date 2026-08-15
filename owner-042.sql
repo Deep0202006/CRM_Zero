@@ -2,11 +2,14 @@ begin;
 
 create or replace function public.distributor_renewal_metrics_v1(p_actor_id uuid,p_admin boolean)
 returns jsonb language sql stable security definer set search_path=public,pg_temp as $$
- with authorized as (
+ with actor as materialized (
+  select public.receivables_is_admin(p_actor_id) is_admin
+  from public.users where user_id=p_actor_id and is_active=true
+ ), authorized as (
   select d.renewal_date
   from public.distributor_accounts d
-  where exists(select 1 from public.users u where u.user_id=p_actor_id and u.is_active=true)
-    and ((p_admin and public.receivables_is_admin(p_actor_id)) or (not p_admin and d.assigned_to=p_actor_id))
+  cross join actor a
+  where (p_admin and a.is_admin) or (not p_admin and d.assigned_to=p_actor_id)
  ), today as (select (now() at time zone 'Asia/Kolkata')::date business_date)
  select jsonb_build_object(
   'overdue',count(*) filter(where renewal_date<business_date),
@@ -18,7 +21,10 @@ $$;
 
 create or replace function public.distributor_renewals_list_v1(p_actor_id uuid,p_admin boolean,p_filter text default 'all',p_page integer default 1,p_page_size integer default 50)
 returns jsonb language sql stable security definer set search_path=public,pg_temp as $$
- with params as (
+ with actor as materialized (
+  select public.receivables_is_admin(p_actor_id) is_admin
+  from public.users where user_id=p_actor_id and is_active=true
+ ), params as (
   select (now() at time zone 'Asia/Kolkata')::date business_date,
          greatest(1,least(coalesce(p_page,1),10000)) page_number,
          greatest(1,least(coalesce(p_page_size,50),50)) page_size
@@ -28,9 +34,9 @@ returns jsonb language sql stable security definer set search_path=public,pg_tem
          d.version,d.updated_at,p.business_date,p.page_number,p.page_size
   from public.distributor_accounts d
   join public.users u on u.user_id=d.assigned_to
+  cross join actor a
   cross join params p
-  where exists(select 1 from public.users actor where actor.user_id=p_actor_id and actor.is_active=true)
-    and ((p_admin and public.receivables_is_admin(p_actor_id)) or (not p_admin and d.assigned_to=p_actor_id))
+  where (p_admin and a.is_admin) or (not p_admin and d.assigned_to=p_actor_id)
  ), filtered as (
   select distributor_id,distributor_name,assigned_to,assigned_employee_name,renewal_date,renewal_state,version,updated_at,business_date,page_number,page_size from authorized
   where case coalesce(p_filter,'all')

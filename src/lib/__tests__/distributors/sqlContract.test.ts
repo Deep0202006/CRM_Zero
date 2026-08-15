@@ -53,6 +53,7 @@ describe("Distributor Status SQL/authority contract", () => {
     expect(renewalSql).toContain("count(*) filter(where renewal_date<business_date)");
     expect(renewalSql).toContain("greatest(1,least(coalesce(p_page_size,50),50))");
     expect(renewalSql).toContain("d.assigned_to=p_actor_id");
+    expect(renewalSql.match(/actor as materialized/g)).toHaveLength(2);
     expect(renewalSql).not.toMatch(/create\s+table|alter\s+table|create\s+index|select\s+\*/i);
   });
   test("Renewal read migration cannot mutate any business authority", () => {
