@@ -18,6 +18,9 @@
 - Unknown records are preserved instead of guessed.
 - Admin reporting is server-authoritative.
 - One business concept has one authority; cross-domain displays never become duplicate truth.
+- Define an incident as user-observed failure, expected authority, write path, read path, and acceptance invariant before implementation; unrelated policy cannot block the incident.
+- A successful important write is not certified until every authoritative reader converges for every distinct authorized role shape.
+- Never invent business policy to close a bug when the current contract already defines the requested flow.
 - Store orthogonal facts when product categories overlap; derive dashboard cards.
 - Every mutation declares an exact side-effect budget and every major screen a read budget.
 - Derived date alerts do not create generated work unless explicitly approved.
@@ -31,12 +34,14 @@
 - Team KPI validates totals, unique users, target date, and explicit attribution.
 - Privileged authorization is checked on the server; client role claims are insufficient.
 - Local migrations are evidence, never proof of production schema.
+- OWNER_SQL_IS_PURE_POSTGRESQL: every owner SQL artifact documented for Supabase SQL Editor contains PostgreSQL SQL only and no client meta-commands.
 - Automated tests, QA fixtures, and smoke tests never create dummy/test business data in live production Supabase. Production verification is read-only by default. Testing may not insert, update, or delete users, leads, calls, visits, tasks, attendance, queries, mappings, chat/messages, or other business records without the owner explicitly authorizing that exact mutation.
 - Never use “insert dummy data → test → delete dummy data” in production. Use mocks, fixtures, isolated local tests, preview environments, and read-only production reconciliation.
 
 ## CURRENT
 
 These principles are derived from current contract modules, confirmation routes, sync logic, and regression tests.
+Required main CI stays green; production releases use a clean branch, PR, required CI, merge, and exact-SHA deployment verification.
 
 ## KNOWN DEBT
 

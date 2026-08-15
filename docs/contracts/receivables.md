@@ -25,7 +25,7 @@ Receivables is the financial-critical authority for Payment Collections. Postgre
 ## AUTHORIZATION
 
 - System Administrator: all bounded reads, create/import, assignment/correction, direct confirmed payment, report verification/rejection, reversal, dispute/resolve, cancellation, export.
-- Assigned active operational employee: own bounded reads/history and Contacted, No Response, Promise to Pay, Payment Reported commands. Admin accounts are excluded from server assignee lists and rejected by the database assignment trigger.
+- Assigned active operational employee: own bounded reads/history and Contacted, No Response, Promise to Pay, Payment Reported commands. Admin accounts are excluded through the same canonical employee-directory authority reused by Distributor Status and import, and are rejected by the database assignment trigger.
 - Other employees: no read or mutation. Admin read capability does not make Admin the assigned operational actor.
 - Browser roles, user IDs, and assignment claims are never authority. Browser clients have no financial INSERT/UPDATE/DELETE grants.
 
@@ -47,7 +47,7 @@ Cancelled balances are excluded from collectible outstanding, overdue, and aging
 
 Receivables never writes Tasks, Call Logs, Field Visits, `lead_payment_details`, Pipeline stages, generic Follow-ups, or Team Chat/push tables. Field Visit `payment_follow_up` and Pipeline Payment remain non-authoritative legacy mechanisms. My Day uses `/api/my-day/receivables` and a dedicated priority panel before ordinary queues.
 
-Distributor Status is an adjacent operational authority. A resolved Receivable may display its canonical distributor renewal date/state, but Receivables does not own or duplicate that date. Distributor `billing_status=billed` never creates or confirms a Receivable or Payment.
+Distributor Status is an adjacent operational authority. A resolved Receivable may display its canonical distributor renewal date/state, but Receivables does not own or duplicate that date. An unavailable optional Distributor projection is reported separately and cannot suppress authoritative financial detail or My Day collections. Distributor `billing_status=billed` never creates or confirms a Receivable or Payment.
 
 ## RELEASE
 

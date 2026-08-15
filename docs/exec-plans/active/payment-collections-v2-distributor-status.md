@@ -1,70 +1,63 @@
-# Execution Plan: Payment Collections V2 — Distributor Status and Renewals
+# Execution Plan: Distributor Status mapped and Payment Collection certification
 
 ## Goal
 
-Add a canonical distributor lifecycle authority beneath Payment Collections, including orthogonal operational status, renewal history/reminders, bounded Admin and employee read models, safe manual/import mutations, and Receivables display integration.
+Certify the current Payment Collection and Distributor Status implementation from production main, repair only proven defects, add explicit Mapped authority, and close renewal/manual/route/read-budget contracts without crossing financial authority.
 
 ## Non-goals
 
-- No production migration execution or synthetic production data.
-- No financial, Pipeline, Task, Call, Field Visit, Attendance, or Chat mutation.
-- No fuzzy identity merge, customer messaging, cron reminder rows, or subscription engine.
+- No production migration execution, synthetic production data, financial redesign, fuzzy identity, reminder rows, or polling.
+- No Lead, Pipeline, Task, Call, Field Visit, Attendance, Chat, Receivable, or Payment mutation from Distributor commands.
 
 ## Current state
 
-Receivables owns financial authority and has hardened import/idempotency primitives. Distributor leads and Receivables carry references but no verified distributor-level lifecycle/renewal aggregate exists. Migration numbering ends at 038; 039 is reserved for this additive feature.
+Production catalog proves `distributor_accounts` and the 039/040 functions exist, with zero distributor rows and no mapping-equivalent column. Current source hardcodes Distributor readiness, duplicates employee selection logic, and exposes an employee renewal editor whose command route and database function are Admin-only.
 
 ## Invariants
 
-- One internal distributor ID owns current operational and renewal facts.
-- Receivables remains the only payment/balance authority.
-- Status dimensions are independent facts with database validation.
-- Renewal reminders are derived from PostgreSQL DATE using IST semantics.
-- Mutations are Admin-only, idempotent, expected-version checked, audited, and isolated.
-- Reads are explicit, paginated, non-binary, and non-polling.
+- Distributor operational facts remain in `distributor_accounts`; Receivables remains sole money authority.
+- Existing Active/Inactive rows remain valid without fabricated mapping; historical mapping stays NULL/unknown.
+- Renewal is one canonical `distributor_accounts.renewal_date` fact, visible in Payment Collection and My Day.
+- Every list is explicit and bounded; one metrics request serves all cards; no polling.
+- Stable operation IDs, expected versions, row locks, receipts, and immutable events protect retries/concurrency.
 
 ## Affected domains
 
-Primary: distributor-status. Integrations: Payment Collections navigation/read models and My Day. Protected: Receivables money/payments, Pipeline, Tasks, Calls, Field Visits, Attendance, and Chat.
+Distributor Status, Receivables read integration, renewal/My Day, shared employee authority, route/OS contracts. Protected business domains remain read/write isolated.
 
 ## Implementation steps
 
-1. Audit identity, schema, routes, imports, navigation, My Day, and IST helpers once.
-2. Freeze distributor-status contract and exact additive migration/RLS/RPC design.
-3. Add domain types, validation, renewal resolver, server authorization, bounded reads, and versioned commands.
-4. Add Admin dashboard/manual/import/detail/history and employee assigned/read-reminder surfaces.
-5. Integrate renewal projection into Payment Collections and existing My Day response.
-6. Add PostgreSQL, unit, import, concurrency, isolation, scale, and responsive E2E coverage.
-7. Evolve only relevant OS contracts/guards, run two adversarial passes, and complete R3 gates.
-8. Commit, open PR, obtain CI/preview, then stop for owner migration.
+1. Complete current-main route, readiness, employee, financial, renewal, import, RLS, concurrency, and recent-commit forensics.
+2. Add review-only migration 041 with nullable mapping truth, mapped metrics, command/import validation, and assigned-employee renewal authority.
+3. Update canonical types/validation/import/manual/list/card UI and share one eligible-employee server capability.
+4. Add critical route matrix, empty/error distinction, write-to-read closure, financial/protected write-set, and resource-budget guards.
+5. Expand disposable PostgreSQL coverage for RLS, stale writes, import, isolation, and 10k query plans.
+6. Run the full R3 ladder, adversarial review, PR, CI, and Preview; stop only at owner SQL application.
 
 ## Verification
 
-Focused domain/import/IST/security/isolation tests; exact PostgreSQL 17.6 migration/RLS/concurrency/scale tests; desktop/tablet/mobile E2E; Jest; typecheck; lint; build; harness; CI; Vercel Preview.
+Focused domain/import/route/renewal/firewall tests; disposable PostgreSQL fresh apply; Distributor and Receivables Playwright; Jest, typecheck, lint, build, harness, required CI, Vercel Preview, and read-only production smoke after owner application/deployment.
 
 ## Production safety
 
-- [x] Production mutation is not authorized.
-- [x] Schema/RLS source changes are authorized; execution is owner-only.
-- [ ] Read-only production compatibility audit completed where needed.
-- [x] Secrets and production connections excluded from CI/local tests.
+- [x] Production mutation is not authorized and will not be used.
+- [x] Schema source changes are authorized; production execution is owner-only.
+- [x] Read-only production schema/count audit completed.
+- [x] Secrets and production connections are excluded from CI/local tests.
 
 ## Rollback
 
-Application remains fail-closed until schema readiness is enabled. Roll back application deployment if needed; preserve additive distributor/history rows. Database rollback requires owner review and must not delete business history.
+Before owner application, abandon/revert the PR. After additive migration, application rollback leaves nullable unused columns and compatible functions; no business data reversal or deletion is required.
 
 ## Decision log
 
-- 2026-08-13: R3; additive migration 039 source only.
-- 2026-08-13: Distributor lifecycle owns renewal and operational status; Receivables only links/reads.
-- 2026-08-13: Derived renewal reminders; no generated work rows or polling.
+- 2026-08-14: Production has zero Distributor Status rows, 039/040 behavior, and no mapping authority. Migration 041 is required; no backfill is permitted.
+- 2026-08-14: Existing installation/training activity prerequisites remain unchanged. Mapped is an overlapping projection and does not gate historical Active/Inactive facts.
 
 ## Progress
 
-- [x] Branch, R3 manifest, and active plan created.
-- [x] Focused audit and contract freeze.
-- [x] Implementation and focused application verification.
-- [x] Data/authority and product/performance adversarial source passes; local P0/P1=0.
-- [ ] Disposable PostgreSQL 17.6 runtime, PR CI/Preview, and owner handoff.
-
-Local evidence: 18 focused tests, 140 related tests, 465 full Jest tests, 4 Chromium responsive flows, typecheck, lint (0 errors), build, scope, invariant guard, docs, and R3 harness pass. PostgreSQL/Docker are unavailable locally; exact fresh-apply, RLS, atomic import, concurrency, isolation, EXPLAIN, and 10,000-row runtime suite is wired into CI and remains mandatory.
+- [x] Current-main and read-only production schema/count audit complete.
+- [x] Recent regression, route, readiness, employee authority, Payment, renewal, and import forensics complete.
+- [x] Migration/application/tests implemented and specialist findings repaired.
+- [x] Full R3 gates, PR #40, CI, and Vercel Preview complete at `25ee6270c258864e55ceb04bbdf31806b20da75a`.
+- [ ] Owner migration and production deployment complete.

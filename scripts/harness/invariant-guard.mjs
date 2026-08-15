@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { extname, resolve } from "node:path";
 import { baselineRef, changedPaths, git, root } from "./common.mjs";
 
@@ -85,6 +85,19 @@ for (const migration of changedPaths().filter((file) => file.startsWith("supabas
 }
 requireInvariant(existsSync(resolve(root, "src/lib/__tests__/pipeline/pipelineHardeningMigration.test.ts")), "Pipeline cross-domain mutation assertions are required");
 requireInvariant(existsSync(resolve(root, "docs/contracts/RESOURCE_BUDGET.md")), "hot-query changes require the Resource Budget contract");
+const ownerSqlFiles = [
+  ...readdirSync(root).filter((file) => /^owner-.*\.sql$/i.test(file)),
+  ...requested.filter((file) => /^owner-.*\.sql$/i.test(file.replaceAll("\\", "/").split("/").at(-1) ?? "")),
+];
+for (const ownerSqlFile of ownerSqlFiles) {
+  const ownerSql = readFileSync(resolve(root, ownerSqlFile), "utf8");
+  requireInvariant(!/^\s*\\/m.test(ownerSql), `${ownerSqlFile} must be pure PostgreSQL for Supabase SQL Editor (OWNER_SQL_IS_PURE_POSTGRESQL)`);
+}
+const normalizeSqlArtifact = (sql) => sql.replace(/\r\n/g, "\n").trimEnd();
+requireInvariant(
+  normalizeSqlArtifact(readFileSync(resolve(root, "owner-041.sql"), "utf8")) === normalizeSqlArtifact(readFileSync(resolve(root, "supabase/migrations/041_distributor_mapped_status.sql"), "utf8")),
+  "owner-041.sql must remain semantically identical to migration 041"
+);
 const attendanceAuthority = readFileSync(resolve(root, "src/lib/attendance/authority.ts"), "utf8");
 const adminAttendance = readFileSync(resolve(root, "src/app/api/admin/attendance/route.ts"), "utf8");
 const teamKpiAggregation = readFileSync(resolve(root, "src/lib/teamKpi/aggregate.ts"), "utf8");
@@ -98,5 +111,14 @@ requireInvariant(attendanceQueue.includes("if (!shouldAttemptSyncQueueItem(item)
 requireInvariant(attendanceQueue.includes("withSyncQueueBrowserLock(() => confirmQueuedAttendanceInternal(attendanceId))") && attendanceQueue.includes("activeSyncQueueRun = withSyncQueueBrowserLock"), "Attendance direct and background confirmation must serialize across tabs");
 requireInvariant(authContext.indexOf('authority.mode !== "office_auto"') < authContext.indexOf("saveAttendanceWithEvidence(newRecord, null)"), "office auto-attendance requires server-authoritative mode");
 requireInvariant(attendancePage.includes("setAuthoritativeMode(result.mode)") && attendancePage.includes('authoritativeMode === "field_selfie"'), "online Attendance evidence mode must come from server authority");
+const criticalRoutes = ["src/app/admin/payments/page.tsx", "src/app/admin/payments/distributors/page.tsx", "src/app/payments/page.tsx", "src/app/payments/distributors/page.tsx"];
+for (const route of criticalRoutes) requireInvariant(existsSync(resolve(root, route)), `critical route missing: ${route}`);
+const navigation = readFileSync(resolve(root, "src/components/DashboardLayout.tsx"), "utf8");
+for (const href of ["/admin/payments", "/payments", "/admin/payments/distributors", "/payments/distributors"]) requireInvariant(navigation.includes(href), `critical navigation target missing: ${href}`);
+const distributorMetricsRoute = readFileSync(resolve(root, "src/app/api/distributors/metrics/route.ts"), "utf8");
+const receivablesAdminRoute = readFileSync(resolve(root, "src/app/api/receivables/admin/route.ts"), "utf8");
+requireInvariant((distributorMetricsRoute.match(/distributor_status_metrics_v1/g) ?? []).length === 1, "Distributor cards must use one metrics RPC");
+requireInvariant(distributorMetricsRoute.includes("listEligibleOperationalEmployees") && receivablesAdminRoute.includes("listEligibleOperationalEmployees"), "Payment and Distributor employee selectors must share canonical authority");
+requireInvariant(!distributorMetricsRoute.includes("distributorReady") && !readFileSync(resolve(root, "src/app/api/distributors/route.ts"), "utf8").includes("distributorReady"), "Distributor empty state cannot depend on a hardcoded readiness flag");
 if (failed) process.exit(1);
 console.log(`Invariant guard passed (${files.length} executable changed files scanned differentially).`);

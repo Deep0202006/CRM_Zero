@@ -1,19 +1,29 @@
 {
-  "verified_at": "2026-08-14T12:57:40Z",
-  "production_main_sha": "906b9ad375e88f0dbccc06017f7ebae667634fb7",
+  "verified_at": "2026-08-15T05:24:16Z",
+  "production_main_sha": "51613cdcdeeb9845f74e808304107d364efdce62",
   "vercel": {
-    "deployment_id": "dpl_Bb5KQFvnEg7zgKYhg6Jt8nnwgbUM",
+    "deployment_id": "dpl_DsiDAvuMtUMCt8vXxz7TbyRrA2Bb",
     "state": "READY",
     "target": "production",
-    "sha": "906b9ad375e88f0dbccc06017f7ebae667634fb7"
+    "sha": "51613cdcdeeb9845f74e808304107d364efdce62"
   },
   "last_applied_owner_migration": null,
   "migration_history_note": "Not verified: remote migration history is empty and must not be inferred from local files.",
   "domain_readiness": {
-    "attendance": "DEPLOYED_LIVE_P0_TERMINAL_RETRY_REPAIR_IN_PROGRESS"
+    "attendance": "COMPLETE_NATURALLY_LIVE_CERTIFIED"
   },
-  "open_incidents": [
-    "Natural traffic on SHA 906b9ad produced 7 successful confirms and 10 LOCATION_REQUIRED terminal 400s from two operation IDs; each terminal item replayed five times."
-  ],
+  "attendance_live_certification": {
+    "business_date": "2026-08-15",
+    "requests_2xx": 5,
+    "unique_authoritative_rows": 4,
+    "idempotent_replays": 1,
+    "natural_role_modes": ["field_selfie", "office_auto"],
+    "employee_read_closure": "PASS",
+    "admin_team_attendance_closure": "PASS",
+    "team_kpi_closure": "PASS",
+    "duplicate_rows": 0,
+    "dummy_production_rows": 0
+  },
+  "open_incidents": [],
   "resource_budget_incidents": []
 }

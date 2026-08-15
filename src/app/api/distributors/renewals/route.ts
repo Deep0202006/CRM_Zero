@@ -1,3 +1,13 @@
-import { apiError,contextFor,distributorReady } from "@/lib/distributors/server";
-export const dynamic="force-dynamic";
-export async function GET(request:Request){if(!distributorReady())return Response.json({enabled:false,total:0,rows:[]});const context=await contextFor(request);if(!context)return apiError(401,"AUTH_REQUIRED","Sign in again.");const {searchParams}=new URL(request.url);const limit=parseInt(searchParams.get("limit")||"50",10);const {data,error}=await context.service.rpc("distributor_renewals_due_v1",{p_actor_id:context.userId,p_admin:context.isAdmin,p_limit:limit});if(error)return apiError(503,"READ_FAILED","Renewal reminders could not be loaded.");return Response.json({enabled:true,...data})}
+import { apiError, contextFor, distributorReadError } from "@/lib/distributors/server";
+
+export const dynamic = "force-dynamic";
+
+export async function GET(request: Request) {
+  const context = await contextFor(request);
+  if (!context) return apiError(401, "AUTH_REQUIRED", "Sign in again.");
+  const rawLimit = Number.parseInt(new URL(request.url).searchParams.get("limit") ?? "50", 10);
+  const limit = Number.isFinite(rawLimit) ? Math.max(1, Math.min(rawLimit, 50)) : 50;
+  const { data, error } = await context.service.rpc("distributor_renewals_due_v1", { p_actor_id: context.userId, p_admin: context.isAdmin, p_limit: limit });
+  if (error) return distributorReadError(error, "Renewal reminders could not be loaded.");
+  return Response.json({ enabled: true, ...data });
+}

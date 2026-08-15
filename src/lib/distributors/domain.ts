@@ -2,6 +2,7 @@ import { isValidISTDateKey } from "@/lib/dateTime";
 
 export const installationStatuses = ["pending", "done"] as const;
 export const trainingStatuses = ["pending", "done"] as const;
+export const mappingStatuses = ["pending", "done"] as const;
 export const activityStatuses = ["not_applicable", "active", "inactive"] as const;
 export const billingStatuses = ["not_billed", "billed"] as const;
 export type RenewalState = "renewal_due_in_2_days" | "renewal_due_tomorrow" | "renewal_due_today" | "renewal_overdue" | "renewal_upcoming" | "none";
@@ -21,8 +22,10 @@ export function renewalState(renewalDate: string | null, today: string): Renewal
   return "renewal_upcoming";
 }
 
-export function validateStatusCombination(input: { installation_status: string; training_status: string; activity_status: string }) {
+export function validateStatusCombination(input: { installation_status: string; training_status: string; mapping_status?: string | null; mapped_at?: string | null; activity_status: string }) {
   if (input.installation_status !== "done" && input.training_status === "done") return "Training cannot be completed before installation.";
+  if (input.mapping_status === "done" && (input.installation_status !== "done" || input.training_status !== "done")) return "Mapping cannot be completed before installation and training.";
+  if (input.mapping_status !== "done" && input.mapped_at) return "Mapped Date requires Mapping Status done.";
   if ((input.installation_status !== "done" || input.training_status !== "done") && input.activity_status !== "not_applicable") return "Activity must remain not applicable until installation and training are complete.";
   return null;
 }

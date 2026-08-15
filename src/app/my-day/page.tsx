@@ -34,7 +34,6 @@ import PaymentCollectionsPriorityPanel from "@/components/PaymentCollectionsPrio
 interface WeeklyDigestTaskPerformance { assigned_to: string; completed_count: number; total_count: number; }
 interface WeeklyDigest { week_start: string; data: { stuck_leads: { id: string; name: string; status: string; days_in_stage: number; assigned_to: string }[]; task_performance: WeeklyDigestTaskPerformance[]; upcoming_renewals: { id: string; name: string; renewal_date: string }[]; }; }
 interface DailySummary { genuine_calls_today: number; followup_calls_today: number; confirmed_genuine_call_ids: string[]; confirmed_followup_call_ids: string[]; normal_tasks_completed_today: number; followup_tasks_completed_today: number; total_tasks_completed_today: number; pending_followups: number; unique_completed_work: number; generated_at: string; }
-interface RenewalReminder { distributor_id: string; distributor_name: string; renewal_date: string; renewal_state: string; }
 
 export default function MyDayPage() {
   const { currentUser, capabilities, hasOnboarding, hasSupport, isFieldStaff, isAdmin } = useAuth();
@@ -59,24 +58,6 @@ export default function MyDayPage() {
   const [localFollowupCallsToday, setLocalFollowupCallsToday] = useState(0);
   const [paymentFollowUps, setPaymentFollowUps] = useState<PaymentFollowUpIdentity[]>([]);
   const confirmedPaymentFollowUps = useRef<{ date: string; rows: PaymentFollowUpIdentity[] }>({ date: "", rows: [] });
-  const [renewalReminders, setRenewalReminders] = useState<{ total: number; rows: RenewalReminder[] }>({ total: 0, rows: [] });
-  
-  const refreshRenewals = useCallback(async () => {
-    if (!currentUser || !navigator.onLine || !isSupabaseConfigured) return;
-    const { data } = await supabase.auth.getSession();
-    if (!data.session?.access_token) return;
-    try {
-      const response = await fetch("/api/distributors/renewals", { headers: { Authorization: `Bearer ${data.session.access_token}` }, cache: "no-store" });
-      if (response.ok) {
-        const result = await response.json();
-        if (result.enabled) setRenewalReminders({ total: result.total || 0, rows: result.rows || [] });
-      }
-    } catch (e) {
-      console.error("Renewal refresh failed:", e);
-    }
-  }, [currentUser]);
-
-  useEffect(() => { void refreshRenewals(); }, [refreshRenewals]);
 
   const refreshDailySummary = useCallback(async () => {
     if (!currentUser) return;
@@ -494,36 +475,6 @@ export default function MyDayPage() {
 
       <PaymentCollectionsPriorityPanel />
 
-      {renewalReminders.total > 0 && (
-        <section className="mb-4 rounded-[var(--radius-lg)] border border-blue-300 bg-blue-50 p-4 shadow-[var(--shadow-raised)]" aria-labelledby="renewals-title">
-          <div className="flex items-start gap-3">
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--radius-md)] bg-white text-blue-700"><Bell size={17} /></span>
-            <div className="min-w-0 flex-1">
-              <h2 id="renewals-title" className="text-[14px] font-semibold text-blue-950">
-                Actionable Renewals ({renewalReminders.total})
-              </h2>
-              <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                {renewalReminders.rows.map((row) => (
-                  <article key={row.distributor_id} className="rounded-[var(--radius-md)] border border-blue-200 bg-white p-3 text-[12px] text-[var(--text-secondary)]">
-                    <p className="font-semibold text-[var(--text-primary)]">{row.distributor_name}</p>
-                    <p className="mt-1">Date: {row.renewal_date}</p>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      <Chip variant={row.renewal_state === "renewal_overdue" ? "danger" : "warning"} size="sm">
-                        {row.renewal_state.replace("renewal_", "").replace("_", " ")}
-                      </Chip>
-                    </div>
-                  </article>
-                ))}
-              </div>
-              <div className="mt-3">
-                <Link href="/payments/renewals" className="text-sm font-semibold text-blue-700 hover:underline">
-                  View all renewals &rarr;
-                </Link>
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
 
       {paymentFollowUps.length > 0 && (
         <section className="mb-4 rounded-[var(--radius-lg)] border border-amber-300 bg-amber-50 p-4 shadow-[var(--shadow-raised)]" aria-labelledby="payment-followups-title">
