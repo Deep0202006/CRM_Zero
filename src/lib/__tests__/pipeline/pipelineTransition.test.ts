@@ -3,10 +3,17 @@ import { isActiveSyncQueueItem, isLegacyPipelineStatusMutation, LEGACY_PIPELINE_
 import { pendingStateFromQueue } from "../../pipeline/repository";
 import fs from "node:fs";
 import path from "node:path";
+import { ALLOWED_TRANSITIONS, PIPELINE_STAGES } from "../../pipelineStages";
 
 const command: PipelineTransitionCommand = { operation_id: "operation", lead_id: "lead", expected_stage: "Contacted", target_stage: "Interested", actor_id: "owner", created_at: "2026-08-10T00:00:00Z" };
 
 describe("Pipeline semantic transitions", () => {
+  test.each(["Retailer", "Distributor"] as const)("%s stage graph accepts every declared agent edge and rejects every undeclared edge", (segment) => {
+    for (const from of PIPELINE_STAGES) for (const to of PIPELINE_STAGES) {
+      const declared = ALLOWED_TRANSITIONS.some((edge) => edge.from === from && edge.to === to && edge.allowedBy === "agent" && (!edge.segment || edge.segment === segment));
+      expect(canEmployeeTransition(from, to, segment)).toBe(declared);
+    }
+  });
   test("only assigned user may perform an employee transition, including Admin", () => {
     expect(() => assertOwnerTransition(command, "owner", "Retailer")).not.toThrow();
     expect(() => assertOwnerTransition({ ...command, actor_id: "same-segment-user" }, "owner")).toThrow("PIPELINE_NOT_ASSIGNED");

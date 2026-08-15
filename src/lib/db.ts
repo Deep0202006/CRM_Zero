@@ -3,6 +3,8 @@ import { LeadSegment, LeadStatus } from "./validation";
 import { supabase, isSupabaseConfigured } from "./supabaseClient";
 import { ATTENDANCE_QUEUE_SCHEMA_VERSION, prepareSyncPayload, serializeAttendanceQueuePayload } from "./syncPayload";
 import { isActiveSyncQueueItem, isLegacyPipelineStatusMutation, LEGACY_PIPELINE_STATUS_ERROR, preserveLegacyNonStatusUpdate } from "./pipeline/legacyQueue";
+import { sendPipelineCreate } from "./pipeline/createClient";
+import { PIPELINE_CREATE_QUEUE_TABLE, type PipelineCreateCommand } from "./pipeline/contract";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // INTERFACES — base system
@@ -939,6 +941,84 @@ async function confirmAttendance(item: SyncQueueItem, accessToken: string): Prom
   return result.attendance;
 }
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+export function pipelineCreateCommandFromQueue(item: SyncQueueItem, actorId: string): PipelineCreateCommand | null {
+  const data = toDynamicRow(item.data);
+  const leadId = typeof data.lead_id === "string" && UUID_PATTERN.test(data.lead_id) ? data.lead_id : null;
+  const operationId = item.table_name === PIPELINE_CREATE_QUEUE_TABLE && typeof data.operation_id === "string" && UUID_PATTERN.test(data.operation_id)
+    ? data.operation_id
+    : UUID_PATTERN.test(item.idempotency_key) ? item.idempotency_key : leadId;
+  if (!leadId || !operationId) return null;
+  const segment = data.segment_type;
+  if (segment !== "Retailer" && segment !== "Distributor") return null;
+  const businessName = typeof data.business_name === "string" ? data.business_name.trim() : "";
+  const contactPerson = typeof data.contact_person === "string" ? data.contact_person.trim() : "";
+  const phone = typeof data.phone === "string" ? data.phone.trim() : "";
+  if (!businessName || !contactPerson || !phone) return null;
+  return {
+    operation_id: operationId,
+    lead_id: leadId,
+    actor_id: actorId,
+    business_name: businessName,
+    contact_person: contactPerson,
+    phone,
+    segment_type: segment,
+    lead_source: typeof data.lead_source === "string" && data.lead_source.trim() ? data.lead_source.trim() : "Unknown",
+    area: typeof data.area === "string" && data.area.trim() ? data.area.trim() : null,
+    created_at: typeof data.created_at === "string" && Number.isFinite(Date.parse(data.created_at)) ? data.created_at : item.timestamp,
+  };
+}
+
+async function confirmQueuedPipelineCreate(item: SyncQueueItem, actorId: string, accessToken: string): Promise<void> {
+  const command = pipelineCreateCommandFromQueue(item, actorId);
+  if (!command) {
+    await db.sync_queue.update(item.id!, {
+      last_error: "PIPELINE_INVALID_CREATE",
+      recovery_state: "review_required",
+      recovery_reason: "UNSUPPORTED_PIPELINE_CREATE_PAYLOAD",
+      recovery_marked_at: new Date().toISOString(),
+      next_retry_at: undefined,
+    });
+    return;
+  }
+  const result = await sendPipelineCreate(command, accessToken);
+  if (result.status === "confirmed") {
+    await db.transaction("rw", [db.leads, db.sync_queue], async () => {
+      await db.leads.put(result.lead);
+      await db.sync_queue.delete(item.id!);
+    });
+    return;
+  }
+  if (result.status === "duplicate") await db.leads.put(result.existing);
+  if (result.status === "duplicate" || result.status === "rejected") {
+    await db.sync_queue.update(item.id!, {
+      last_error: result.code,
+      recovery_state: "review_required",
+      recovery_reason: result.code,
+      recovery_marked_at: new Date().toISOString(),
+      next_retry_at: undefined,
+    });
+    return;
+  }
+  const retryCount = (item.retry_count ?? 0) + 1;
+  if (retryCount >= 8) {
+    await db.sync_queue.update(item.id!, {
+      retry_count: retryCount,
+      last_error: "PIPELINE_CREATE_RETRY_EXHAUSTED",
+      recovery_state: "review_required",
+      recovery_reason: result.code,
+      recovery_marked_at: new Date().toISOString(),
+      next_retry_at: undefined,
+    });
+    return;
+  }
+  await db.sync_queue.update(item.id!, {
+    retry_count: retryCount,
+    last_error: result.code,
+    next_retry_at: new Date(Date.now() + syncRetryDelayMs(retryCount)).toISOString(),
+  });
+}
+
 async function acknowledgeAttendanceQueueItem(item: SyncQueueItem, confirmed: Record<string, unknown>): Promise<void> {
   const submittedId = String(toDynamicRow(item.data).attendance_id ?? "");
   const canonicalId = String(confirmed.attendance_id ?? "");
@@ -1099,6 +1179,13 @@ async function processSyncQueueInternal(): Promise<void> {
     // any legacy queue item intact for recovery, but never replay its browser
     // Supabase insert through this generic writer.
     if (item.table_name === "field_visits") continue;
+
+    // Current semantic commands and previous generic durable Lead INSERTs use
+    // the same server authority. Direct browser insertion is forbidden.
+    if ((item.table_name === PIPELINE_CREATE_QUEUE_TABLE || item.table_name === "leads") && item.action === "INSERT") {
+      await confirmQueuedPipelineCreate(item, authenticatedUserId, accessToken);
+      continue;
+    }
 
     // Attendance inserts, including legacy queued data URLs, converge through
     // the stable-ID server confirmation route. Generic Supabase insert is forbidden.
@@ -1344,7 +1431,6 @@ async function pullDownSyncInternal() {
       "users",
       "capabilities",
       "user_capabilities",
-      "leads",
       "client_queries",
       "mappings",
       "mapping_requests",

@@ -12,6 +12,21 @@ export interface PipelineTransitionCommand {
   created_at: string;
 }
 
+export interface PipelineCreateCommand {
+  operation_id: string;
+  lead_id: string;
+  actor_id: string;
+  business_name: string;
+  contact_person: string;
+  phone: string;
+  segment_type: PipelineSegment;
+  lead_source: string;
+  area?: string | null;
+  created_at: string;
+}
+
+export type ExistingPipelineLead = PipelineLeadView;
+
 export interface PipelineLeadView {
   lead_id: string;
   business_name: string;
@@ -29,6 +44,7 @@ export interface PipelineLeadView {
 }
 
 export const PIPELINE_TRANSITION_QUEUE_TABLE = "pipeline_transition_commands";
+export const PIPELINE_CREATE_QUEUE_TABLE = "pipeline_create_commands";
 
 export function isPipelineStage(value: unknown): value is PipelineStage {
   return typeof value === "string" && (PIPELINE_STAGES as readonly string[]).includes(value);

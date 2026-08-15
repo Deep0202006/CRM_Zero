@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { PipelineLeadView, PipelineSegment, PipelineTransitionCommand } from "@/lib/pipeline/contract";
+import type { PipelineCreateCommand, PipelineLeadView, PipelineSegment, PipelineTransitionCommand } from "@/lib/pipeline/contract";
 import { isPipelineStage } from "@/lib/pipeline/contract";
 import type { ConfirmedPipelineOperation } from "@/lib/pipeline/legacyRecovery";
 
@@ -47,7 +47,7 @@ export async function readAuthorizedPipeline(context: PipelineServerContext, pag
     : { data: [], error: null };
   if (ownerError) throw ownerError;
   const names = new Map((owners ?? []).map((owner) => [owner.user_id, owner.name]));
-  return { leads: (leads ?? []).filter((lead) => isPipelineStage(lead.status)).map((lead) => ({ ...lead, owner_name: names.get(lead.assigned_to) ?? "Unassigned" })) as PipelineLeadView[], total: count ?? 0 };
+  return { leads: (leads ?? []).map((lead) => ({ ...lead, owner_name: names.get(lead.assigned_to) ?? "Unassigned" })) as PipelineLeadView[], total: count ?? 0 };
 }
 
 export async function readOwnedPipelineOperationEvidence(context: PipelineServerContext, leads: PipelineLeadView[]): Promise<ConfirmedPipelineOperation[]> {
@@ -74,4 +74,20 @@ export function validateTransitionCommand(value: unknown): value is PipelineTran
   if (!value || typeof value !== "object") return false;
   const command = value as Record<string, unknown>;
   return typeof command.operation_id === "string" && typeof command.lead_id === "string" && typeof command.actor_id === "string" && typeof command.created_at === "string" && isPipelineStage(command.expected_stage) && isPipelineStage(command.target_stage);
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+export function validateCreateCommand(value: unknown): value is PipelineCreateCommand {
+  if (!value || typeof value !== "object") return false;
+  const command = value as Record<string, unknown>;
+  return typeof command.operation_id === "string" && UUID.test(command.operation_id)
+    && typeof command.lead_id === "string" && UUID.test(command.lead_id)
+    && typeof command.actor_id === "string" && UUID.test(command.actor_id)
+    && typeof command.business_name === "string" && command.business_name.trim().length > 0 && command.business_name.length <= 240
+    && typeof command.contact_person === "string" && command.contact_person.trim().length > 0 && command.contact_person.length <= 240
+    && typeof command.phone === "string" && command.phone.trim().length > 0 && command.phone.length <= 40
+    && (command.segment_type === "Retailer" || command.segment_type === "Distributor")
+    && typeof command.lead_source === "string" && command.lead_source.trim().length > 0 && command.lead_source.length <= 120
+    && (command.area === undefined || command.area === null || (typeof command.area === "string" && command.area.length <= 240))
+    && typeof command.created_at === "string" && Number.isFinite(Date.parse(command.created_at));
 }

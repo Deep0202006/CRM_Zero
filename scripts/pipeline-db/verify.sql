@@ -34,7 +34,7 @@ select case when count(*)=1 then 'system-audit-ok' else 'bad' end from public.pi
 -- Disposable scale fixture: 10,000 rows still return a stable bounded page.
 insert into public.leads(lead_id,business_name,contact_person,phone,segment_type,status,assigned_to,created_at)
 select ('50000000-0000-4000-a000-' || lpad(i::text,12,'0'))::uuid, 'Scale '||i, 'Person', i::text,
-       case when i%2=0 then 'Retailer'::public.segment_type else 'Distributor'::public.segment_type end,
+       case when i%2=0 then 'Retailer'::public.lead_segment else 'Distributor'::public.lead_segment end,
        'New', '10000000-0000-4000-a000-000000000001', now()-(i||' seconds')::interval
 from generate_series(1,10000) i;
 do $$ begin

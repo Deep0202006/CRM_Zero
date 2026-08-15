@@ -2,7 +2,7 @@ import { db, type LocalLead, type SyncQueueItem } from "../db";
 import Dexie from "dexie";
 import { supabase } from "../supabaseClient";
 import { mergeAuthoritativePipeline, type PendingLeadCreation } from "./authority";
-import { PIPELINE_TRANSITION_QUEUE_TABLE, type PipelineLeadView, type PipelineSegment, type PipelineTransitionCommand } from "./contract";
+import { PIPELINE_CREATE_QUEUE_TABLE, PIPELINE_TRANSITION_QUEUE_TABLE, type PipelineCreateCommand, type PipelineLeadView, type PipelineSegment, type PipelineTransitionCommand } from "./contract";
 import { isLegacyPipelineStatusMutation } from "./legacyQueue";
 import { recoverOwnedLegacyPipelineStages } from "./legacyRecoveryRuntime";
 import type { ConfirmedPipelineOperation } from "./legacyRecovery";
@@ -16,7 +16,7 @@ export interface PipelinePendingState {
 export interface PipelineSnapshot {
   leads: PipelineLeadView[];
   pending: Map<string, PipelinePendingState>;
-  degraded: boolean;
+  authorityState: "server" | "offline" | "error";
   page: number;
   total: number;
   hasMore: boolean;
@@ -47,20 +47,24 @@ async function localSnapshot(selectedSegment: PipelineSegment, actorId: string, 
   const collection = () => db.leads.where("[segment_type+created_at+lead_id]").between([selectedSegment, Dexie.minKey, Dexie.minKey], [selectedSegment, Dexie.maxKey, Dexie.maxKey]);
   const [localLeads, total, users, queue] = await Promise.all([
     collection().reverse().offset((page - 1) * 50).limit(50).toArray(), collection().count(), db.users.toArray(),
-    db.sync_queue.where("table_name").anyOf("leads", PIPELINE_TRANSITION_QUEUE_TABLE).toArray(),
+    db.sync_queue.where("table_name").anyOf("leads", PIPELINE_CREATE_QUEUE_TABLE, PIPELINE_TRANSITION_QUEUE_TABLE).toArray(),
   ]);
   const names = new Map(users.map((user) => [user.user_id, user.name]));
-  const visible = localLeads.map((lead) => asLeadView(lead, lead.assigned_to ? names.get(lead.assigned_to) ?? "Assigned employee" : "Unassigned"));
+  const rejectedCreationIds = new Set(queue
+    .filter((item) => (item.table_name === "leads" || item.table_name === PIPELINE_CREATE_QUEUE_TABLE) && item.action === "INSERT" && Boolean(item.recovery_state))
+    .map((item) => (item.data as PipelineCreateCommand | { lead_id?: string }).lead_id)
+    .filter((id): id is string => Boolean(id)));
+  const visible = localLeads.filter((lead) => !rejectedCreationIds.has(lead.lead_id)).map((lead) => asLeadView(lead, lead.assigned_to ? names.get(lead.assigned_to) ?? "Assigned employee" : "Unassigned"));
   const pendingIds = queue
-    .filter((item) => item.table_name === "leads" && item.action === "INSERT" && item.owner_user_id === actorId)
-    .map((item) => (item.data as { lead_id?: string }).lead_id).filter((id): id is string => Boolean(id));
+    .filter((item) => (item.table_name === "leads" || item.table_name === PIPELINE_CREATE_QUEUE_TABLE) && item.action === "INSERT" && item.owner_user_id === actorId && !item.recovery_state)
+    .map((item) => (item.data as PipelineCreateCommand | { lead_id?: string }).lead_id).filter((id): id is string => Boolean(id));
   const pendingCreations = (await db.leads.bulkGet(pendingIds)).filter((lead): lead is LocalLead => lead !== undefined && lead.segment_type === selectedSegment).map((lead) => asLeadView(lead, lead.assigned_to ? names.get(lead.assigned_to) ?? "Assigned employee" : "Unassigned")) as PendingLeadCreation[];
   return { visible, pendingCreations, queue, total };
 }
 
 export async function fetchPipelineSnapshot(segments: readonly PipelineSegment[], actorId: string, page = 1, selectedSegment: PipelineSegment = "Retailer"): Promise<PipelineSnapshot> {
   const local = await localSnapshot(selectedSegment, actorId, page);
-  if (typeof navigator === "undefined" || !navigator.onLine) return { leads: local.visible, pending: pendingStateFromQueue(local.queue), degraded: true, page, total: local.total, hasMore: page * 50 < local.total };
+  if (typeof navigator === "undefined" || !navigator.onLine) return { leads: local.visible, pending: pendingStateFromQueue(local.queue), authorityState: "offline", page, total: local.total, hasMore: page * 50 < local.total };
   try {
     const { data } = await supabase.auth.getSession();
     const token = data.session?.access_token;
@@ -82,8 +86,8 @@ export async function fetchPipelineSnapshot(segments: readonly PipelineSegment[]
     }
     if (server.length) await db.leads.bulkPut(server);
     const currentQueue = await db.sync_queue.toArray();
-    return { leads: mergeAuthoritativePipeline(server, local.pendingCreations), pending: pendingStateFromQueue(currentQueue), degraded: false, page: body.page, total: body.total, hasMore: body.has_more };
+    return { leads: mergeAuthoritativePipeline(server, local.pendingCreations), pending: pendingStateFromQueue(currentQueue), authorityState: "server", page: body.page, total: body.total, hasMore: body.has_more };
   } catch {
-    return { leads: local.visible, pending: pendingStateFromQueue(local.queue), degraded: true, page, total: local.total, hasMore: page * 50 < local.total };
+    return { leads: local.visible, pending: pendingStateFromQueue(local.queue), authorityState: "error", page, total: local.total, hasMore: page * 50 < local.total };
   }
 }

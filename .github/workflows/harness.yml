@@ -81,5 +81,7 @@ jobs:
         run: npx playwright test e2e/distributors e2e/attendance
         env:
           PLAYWRIGHT_E2E_WEBPACK: "true"
+      - name: Run Pipeline visibility, ownership, creation, and request-budget flows
+        run: npm run test:e2e:pipeline
       - run: npm run harness:guard
       - run: npm run harness:docs

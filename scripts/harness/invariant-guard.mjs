@@ -70,6 +70,24 @@ for (const file of files) {
   }
 }
 function requireInvariant(ok, message) { if (!ok) { console.error(`semantic invariant: ${message}`); failed = true; } }
+function sourceFiles(directory) {
+  const found = [];
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const full = resolve(directory, entry.name);
+    if (entry.isDirectory()) found.push(...sourceFiles(full));
+    else if (executable.has(extname(entry.name))) found.push(full);
+  }
+  return found;
+}
+for (const absolute of sourceFiles(resolve(root, "src"))) {
+  const relative = absolute.slice(root.length + 1).replaceAll("\\", "/");
+  if (relative.includes("/__tests__/")) continue;
+  const source = withoutComments(readFileSync(absolute, "utf8"));
+  requireInvariant(!/\.from\(\s*["'`]leads["'`]\s*\)[\s\S]{0,300}?\.(?:insert|upsert)\s*\(/i.test(source), `LEAD_CREATION_SINGLE_ENTRY_GUARD: ${relative} writes Leads directly`);
+  requireInvariant(!/transactionalMutation\(\s*["'`]leads["'`]\s*,\s*["'`]INSERT["'`]/i.test(source), `LEAD_CREATION_SINGLE_ENTRY_GUARD: ${relative} queues a generic Lead insert`);
+  if (relative !== "src/app/api/pipeline/create/route.ts") requireInvariant(!/rpc\(\s*["'`](?:pipeline_create_lead_v1|create_lead)["'`]/i.test(source), `LEAD_CREATION_SINGLE_ENTRY_GUARD: ${relative} invokes Lead creation authority`);
+  if (relative !== "src/app/onboarding/page.tsx") requireInvariant(!/from\s+["'][^"']*pipeline\/createLeadService["']/i.test(source), `LEAD_CREATION_SINGLE_ENTRY_GUARD: ${relative} imports Pipeline creation`);
+}
 const pipelineStages = readFileSync(resolve(root, "src/lib/pipelineStages.ts"), "utf8");
 const retailerStages = pipelineStages.match(/RETAILER_PIPELINE_STAGES\s*=([\s\S]*?);/)?.[1] ?? "";
 const distributorStages = pipelineStages.match(/DISTRIBUTOR_PIPELINE_STAGES\s*=([\s\S]*?);/)?.[1] ?? "";
@@ -78,6 +96,12 @@ requireInvariant(distributorStages.includes('stage !== "Converted"') && pipeline
 const pipelineServer = readFileSync(resolve(root, "src/app/api/pipeline/server.ts"), "utf8");
 requireInvariant(pipelineServer.includes('.range(start, start + pageSize - 1)'), "Pipeline list must remain server bounded");
 requireInvariant(!/\.select\(\s*["'`]\*["'`]\s*\)/.test(pipelineServer), "Pipeline hot read cannot SELECT star");
+const pipelineRepository = readFileSync(resolve(root, "src/lib/pipeline/repository.ts"), "utf8");
+requireInvariant(!/setInterval\s*\(/.test(pipelineRepository), "Pipeline cannot poll");
+const databaseSource = readFileSync(resolve(root, "src/lib/db.ts"), "utf8");
+const fullPullTables = databaseSource.match(/const tables = \[([\s\S]*?)\];/)?.[1] ?? "";
+requireInvariant(!/["'`]leads["'`]/.test(fullPullTables), "Pipeline cannot be hydrated through the unbounded full-workspace pull");
+requireInvariant(databaseSource.includes('item.table_name === PIPELINE_CREATE_QUEUE_TABLE || item.table_name === "leads"'), "current and previous Lead create queues must converge on the canonical server command");
 const transitionRoute = readFileSync(resolve(root, "src/app/api/pipeline/transition/route.ts"), "utf8");
 requireInvariant(transitionRoute.includes("command.actor_id !== context.userId") && transitionRoute.includes("p_actor_id: context.userId"), "Pipeline mutation API must derive and assert actor identity");
 const callConfirm = readFileSync(resolve(root, "src/app/api/call-logs/confirm/route.ts"), "utf8");
@@ -104,6 +128,10 @@ requireInvariant(
 requireInvariant(
   normalizeSqlArtifact(readFileSync(resolve(root, "owner-042.sql"), "utf8")) === normalizeSqlArtifact(readFileSync(resolve(root, "supabase/migrations/042_payment_collection_renewals.sql"), "utf8")),
   "owner-042.sql must remain semantically identical to migration 042"
+);
+requireInvariant(
+  normalizeSqlArtifact(readFileSync(resolve(root, "owner-043.sql"), "utf8")) === normalizeSqlArtifact(readFileSync(resolve(root, "supabase/migrations/043_pipeline_creation_authority.sql"), "utf8")),
+  "owner-043.sql must remain semantically identical to migration 043"
 );
 const attendanceAuthority = readFileSync(resolve(root, "src/lib/attendance/authority.ts"), "utf8");
 const adminAttendance = readFileSync(resolve(root, "src/app/api/admin/attendance/route.ts"), "utf8");
