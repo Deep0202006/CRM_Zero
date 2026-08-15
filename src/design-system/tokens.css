@@ -76,6 +76,27 @@
   --chart-4: #b36a1e;
   --chart-5: #5e756f;
 
+  /* Visual intelligence semantics. These alias business-safe theme colours. */
+  --viz-primary: var(--brand-500);
+  --viz-secondary: var(--chart-3);
+  --viz-success: var(--status-success);
+  --viz-success-strong: #0f8a62;
+  --viz-warning: var(--status-warning);
+  --viz-danger: var(--status-danger);
+  --viz-info: var(--status-info);
+  --viz-pending: var(--status-pending);
+  --viz-muted: var(--status-neutral);
+  --viz-grid: color-mix(in srgb, var(--border-default) 72%, transparent);
+  --viz-track: color-mix(in srgb, var(--surface-tertiary) 88%, var(--border-subtle));
+  --viz-series-1: #0f766e;
+  --viz-series-2: #3268b5;
+  --viz-series-3: #8b67b5;
+  --viz-series-4: #b36a1e;
+  --viz-series-5: #167454;
+  --viz-series-6: #b83b45;
+  --viz-series-7: #5e756f;
+  --viz-series-8: #3f8c82;
+
   --space-0: 0px;
   --space-1: 2px;
   --space-2: 4px;
@@ -199,6 +220,16 @@
   --status-neutral-soft: #26332f;
   --status-pending: #b59ad8;
   --status-pending-soft: #2d2340;
+
+  --viz-success-strong: #70d3a6;
+  --viz-series-1: #42b8a4;
+  --viz-series-2: #78a7e6;
+  --viz-series-3: #b59ad8;
+  --viz-series-4: #e0a34e;
+  --viz-series-5: #55bd8e;
+  --viz-series-6: #ec7b83;
+  --viz-series-7: #a3b1ad;
+  --viz-series-8: #6fc5b5;
 
   --shadow-raised: 0 1px 2px rgba(0, 0, 0, 0.22), 0 10px 28px rgba(0, 0, 0, 0.16);
   --shadow-control: 0 1px 1px rgba(0, 0, 0, 0.22);

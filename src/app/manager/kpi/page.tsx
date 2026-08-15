@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { useAuth } from "@/context/AuthContext";
 import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
 import {
@@ -11,15 +12,6 @@ import {
   TeamKpiRow,
 } from "@/lib/teamKpi/contract";
 import { getCurrentISTDate, IST_TIMEZONE } from "@/lib/dateTime";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  CartesianGrid,
-} from "recharts";
 import {
   Activity,
   AlertCircle,
@@ -39,6 +31,14 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
+import { AnalyticsSkeleton } from "@/components/analytics/AnalyticsPanel";
+import { NumberTicker } from "@/components/analytics/NumberTicker";
+import type { AnalyticsMetric } from "@/lib/analytics/viewModels";
+
+const TeamKpiIntelligence = dynamic(() => import("@/components/analytics/TeamKpiIntelligence"), {
+  ssr: false,
+  loading: () => <AnalyticsSkeleton label="Loading team intelligence" />,
+});
 
 const REALTIME_TABLES = [
   "call_logs",
@@ -57,38 +57,6 @@ function formatActivityTime(value: string | null): string {
   }).format(new Date(value));
 }
 
-function WorkMixRow({
-  label,
-  value,
-  total,
-  icon,
-  barClassName,
-}: {
-  label: string;
-  value: number;
-  total: number;
-  icon: ReactNode;
-  barClassName: string;
-}) {
-  const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
-
-  return (
-    <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] p-3">
-      <div className="flex items-center justify-between gap-3">
-        <span className="flex min-w-0 items-center gap-2 text-[12px] font-semibold text-[var(--text-secondary)]">
-          <span className="text-[var(--text-muted)]">{icon}</span>
-          <span className="truncate">{label}</span>
-        </span>
-        <span className="font-semibold tabular-nums text-[var(--text-primary)]">{value}</span>
-      </div>
-      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[var(--surface-tertiary)]">
-        <div className={`h-full rounded-full ${barClassName}`} style={{ width: `${percentage}%` }} />
-      </div>
-      <p className="mt-2 text-[10px] font-medium tabular-nums text-[var(--text-muted)]">{percentage}% of recorded work</p>
-    </div>
-  );
-}
-
 export default function ManagerKpiPage() {
   const { currentUser, isAdmin, isLoading: isAuthLoading } = useAuth();
   const [report, setReport] = useState<TeamKpiResponse | null>(null);
@@ -100,8 +68,6 @@ export default function ManagerKpiPage() {
   const [activeTab, setActiveTab] = useState<"Team" | "Funnel">("Team");
   const requestSequence = useRef(0);
   const realtimeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const fallbackTimer = useRef<ReturnType<typeof setInterval> | null>(null);
-  const [realtimeSubscribed, setRealtimeSubscribed] = useState(false);
 
   const loadTeamKpi = useCallback(async (background = false) => {
     if (!currentUser || !isAdmin) return;
@@ -182,7 +148,7 @@ export default function ManagerKpiPage() {
         .on("postgres_changes", { event: "INSERT", schema: "public", table }, scheduleRefresh)
         .on("postgres_changes", { event: "UPDATE", schema: "public", table }, scheduleRefresh);
     }
-    channel.subscribe((status) => setRealtimeSubscribed(status === "SUBSCRIBED"));
+    channel.subscribe();
 
     return () => {
       if (realtimeTimer.current) clearTimeout(realtimeTimer.current);
@@ -190,21 +156,15 @@ export default function ManagerKpiPage() {
     };
   }, [currentUser, isAdmin, loadTeamKpi]);
 
-  useEffect(() => {
-    const stopFallback = () => { if (fallbackTimer.current) clearInterval(fallbackTimer.current); fallbackTimer.current = null; };
-    const updateFallback = () => {
-      stopFallback();
-      if (!realtimeSubscribed && document.visibilityState === "visible") fallbackTimer.current = setInterval(() => void loadTeamKpi(true), 10_000);
-    };
-    updateFallback(); document.addEventListener("visibilitychange", updateFallback);
-    return () => { document.removeEventListener("visibilitychange", updateFallback); stopFallback(); };
-  }, [loadTeamKpi, realtimeSubscribed]);
-
   const rows = report?.rows ?? [];
   const totals = report?.totals ?? EMPTY_TEAM_KPI_TOTALS;
   const visibleReportMatchesDate = report?.target_date === todayDate;
-  const noActivityCount = rows.filter((row) => row.total_completed_work === 0).length;
-  const chartRows = useMemo(() => rows.slice(0, 12), [rows]);
+  const pulseMetrics: AnalyticsMetric[] = [
+    { key: "calls", label: "Calls", value: totals.calls_made, color: "var(--viz-info)" },
+    { key: "queries", label: "Client queries", value: totals.queries_handled, color: "var(--viz-success)" },
+    { key: "mappings", label: "Mappings", value: totals.mappings_completed, color: "var(--viz-warning)" },
+    { key: "tasks", label: "Tasks done", value: totals.tasks_completed, color: "var(--viz-primary)" },
+  ];
 
   if (!isAuthLoading && currentUser && !isAdmin) {
     return (
@@ -225,7 +185,7 @@ export default function ManagerKpiPage() {
       <PageHeader
         eyebrow="Performance intelligence"
         icon={<BarChart3 size={18} />}
-        title="Team performance"
+        title="Team Intelligence"
         description="Review confirmed daily work across client calls, resolved queries, completed mappings, and completed tasks."
         actions={
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
@@ -277,13 +237,13 @@ export default function ManagerKpiPage() {
           )}
 
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-7">
-            <MetricCard label="Team members" value={report ? totals.team_members : "—"} icon={<Users size={17} />} tone="neutral" note="Active people included" />
-            <MetricCard label="Unique completed work" value={report ? totals.total_completed_work : "—"} icon={<Activity size={17} />} tone="brand" note="Linked follow-up call and task count once here" />
-            <MetricCard label="Calls today" value={report ? totals.calls_made : "—"} icon={<PhoneCall size={17} />} tone="info" note="Real call records" />
-            <MetricCard label="Follow-up calls" value={report ? totals.followup_calls : "—"} icon={<PhoneCall size={17} />} tone="info" note="Included in Calls today" />
-            <MetricCard label="Client queries" value={report ? totals.queries_handled : "—"} icon={<MessageSquare size={17} />} tone="success" note="Resolved today" />
-            <MetricCard label="Mappings" value={report ? totals.mappings_completed : "—"} icon={<Link2 size={17} />} tone="warning" note="Completed today" />
-            <MetricCard label="Tasks done" value={report ? totals.tasks_completed : "—"} icon={<CheckCircle2 size={17} />} tone="success" note="Tasks and allocated targets" />
+            <MetricCard label="Team members" value={report ? <NumberTicker value={totals.team_members} /> : "—"} icon={<Users size={17} />} tone="neutral" note="Active people included" />
+            <MetricCard label="Unique completed work" value={report ? <NumberTicker value={totals.total_completed_work} /> : "—"} icon={<Activity size={17} />} tone="brand" note="Linked follow-up call and task count once here" />
+            <MetricCard label="Calls today" value={report ? <NumberTicker value={totals.calls_made} /> : "—"} icon={<PhoneCall size={17} />} tone="info" note="Real call records" />
+            <MetricCard label="Follow-up calls" value={report ? <NumberTicker value={totals.followup_calls} /> : "—"} icon={<PhoneCall size={17} />} tone="info" note="Included in Calls today" />
+            <MetricCard label="Client queries" value={report ? <NumberTicker value={totals.queries_handled} /> : "—"} icon={<MessageSquare size={17} />} tone="success" note="Resolved today" />
+            <MetricCard label="Mappings" value={report ? <NumberTicker value={totals.mappings_completed} /> : "—"} icon={<Link2 size={17} />} tone="warning" note="Completed today" />
+            <MetricCard label="Tasks done" value={report ? <NumberTicker value={totals.tasks_completed} /> : "—"} icon={<CheckCircle2 size={17} />} tone="success" note="Tasks and allocated targets" />
           </div>
 
           {loading || !visibleReportMatchesDate ? (
@@ -291,53 +251,7 @@ export default function ManagerKpiPage() {
               <p className="text-[13px] font-medium text-[var(--text-muted)]">Loading confirmed Team KPI data…</p>
             </section>
           ) : rows.length > 0 ? (
-            <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
-              <section className="surface-panel overflow-hidden" aria-labelledby="work-distribution-title">
-                <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--border-subtle)] p-5">
-                  <div>
-                    <p className="section-kicker">Execution distribution</p>
-                    <h2 id="work-distribution-title" className="mt-1 section-title">Completed work by team member</h2>
-                  </div>
-                  <Chip variant="neutral" size="sm">Top {Math.min(chartRows.length, 12)} by volume</Chip>
-                </div>
-                {totals.total_completed_work > 0 ? (
-                  <div className="h-[360px] p-4 sm:p-5">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={chartRows} layout="vertical" margin={{ top: 4, right: 12, left: 18, bottom: 4 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" horizontal={false} />
-                        <XAxis type="number" allowDecimals={false} stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
-                        <YAxis type="category" dataKey="name" width={110} stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} tick={{ width: 100 }} />
-                        <Tooltip cursor={{ fill: "var(--surface-hover)" }} contentStyle={{ backgroundColor: "var(--surface-elevated)", borderColor: "var(--border-default)", borderRadius: "10px", color: "var(--text-primary)", fontSize: "12px", boxShadow: "var(--shadow-popover)" }} />
-                        <Bar dataKey="calls_made" name="Calls" stackId="work" fill="var(--status-info)" radius={[4, 0, 0, 4]} />
-                        <Bar dataKey="queries_handled" name="Client queries" stackId="work" fill="var(--status-success)" />
-                        <Bar dataKey="mappings_completed" name="Mappings" stackId="work" fill="var(--status-warning)" />
-                        <Bar dataKey="tasks_completed" name="Tasks done" stackId="work" fill="var(--brand-500)" radius={[0, 4, 4, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                ) : (
-                  <div className="p-5">
-                    <EmptyState icon={<Activity size={21} />} title="No completed work on this day" description="All active team members are still listed below with zero values." />
-                  </div>
-                )}
-              </section>
-
-              <aside className="surface-panel overflow-hidden" aria-labelledby="activity-mix-title">
-                <div className="border-b border-[var(--border-subtle)] bg-[var(--surface-secondary)] p-5">
-                  <p className="section-kicker">Work mix</p>
-                  <h2 id="activity-mix-title" className="mt-1 section-title">How the day was spent</h2>
-                </div>
-                <div className="space-y-3 p-4">
-                  <WorkMixRow label="Calls" value={totals.calls_made} total={totals.total_completed_work} icon={<PhoneCall size={14} />} barClassName="bg-[var(--status-info)]" />
-                  <WorkMixRow label="Client queries" value={totals.queries_handled} total={totals.total_completed_work} icon={<MessageSquare size={14} />} barClassName="bg-[var(--status-success)]" />
-                  <WorkMixRow label="Mappings" value={totals.mappings_completed} total={totals.total_completed_work} icon={<Link2 size={14} />} barClassName="bg-[var(--status-warning)]" />
-                  <WorkMixRow label="Tasks done" value={totals.tasks_completed} total={totals.total_completed_work} icon={<CheckCircle2 size={14} />} barClassName="bg-[var(--brand-500)]" />
-                  <div className="rounded-[var(--radius-md)] bg-[var(--surface-secondary)] p-3 text-[11px] leading-5 text-[var(--text-muted)]">
-                    {noActivityCount === 0 ? "Every active team member has recorded completed work." : `${noActivityCount} active team member${noActivityCount === 1 ? " has" : "s have"} no confirmed completed work today.`}
-                  </div>
-                </div>
-              </aside>
-            </div>
+            <TeamKpiIntelligence rows={rows} pulse={pulseMetrics} />
           ) : (
             <section className="surface-panel p-5">
               <EmptyState icon={<Users size={21} />} title="No active team members found" description="Check that active users and capability assignments exist in Supabase." />

@@ -157,6 +157,18 @@ requireInvariant(distributorMetricsRoute.includes("listEligibleOperationalEmploy
 requireInvariant(!distributorMetricsRoute.includes("distributorReady") && !readFileSync(resolve(root, "src/app/api/distributors/route.ts"), "utf8").includes("distributorReady"), "Distributor empty state cannot depend on a hardcoded readiness flag");
 const authorityRegistry = JSON.parse(readFileSync(resolve(root, "docs/os/AUTHORITY_REGISTRY.json"), "utf8"));
 requireInvariant(authorityRegistry.facts?.renewal === "public.distributor_accounts.renewal_date", "Renewal authority registry must remain canonical");
+const analyticsDirectory = resolve(root, "src/components/analytics");
+const analyticsSource = sourceFiles(analyticsDirectory).map((file) => readFileSync(file, "utf8")).join("\n");
+const analyticsModel = readFileSync(resolve(root, "src/lib/analytics/viewModels.ts"), "utf8");
+requireInvariant(!/fetch\s*\(|supabase|\.from\s*\(|\.rpc\s*\(|setInterval\s*\(|\.channel\s*\(|localStorage|indexedDB/i.test(`${analyticsSource}\n${analyticsModel}`), "Visual intelligence components must remain prop-only presentation");
+requireInvariant(!/from ["'](?:@?nivo|chart\.js|echarts|@tremor\/react|@?heroui|react-bits)/i.test(analyticsSource), "Recharts must remain the only Visual Intelligence chart engine");
+requireInvariant(analyticsSource.includes('data-chart-height="stable"'), "Visual Intelligence charts require deterministic parent heights");
+requireInvariant(!/(?:title|label|heading)[^\n]*(?:performance score|employee score|ranking|grade)/i.test(analyticsSource), "Visual Intelligence cannot invent employee scores or rankings");
+const teamKpiPage = readFileSync(resolve(root, "src/app/manager/kpi/page.tsx"), "utf8");
+const adminVisitsPage = readFileSync(resolve(root, "src/app/admin/visits/page.tsx"), "utf8");
+requireInvariant((teamKpiPage.match(/fetch\("\/api\/team-kpi"/g) ?? []).length === 1 && !/setInterval\s*\(/.test(teamKpiPage), "Team KPI Visual Intelligence must keep one initial request and zero polling");
+requireInvariant((adminVisitsPage.match(/fetch\(`\/api\/admin\/visits\?\$\{params\}`/g) ?? []).length === 1 && !/setInterval\s*\(/.test(adminVisitsPage), "Visits Visual Intelligence must keep one bounded initial request and zero polling");
+requireInvariant(analyticsModel.includes("outcomes.reduce") || analyticsSource.includes("outcomes.reduce"), "Visit donut must enforce represented-population parity");
 const renewalMigration = readFileSync(resolve(root, "supabase/migrations/042_payment_collection_renewals.sql"), "utf8").replace(/--.*$/gm, "");
 requireInvariant(!/\b(?:create|alter)\s+table\b|\bcreate\s+(?:unique\s+)?index\b/i.test(renewalMigration), "Renewals cannot create duplicate storage or a speculative index");
 requireInvariant(!/\b(?:insert\s+into|update|delete\s+from|truncate)\b/i.test(renewalMigration), "Renewal read migration cannot mutate business data");

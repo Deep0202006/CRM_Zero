@@ -60,8 +60,9 @@ export default function LoginPage() {
             src="/ZeroData_Logo.png"
             alt="ZeroData Logo"
             width={320}
-            height={90}
+            height={160}
             className={styles.splashLogo}
+            style={{ height: "auto" }}
             priority
           />
         </div>

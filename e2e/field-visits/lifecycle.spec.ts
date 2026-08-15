@@ -53,7 +53,7 @@ test("Admin Visits Overview is bounded, responsive, legacy-safe, and loads evide
     expect(evidenceRequests).toBe(0);
   }
   await page.getByRole("button", { name: "View Selfie" }).click();
-  expect(evidenceRequests).toBe(1);
+  await expect.poll(() => evidenceRequests).toBe(1);
   await expect(page.getByLabel("Date From")).toBeVisible(); await expect(page.getByLabel("Date To")).toBeVisible();
 });
 

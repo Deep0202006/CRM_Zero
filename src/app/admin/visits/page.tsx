@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { Calendar, CheckCircle2, Download, MapPin, User } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import type { LocalFieldVisit } from "@/lib/db";
@@ -11,6 +12,14 @@ import { QueueList } from "@/components/QueueList";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { Button } from "@/components/ui/Button";
 import { getOutcomeLabel } from "@/lib/fieldVisits/contract";
+import { AnalyticsSkeleton } from "@/components/analytics/AnalyticsPanel";
+import { NumberTicker } from "@/components/analytics/NumberTicker";
+import { buildVisitAnalytics } from "@/lib/analytics/viewModels";
+
+const VisitsIntelligence = dynamic(() => import("@/components/analytics/VisitsIntelligence"), {
+  ssr: false,
+  loading: () => <AnalyticsSkeleton label="Loading field activity intelligence" />,
+});
 
 interface AdminVisit extends LocalFieldVisit {
   has_selfie_evidence?: boolean;
@@ -47,6 +56,7 @@ export default function AdminVisitsPage() {
   const [hasMore, setHasMore] = useState(false);
   const [allTimeTotal, setAllTimeTotal] = useState(0);
   const [todayTotal, setTodayTotal] = useState(0);
+  const [matchedTotal, setMatchedTotal] = useState(0);
   const [legacyMismatchCount, setLegacyMismatchCount] = useState(0);
   const [date, setDate] = useState("");
   const [dateFrom, setDateFrom] = useState("");
@@ -90,6 +100,7 @@ export default function AdminVisitsPage() {
       setHasMore(Boolean(result.has_more));
       setAllTimeTotal(result.all_time_total ?? 0);
       setTodayTotal(result.today_total ?? 0);
+      setMatchedTotal(result.total ?? 0);
       setRepresentatives(result.representatives ?? []);
       setLegacyMismatchCount(result.legacy_date_mismatch_count ?? 0);
     } catch (error) {
@@ -100,6 +111,8 @@ export default function AdminVisitsPage() {
       if (sequence === requestSequence.current) setLoading(false);
     }
   }, [date, dateFrom, dateTo, isAdmin, outcome, representative, search, segment]);
+
+  const visitAnalytics = useMemo(() => buildVisitAnalytics(visits), [visits]);
 
   useEffect(() => {
     queueMicrotask(() => void loadData(1));
@@ -168,18 +181,19 @@ export default function AdminVisitsPage() {
   return (
     <div className="app-page min-w-0">
       <PageHeader
-        eyebrow="Field Operations"
+        eyebrow="Field Activity Intelligence"
         icon={<MapPin size={18} />}
         title="VISITS OVERVIEW"
         description="Bounded authoritative history. Selfies load only on explicit request."
         actions={<Button size="sm" variant="outline" icon={<Download size={14} />} onClick={handleExport} isLoading={exporting}>Export to Excel</Button>}
       />
       <div className="metric-grid">
-        <MetricCard label="Total visits" value={allTimeTotal} icon={<MapPin size={17} />} />
-        <MetricCard label="Visits today" value={todayTotal} icon={<Calendar size={17} />} tone="success" />
-        <MetricCard label="Representatives" value={representatives.length} icon={<User size={17} />} tone="brand" />
-        <MetricCard label="Loaded rows" value={visits.length} icon={<CheckCircle2 size={17} />} />
+        <MetricCard label="Total visits" value={<NumberTicker value={allTimeTotal} />} icon={<MapPin size={17} />} />
+        <MetricCard label="Visits today" value={<NumberTicker value={todayTotal} />} icon={<Calendar size={17} />} tone="success" />
+        <MetricCard label="Representatives" value={<NumberTicker value={representatives.length} />} icon={<User size={17} />} tone="brand" />
+        <MetricCard label="Loaded rows" value={<NumberTicker value={visits.length} />} icon={<CheckCircle2 size={17} />} />
       </div>
+      {loading ? <AnalyticsSkeleton label="Loading field activity intelligence" /> : !errorMessage ? <VisitsIntelligence model={visitAnalytics} matchedTotal={matchedTotal} page={page} /> : null}
       <div className="mb-3 flex flex-wrap gap-2">
         <Button size="sm" variant={date ? "outline" : "primary"} onClick={() => { setPage(1); setDate(""); }}>All visits</Button>
         <Button size="sm" variant={date === getCurrentISTDate() ? "primary" : "outline"} onClick={() => { setPage(1); setDate(getCurrentISTDate()); }}>Today</Button>

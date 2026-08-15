@@ -73,7 +73,7 @@ describe("production consistency guards", () => {
     expect(route).toContain("const targetDate = getCurrentISTDate()");
     expect(route).not.toContain('searchParams.get("date")');
     expect(page).not.toMatch(/type=["']date["']/);
-    expect(page).toContain('value={report ? totals.calls_made : "—"}');
+    expect(page).toContain('value={report ? <NumberTicker value={totals.calls_made} /> : "—"}');
     expect(page).toContain("The last confirmed report remains visible below.");
   });
 
