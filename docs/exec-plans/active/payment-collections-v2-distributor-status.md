@@ -56,8 +56,8 @@ Before owner application, abandon/revert the PR. After additive migration, appli
 
 ## Progress
 
-- [x] Current-main and read-only production schema/count audit started.
-- [ ] Recent regression, route, readiness, employee authority, Payment, renewal, and import forensics complete.
-- [ ] Migration/application/tests implemented.
+- [x] Current-main and read-only production schema/count audit complete.
+- [x] Recent regression, route, readiness, employee authority, Payment, renewal, and import forensics complete.
+- [x] Migration/application/tests implemented and specialist findings repaired.
 - [ ] Full R3 gates, PR, CI, and Preview complete.
 - [ ] Owner migration and production deployment complete.

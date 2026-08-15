@@ -1,5 +1,5 @@
 {
-  "verified_at": "2026-08-14T13:25:28Z",
+  "verified_at": "2026-08-15T05:24:16Z",
   "production_main_sha": "51613cdcdeeb9845f74e808304107d364efdce62",
   "vercel": {
     "deployment_id": "dpl_DsiDAvuMtUMCt8vXxz7TbyRrA2Bb",
@@ -10,10 +10,20 @@
   "last_applied_owner_migration": null,
   "migration_history_note": "Not verified: remote migration history is empty and must not be inferred from local files.",
   "domain_readiness": {
-    "attendance": "DEPLOYED_AWAITING_NATURAL_LIVE_CERTIFICATION"
+    "attendance": "COMPLETE_NATURALLY_LIVE_CERTIFIED"
   },
-  "open_incidents": [
-    "Attendance terminal LOCATION_REQUIRED replay repair is deployed; no natural /api/attendance/confirm request has reached SHA 51613cdcdeeb9845f74e808304107d364efdce62 yet."
-  ],
+  "attendance_live_certification": {
+    "business_date": "2026-08-15",
+    "requests_2xx": 5,
+    "unique_authoritative_rows": 4,
+    "idempotent_replays": 1,
+    "natural_role_modes": ["field_selfie", "office_auto"],
+    "employee_read_closure": "PASS",
+    "admin_team_attendance_closure": "PASS",
+    "team_kpi_closure": "PASS",
+    "duplicate_rows": 0,
+    "dummy_production_rows": 0
+  },
+  "open_incidents": [],
   "resource_budget_incidents": []
 }
