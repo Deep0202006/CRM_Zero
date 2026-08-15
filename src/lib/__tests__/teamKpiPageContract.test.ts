@@ -24,7 +24,7 @@ describe("Team KPI page data path", () => {
     }
   });
 
-  it("refreshes from the actual confirmed work sources with one debounced API reload", () => {
+  it("refreshes from confirmed work sources with one debounced API reload and no polling", () => {
     for (const table of [
       "call_logs",
       "tasks",
@@ -35,8 +35,7 @@ describe("Team KPI page data path", () => {
     expect(source).not.toContain('"team_work_events"');
     expect(source).toContain("setTimeout");
     expect(source).toContain("350");
-    expect(source).toContain("setInterval");
-    expect(source).toContain('document.visibilityState === "visible"');
+    expect(source).not.toContain("setInterval");
     expect(source).not.toContain('type="date"');
     expect(source).not.toContain('aria-label="KPI date"');
   });
@@ -45,5 +44,13 @@ describe("Team KPI page data path", () => {
     for (const label of ["Calls", "Client queries", "Mappings", "Tasks done"]) {
       expect(source).toContain(label);
     }
+  });
+
+  it("keeps visual intelligence prop-only and truthful", () => {
+    const component = fs.readFileSync(path.join(process.cwd(), "src/components/analytics/TeamKpiIntelligence.tsx"), "utf8");
+    expect(component).toContain("ContributionRing");
+    expect(component).toContain("KpiRadarProfile");
+    expect(component).toContain("No historical trend is implied");
+    expect(component).not.toMatch(/fetch\(|supabase|setInterval|\.from\(/);
   });
 });

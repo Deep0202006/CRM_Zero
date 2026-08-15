@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { liveQuery } from "dexie";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -30,6 +31,14 @@ import { getCurrentISTDate, getISTBusinessDayBounds, getISTDateKey } from "@/lib
 import { mergePaymentFollowUps, type PaymentFollowUpIdentity } from "@/lib/fieldVisits/paymentFollowUps";
 import { getCanonicalDailyUserMetrics } from "@/lib/workMetrics/canonical";
 import PaymentCollectionsPriorityPanel from "@/components/PaymentCollectionsPriorityPanel";
+import { AnalyticsSkeleton } from "@/components/analytics/AnalyticsPanel";
+import { NumberTicker } from "@/components/analytics/NumberTicker";
+import type { AnalyticsMetric } from "@/lib/analytics/viewModels";
+
+const MyDayIntelligence = dynamic(() => import("@/components/analytics/MyDayIntelligence"), {
+  ssr: false,
+  loading: () => <AnalyticsSkeleton label="Loading daily command center" />,
+});
 
 interface WeeklyDigestTaskPerformance { assigned_to: string; completed_count: number; total_count: number; }
 interface WeeklyDigest { week_start: string; data: { stuck_leads: { id: string; name: string; status: string; days_in_stage: number; assigned_to: string }[]; task_performance: WeeklyDigestTaskPerformance[]; upcoming_renewals: { id: string; name: string; renewal_date: string }[]; }; }
@@ -54,6 +63,7 @@ export default function MyDayPage() {
   const [completionOutcome, setCompletionOutcome] = useState("Follow-up completed");
   const [deleteDialogTask, setDeleteDialogTask] = useState<LocalTask | null>(null);
   const [dailySummary, setDailySummary] = useState<DailySummary | null>(null);
+  const [dailySummaryError, setDailySummaryError] = useState<string | null>(null);
   const [localCallsToday, setLocalCallsToday] = useState(0);
   const [localFollowupCallsToday, setLocalFollowupCallsToday] = useState(0);
   const [paymentFollowUps, setPaymentFollowUps] = useState<PaymentFollowUpIdentity[]>([]);
@@ -72,12 +82,18 @@ export default function MyDayPage() {
     const { data } = await supabase.auth.getSession();
     const token = data.session?.access_token;
     if (!token) return;
-    const response = await fetch("/api/my-day/daily-summary", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
-    if (!response.ok) throw new Error("Confirmed My Day summary is unavailable.");
-    const summary = await response.json() as DailySummary;
-    summary.genuine_calls_today = new Set([...(summary.confirmed_genuine_call_ids ?? []), ...localMetric.genuine_call_ids]).size;
-    summary.followup_calls_today = new Set([...(summary.confirmed_followup_call_ids ?? []), ...localMetric.followup_call_ids]).size;
-    setDailySummary(summary);
+    try {
+      const response = await fetch("/api/my-day/daily-summary", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+      if (!response.ok) throw new Error("Confirmed My Day summary is unavailable.");
+      const summary = await response.json() as DailySummary;
+      summary.genuine_calls_today = new Set([...(summary.confirmed_genuine_call_ids ?? []), ...localMetric.genuine_call_ids]).size;
+      summary.followup_calls_today = new Set([...(summary.confirmed_followup_call_ids ?? []), ...localMetric.followup_call_ids]).size;
+      setDailySummary(summary);
+      setDailySummaryError(null);
+    } catch {
+      setDailySummary(null);
+      setDailySummaryError("Confirmed My Day metrics could not be loaded. Local operational work remains available below.");
+    }
   }, [currentUser]);
 
   useEffect(() => { void refreshDailySummary(); }, [refreshDailySummary]);
@@ -435,13 +451,25 @@ export default function MyDayPage() {
     : [];
 
   const today = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+  const focusMetrics: AnalyticsMetric[] = [
+    { key: "tasks", label: "Tasks to close", value: pending.length + inProgress.length + missed.length, color: "var(--viz-primary)" },
+    { key: "targets", label: "Field targets", value: allocatedTargets.length, color: "var(--viz-info)" },
+    { key: "payment-followups", label: "Payment follow-ups", value: paymentFollowUps.length, color: "var(--viz-warning)" },
+    ...(hasOnboarding ? [{ key: "calls", label: "Calls logged", value: dailySummary?.genuine_calls_today ?? localCallsToday, color: "var(--viz-success)" }] : []),
+    { key: "mappings", label: "Mappings done", value: mappedToday, color: "var(--viz-secondary)" },
+  ];
+  const urgencyMetrics: AnalyticsMetric[] = [
+    { key: "missed", label: "Missed", value: missed.length, color: "var(--viz-danger)" },
+    { key: "today", label: "Due today", value: pending.length + inProgress.length, color: "var(--viz-warning)" },
+    { key: "later", label: "Scheduled later", value: stats.scheduledLater, color: "var(--viz-info)" },
+  ];
 
   return (
     <div className="app-page">
       <PageHeader
         eyebrow="Daily execution"
         icon={<ListTodo size={16} />}
-        title="My Day"
+        title="My Day · Daily Command Center"
         description={`${today} · Prioritise the work that moves clients, targets, and service outcomes forward.`}
         actions={
           <>
@@ -475,7 +503,9 @@ export default function MyDayPage() {
 
       <PaymentCollectionsPriorityPanel />
 
+      {dailySummaryError && <div className="alert-panel alert-panel--danger" role="alert"><AlertCircle size={16} className="mt-0.5 shrink-0" /><span>{dailySummaryError}</span></div>}
 
+      {!loading && <MyDayIntelligence focus={focusMetrics} urgency={urgencyMetrics} />}
       {paymentFollowUps.length > 0 && (
         <section className="mb-4 rounded-[var(--radius-lg)] border border-amber-300 bg-amber-50 p-4 shadow-[var(--shadow-raised)]" aria-labelledby="payment-followups-title">
           <div className="flex items-start gap-3">
@@ -545,14 +575,14 @@ export default function MyDayPage() {
 
       {!loading && (
         <div className="metric-grid">
-          <MetricCard label="Tasks done" value={dailySummary?.total_tasks_completed_today ?? "—"} icon={<CheckSquare size={17} />} note="Server-confirmed completed tasks and targets" tone="success" />
-          <MetricCard label="Mapped today" value={mappedToday} icon={<Target size={17} />} note="Distributor-retailer mapping work completed" />
-          {hasOnboarding && <MetricCard label="Calls today" value={dailySummary?.genuine_calls_today ?? localCallsToday} icon={<PhoneCall size={17} />} note="Genuine calls recorded today" tone="info" />}
-          {hasOnboarding && <MetricCard label="Follow-up calls today" value={dailySummary?.followup_calls_today ?? localFollowupCallsToday} icon={<PhoneCall size={17} />} note="Included in Calls today" tone="info" />}
-          <MetricCard label="Unique completed work" value={dailySummary?.unique_completed_work ?? "—"} icon={<CheckCircle2 size={17} />} note="Linked follow-up call and task count once here" tone="success" />
-          {hasOnboarding && <MetricCard label="Converted leads" value={leadsConverted} icon={<Trophy size={17} />} note="Leads reaching a converted pipeline stage" tone="warning" />}
-          {hasSupport && <MetricCard label="Resolved today" value={queriesResolvedToday} icon={<CheckCircle2 size={17} />} note="Client queries closed today" tone="success" />}
-          {hasSupport && <MetricCard label="Open queries" value={openQueries} icon={<AlertCircle size={17} />} note="Service requests still requiring action" tone={openQueries ? "warning" : "success"} />}
+          <MetricCard label="Tasks done" value={dailySummary ? <NumberTicker value={dailySummary.total_tasks_completed_today} /> : "—"} icon={<CheckSquare size={17} />} note="Server-confirmed completed tasks and targets" tone="success" />
+          <MetricCard label="Mapped today" value={<NumberTicker value={mappedToday} />} icon={<Target size={17} />} note="Distributor-retailer mapping work completed" />
+          {hasOnboarding && <MetricCard label="Calls today" value={<NumberTicker value={dailySummary?.genuine_calls_today ?? localCallsToday} />} icon={<PhoneCall size={17} />} note="Genuine calls recorded today" tone="info" />}
+          {hasOnboarding && <MetricCard label="Follow-up calls today" value={<NumberTicker value={dailySummary?.followup_calls_today ?? localFollowupCallsToday} />} icon={<PhoneCall size={17} />} note="Included in Calls today" tone="info" />}
+          <MetricCard label="Unique completed work" value={dailySummary ? <NumberTicker value={dailySummary.unique_completed_work} /> : "—"} icon={<CheckCircle2 size={17} />} note="Linked follow-up call and task count once here" tone="success" />
+          {hasOnboarding && <MetricCard label="Converted leads" value={<NumberTicker value={leadsConverted} />} icon={<Trophy size={17} />} note="Leads reaching a converted pipeline stage" tone="warning" />}
+          {hasSupport && <MetricCard label="Resolved today" value={<NumberTicker value={queriesResolvedToday} />} icon={<CheckCircle2 size={17} />} note="Client queries closed today" tone="success" />}
+          {hasSupport && <MetricCard label="Open queries" value={<NumberTicker value={openQueries} />} icon={<AlertCircle size={17} />} note="Service requests still requiring action" tone={openQueries ? "warning" : "success"} />}
           {isFieldStaff && !hasOnboarding && !hasSupport && <MetricCard label="On-time rate" value={`${progressPct}%`} icon={<Target size={17} />} note="Daily execution progress" />}
         </div>
       )}

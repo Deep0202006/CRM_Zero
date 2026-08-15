@@ -26,6 +26,9 @@
 - Derived date alerts do not create generated work unless explicitly approved.
 - Admin import preview is not authority; commit revalidates, is idempotent, atomic, and never fuzzy-merges.
 - Important mutable aggregates require stale-write protection and cross-domain isolation tests.
+- Visualizations are presentation only: source metric, filter scope, timezone, unit, denominator, empty semantics, and error semantics are explicit. Never fabricate trends, percentages, ranks, or mixed-unit scores.
+- Donut populations reconcile, radar normalization remains transparent with raw values available, and visual state closes over the same filters as cards and lists.
+- Operational motion is finite, optional, and reduced-motion safe. Locally adapted third-party components retain concise provenance and normal code review ownership.
 - Hot lists are explicit and bounded; binary/base64 business hydration is forbidden.
 - Authoritative business history is never lossily compressed or overwritten without audit.
 - Online critical success requires exact server confirmation.
