@@ -11,6 +11,7 @@ Distributor Status is the operational lifecycle and renewal sub-domain beneath P
 - Facts are orthogonal. Mapping is `pending`/`done` for current records and nullable only for historical rows where it was never captured. No historical mapping state or date is fabricated.
 - Mapped means installation, training, and mapping are done. Active/Inactive and Billed remain overlapping projections and do not imply Mapped.
 - Renewal reminders derive from the one PostgreSQL `renewal_date`: T-2, T-1, today, and overdue. No Task, reminder row, Pipeline follow-up, Call, or polling is created.
+- Payment Collection Renewals is a read/edit experience over that same field. Its four urgency cards are derived against the IST business date and never become stored status.
 
 ## IDENTITY AND IMPORT
 
@@ -24,8 +25,10 @@ Admin may read all and perform manual, import, reassignment, mapping, lifecycle,
 
 Initial Admin load is one aggregate request for all eight cards and one explicit-column list request of at most 50 rows. One bounded canonical employee-directory read is shared with Payment Collection. There is no polling, full-table hydration, N+1 owner lookup, Realtime subscription, binary evidence, or hot `select('*')`.
 
+The Renewals screen has a separate frozen budget: one metrics request plus one server-filtered list request of at most 50 explicit rows. A card changes the list filter without repeating metrics. The list joins the assigned employee name in the bounded server read.
+
 Mutations may write only `distributor_accounts`, `distributor_status_events`, `distributor_operation_receipts`, and `distributor_import_batches`. They never write Leads, Pipeline, Tasks, Calls, Attendance, Field Visits, Receivables, Payments, or Chat. A zero-row result is an active empty feature. Unauthorized, capability-missing, and server-error outcomes remain typed and are never converted to an empty array.
 
 ## RELEASE
 
-Migration `041_distributor_mapped_status.sql` is the next additive owner-reviewed change. It preserves historical rows with nullable mapping truth, sets the default only for future rows, replaces bounded command/import/metrics functions, and performs no backfill or cross-domain write. It must be fresh-applied after 039/040 and tested on disposable PostgreSQL 17.6. Codex never applies it to production; production verification is read-only and uses no synthetic records.
+Migration 041 is deployed. Migration `042_payment_collection_renewals.sql` adds only two service-role read functions for exact renewal metrics and bounded filtering. It creates no table, column, index, RLS policy, event, or business data, and leaves the existing command and My Day function unchanged. The exact pure-PostgreSQL owner artifact is tested on disposable PostgreSQL before handoff. Codex never applies it to production; production verification is read-only and uses no synthetic records.

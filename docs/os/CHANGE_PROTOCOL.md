@@ -16,6 +16,10 @@ Every important business mutation requires write-to-read closure: a successful a
 
 Task manifest fields: `task`, `risk`, `domains`, `allowedPaths`, `protectedDomains`, `productionDataMutation`, `schemaChange`, `acceptance`.
 
+Before implementation, acceptance must lock `USER REQUEST`, `EXPECTED USER FLOW`, `CANONICAL AUTHORITY`, and `WHAT MUST NOT CHANGE`. Classify the intended change as any applicable combination of `UI_ONLY`, `API`, `DATABASE`, `AUTHORIZATION`, `OFFLINE CONTRACT`, `CROSS_DOMAIN`, and `DEPLOYMENT`. A migration is not considered unless `DATABASE` is declared.
+
+Every mutation declares its allowed table write set; fixture tests fail on any write outside it. Every screen declares initial request count, maximum page, polling, payload/binary bounds, and query pattern. Check `docs/os/AUTHORITY_REGISTRY.json` before adding storage or a parallel command. Empty, unauthorized, server-error, and capability-missing states remain distinct.
+
 If the task begins with unrelated untracked work, `untrackedBaseline` may list the exact pre-existing paths/prefixes so the scope guard preserves them without treating them as task output.
 
 Re-planning is explicit: update the manifest before editing newly allowed paths and record why in the active plan or task notes.

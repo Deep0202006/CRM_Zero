@@ -44,3 +44,11 @@ export const distributorListSchema = z.object({
   billing: z.enum(["", ...billingStatuses]).default(""),
   renewal: z.enum(["", "due_soon"]).default(""),
 });
+
+export const renewalReadSchema = z.object({
+  view: z.enum(["legacy", "metrics", "list"]).default("legacy"),
+  filter: z.enum(["all", "overdue", "today", "tomorrow", "in_two_days", "upcoming", "not_set"]).default("all"),
+  page: z.coerce.number().int().min(1).max(10000).default(1),
+  pageSize: z.coerce.number().int().min(1).max(50).default(50),
+  limit: z.coerce.number().int().min(1).max(50).default(50),
+});

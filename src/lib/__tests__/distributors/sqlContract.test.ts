@@ -3,6 +3,7 @@ import path from "path";
 
 const baseSql = fs.readFileSync(path.join(process.cwd(), "supabase/migrations/039_distributor_status_v1.sql"), "utf8");
 const sql = fs.readFileSync(path.join(process.cwd(), "supabase/migrations/041_distributor_mapped_status.sql"), "utf8");
+const renewalSql = fs.readFileSync(path.join(process.cwd(), "supabase/migrations/042_payment_collection_renewals.sql"), "utf8");
 const routes = ["src/app/api/distributors/route.ts", "src/app/api/distributors/metrics/route.ts", "src/app/api/distributors/commands/route.ts", "src/app/api/distributors/import/route.ts", "src/lib/distributors/validation.ts"].map((file) => fs.readFileSync(path.join(process.cwd(), file), "utf8")).join("\n");
 
 describe("Distributor Status SQL/authority contract", () => {
@@ -47,4 +48,15 @@ describe("Distributor Status SQL/authority contract", () => {
   test("hot reads are explicit, bounded, and never poll", () => { expect(routes).not.toContain('select("*")'); expect(routes).toContain("max(50)"); expect(routes).not.toMatch(/setInterval|selfie|base64|blob/i); });
   test("missing table, function, or mapped columns are typed as capability missing", () => { expect(fs.readFileSync(path.join(process.cwd(), "src/lib/distributors/server.ts"), "utf8")).toMatch(/42P01[\s\S]*42703[\s\S]*PGRST202[\s\S]*PGRST204[\s\S]*PGRST205/); });
   test("migration cannot mutate protected or financial domains", () => { for (const table of ["receivables", "receivable_payments", "tasks", "call_logs", "field_visits", "attendance", "messages", "leads"]) expect(sql).not.toMatch(new RegExp(`(?:insert\\s+into|update|delete\\s+from)\\s+public\\.${table}\\b`, "i")); });
+  test("Renewals reuse canonical authority with one metrics operation and a bounded explicit page", () => {
+    expect(renewalSql).toContain("from public.distributor_accounts d");
+    expect(renewalSql).toContain("count(*) filter(where renewal_date<business_date)");
+    expect(renewalSql).toContain("greatest(1,least(coalesce(p_page_size,50),50))");
+    expect(renewalSql).toContain("d.assigned_to=p_actor_id");
+    expect(renewalSql).not.toMatch(/create\s+table|alter\s+table|create\s+index|select\s+\*/i);
+  });
+  test("Renewal read migration cannot mutate any business authority", () => {
+    expect(renewalSql).not.toMatch(/\b(insert\s+into|update|delete\s+from|truncate)\b/i);
+    expect(renewalSql).not.toMatch(/receivable_payments|call_logs|field_visits|attendance|tasks|leads/i);
+  });
 });

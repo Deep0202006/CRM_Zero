@@ -25,6 +25,16 @@ async function mock(page: Page) {
   await page.route("**/api/distributors?**", (route) => route.fulfill({ json: { rows: [row], page: 1, pageSize: 50, total: 1 } }));
 }
 
+async function mockRenewals(page: Page, renewalRows = [row]) {
+  await page.route("https://e2e.supabase.co/**", (route) => route.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
+  await page.route(`**/api/distributors/${distributorId}`, (route) => route.fulfill({ json: { record: row, events: [] } }));
+  await page.route("**/api/distributors/renewals?**", (route) => {
+    const url = new URL(route.request().url());
+    if (url.searchParams.get("view") === "metrics") return route.fulfill({ json: { enabled: true, metrics: { overdue: 1, today: 2, tomorrow: 3, in_two_days: 4 } } });
+    return route.fulfill({ json: { enabled: true, rows: renewalRows, page: 1, page_size: 50, total: renewalRows.length } });
+  });
+}
+
 for (const viewport of [{ name: "desktop", width: 1280, height: 900 }, { name: "tablet", width: 820, height: 900 }, { name: "mobile", width: 390, height: 844 }]) test(`Admin cards preserve mapped overlap on ${viewport.name}`, async ({ page }) => {
   await page.setViewportSize(viewport); await mock(page); await seed(page, admin, true); await page.goto("/admin/payments/distributors");
   for (const label of [/Installation \+ Training Done/, /Mapped/, /Active/, /Billed/]) await expect(page.getByRole("button", { name: label })).toContainText("1");
@@ -93,4 +103,53 @@ test("employee cannot use the Admin Distributor Status authority surface", async
   await page.goto("/admin/payments/distributors");
   await expect(page.getByText("System Administrator access required.")).toBeVisible();
   await expect(page.getByRole("button", { name: /Add Distributor|Import|Save Status/ })).toHaveCount(0);
+});
+
+test("Payment Collection Renewals uses exactly one metrics and one bounded list request", async ({ page }) => {
+  const reads: string[] = [];
+  await mockRenewals(page);
+  await page.route("**/api/distributors/renewals?**", async (route) => {
+    const url = new URL(route.request().url()); reads.push(url.search);
+    if (url.searchParams.get("view") === "metrics") return route.fulfill({ json: { enabled: true, metrics: { overdue: 1, today: 2, tomorrow: 3, in_two_days: 4 } } });
+    return route.fulfill({ json: { enabled: true, rows: [row], page: 1, page_size: 50, total: 1 } });
+  });
+  await seed(page, employee, false); await page.goto("/payments/renewals");
+  await expect(page.getByRole("heading", { name: "Renewals" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Overdue/ })).toContainText("1");
+  await expect(page.getByText("Alpha Distributor")).toBeVisible();
+  await expect.poll(() => reads.length).toBe(2);
+  expect(reads.filter(query => query.includes("view=metrics"))).toHaveLength(1);
+  expect(reads.filter(query => query.includes("view=list") && query.includes("pageSize=50"))).toHaveLength(1);
+});
+
+test("renewal urgency cards apply server-side filters without repeating metrics", async ({ page }) => {
+  const reads: string[] = []; await mockRenewals(page);
+  await page.route("**/api/distributors/renewals?**", async (route) => { const url = new URL(route.request().url()); reads.push(url.search); if (url.searchParams.get("view") === "metrics") return route.fulfill({ json: { enabled: true, metrics: { overdue: 1, today: 2, tomorrow: 3, in_two_days: 4 } } }); return route.fulfill({ json: { enabled: true, rows: [row], page: 1, page_size: 50, total: 1 } }); });
+  await seed(page, admin, true); await page.goto("/admin/payments/renewals"); await expect(page.getByText("Alpha Distributor")).toBeVisible();
+  await page.getByRole("button", { name: /Tomorrow/ }).click();
+  await expect.poll(() => reads.some(query => query.includes("filter=tomorrow"))).toBe(true);
+  expect(reads.filter(query => query.includes("view=metrics"))).toHaveLength(1);
+});
+
+test("assigned employee renewal edit sends the canonical versioned command", async ({ page }) => {
+  await mockRenewals(page); let commandBody = "";
+  await page.route("**/api/distributors/commands", async route => { commandBody = route.request().postData() ?? "{}"; await route.fulfill({ json: { success: true, record: { ...row, renewal_date: "2026-09-01", version: 3 } } }); });
+  await seed(page, employee, false); await page.goto("/payments/renewals"); await page.getByRole("button", { name: "Set renewal for Alpha Distributor" }).click();
+  await page.getByLabel("Next Renewal Date").fill("2026-09-01"); await page.getByRole("button", { name: "Confirm Renewal" }).click();
+  const command = JSON.parse(commandBody); expect(command).toMatchObject({ operation_type: "renew", payload: { distributor_id: distributorId, expected_version: 2, renewal_date: "2026-09-01" } });
+  expect(Object.keys(command.payload).sort()).toEqual(["distributor_id", "expected_version", "note", "renewal_date"]);
+});
+
+test("Renewals distinguishes a server failure from a valid empty result", async ({ page }) => {
+  await mockRenewals(page, []); await seed(page, employee, false); await page.goto("/payments/renewals"); await expect(page.getByText("No renewal dates set yet.")).toBeVisible();
+  await page.route("**/api/distributors/renewals?**", route => route.fulfill({ status: 503, json: { code: "DISTRIBUTOR_SERVER_ERROR", message: "Renewal read failed." } }));
+  await page.reload(); await expect(page.getByText("Unable to load renewals.")).toContainText("Renewal read failed"); await expect(page.getByText("No renewal dates set yet.")).toHaveCount(0);
+});
+
+test("Renewals never converts a metrics failure into an empty state", async ({ page }) => {
+  await mockRenewals(page, []);
+  await page.route("**/api/distributors/renewals?**", route => { const url = new URL(route.request().url()); return url.searchParams.get("view") === "metrics" ? route.fulfill({ status: 503, json: { code: "DISTRIBUTOR_SERVER_ERROR", message: "Metrics failed." } }) : route.fulfill({ json: { enabled: true, rows: [], page: 1, page_size: 50, total: 0 } }); });
+  await seed(page, employee, false); await page.goto("/payments/renewals");
+  await expect(page.getByText("Unable to load renewal metrics.")).toContainText("Metrics failed");
+  await expect(page.getByText("No renewal dates set yet.")).toHaveCount(0);
 });

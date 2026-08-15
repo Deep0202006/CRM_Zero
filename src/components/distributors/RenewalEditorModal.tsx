@@ -73,7 +73,16 @@ export function RenewalEditorModal({
       });
 
       const result = await response.json();
-      if (!response.ok) throw new Error(result.message ?? result.code);
+      if (!response.ok) {
+        if (response.status === 409 && distributorId) {
+          operationId.current = "";
+          const latestResponse = await authFetch(`/api/distributors/${distributorId}`);
+          const latest = await latestResponse.json();
+          if (latestResponse.ok && latest.record) setRecord(latest.record);
+          throw new Error("This renewal changed after you opened it. The latest date is shown; review and save again.");
+        }
+        throw new Error(result.message ?? result.code);
+      }
       operationId.current = "";
       onSave();
     } catch (cause) {

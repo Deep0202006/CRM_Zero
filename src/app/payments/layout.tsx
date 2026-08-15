@@ -27,7 +27,13 @@ export default function PaymentsLayout({ children }: { children: React.ReactNode
               : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
           }`}
         >
-          Renewal
+          Renewals
+        </Link>
+        <Link
+          href="/payments/distributors"
+          className={`pb-2 text-sm font-semibold transition-colors ${pathname?.startsWith("/payments/distributors") ? "border-b-2 border-brand-500 text-brand-700" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"}`}
+        >
+          Distributor Status
         </Link>
       </nav>
       {children}

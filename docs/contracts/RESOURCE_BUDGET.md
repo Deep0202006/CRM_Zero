@@ -22,6 +22,7 @@ These are internal release thresholds below the external Free-plan ceilings of 5
 - Material hot-query or egress growth requires an ExecPlan resource section. Derived projections never become business authority.
 - Service-role secrets remain server-only. Existing normalized authority is not duplicated as large text or binary payloads.
 - Major screens declare initial request count, page size, polling policy, and binary policy. Distributor Status is one aggregate plus one 50-row list, with no polling or binary hydration.
+- Payment Collection Renewals is exactly one metrics request plus one server-filtered list request of at most 50 rows. Card selection repeats only the list request. Polling, Realtime, history hydration, per-card queries, `select('*')`, and client-side full-population counting are prohibited.
 
 ## Current snapshot
 

@@ -12,6 +12,10 @@ Automated tests, QA fixtures, and smoke tests must use mocks, isolated local fix
 
 Emergency hotfix exception: create a narrowly scoped branch, declare elevated risk, preserve the same invariant gates, obtain explicit production authority, and follow with an incident/harness learning review when the defect exposed a protection gap.
 
+Required CI certification belongs to an exact PR head SHA. Any new commit invalidates earlier green-head evidence until the required checks certify the new head. Feature work starts from green required main CI or records a separate explicit baseline repair.
+
+Owner SQL documented for Supabase SQL Editor is one canonical pure-PostgreSQL artifact. It contains no line beginning with `\`; client controls such as `ON_ERROR_STOP` belong only in the external `psql -X -v ON_ERROR_STOP=1 -f owner-NNN.sql` test invocation. CI tests the exact owner file, precheck, and postcheck before handoff.
+
 ## INVARIANT
 
 Never force-push or push directly to `main`. Deployment is not automatic authorization for data/schema mutation.
