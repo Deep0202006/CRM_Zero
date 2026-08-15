@@ -7,7 +7,7 @@ do $$ begin
 end $$;
 create or replace function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
 create type public.lead_status as enum ('New','Contacted','Interested','Not Interested','Registration','Installation','Payment','Renewal Due');
-create type public.segment_type as enum ('Retailer','Distributor');
+create type public.lead_segment as enum ('Retailer','Distributor');
 create type public.task_status_enum as enum ('Pending','In Progress','Completed','Missed');
 create type public.task_priority_enum as enum ('High','Medium','Low');
 create type public.task_source_enum as enum ('template','manual');
@@ -15,7 +15,7 @@ create table public.users(user_id uuid primary key, name text not null, email te
 grant select on public.users to authenticated;
 create table public.leads(
   lead_id uuid primary key, business_name text not null, contact_person text not null, phone text not null,
-  segment_type public.segment_type not null, status public.lead_status not null, assigned_to uuid references public.users(user_id),
+  segment_type public.lead_segment not null, status public.lead_status not null, assigned_to uuid references public.users(user_id),
   created_at timestamptz not null default now(), stage_entered_at timestamptz, onboarded_at timestamptz,
   lead_source text, area text, re_engage_after date, renewal_date date
 );
@@ -26,6 +26,13 @@ create table public.tasks(
   source public.task_source_enum not null, template_id uuid, related_lead_id uuid references public.leads(lead_id), due_date date not null,
   created_at timestamptz not null default now()
 );
+create table public.call_logs(log_id uuid primary key);
+create table public.attendance(attendance_id uuid primary key);
+create table public.field_visits(visit_id uuid primary key);
+create table public.receivables(receivable_id uuid primary key);
+create table public.receivable_payments(payment_id uuid primary key);
+create table public.distributor_accounts(distributor_id uuid primary key);
+create table public.chat_messages(message_id uuid primary key);
 alter table public.leads enable row level security;
 create policy "Leads insert" on public.leads for insert to authenticated with check (true);
 create policy "Leads segment access select" on public.leads for select to authenticated using (true);

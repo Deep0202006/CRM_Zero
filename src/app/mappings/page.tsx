@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { MetricCard } from "@/components/ui/MetricCard";
-import excelUsers from "@/lib/excel_users.json";
 
 export default function MappingsPage() {
   const { currentUser, hasSupport } = useAuth();
@@ -26,12 +25,6 @@ export default function MappingsPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  const excelOptions: SearchableOption[] = React.useMemo(() => (excelUsers as Array<{ username: string; name?: string }>).map((eu) => ({
-    value: `EXCEL::${eu.username}::${eu.name || eu.username}`,
-    label: `${eu.name || eu.username} (@${eu.username})`,
-    searchText: eu.username + " " + (eu.name || "")
-  })), []);
-
   const distributorOptions = React.useMemo(() => {
     const dbOptions: SearchableOption[] = leads.filter(l => l.segment_type === "Distributor").map(l => ({
       value: l.lead_id,
@@ -39,12 +32,8 @@ export default function MappingsPage() {
     }));
     const map = new Map<string, SearchableOption>();
     dbOptions.forEach(opt => map.set(opt.label.toLowerCase(), opt));
-    excelOptions.forEach(opt => {
-      const rawName = opt.value.split("::")[2]?.toLowerCase();
-      if (!map.has(rawName)) map.set(rawName, opt);
-    });
     return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label));
-  }, [leads, excelOptions]);
+  }, [leads]);
 
   const retailerOptions = React.useMemo(() => {
     const dbOptions: SearchableOption[] = leads.filter(l => l.segment_type === "Retailer").map(l => ({
@@ -53,12 +42,8 @@ export default function MappingsPage() {
     }));
     const map = new Map<string, SearchableOption>();
     dbOptions.forEach(opt => map.set(opt.label.toLowerCase(), opt));
-    excelOptions.forEach(opt => {
-      const rawName = opt.value.split("::")[2]?.toLowerCase();
-      if (!map.has(rawName)) map.set(rawName, opt);
-    });
     return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label));
-  }, [leads, excelOptions]);
+  }, [leads]);
 
   const loadData = async () => {
     try {
@@ -82,34 +67,10 @@ export default function MappingsPage() {
     const existing = leads.find(l => l.lead_id === input);
     if (existing) return existing.lead_id;
 
-    let bName = input;
-    if (input.startsWith("EXCEL::")) {
-      const parts = input.split("::");
-      const uName = parts[1];
-      const fullName = parts[2] || uName;
-      bName = `${fullName} (@${uName})`;
-    }
-
-    const nameMatch = leads.find(l => l.business_name.toLowerCase() === bName.trim().toLowerCase() && l.segment_type === segmentType);
-    if (nameMatch) return nameMatch.lead_id;
-
-    const newLeadId = crypto.randomUUID();
-    const newLead: LocalLead = {
-      lead_id: newLeadId,
-      business_name: bName.trim(),
-      contact_person: bName.trim(),
-      phone: "0000000000",
-      segment_type: segmentType,
-      status: "New",
-      assigned_to: currentUser?.user_id || null,
-      created_at: new Date().toISOString(),
-      lead_source: "Mapping Form"
-    };
-
-    await transactionalMutation("leads", "INSERT", newLead);
-
-    setLeads(prev => [...prev, newLead]);
-    return newLeadId;
+    const nameMatches = leads.filter(l => l.business_name.trim().toLowerCase() === input.trim().toLowerCase() && l.segment_type === segmentType);
+    if (nameMatches.length === 1) return nameMatches[0].lead_id;
+    if (nameMatches.length > 1) throw new Error(`Multiple ${segmentType} leads share that name. Select the exact Pipeline record.`);
+    throw new Error(`No ${segmentType} lead matches. Create it in Pipeline first.`);
   };
 
   const handleLogMapping = async (e: React.FormEvent) => {
@@ -165,7 +126,7 @@ export default function MappingsPage() {
       await loadData();
     } catch (err) {
       console.error(err);
-      setErrorMsg("Failed to log mapping task.");
+      setErrorMsg(err instanceof Error ? err.message : "Failed to log mapping task.");
     }
   };
 

@@ -6,7 +6,8 @@
     "renewal": "public.distributor_accounts.renewal_date",
     "receivables": "public.receivables",
     "payments": "public.receivable_payments",
-    "pipeline_stage": "canonical Lead/Pipeline authority",
+    "pipeline_leads": "public.leads via public.pipeline_create_lead_v1",
+    "pipeline_stage": "public.leads.status via public.transition_lead_stage_v2",
     "calls": "public.call_logs",
     "field_visits": "public.field_visits"
   }
