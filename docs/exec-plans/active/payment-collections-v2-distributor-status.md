@@ -59,5 +59,5 @@ Before owner application, abandon/revert the PR. After additive migration, appli
 - [x] Current-main and read-only production schema/count audit complete.
 - [x] Recent regression, route, readiness, employee authority, Payment, renewal, and import forensics complete.
 - [x] Migration/application/tests implemented and specialist findings repaired.
-- [ ] Full R3 gates, PR, CI, and Preview complete.
+- [x] Full R3 gates, PR #40, CI, and Vercel Preview complete at `25ee6270c258864e55ceb04bbdf31806b20da75a`.
 - [ ] Owner migration and production deployment complete.
