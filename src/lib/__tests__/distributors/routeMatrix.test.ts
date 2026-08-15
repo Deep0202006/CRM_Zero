@@ -11,6 +11,11 @@ describe("critical Payment and Distributor route matrix", () => {
   test("Distributor pages retain their server routes", () => {
     for (const route of ["src/app/api/distributors/route.ts", "src/app/api/distributors/metrics/route.ts", "src/app/api/distributors/commands/route.ts"]) expect(fs.existsSync(path.join(process.cwd(), route))).toBe(true);
   });
+  test("dynamic Distributor route typechecks without generated Next route globals", () => {
+    const route = fs.readFileSync(path.join(process.cwd(), "src/app/api/distributors/[id]/route.ts"), "utf8");
+    expect(route).toContain("params: Promise<{ id: string }>");
+    expect(route).not.toContain("RouteContext<");
+  });
   test("Payment Collection and Distributor Status reuse one employee authority", () => {
     for (const file of ["src/app/api/receivables/admin/route.ts", "src/app/api/distributors/metrics/route.ts", "src/lib/distributors/importServer.ts"]) {
       expect(fs.readFileSync(path.join(process.cwd(), file), "utf8")).toContain("listEligibleOperationalEmployees");

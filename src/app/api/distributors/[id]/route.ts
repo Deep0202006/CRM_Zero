@@ -2,7 +2,9 @@ import { apiError, contextFor, distributorReadError } from "@/lib/distributors/s
 
 export const dynamic = "force-dynamic";
 
-export async function GET(request: Request, routeContext: RouteContext<"/api/distributors/[id]">) {
+type DistributorRouteContext = { params: Promise<{ id: string }> };
+
+export async function GET(request: Request, routeContext: DistributorRouteContext) {
   const auth = await contextFor(request);
   if (!auth) return apiError(401, "AUTH_REQUIRED", "Sign in again.");
   const { id } = await routeContext.params;
