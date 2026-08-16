@@ -20,6 +20,7 @@ import { MetricCard } from "@/components/ui/MetricCard";
 import { Modal } from "@/components/ui/Modal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import excelUsers from "@/lib/excel_users.json";
+import { buildCanonicalClientOptions } from "@/lib/clientOptions";
 
 type QueryStatus = "Open" | "In Progress" | "Resolved";
 
@@ -35,12 +36,7 @@ export default function SupportPage() {
   const [filterTab, setFilterTab] = useState<"all" | "open" | "resolved">("open");
 
   const clientOptions: SearchableOption[] = React.useMemo(() => {
-    const excelOptions: SearchableOption[] = (excelUsers as Array<{ username: string; name?: string }>).map((eu) => ({
-      value: `EXCEL::${eu.username}::${eu.name || eu.username}`,
-      label: `${eu.name || eu.username} (@${eu.username})`,
-      searchText: eu.username + " " + (eu.name || "")
-    }));
-    return excelOptions.sort((a, b) => a.label.localeCompare(b.label));
+    return buildCanonicalClientOptions(excelUsers as Array<{ username: string; name?: string }>);
   }, []);
 
   const [resolveModalQuery, setResolveModalQuery] = useState<LocalClientQuery | null>(null);

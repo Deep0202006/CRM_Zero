@@ -74,6 +74,8 @@ describe("final field visit recovery compatibility", () => {
       location_quality: "good",
       person_met: "Owner",
       address: "Main Road",
+      pincode: "012345",
+      pincode_contract_version: 1,
     }));
     expect(validateNewVisit(parsed)).toBe(true);
     expect(validateNewVisit({ ...parsed, location_accuracy_m: null })).toBe(false);
@@ -82,7 +84,7 @@ describe("final field visit recovery compatibility", () => {
   it("uses an exact core whitelist and keeps hardened fields optional", () => {
     const parsed = VisitConfirmationSchema.parse(visit());
     expect(Object.keys(coreRemotePayload(parsed, parsed.attendance_id!))).toEqual([
-      "visit_id", "lead_id", "user_id", "visit_date", "check_in_time", "check_in_lat", "check_in_lng", "check_in_photo_url", "visit_outcome", "visit_notes", "attendance_id", "person_met", "address", "address_contract_version", "segment_type", "follow_up_date", "created_at", "updated_at",
+      "visit_id", "lead_id", "user_id", "visit_date", "check_in_time", "check_in_lat", "check_in_lng", "check_in_photo_url", "visit_outcome", "visit_notes", "attendance_id", "person_met", "address", "address_contract_version", "pincode", "segment_type", "follow_up_date", "created_at", "updated_at",
     ]);
     expect(Object.keys(optionalRemotePayload(parsed))).toEqual([
       "location_accuracy_m", "location_captured_at", "location_acquisition_mode", "location_quality", "selfie_captured_at", "selfie_capture_method", "selfie_storage_path",

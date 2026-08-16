@@ -78,14 +78,21 @@ export const mappingRequestSchema = z.object({
   request_id: uuidSchema.optional(),
   distributor_lead_id: uuidSchema.optional().nullable(),
   retailer_lead_id: uuidSchema.optional().nullable(),
-  distributor_name_unregistered: z.string().optional().nullable(),
-  retailer_name_unregistered: z.string().optional().nullable(),
+  distributor_name_unregistered: z.string().trim().min(1).max(250).optional().nullable(),
+  retailer_name_unregistered: z.string().trim().min(1).max(250).optional().nullable(),
   requested_by: uuidSchema.optional().nullable(),
   mapped_by: uuidSchema.optional().nullable(),
   status: z.enum(["Pending", "Completed"]).default("Pending"),
   notes: z.string().optional().nullable(),
   created_at: z.string().optional(),
   completed_at: z.string().optional().nullable()
+}).superRefine((request, ctx) => {
+  if (!request.distributor_lead_id && !request.distributor_name_unregistered) {
+    ctx.addIssue({ code: "custom", path: ["distributor_name_unregistered"], message: "Distributor value is required" });
+  }
+  if (!request.retailer_lead_id && !request.retailer_name_unregistered) {
+    ctx.addIssue({ code: "custom", path: ["retailer_name_unregistered"], message: "Retailer value is required" });
+  }
 });
 
 // 6. Internal Ticket Validation Schema

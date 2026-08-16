@@ -6,6 +6,7 @@ import { claimSyncQueueOwnership, confirmQueuedCallLog, db, processSyncQueue, pr
 import { SearchableSelect, SearchableOption } from "@/components/SearchableSelect";
 import { PhoneCall, CheckCircle2, AlertCircle, Download } from "lucide-react";
 import excelUsers from "@/lib/excel_users.json";
+import { buildCanonicalClientOptions } from "@/lib/clientOptions";
 import { exportCallLogs } from "@/lib/excelExport";
 import { parseCallClientReference } from "@/lib/callLogs/contract";
 import { QueueList } from "@/components/QueueList";
@@ -54,12 +55,7 @@ export default function CallLogsPage() {
   ];
 
   const leadOptions: SearchableOption[] = React.useMemo(() => {
-    const excelOptions: SearchableOption[] = (excelUsers as Array<{ username: string; name?: string }>).map((eu) => ({
-      value: `EXCEL::${eu.username}::${eu.name || eu.username}`,
-      label: `${eu.name || eu.username} (@${eu.username})`,
-      searchText: eu.username + " " + (eu.name || "")
-    }));
-    return excelOptions.sort((a, b) => a.label.localeCompare(b.label));
+    return buildCanonicalClientOptions(excelUsers as Array<{ username: string; name?: string }>);
   }, []);
 
   const loadData = React.useCallback(async (drainQueue = true) => {

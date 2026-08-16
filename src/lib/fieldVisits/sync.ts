@@ -4,6 +4,7 @@ import { supabase, isSupabaseConfigured } from "../supabaseClient";
 export type FieldVisitSafeCode =
   | "AUTH_REQUIRED" | "ACCOUNT_INACTIVE" | "CAPABILITY_MISMATCH"
   | "ADDRESS_REQUIRED"
+  | "PINCODE_REQUIRED"
   | "ATTENDANCE_NOT_CONFIRMED" | "ATTENDANCE_INTEGRITY_ERROR" | "VISIT_VALIDATION_FAILED"
   | "VISIT_INSERT_FAILED" | "VISIT_CONFIRMATION_FAILED"
   | "EVIDENCE_UPLOAD_FAILED" | "NETWORK_UNAVAILABLE" | "NETWORK_OR_SERVER_RESPONSE_FAILED"
@@ -36,6 +37,7 @@ interface ConfirmResponse {
 const SAFE_MESSAGES: Record<FieldVisitSafeCode, string> = {
   AUTH_REQUIRED: "Sign in again before retrying this visit.",
   ADDRESS_REQUIRED: "Address required before this queued visit can sync.",
+  PINCODE_REQUIRED: "Pincode required before this current-contract visit can sync.",
   ACCOUNT_INACTIVE: "Your account is inactive. Contact an administrator.",
   CAPABILITY_MISMATCH: "Your account is not permitted to confirm this visit.",
   ATTENDANCE_NOT_CONFIRMED: "Attendance is not yet confirmed. Retry synchronization.",
@@ -55,6 +57,12 @@ const SAFE_MESSAGES: Record<FieldVisitSafeCode, string> = {
   VISIT_ID_OWNERSHIP_COLLISION: "This visit ID belongs to another account.",
   UNKNOWN_SYNC_FAILURE: "The visit remains saved locally and will retry.",
 };
+
+const MAX_TRANSIENT_BACKOFF_MS = 5 * 60 * 1000;
+function nextTransientAttempt(attemptCount: number): string {
+  const delay = Math.min(MAX_TRANSIENT_BACKOFF_MS, 1000 * 2 ** Math.min(Math.max(attemptCount, 1), 8));
+  return new Date(Date.now() + delay).toISOString();
+}
 
 interface SyncRequest {
   onlyVisitId?: string;
@@ -125,11 +133,19 @@ export function buildFieldVisitConfirmPayload(visit: LocalFieldVisit) {
     attendance_id: visit.attendance_id ?? null,
     person_met: visit.person_met ?? null,
     address: visit.address ?? null,
+    pincode: visit.pincode ?? null,
+    ...(visit.pincode_contract_version ? { pincode_contract_version: visit.pincode_contract_version } : {}),
     segment_type: visit.segment_type,
     follow_up_date: visit.follow_up_date ?? null,
     created_at: visit.created_at,
     updated_at: visit.updated_at,
   };
+}
+
+export function resolveVisitConfirmationMode(visit: LocalFieldVisit, requestedMode: "new" | "recovery"): "new" | "recovery" {
+  if (visit.pincode_contract_version === 1 && visit.confirmation_mode === "new") return "new";
+  if (requestedMode === "new" && visit.pincode_contract_version !== 1) return "recovery";
+  return requestedMode;
 }
 
 export async function syncFieldVisits(onlyVisitId?: string, ownerUserId?: string, mode: "new" | "recovery" = "recovery"): Promise<FieldVisitSyncSummary> {
@@ -167,7 +183,9 @@ async function runSyncCycle(onlyVisitId?: string, ownerUserId?: string, mode: "n
   const ownVisits = await db.field_visits.where("user_id").equals(authenticatedUserId).toArray();
   const visits = ownVisits.filter((visit, index, rows) =>
     (!onlyVisitId || visit.visit_id === onlyVisitId) &&
+    visit.sync_stage !== "address_required" && visit.sync_stage !== "pincode_required" && visit.sync_stage !== "review_required" &&
     (visit.sync_status === "pending_sync" || visit.sync_status === "sync_failed" || visit.sync_stage === "pending_visit" || visit.sync_stage === "sync_failed" || visit.sync_stage === "visit_confirmed_evidence_pending" || visit.sync_stage === "visit_confirmed_link_pending") &&
+    (!visit.next_sync_attempt_at || Boolean(onlyVisitId) || Date.parse(visit.next_sync_attempt_at) <= Date.now()) &&
     rows.findIndex((candidate) => candidate.visit_id === visit.visit_id) === index,
   );
   summary.locallyFound = visits.length;
@@ -184,16 +202,28 @@ async function runSyncCycle(onlyVisitId?: string, ownerUserId?: string, mode: "n
       summary.failureCodes = [...new Set([...summary.failureCodes, "ADDRESS_REQUIRED" as FieldVisitSafeCode])];
       continue;
     }
+    if (visit.pincode_contract_version === 1 && !visit.pincode?.trim()) {
+      await db.field_visits.update(visit.visit_id, {
+        sync_status: "sync_failed",
+        sync_stage: "pincode_required",
+        sync_error_code: "PINCODE_REQUIRED",
+        sync_error_message: SAFE_MESSAGES.PINCODE_REQUIRED,
+      });
+      summary.failed++;
+      summary.failureCodes = [...new Set([...summary.failureCodes, "PINCODE_REQUIRED" as FieldVisitSafeCode])];
+      continue;
+    }
     const attemptedAt = new Date().toISOString();
     await db.field_visits.update(visit.visit_id, {
       last_sync_attempt_at: attemptedAt,
       sync_attempt_count: (visit.sync_attempt_count ?? 0) + 1,
       sync_error_code: undefined,
       sync_error_message: undefined,
+      next_sync_attempt_at: undefined,
     });
     try {
       const mediaRecord = (await db.field_visit_media.where("visit_id").equals(visit.visit_id).toArray())[0] ?? null;
-      const effectiveMode = visit.confirmation_mode === "new" ? "new" : mode;
+      const effectiveMode = resolveVisitConfirmationMode(visit, mode);
       const form = new FormData();
       form.set("mode", effectiveMode);
       form.set("visit", JSON.stringify(buildFieldVisitConfirmPayload(visit)));
@@ -237,7 +267,8 @@ async function runSyncCycle(onlyVisitId?: string, ownerUserId?: string, mode: "n
         summary.failureCodes = [...new Set([...summary.failureCodes, "EVIDENCE_UPLOAD_FAILED"])] as FieldVisitSafeCode[];
       } else {
         const code = safeCode(result.code);
-        await markFailure(visit.visit_id, code);
+        const terminal = response.status >= 400 && response.status < 500 && response.status !== 408 && response.status !== 429;
+        await markFailure(visit.visit_id, code, terminal);
         if (code === "ATTENDANCE_NOT_CONFIRMED" || code === "ATTENDANCE_INTEGRITY_ERROR") summary.attendanceBlocked++;
         summary.failed++;
         summary.failureCodes = [...new Set([...summary.failureCodes, code])];
@@ -270,7 +301,25 @@ export async function supplyQueuedVisitAddress(visitId: string, ownerUserId: str
   });
 }
 
-async function markFailure(visitId: string, code: FieldVisitSafeCode) {
+export async function supplyQueuedVisitPincode(visitId: string, ownerUserId: string, pincode: string): Promise<void> {
+  const normalized = pincode.trim();
+  if (!normalized || normalized.length > 32) throw new Error("Pincode must be between 1 and 32 characters.");
+  const visit = await db.field_visits.get(visitId);
+  if (!visit || visit.user_id !== ownerUserId) throw new Error("Queued visit is unavailable for this account.");
+  if (visit.sync_stage !== "pincode_required" && visit.sync_error_code !== "PINCODE_REQUIRED") throw new Error("This visit is not waiting for a pincode.");
+  await db.field_visits.update(visitId, {
+    pincode: normalized,
+    pincode_contract_version: 1,
+    sync_status: "pending_sync",
+    sync_stage: "pending_visit",
+    sync_error_code: undefined,
+    sync_error_message: undefined,
+    next_sync_attempt_at: undefined,
+    updated_at: new Date().toISOString(),
+  });
+}
+
+async function markFailure(visitId: string, code: FieldVisitSafeCode, terminal = false) {
   const current = await db.field_visits.get(visitId);
   if (current?.sync_stage === "visit_confirmed_evidence_pending" || current?.sync_stage === "visit_confirmed_link_pending") {
     await db.field_visits.update(visitId, {
@@ -283,9 +332,10 @@ async function markFailure(visitId: string, code: FieldVisitSafeCode) {
   }
   await db.field_visits.update(visitId, {
     sync_status: "sync_failed",
-    sync_stage: "sync_failed",
+    sync_stage: terminal ? "review_required" : "sync_failed",
     sync_error_code: code,
     sync_error_message: SAFE_MESSAGES[code],
+    next_sync_attempt_at: terminal ? undefined : nextTransientAttempt((current?.sync_attempt_count ?? 0) + 1),
   });
 }
 
@@ -297,7 +347,7 @@ async function markKnownUserFailures(onlyVisitId: string | undefined, ownerUserI
   const knownOwner = ownerUserId ?? (typeof localStorage !== "undefined" ? localStorage.getItem("authenticated_user_id") ?? undefined : undefined);
   if (!knownOwner) return 0;
   const rows = await db.field_visits.where("user_id").equals(knownOwner).toArray();
-  const retryable = rows.filter((visit) => visit.sync_status === "pending_sync" || visit.sync_status === "sync_failed" || visit.sync_stage === "pending_visit" || visit.sync_stage === "sync_failed" || visit.sync_stage === "visit_confirmed_evidence_pending" || visit.sync_stage === "visit_confirmed_link_pending");
+  const retryable = rows.filter((visit) => visit.sync_stage !== "address_required" && visit.sync_stage !== "pincode_required" && visit.sync_stage !== "review_required" && (visit.sync_status === "pending_sync" || visit.sync_status === "sync_failed" || visit.sync_stage === "pending_visit" || visit.sync_stage === "sync_failed" || visit.sync_stage === "visit_confirmed_evidence_pending" || visit.sync_stage === "visit_confirmed_link_pending"));
   await Promise.all(retryable.map((visit) => markFailure(visit.visit_id, code)));
   return retryable.length;
 }

@@ -44,6 +44,7 @@ function findings(source, file) {
   if (clientCode && /\.from\(\s*["'`]leads["'`]\s*\)[\s\S]{0,300}?\.update\s*\(/i.test(text)) hits.push("direct browser Pipeline mutation bypasses authority");
   if (!normalizedFile.includes("/__tests__/") && (normalizedFile.includes("/pipeline/") || normalizedFile.includes("/onboarding/")) && /from\s+["'][^"']*(?:task|calllogs|fieldvisits|receivables)[^"']*["']/i.test(text)) hits.push("Pipeline imports cross-domain write helper");
   if (normalizedFile.endsWith("src/app/api/call-logs/confirm/route.ts") && /\.from\(\s*["'`]leads["'`]\s*\)[\s\S]{0,300}?\.(?:insert|upsert)\s*\(/i.test(text)) hits.push("Call confirmation creates Lead");
+  if (normalizedFile.includes("/mappings/") && /(?:transactionalMutation\(\s*["'`]leads["'`]|\.from\(\s*["'`]leads["'`]\s*\)[\s\S]{0,300}?\.(?:insert|upsert|update)\s*\()/i.test(text)) hits.push("Mapping creates or mutates Lead");
   if ((normalizedFile.includes("/pipeline/") || normalizedFile.includes("/onboarding/")) && /\.select\(\s*["'`]\*["'`]\s*\)/i.test(text)) hits.push("Pipeline hot path SELECT star");
   const testLike = /(?:^|[\/._-])(?:__tests__|test|tests|qa|fixtures?|smoke)(?:[\/._-]|$)|\.(?:test|spec)\.[cm]?[jt]sx?$/.test(normalizedFile);
   const productionAccess = /(?:SUPABASE_SERVICE_ROLE_KEY|PRODUCTION_SUPABASE|\.env\.production)/i.test(text);
@@ -110,6 +111,27 @@ for (const migration of changedPaths().filter((file) => file.startsWith("supabas
   const sql = readFileSync(resolve(root, migration), "utf8").replace(/--.*$/gm, "");
   requireInvariant(!/\bdelete\s+from\s+public\.leads\b|\btruncate\b/i.test(sql), `${migration} cannot DELETE Leads or TRUNCATE`);
 }
+const mappingPage = readFileSync(resolve(root, "src/app/mappings/page.tsx"), "utf8");
+const callPage = readFileSync(resolve(root, "src/app/call-logs/page.tsx"), "utf8");
+const supportPage = readFileSync(resolve(root, "src/app/support/page.tsx"), "utf8");
+for (const [name, source] of [["Mapping", mappingPage], ["Call Logs", callPage], ["Client Query", supportPage]]) {
+  requireInvariant(source.includes("buildCanonicalClientOptions"), `${name} must reuse the canonical client option provider`);
+}
+requireInvariant(!/transactionalMutation\(\s*["'`]leads["'`]|db\.leads|resolveLeadId|Mapping Form/i.test(mappingPage), "Mapping must have zero Lead creation authority or Pipeline dependency");
+requireInvariant(mappingPage.includes("distributor_name_unregistered") && mappingPage.includes("retailer_name_unregistered"), "Mapping must persist faithful free-text display values");
+const retailerVisitForm = readFileSync(resolve(root, "src/app/visits/new/retailer/page.tsx"), "utf8");
+const distributorVisitForm = readFileSync(resolve(root, "src/app/visits/new/distributor/page.tsx"), "utf8");
+requireInvariant(retailerVisitForm.includes('className="field-label">Area ') && distributorVisitForm.includes('className="field-label">Address '), "Visit UI labels must be Retailer Area and Distributor Address");
+for (const [name, source] of [["Retailer", retailerVisitForm], ["Distributor", distributorVisitForm]]) {
+  requireInvariant(source.includes("pincode: pincode.trim()") && source.indexOf('htmlFor="visit-address"') < source.indexOf('htmlFor="visit-pincode"') && source.indexOf('htmlFor="visit-pincode"') < source.lastIndexOf('"Save Visit"'), `${name} Visit must close Address/Area → Pincode → Save order`);
+  requireInvariant(!/fetch\([^)]*pincode/i.test(source), `${name} Visit pincode cannot add a request`);
+}
+const visitMine = readFileSync(resolve(root, "src/app/api/field-visits/mine/route.ts"), "utf8");
+const adminVisits = readFileSync(resolve(root, "src/app/api/admin/visits/route.ts"), "utf8");
+const visitExport = readFileSync(resolve(root, "src/app/api/admin/export-visits/route.ts"), "utf8");
+requireInvariant(visitMine.includes("address,pincode") && adminVisits.includes("address,pincode") && visitExport.includes("Pincode: visit.pincode"), "Visit pincode must close personal/admin/export reads");
+const pincodeMigration = readFileSync(resolve(root, "supabase/migrations/044_field_visit_pincode.sql"), "utf8").replace(/--.*$/gm, "");
+requireInvariant(/ADD COLUMN IF NOT EXISTS pincode text NULL/i.test(pincodeMigration) && !/UPDATE\s+public\.field_visits|ALTER COLUMN pincode SET NOT NULL/i.test(pincodeMigration), "Visit pincode migration must preserve historical NULL rows without backfill");
 requireInvariant(existsSync(resolve(root, "src/lib/__tests__/pipeline/pipelineHardeningMigration.test.ts")), "Pipeline cross-domain mutation assertions are required");
 requireInvariant(existsSync(resolve(root, "docs/contracts/RESOURCE_BUDGET.md")), "hot-query changes require the Resource Budget contract");
 const ownerSqlFiles = [
@@ -132,6 +154,10 @@ requireInvariant(
 requireInvariant(
   normalizeSqlArtifact(readFileSync(resolve(root, "owner-043.sql"), "utf8")) === normalizeSqlArtifact(readFileSync(resolve(root, "supabase/migrations/043_pipeline_creation_authority.sql"), "utf8")),
   "owner-043.sql must remain semantically identical to migration 043"
+);
+requireInvariant(
+  normalizeSqlArtifact(readFileSync(resolve(root, "owner-044.sql"), "utf8")) === normalizeSqlArtifact(readFileSync(resolve(root, "supabase/migrations/044_field_visit_pincode.sql"), "utf8")),
+  "owner-044.sql must remain semantically identical to migration 044"
 );
 const attendanceAuthority = readFileSync(resolve(root, "src/lib/attendance/authority.ts"), "utf8");
 const adminAttendance = readFileSync(resolve(root, "src/app/api/admin/attendance/route.ts"), "utf8");
