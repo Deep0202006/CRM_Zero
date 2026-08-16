@@ -62,8 +62,8 @@ export async function exportMappings(userId: string) {
   const mappings = await db.mapping_requests.where('mapped_by').equals(userId).toArray();
   const data = mappings.map(m => ({
     'Request ID': m.request_id,
-    'Distributor Lead ID': m.distributor_lead_id,
-    'Retailer Lead ID': m.retailer_lead_id,
+    'Distributor': m.distributor_name_unregistered || m.distributor_lead_id || '',
+    'Retailer': m.retailer_name_unregistered || m.retailer_lead_id || '',
     'Status': m.status,
     'Notes': m.notes || '',
     'Created At': formatIsoDate(m.created_at),
@@ -158,8 +158,8 @@ export async function exportMasterMappings() {
 
   const data = requests.map(r => ({
     'Request ID': r.request_id,
-    'Distributor Name': (r.distributor_lead_id ? leadMap.get(r.distributor_lead_id) : '') || r.distributor_lead_id || '',
-    'Retailer Name': (r.retailer_lead_id ? leadMap.get(r.retailer_lead_id) : '') || r.retailer_lead_id || '',
+    'Distributor Name': r.distributor_name_unregistered || (r.distributor_lead_id ? leadMap.get(r.distributor_lead_id) : '') || r.distributor_lead_id || '',
+    'Retailer Name': r.retailer_name_unregistered || (r.retailer_lead_id ? leadMap.get(r.retailer_lead_id) : '') || r.retailer_lead_id || '',
     'Mapped By Username': r.mapped_by ? (userMap.get(r.mapped_by) || r.mapped_by) : '',
     'Status': r.status,
     'Notes': r.notes || '',

@@ -20,6 +20,9 @@ export const FIELD_VISIT_OUTCOMES = [
 
 export type FieldVisitOutcome = typeof FIELD_VISIT_OUTCOMES[number];
 
+export const PINCODE_MAX_LENGTH = 32;
+export const PincodeSchema = z.string().trim().min(1).max(PINCODE_MAX_LENGTH);
+
 export function getOutcomeLabel(outcome: FieldVisitOutcome | string): string {
   switch (outcome) {
     case "registered": return "Registered";
@@ -71,6 +74,7 @@ export const FieldVisitSchema = z.object({
   check_in_time: z.string().datetime(),
   person_met: z.string().trim().min(2).max(120).optional().nullable(),
   address: z.string().trim().min(1).max(500).optional().nullable(),
+  pincode: PincodeSchema.optional().nullable(),
   visit_notes: z.string().max(2000).optional().nullable(),
   segment_type: z.enum(FIELD_VISIT_SEGMENTS),
   visit_outcome: z.enum(FIELD_VISIT_OUTCOMES),

@@ -18,6 +18,12 @@
 - Unknown records are preserved instead of guessed.
 - Admin reporting is server-authoritative.
 - One business concept has one authority; cross-domain displays never become duplicate truth.
+- A UI/business label change does not rename its database authority without a necessary contract change.
+- New required fields preserve legacy-row readability and offline payload upgrades test both current and previous supported fixtures.
+- Every new business field closes Write → Read → Admin → Export coverage without fabricated history.
+- Suggestion dropdowns are not validation authority unless the owner contract explicitly says so; shared dropdown domains reuse one canonical provider.
+- Mapping is free-text logging authority only: the employee-entered display value is authoritative and Mapping has zero Lead or Pipeline write authority.
+- Cross-domain side effects require an explicit owner contract and permanent isolation coverage.
 - Store orthogonal facts when product categories overlap; derive dashboard cards.
 - Every mutation declares an exact side-effect budget and every major screen a read budget.
 - Derived date alerts do not create generated work unless explicitly approved.

@@ -6,6 +6,7 @@ const pathsArg = process.argv.find((arg) => arg.startsWith("--paths="));
 const governedPaths = pathsArg ? pathsArg.slice("--paths=".length).split(",").filter(Boolean) : changedPaths();
 const unexpected = governedPaths.filter((file) =>
   !ignoredRuntime.includes(file) &&
+  !(task.trackedBaseline ?? []).some((baseline) => matchesPath(file, baseline)) &&
   !(task.untrackedBaseline ?? []).some((baseline) => matchesPath(file, baseline)) &&
   !task.allowedPaths.some((allowed) => matchesPath(file, allowed))
 );

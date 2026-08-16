@@ -21,6 +21,7 @@ export default function NewRetailerVisitPage() {
   const [selectedLeadId, setSelectedLeadId] = useState("");
   const [personMet, setPersonMet] = useState("");
   const [address, setAddress] = useState("");
+  const [pincode, setPincode] = useState("");
   const [outcome, setOutcome] = useState("");
   const [notes, setNotes] = useState("");
   const [followUpDate, setFollowUpDate] = useState("");
@@ -113,7 +114,7 @@ export default function NewRetailerVisitPage() {
     e.preventDefault();
     if (!currentUser) return;
     
-    if (!selectedLeadId || !outcome || !personMet || !address.trim() || !photoBlob) {
+    if (!selectedLeadId || !outcome || !personMet || !address.trim() || !pincode.trim() || !photoBlob) {
       setError("Please fill out required fields including selfie.");
       return;
     }
@@ -161,6 +162,8 @@ export default function NewRetailerVisitPage() {
         visit_notes: notes.trim() || null,
         person_met: personMet.trim() || null,
         address: address.trim(),
+        pincode: pincode.trim(),
+        pincode_contract_version: 1 as const,
         segment_type: "Retailer",
         follow_up_date: followUpDate || null,
         attendance_id: attendanceRec?.attendance_id || null,
@@ -289,14 +292,19 @@ export default function NewRetailerVisitPage() {
             {error && <div className="alert-panel alert-panel--danger" role="alert"><AlertCircle size={16} className="mt-0.5 shrink-0" /><span>{error}</span></div>}
             {statusMessage && <div className={`alert-panel ${offlineAcknowledgementRequired ? "alert-panel--warning" : "alert-panel--success"}`} role="status">{offlineAcknowledgementRequired ? <AlertCircle size={16} className="mt-0.5 shrink-0" /> : <CheckCircle2 size={16} className="mt-0.5 shrink-0" />}<span>{statusMessage}</span></div>}
 
-            <div className="flex justify-end gap-2 border-t border-[var(--border-subtle)] pt-5">
-              {offlineAcknowledgementRequired && <Button type="button" variant="outline" onClick={() => { window.location.href = "/visits"; }}>I understand — open My Visits</Button>}
-              {!offlineAcknowledgementRequired && <Button type="submit" isLoading={submitting} icon={<CheckCircle2 size={15} />} disabled={!selectedLeadId || !outcome || !personMet || !address.trim() || !photoBlob || !lat || !lng}>{pendingVisitId ? "Retry confirmation" : "Save Visit"}</Button>}
+            <div>
+              <label htmlFor="visit-address" className="field-label">Area <span className="text-[var(--status-danger)]">*</span></label>
+              <textarea id="visit-address" value={address} onChange={(event) => setAddress(event.target.value)} maxLength={500} rows={3} className="field-control resize-y" placeholder="Visit area" required />
             </div>
 
             <div>
-              <label htmlFor="visit-address" className="field-label">Address <span className="text-[var(--status-danger)]">*</span></label>
-              <textarea id="visit-address" value={address} onChange={(event) => setAddress(event.target.value)} maxLength={500} rows={3} className="field-control resize-y" placeholder="Human-readable visit address" required />
+              <label htmlFor="visit-pincode" className="field-label">Pincode <span className="text-[var(--status-danger)]">*</span></label>
+              <input id="visit-pincode" type="text" inputMode="text" autoComplete="postal-code" value={pincode} onChange={(event) => setPincode(event.target.value)} maxLength={32} className="field-control" required />
+            </div>
+
+            <div className="flex justify-end gap-2 border-t border-[var(--border-subtle)] pt-5">
+              {offlineAcknowledgementRequired && <Button type="button" variant="outline" onClick={() => { window.location.href = "/visits"; }}>I understand — open My Visits</Button>}
+              {!offlineAcknowledgementRequired && <Button type="submit" isLoading={submitting} icon={<CheckCircle2 size={15} />} disabled={!selectedLeadId || !outcome || !personMet || !address.trim() || !pincode.trim() || !photoBlob || !lat || !lng}>{pendingVisitId ? "Retry confirmation" : "Save Visit"}</Button>}
             </div>
           </form>
         </section>

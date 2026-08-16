@@ -9,10 +9,11 @@
 5. Implement only allowed paths.
 6. Run related tests during work and risk-based verification before review.
 7. Review the diff and update durable knowledge when behavior or protection changes.
+8. For every new business field, verify write, personal readback, admin readback, export parity, legacy-row behavior, and offline current/previous payload compatibility where applicable.
 
 Task manifest fields: `task`, `risk`, `domains`, `allowedPaths`, `protectedDomains`, `productionDataMutation`, `schemaChange`, `acceptance`.
 
-If the task begins with unrelated untracked work, `untrackedBaseline` may list the exact pre-existing paths/prefixes so the scope guard preserves them without treating them as task output.
+If the task begins with unrelated work, `trackedBaseline` may list exact pre-existing tracked paths and `untrackedBaseline` may list exact pre-existing untracked paths/prefixes so the scope guard preserves them without treating them as task output. Baselines are not task authorization and must never be broadened after implementation begins.
 
 Re-planning is explicit: update the manifest before editing newly allowed paths and record why in the active plan or task notes.
 

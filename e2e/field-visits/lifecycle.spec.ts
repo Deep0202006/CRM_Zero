@@ -40,8 +40,8 @@ test("Admin Visits Overview is bounded, responsive, legacy-safe, and loads evide
   let evidenceRequests = 0;
   await page.route("**/api/admin/visits/evidence**", route => { evidenceRequests++; return route.fulfill({ json: { url: "https://example.test/selfie.jpg" } }); });
   await page.route("**/api/admin/visits**", route => route.fulfill({ json: { visits: [
-    { visit_id: "50000000-0000-4000-a000-000000000001", user_id: employeeId, lead_id: leadId, visit_date: today, check_in_time: "2026-08-12T05:00:00Z", check_in_lat: 18.52, check_in_lng: 73.85, address: "१२ मुख्य सड़क\nपुणे", visit_outcome: "payment_done", visit_notes: "Full multiline\nnotes remain readable", person_met: "Priya", segment_type: "Distributor", follow_up_date: null, sync_status: "synced", selfie_status: "AVAILABLE", has_selfie_evidence: true, users: { name: "Field Employee", email: "employee@example.test" }, leads: { business_name: "Unicode व्यवसाय" } },
-    { visit_id: "50000000-0000-4000-a000-000000000002", user_id: employeeId, lead_id: "legacy", visit_date: "2026-08-01", check_in_time: "2026-08-01T05:00:00Z", address: null, visit_outcome: "interested", person_met: "Owner", segment_type: "Retailer", selfie_status: "PURGED", users: { name: "Field Employee" }, leads: { business_name: "Legacy Store" } },
+    { visit_id: "50000000-0000-4000-a000-000000000001", user_id: employeeId, lead_id: leadId, visit_date: today, check_in_time: "2026-08-12T05:00:00Z", check_in_lat: 18.52, check_in_lng: 73.85, address: "१२ मुख्य सड़क\nपुणे", pincode: "012345", visit_outcome: "payment_done", visit_notes: "Full multiline\nnotes remain readable", person_met: "Priya", segment_type: "Distributor", follow_up_date: null, sync_status: "synced", selfie_status: "AVAILABLE", has_selfie_evidence: true, users: { name: "Field Employee", email: "employee@example.test" }, leads: { business_name: "Unicode व्यवसाय" } },
+    { visit_id: "50000000-0000-4000-a000-000000000002", user_id: employeeId, lead_id: "legacy", visit_date: "2026-08-01", check_in_time: "2026-08-01T05:00:00Z", address: null, pincode: null, visit_outcome: "interested", person_met: "Owner", segment_type: "Retailer", selfie_status: "PURGED", users: { name: "Field Employee" }, leads: { business_name: "Legacy Store" } },
   ], page: 1, page_size: 50, total: 2, all_time_total: 2, today_total: 1, has_more: false, representatives: [{ user_id: employeeId, name: "Field Employee", email: "employee@example.test", is_active: true, capabilities: ["field_dist"], historical_only: false }] } }));
   for (const viewport of [{ width: 390, height: 844 }, { width: 820, height: 1180 }, { width: 1440, height: 900 }]) {
     await page.setViewportSize(viewport); await page.goto("/admin/visits");
@@ -49,6 +49,8 @@ test("Admin Visits Overview is bounded, responsive, legacy-safe, and loads evide
     await expect(page.getByText("१२ मुख्य सड़क")).toBeVisible();
     await expect(page.getByText("Legacy visit — address was not captured")).toBeVisible();
     await expect(page.getByText("Selfie expired after 5-day retention")).toBeVisible();
+    await page.getByText("Visit detail").first().click();
+    await expect(page.getByText(/Pincode:\s*012345/)).toBeVisible();
     expect(evidenceRequests).toBe(0);
   }
   await page.getByRole("button", { name: "View Selfie" }).click();
@@ -62,15 +64,17 @@ test("Distributor form requires Unicode address and offers observational Payment
   await page.goto("/visits/new/distributor");
   await expect(page.getByRole("option", { name: "Payment done" })).toHaveCount(1);
   await expect(page.getByLabel("Address *")).toHaveAttribute("required", "");
+  await expect(page.getByLabel("Pincode *")).toHaveAttribute("required", "");
   await page.getByLabel("Address *").fill("१२ मुख्य सड़क, पुणे");
   await expect(page.getByLabel("Address *")).toHaveValue("१२ मुख्य सड़क, पुणे");
 });
 
-test("Retailer form requires Address and never exposes Payment done", async ({ page, context }) => {
+test("Retailer form labels address authority as Area, requires pincode, and never exposes Payment done", async ({ page, context }) => {
   await mockSupabase(page); await seed(page, "employee");
   await context.grantPermissions(["geolocation"], { origin: "http://127.0.0.1:3111" }); await context.setGeolocation({ latitude: 18.52, longitude: 73.85, accuracy: 15 });
   await page.goto("/visits/new/retailer");
-  await expect(page.getByLabel("Address *")).toHaveAttribute("required", "");
+  await expect(page.getByLabel("Area *")).toHaveAttribute("required", "");
+  await expect(page.getByLabel("Pincode *")).toHaveAttribute("required", "");
   await expect(page.getByRole("option", { name: "Payment done" })).toHaveCount(0);
 });
 
