@@ -1,13 +1,13 @@
 {
-  "verified_at": "2026-08-15T12:59:48Z",
-  "production_main_sha": "c15674ac52eac68d7ff8e6445ab74e1e000ec459",
+  "verified_at": "2026-08-16T11:18:09Z",
+  "production_main_sha": "c527756a2cce1cf1c493e91515d88e33ba96570d",
   "vercel": {
-    "deployment_id": "dpl_4czf5STDLL7h5yszXqobqLQAYbnb",
+    "deployment_id": "dpl_DdwpnxQVXN48PymTjjXAa5bkTT1s",
     "state": "READY",
     "target": "production",
-    "sha": "c15674ac52eac68d7ff8e6445ab74e1e000ec459"
+    "sha": "c527756a2cce1cf1c493e91515d88e33ba96570d"
   },
-  "last_applied_owner_migration": "043_APPLIED_AND_VERIFIED",
+  "last_applied_owner_migration": "044_APPLIED_AND_VERIFIED",
   "migration_history_note": "Not verified: remote migration history is empty and must not be inferred from local files.",
   "domain_readiness": {
     "attendance": "COMPLETE_NATURALLY_LIVE_CERTIFIED",
@@ -23,7 +23,9 @@
     "pipeline_converted_duplicate_prevention": "COMPLETE",
     "visual_intelligence_my_day": "COMPLETE_PRESENTATION_ONLY_PRODUCTION_SMOKE",
     "visual_intelligence_team_kpi": "COMPLETE_PRESENTATION_ONLY_PRODUCTION_SMOKE",
-    "visual_intelligence_visits": "COMPLETE_PRESENTATION_ONLY_PRODUCTION_SMOKE"
+    "visual_intelligence_visits": "COMPLETE_PRESENTATION_ONLY_PRODUCTION_SMOKE",
+    "field_visit_pincode": "COMPLETE_READ_ONLY_PRODUCTION_SMOKE",
+    "mapping_standalone_logging": "COMPLETE_READ_ONLY_PRODUCTION_SMOKE"
   },
   "attendance_live_certification": {
     "business_date": "2026-08-15",
@@ -132,6 +134,40 @@
       "Team KPI renders a same-day pulse because the authoritative response has no historical series.",
       "Visits composition and activity visuals explicitly represent the existing bounded page of at most 50 rows."
     ],
+    "p0": 0,
+    "p1": 0
+  },
+  "field_visit_mapping_release": {
+    "feature_pr": 50,
+    "feature_head": "99fe993396179a678b7d79d9c87d4d8a2009130e",
+    "feature_merge_sha": "29d7b0a5ca1f31ed495abd8ec27abc648f586724",
+    "hotfix_pr": 51,
+    "hotfix_head": "e874d8d8f74eded2e5e6b909542976e078b39425",
+    "production_merge_sha": "c527756a2cce1cf1c493e91515d88e33ba96570d",
+    "deployment_id": "dpl_DdwpnxQVXN48PymTjjXAa5bkTT1s",
+    "migration_044": "APPLIED_AND_VERIFIED",
+    "field_visit_rows": 241,
+    "historical_null_pincodes": 241,
+    "historical_null_rows_readable": true,
+    "field_visit_row_count_preserved_by_owner_precheck_postcheck": true,
+    "mapping_rows": 0,
+    "mapping_row_count_preserved_by_owner_precheck_postcheck": true,
+    "mapping_free_text_columns": 2,
+    "lead_rows": 41,
+    "converted_lead_rows": 17,
+    "attendance_rows": 141,
+    "receivables": 0,
+    "receivable_payments": 0,
+    "pipeline_transition_operations": 95,
+    "retailer_area_label": "PASS",
+    "distributor_address_label": "PASS",
+    "visit_overview_pincode": "PASS_UNCHANGED_CARD_STRUCTURE",
+    "excel_pincode": "PASS",
+    "mapping_free_text": "PASS",
+    "mapping_dropdown_parity": "PASS_CANONICAL_PROVIDER",
+    "mapping_lead_writes": 0,
+    "production_business_rows_deleted": 0,
+    "production_dummy_rows": 0,
     "p0": 0,
     "p1": 0
   },
