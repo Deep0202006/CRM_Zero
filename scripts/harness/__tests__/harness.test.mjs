@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "../../..");
 const runtime = resolve(root, ".harness/self-test");
@@ -10,7 +10,7 @@ const manifestPath = resolve(root, ".harness/task.json");
 const originalManifest = readFileSync(manifestPath, "utf8");
 
 function run(script, args = [], env = {}) { return spawnSync(process.execPath, [resolve(root, script), ...args], { cwd: root, encoding: "utf8", env: { ...process.env, ...env } }); }
-function fixture(name, content) { mkdirSync(runtime, { recursive: true }); const path = resolve(runtime, name); writeFileSync(path, content); return path; }
+function fixture(name, content) { mkdirSync(runtime, { recursive: true }); const path = resolve(runtime, name); mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, content); return path; }
 test.afterEach(() => { rmSync(runtime, { recursive: true, force: true }); writeFileSync(manifestPath, originalManifest); });
 
 test("A safe UI diff passes the invariant guard", () => {
@@ -76,4 +76,22 @@ test("K an owner SQL artifact with a client meta-command fails", () => {
   const result = run("scripts/harness/invariant-guard.mjs", [path]);
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /OWNER_SQL_IS_PURE_POSTGRESQL/);
+});
+
+test("L Mapping cannot create a Lead", () => {
+  const path = fixture("mappings/page.tsx", `await transactionalMutation('leads', 'INSERT', row);`);
+  assert.notEqual(run("scripts/harness/invariant-guard.mjs", [path]).status, 0);
+});
+
+test("M owner artifacts reject psql meta commands", () => {
+  const path = fixture("owner-999.sql", `\\set target public.field_visits\nselect 1;`);
+  assert.notEqual(run("scripts/harness/invariant-guard.mjs", [path]).status, 0);
+});
+
+test("N an exact pre-existing tracked baseline is preserved without entering task scope", () => {
+  const task = JSON.parse(originalManifest);
+  task.allowedPaths = ["src/lib/fieldVisits/"];
+  task.trackedBaseline = ["AGENTS.md"];
+  writeFileSync(manifestPath, JSON.stringify(task));
+  assert.equal(run("scripts/harness/scope-guard.mjs", ["--paths=AGENTS.md"]).status, 0);
 });

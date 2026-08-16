@@ -9,6 +9,7 @@
 5. Implement only allowed paths.
 6. Run related tests during work and risk-based verification before review.
 7. Review the diff and update durable knowledge when behavior or protection changes.
+8. For every new business field, verify write, personal readback, admin readback, export parity, legacy-row behavior, and offline current/previous payload compatibility where applicable.
 
 For an incident, freeze the issue contract before implementation: `USER-OBSERVED FAILURE`, `AUTHORITATIVE EXPECTED RESULT`, `WRITE PATH`, `READ PATH`, and `ACCEPTANCE INVARIANT`. Only causal surfaces on that path may block the incident. Distinguish a bug fix from a new business policy; do not invent unrelated time limits, permissions, financial semantics, or lifecycle rules.
 
@@ -20,7 +21,7 @@ Before implementation, acceptance must lock `USER REQUEST`, `EXPECTED USER FLOW`
 
 Every mutation declares its allowed table write set; fixture tests fail on any write outside it. Every screen declares initial request count, maximum page, polling, payload/binary bounds, and query pattern. Check `docs/os/AUTHORITY_REGISTRY.json` before adding storage or a parallel command. Empty, unauthorized, server-error, and capability-missing states remain distinct.
 
-If the task begins with unrelated untracked work, `untrackedBaseline` may list the exact pre-existing paths/prefixes so the scope guard preserves them without treating them as task output.
+If the task begins with unrelated work, `trackedBaseline` may list exact pre-existing tracked paths and `untrackedBaseline` may list exact pre-existing untracked paths/prefixes so the scope guard preserves them without treating them as task output. Baselines are not task authorization and must never be broadened after implementation begins.
 
 Re-planning is explicit: update the manifest before editing newly allowed paths and record why in the active plan or task notes.
 

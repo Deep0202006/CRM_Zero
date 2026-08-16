@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { db, transactionalMutation, LocalLead, LocalMappingRequest } from "@/lib/db";
+import { db, transactionalMutation, LocalMappingRequest } from "@/lib/db";
 import { AlertCircle, CheckCircle2, Link2, Download, ArrowRightLeft } from "lucide-react";
 import { SearchableSelect, SearchableOption } from "@/components/SearchableSelect";
 import { QueueList } from "@/components/QueueList";
@@ -10,10 +10,12 @@ import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { MetricCard } from "@/components/ui/MetricCard";
+import excelUsers from "@/lib/excel_users.json";
+import { buildCanonicalClientOptions, resolveClientOptionInput } from "@/lib/clientOptions";
+import { mappingRequestSchema } from "@/lib/validation";
 
 export default function MappingsPage() {
   const { currentUser, hasSupport } = useAuth();
-  const [leads, setLeads] = useState<LocalLead[]>([]);
   const [mappings, setMappings] = useState<LocalMappingRequest[]>([]);
   
   // Form State
@@ -25,30 +27,13 @@ export default function MappingsPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  const distributorOptions = React.useMemo(() => {
-    const dbOptions: SearchableOption[] = leads.filter(l => l.segment_type === "Distributor").map(l => ({
-      value: l.lead_id,
-      label: l.contact_person ? `${l.business_name} - ${l.phone}` : l.business_name
-    }));
-    const map = new Map<string, SearchableOption>();
-    dbOptions.forEach(opt => map.set(opt.label.toLowerCase(), opt));
-    return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label));
-  }, [leads]);
-
-  const retailerOptions = React.useMemo(() => {
-    const dbOptions: SearchableOption[] = leads.filter(l => l.segment_type === "Retailer").map(l => ({
-      value: l.lead_id,
-      label: l.contact_person ? `${l.business_name} - ${l.phone}` : l.business_name
-    }));
-    const map = new Map<string, SearchableOption>();
-    dbOptions.forEach(opt => map.set(opt.label.toLowerCase(), opt));
-    return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label));
-  }, [leads]);
+  const clientOptions: SearchableOption[] = React.useMemo(
+    () => buildCanonicalClientOptions(excelUsers as Array<{ username: string; name?: string }>),
+    [],
+  );
 
   const loadData = async () => {
     try {
-      const allLeads = await db.leads.toArray();
-      setLeads(allLeads);
       const allMaps = await db.mapping_requests.toArray();
       allMaps.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
       setMappings(allMaps);
@@ -61,18 +46,6 @@ export default function MappingsPage() {
     loadData();
   }, []);
 
-  const resolveLeadId = async (input: string, segmentType: "Distributor" | "Retailer"): Promise<string> => {
-    if (!input.trim()) throw new Error("Empty input");
-    
-    const existing = leads.find(l => l.lead_id === input);
-    if (existing) return existing.lead_id;
-
-    const nameMatches = leads.filter(l => l.business_name.trim().toLowerCase() === input.trim().toLowerCase() && l.segment_type === segmentType);
-    if (nameMatches.length === 1) return nameMatches[0].lead_id;
-    if (nameMatches.length > 1) throw new Error(`Multiple ${segmentType} leads share that name. Select the exact Pipeline record.`);
-    throw new Error(`No ${segmentType} lead matches. Create it in Pipeline first.`);
-  };
-
   const handleLogMapping = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!primaryName.trim() || !secondaryNames.trim()) {
@@ -81,7 +54,7 @@ export default function MappingsPage() {
     }
     
     try {
-      const primaryLeadId = await resolveLeadId(primaryName, activeSegment);
+      const primary = resolveClientOptionInput(primaryName, clientOptions);
       
       let sNames = [secondaryNames.trim()];
       if (cardinality === "1:N") {
@@ -98,21 +71,21 @@ export default function MappingsPage() {
 
       for (let i = 0; i < sNames.length; i++) {
         const sName = sNames[i];
-        const secondarySegment = activeSegment === "Distributor" ? "Retailer" : "Distributor";
-        
-        const secondaryLeadId = await resolveLeadId(sName, secondarySegment);
+        const secondary = resolveClientOptionInput(sName, clientOptions);
         const isDistPrimary = activeSegment === "Distributor";
         
         const newMapping: LocalMappingRequest = {
           request_id: crypto.randomUUID(),
-          distributor_lead_id: isDistPrimary ? primaryLeadId : secondaryLeadId,
-          retailer_lead_id: isDistPrimary ? secondaryLeadId : primaryLeadId,
+          distributor_lead_id: isDistPrimary ? primary.leadId : secondary.leadId,
+          retailer_lead_id: isDistPrimary ? secondary.leadId : primary.leadId,
+          distributor_name_unregistered: isDistPrimary ? primary.displayValue : secondary.displayValue,
+          retailer_name_unregistered: isDistPrimary ? secondary.displayValue : primary.displayValue,
           status: "Pending",
           requested_by: currentUser?.user_id || null,
           mapped_by: currentUser?.user_id || null,
           created_at: timestamp,
         };
-        newMaps.push(newMapping);
+        newMaps.push(mappingRequestSchema.parse(newMapping) as LocalMappingRequest);
       }
       
       for (let i = 0; i < newMaps.length; i++) {
@@ -145,18 +118,8 @@ export default function MappingsPage() {
   };
 
   // Identity vector standard: Format "{Name} (@{Username}) - {Phone}"
-  const formatIdentity = (leadId: string, fallbackRole: string) => {
-    if (!leadId) return `Unknown ${fallbackRole}`;
-    if (leadId.startsWith("EXCEL::")) {
-      const parts = leadId.split("::");
-      if (parts.length === 3) return `${parts[2]} (@${parts[1]})`;
-    }
-    const l = leads.find(item => item.lead_id === leadId);
-    if (l) {
-      if (l.business_name.includes("(@")) return l.business_name;
-      return `${l.business_name} - ${l.phone || "N/A"}`;
-    }
-    return `Unknown ${fallbackRole}`;
+  const formatIdentity = (displayValue: string | null | undefined, leadId: string | null, fallbackRole: string) => {
+    return displayValue?.trim() || leadId?.trim() || `Unknown ${fallbackRole}`;
   };
 
   if (!hasSupport) {
@@ -191,8 +154,8 @@ export default function MappingsPage() {
       <div className="metric-grid">
         <MetricCard label="Pending mappings" value={pendingCount} icon={<Link2 size={17} />} tone="warning" note="Relationships waiting to be completed" />
         <MetricCard label="Completed" value={completedCount} icon={<CheckCircle2 size={17} />} tone="success" note="Verified distributor-retailer links" />
-        <MetricCard label="Distributor records" value={distributorOptions.length} icon={<ArrowRightLeft size={17} />} tone="brand" note="Available distributor identities" />
-        <MetricCard label="Retailer records" value={retailerOptions.length} icon={<ArrowRightLeft size={17} />} tone="neutral" note="Available retailer identities" />
+        <MetricCard label="Distributor suggestions" value={clientOptions.length} icon={<ArrowRightLeft size={17} />} tone="brand" note="Shared client directory" />
+        <MetricCard label="Retailer suggestions" value={clientOptions.length} icon={<ArrowRightLeft size={17} />} tone="neutral" note="Shared client directory" />
       </div>
 
       {successMsg && <div className="alert-panel alert-panel--success" role="status"><CheckCircle2 size={16} className="mt-0.5 shrink-0" /><span>{successMsg}</span></div>}
@@ -226,7 +189,7 @@ export default function MappingsPage() {
 
             <div>
               <label className="field-label">Primary {primaryLabel}</label>
-              <SearchableSelect options={activeSegment === "Distributor" ? distributorOptions : retailerOptions} value={primaryName} onChange={setPrimaryName} placeholder={`Search ${primaryLabel.toLowerCase()} records`} required />
+              <SearchableSelect options={clientOptions} value={primaryName} onChange={setPrimaryName} placeholder={`Search or type ${primaryLabel.toLowerCase()}`} required />
             </div>
 
             <div className="flex items-center gap-3" aria-hidden="true">
@@ -238,7 +201,7 @@ export default function MappingsPage() {
             <div>
               <label className="field-label">{cardinality === "1:N" ? `Secondary ${secondaryLabel}s` : `Secondary ${secondaryLabel}`}</label>
               {cardinality === "1:1" ? (
-                <SearchableSelect options={activeSegment === "Distributor" ? retailerOptions : distributorOptions} value={secondaryNames} onChange={setSecondaryNames} placeholder={`Search ${secondaryLabel.toLowerCase()} records`} required />
+                <SearchableSelect options={clientOptions} value={secondaryNames} onChange={setSecondaryNames} placeholder={`Search or type ${secondaryLabel.toLowerCase()}`} required />
               ) : (
                 <textarea value={secondaryNames} onChange={(event) => setSecondaryNames(event.target.value)} placeholder={`Enter one ${secondaryLabel.toLowerCase()} per line or separate names with commas`} rows={5} className="field-control resize-y" required />
               )}
@@ -258,8 +221,8 @@ export default function MappingsPage() {
             primaryNode: (
               <div>
                 <p className="text-[11px] font-bold uppercase tracking-[0.06em] text-[var(--text-muted)]">Retailer → Distributor</p>
-                <p className="mt-1.5 text-[13px] font-semibold leading-5 text-[var(--text-primary)]">{formatIdentity(mapping.retailer_lead_id, "Retailer")}</p>
-                <p className="mt-1 flex items-center gap-2 text-[12px] text-[var(--text-secondary)]"><ArrowRightLeft size={12} className="text-[var(--brand-600)]" /> {formatIdentity(mapping.distributor_lead_id, "Distributor")}</p>
+                <p className="mt-1.5 text-[13px] font-semibold leading-5 text-[var(--text-primary)]">{formatIdentity(mapping.retailer_name_unregistered, mapping.retailer_lead_id, "Retailer")}</p>
+                <p className="mt-1 flex items-center gap-2 text-[12px] text-[var(--text-secondary)]"><ArrowRightLeft size={12} className="text-[var(--brand-600)]" /> {formatIdentity(mapping.distributor_name_unregistered, mapping.distributor_lead_id, "Distributor")}</p>
               </div>
             ),
             statusText: mapping.status,

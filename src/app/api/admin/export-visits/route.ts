@@ -61,7 +61,7 @@ export async function GET(request: Request) {
   const visits: Array<Record<string, unknown> & { visit_id: string; user_id: string; lead_id: string }> = [];
   for (let from = 0; ; from += EXPORT_PAGE_SIZE) {
     let query = admin.from("field_visits")
-      .select("visit_id,user_id,lead_id,visit_date,check_in_time,check_in_lat,check_in_lng,address,segment_type,person_met,visit_outcome,visit_notes,follow_up_date,selfie_storage_path,selfie_purged_at,created_at")
+      .select("visit_id,user_id,lead_id,visit_date,check_in_time,check_in_lat,check_in_lng,address,pincode,segment_type,person_met,visit_outcome,visit_notes,follow_up_date,selfie_storage_path,selfie_purged_at,created_at")
       .order("created_at", { ascending: false })
       .order("visit_id", { ascending: false })
       .range(from, from + EXPORT_PAGE_SIZE - 1);
@@ -96,6 +96,7 @@ export async function GET(request: Request) {
   }
   const usersById = new Map(users.map((user) => [user.user_id, user]));
   const leadsById = new Map(leads.map((lead) => [lead.lead_id, lead]));
+  const addressHeading = segment === "Retailer" ? "Area" : "Address";
   const rows = uniqueVisits.map((visit) => {
     const user = usersById.get(visit.user_id);
     const lead = leadsById.get(visit.lead_id);
@@ -109,7 +110,8 @@ export async function GET(request: Request) {
       Segment: visit.segment_type,
       Business: lead?.business_name?.trim() || visit.lead_id?.trim() || "Unavailable business",
       "Person met": visit.person_met ?? "",
-      Address: visit.address ?? "Legacy visit — address not captured",
+      [addressHeading]: visit.address ?? "Legacy visit — address not captured",
+      Pincode: visit.pincode ?? "",
       Latitude: visit.check_in_lat ?? "",
       Longitude: visit.check_in_lng ?? "",
       Outcome: getOutcomeLabel(String(visit.visit_outcome)),

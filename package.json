@@ -10,6 +10,7 @@
     "test": "jest",
     "test:e2e:receivables": "playwright test e2e/receivables",
     "test:e2e:field-visits": "playwright test e2e/field-visits",
+    "test:e2e:mappings": "playwright test e2e/mappings",
     "test:e2e:pipeline": "playwright test e2e/pipeline",
     "test:e2e:attendance": "playwright test e2e/attendance",
     "test:e2e:distributors": "playwright test e2e/distributors",

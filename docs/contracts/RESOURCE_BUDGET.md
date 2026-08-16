@@ -24,6 +24,7 @@ These are internal release thresholds below the external Free-plan ceilings of 5
 - Major screens declare initial request count, page size, polling policy, and binary policy. Distributor Status is one aggregate plus one 50-row list, with no polling or binary hydration.
 - Payment Collection Renewals is exactly one metrics request plus one server-filtered list request of at most 50 rows. Card selection repeats only the list request. Polling, Realtime, history hydration, per-card queries, `select('*')`, and client-side full-population counting are prohibited.
 - Visual intelligence is presentation-only. My Day adds zero requests; Team KPI remains one initial API request; Visits Overview remains one initial bounded 50-row API request. Charts add zero database queries, polling, Realtime channels, Storage reads, or business writes.
+- A new Visit business field must ride the existing create/read/admin/export payloads: normal Visit screen request delta 0, polling delta 0, N+1 delta 0, and hot `SELECT *` delta 0.
 
 ## Current snapshot
 

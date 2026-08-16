@@ -8,7 +8,7 @@ import { db, processSyncQueue, type LocalFieldVisit, type LocalLead } from "@/li
 import { supabase } from "@/lib/supabaseClient";
 import { mergeOwnVisits } from "@/lib/fieldVisits/merge";
 import { calculateOwnVisitMetrics, type OwnVisitMetrics } from "@/lib/fieldVisits/metrics";
-import { supplyQueuedVisitAddress, syncFieldVisits } from "@/lib/fieldVisits/sync";
+import { supplyQueuedVisitAddress, supplyQueuedVisitPincode, syncFieldVisits } from "@/lib/fieldVisits/sync";
 import { getCurrentISTDate } from "@/lib/dateTime";
 import { getOutcomeLabel } from "@/lib/fieldVisits/contract";
 import { Button } from "@/components/ui/Button";
@@ -21,9 +21,19 @@ function AddressRepair({ visit, ownerUserId, onSaved }: { visit: LocalFieldVisit
   const [address, setAddress] = useState("");
   const [saving, setSaving] = useState(false);
   return <div className="w-full min-w-[240px] space-y-2">
-    <label htmlFor={`repair-address-${visit.visit_id}`} className="field-label">Address required before this queued visit can sync</label>
+    <label htmlFor={`repair-address-${visit.visit_id}`} className="field-label">{visit.segment_type === "Retailer" ? "Area" : "Address"} required before this queued visit can sync</label>
     <textarea id={`repair-address-${visit.visit_id}`} value={address} onChange={(event) => setAddress(event.target.value)} maxLength={500} rows={2} className="field-control resize-y" />
     <Button size="sm" variant="outline" isLoading={saving} disabled={!address.trim()} onClick={() => void (async () => { setSaving(true); try { await supplyQueuedVisitAddress(visit.visit_id, ownerUserId, address); await syncFieldVisits(visit.visit_id, ownerUserId, "recovery"); await onSaved(); } finally { setSaving(false); } })()}>Save address and resume same visit</Button>
+  </div>;
+}
+
+function PincodeRepair({ visit, ownerUserId, onSaved }: { visit: LocalFieldVisit; ownerUserId: string; onSaved: () => Promise<void> }) {
+  const [pincode, setPincode] = useState("");
+  const [saving, setSaving] = useState(false);
+  return <div className="w-full min-w-[240px] space-y-2">
+    <label htmlFor={`repair-pincode-${visit.visit_id}`} className="field-label">Pincode required before this queued visit can sync</label>
+    <input id={`repair-pincode-${visit.visit_id}`} type="text" inputMode="text" value={pincode} onChange={(event) => setPincode(event.target.value)} maxLength={32} className="field-control" />
+    <Button size="sm" variant="outline" isLoading={saving} disabled={!pincode.trim()} onClick={() => void (async () => { setSaving(true); try { await supplyQueuedVisitPincode(visit.visit_id, ownerUserId, pincode); await syncFieldVisits(visit.visit_id, ownerUserId, "recovery"); await onSaved(); } finally { setSaving(false); } })()}>Save pincode and resume same visit</Button>
   </div>;
 }
 
@@ -153,7 +163,7 @@ export default function FieldVisitsPage() {
     }
   };
 
-  const recoverableVisits = visits.filter((visit) => visit.user_id === currentUser?.user_id && (visit.sync_status === "pending_sync" || visit.sync_status === "sync_failed" || visit.sync_stage === "pending_visit" || visit.sync_stage === "address_required" || visit.sync_stage === "sync_failed" || visit.sync_stage === "visit_confirmed_evidence_pending" || visit.sync_stage === "visit_confirmed_link_pending"));
+  const recoverableVisits = visits.filter((visit) => visit.user_id === currentUser?.user_id && visit.sync_stage !== "review_required" && (visit.sync_status === "pending_sync" || visit.sync_status === "sync_failed" || visit.sync_stage === "pending_visit" || visit.sync_stage === "address_required" || visit.sync_stage === "pincode_required" || visit.sync_stage === "sync_failed" || visit.sync_stage === "visit_confirmed_evidence_pending" || visit.sync_stage === "visit_confirmed_link_pending"));
   const recoverUnsyncedVisits = async () => {
     setRetryingVisitId("ALL");
     try {
@@ -192,8 +202,11 @@ export default function FieldVisitsPage() {
           title="My field visits"
           items={visits.map((visit) => {
             const addressRequired = visit.sync_stage === "address_required" || visit.sync_error_code === "ADDRESS_REQUIRED";
-            const retryable = !addressRequired && (visit.sync_status === "pending_sync" || visit.sync_status === "sync_failed" || visit.sync_stage === "pending_visit" || visit.sync_stage === "sync_failed" || visit.sync_stage === "visit_confirmed_evidence_pending" || visit.sync_stage === "visit_confirmed_link_pending");
-            const status = visit.sync_stage === "visit_confirmed_evidence_pending"
+            const pincodeRequired = visit.sync_stage === "pincode_required" || visit.sync_error_code === "PINCODE_REQUIRED";
+            const retryable = !addressRequired && !pincodeRequired && visit.sync_stage !== "review_required" && (visit.sync_status === "pending_sync" || visit.sync_status === "sync_failed" || visit.sync_stage === "pending_visit" || visit.sync_stage === "sync_failed" || visit.sync_stage === "visit_confirmed_evidence_pending" || visit.sync_stage === "visit_confirmed_link_pending");
+            const status = visit.sync_stage === "review_required"
+              ? { text: "Needs review", variant: "danger" as const }
+              : visit.sync_stage === "visit_confirmed_evidence_pending"
               ? { text: "Confirmed — evidence pending", variant: "warning" as const }
               : visit.sync_stage === "visit_confirmed_link_pending"
                 ? { text: "Confirmed", variant: "success" as const }
@@ -219,6 +232,8 @@ export default function FieldVisitsPage() {
                     {visit.person_met && <span className="break-words">Met: {visit.person_met}</span>}
                   </div>
                   {visit.follow_up_date && <p className="mt-1 text-[12px] text-[var(--text-secondary)]">Follow-up: {visit.follow_up_date}</p>}
+                  <p className="mt-1 text-[12px] text-[var(--text-secondary)]">{visit.segment_type === "Retailer" ? "Area" : "Address"}: {visit.address?.trim() || "—"}</p>
+                  <p className="mt-1 text-[12px] text-[var(--text-secondary)]">Pincode: {visit.pincode?.trim() || "—"}</p>
                   {visit.visit_notes && <p className="mt-2 whitespace-normal break-words rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-2.5 text-[12px] leading-5 text-[var(--text-secondary)]">{visit.visit_notes}</p>}
                 </div>
               ),
@@ -227,6 +242,8 @@ export default function FieldVisitsPage() {
               timestamp: new Date(visit.created_at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }),
               actions: addressRequired && currentUser
                 ? <AddressRepair visit={visit} ownerUserId={currentUser.user_id} onSaved={loadData} />
+                : pincodeRequired && currentUser
+                ? <PincodeRepair visit={visit} ownerUserId={currentUser.user_id} onSaved={loadData} />
                 : retryable
                 ? <Button size="sm" variant="outline" icon={<RotateCw size={13} />} onClick={() => void retryVisit(visit.visit_id)}>Retry</Button>
                 : undefined,

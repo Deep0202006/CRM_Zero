@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
-import { FIELD_VISIT_OUTCOMES, FIELD_VISIT_SEGMENTS, generateEvidencePath } from "@/lib/fieldVisits/contract";
+import { FIELD_VISIT_OUTCOMES, FIELD_VISIT_SEGMENTS, PincodeSchema, generateEvidencePath } from "@/lib/fieldVisits/contract";
 import { getCurrentISTDate, getISTDateKey, isValidISTDateKey } from "@/lib/dateTime";
 
 export const runtime = "nodejs";
@@ -31,6 +31,8 @@ export const VisitConfirmationSchema = z.object({
   attendance_id: uuid.nullable().optional(),
   person_met: z.string().trim().min(2).max(120).nullable().optional(),
   address: z.string().trim().min(1).max(500).nullable().optional(),
+  pincode: PincodeSchema.nullable().optional(),
+  pincode_contract_version: z.literal(1).optional(),
   segment_type: z.enum(FIELD_VISIT_SEGMENTS),
   follow_up_date: z.string().refine(isValidISTDateKey).nullable().optional(),
   created_at: z.string().datetime({ offset: true }),
@@ -57,6 +59,7 @@ type VisitPayload = z.infer<typeof VisitConfirmationSchema>;
 type ConfirmationMode = "new" | "recovery";
 type SafeCode =
   | "AUTH_REQUIRED" | "ACCOUNT_INACTIVE" | "CAPABILITY_MISMATCH"
+  | "PINCODE_REQUIRED"
   | "ATTENDANCE_NOT_CONFIRMED" | "ATTENDANCE_INTEGRITY_ERROR" | "VISIT_VALIDATION_FAILED"
   | "VISIT_INSERT_FAILED" | "VISIT_CONFIRMATION_FAILED" | "EVIDENCE_UPLOAD_FAILED"
   | "REFERENCE_CONSTRAINT_FAILED" | "VISIT_CONSTRAINT_FAILED" | "OPTIONAL_SCHEMA_MISMATCH"
@@ -91,6 +94,7 @@ export function validateNewVisit(visit: VisitPayload): boolean {
   return visit.visit_date === getCurrentISTDate()
     && Boolean(visit.person_met?.trim())
     && Boolean(visit.address?.trim())
+    && Boolean(visit.pincode?.trim())
     && visit.check_in_lat !== null && visit.check_in_lat !== undefined
     && visit.check_in_lng !== null && visit.check_in_lng !== undefined
     && Boolean(visit.location_accuracy_m)
@@ -135,6 +139,7 @@ export function coreRemotePayload(visit: VisitPayload, attendanceId: string | nu
     person_met: visit.person_met ?? null,
     address: visit.address?.trim() ?? null,
     address_contract_version: 1,
+    pincode: visit.pincode?.trim() ?? null,
     segment_type: visit.segment_type,
     follow_up_date: visit.follow_up_date ?? null,
     created_at: visit.created_at,
@@ -201,6 +206,9 @@ export async function POST(request: Request) {
   if (!parsed.success) return response(400, "VISIT_VALIDATION_FAILED", "Review the visit details and retry.");
   const visit = parsed.data;
   if (visit.user_id !== auth.user.id) return response(403, "CAPABILITY_MISMATCH", "This visit belongs to a different account.");
+  if ((mode === "new" && visit.pincode_contract_version !== 1) || (visit.pincode_contract_version === 1 && !visit.pincode)) {
+    return response(422, "PINCODE_REQUIRED", "Pincode is required for new visits.");
+  }
   if (mode === "new" && !validateNewVisit(visit)) return response(400, "VISIT_VALIDATION_FAILED", "Current visits require complete person and location details.");
 
   const capabilities = new Set((capabilityRows ?? []).map((row) => row.capability_code));

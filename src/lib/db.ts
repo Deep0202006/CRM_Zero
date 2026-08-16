@@ -81,8 +81,10 @@ export interface LocalMapping {
 
 export interface LocalMappingRequest {
   request_id: string;
-  distributor_lead_id: string;
-  retailer_lead_id: string;
+  distributor_lead_id: string | null;
+  retailer_lead_id: string | null;
+  distributor_name_unregistered?: string | null;
+  retailer_name_unregistered?: string | null;
   requested_by?: string | null;
   mapped_by?: string | null;
   status: "Pending" | "Completed";
@@ -187,15 +189,18 @@ export interface LocalFieldVisit {
   attendance_id?: string | null;
   person_met?: string | null;
   address?: string | null;
+  pincode?: string | null;
+  pincode_contract_version?: 1;
   segment_type?: string | null;
   follow_up_date?: string | null;
   sync_status?: 'pending_sync' | 'synced' | 'sync_failed';
-  sync_stage?: 'pending_visit' | 'address_required' | 'visit_confirmed_evidence_pending' | 'visit_confirmed_link_pending' | 'synced' | 'sync_failed';
+  sync_stage?: 'pending_visit' | 'address_required' | 'pincode_required' | 'review_required' | 'visit_confirmed_evidence_pending' | 'visit_confirmed_link_pending' | 'synced' | 'sync_failed';
   confirmation_mode?: 'new' | 'recovery';
   sync_error_code?: string;
   sync_error_message?: string;
   sync_attempt_count?: number;
   last_sync_attempt_at?: string;
+  next_sync_attempt_at?: string;
   created_at: string;
   updated_at: string;
 }
@@ -782,6 +787,11 @@ const dynamicTables = db as unknown as Record<string, DynamicTable>;
 const toDynamicRow = (value: object): DynamicRow => Object.fromEntries(Object.entries(value));
 const getDynamicField = (value: object, key: string): unknown => toDynamicRow(value)[key];
 
+export function isTerminalMappingSyncError(error: { code?: string }): boolean {
+  const code = error.code ?? "";
+  return /^(?:22|23)/.test(code) || code === "42501" || /^PGRST(?:1|2)/.test(code);
+}
+
 export async function transactionalMutation(
   tableName: string,
   action: "INSERT" | "UPDATE" | "DELETE",
@@ -1289,6 +1299,9 @@ async function processSyncQueueInternal(): Promise<void> {
             const { error } = await client.insert(prepared.data);
             if (error) {
               if (!isDuplicateKeyError(error) || !(await verifyRemoteRowExists(remoteTableName, primaryKey, primaryKeyValue, authenticatedUserId))) {
+                if (item.table_name === "mapping_requests") {
+                  throw new SyncAttemptError(`Supabase insert failed for ${remoteTableName}: ${error.message}`, !isTerminalMappingSyncError(error));
+                }
                 throw new Error(`Supabase insert failed for ${remoteTableName}: ${error.message}`);
               }
             } else if (!(await verifyRemoteRowExists(remoteTableName, primaryKey, primaryKeyValue, authenticatedUserId))) {
@@ -1310,7 +1323,12 @@ async function processSyncQueueInternal(): Promise<void> {
             .eq(primaryKey, primaryKeyValue)
             .select(primaryKey)
             .maybeSingle();
-          if (error) throw new Error(`Supabase update failed for ${remoteTableName}: ${error.message}`);
+          if (error) {
+            if (item.table_name === "mapping_requests") {
+              throw new SyncAttemptError(`Supabase update failed for ${remoteTableName}: ${error.message}`, !isTerminalMappingSyncError(error));
+            }
+            throw new Error(`Supabase update failed for ${remoteTableName}: ${error.message}`);
+          }
           if (!data) throw new Error(`No ${remoteTableName} row was updated.`);
         } else if (item.action === "DELETE") {
           if (primaryKeyValue === undefined || primaryKeyValue === null || primaryKeyValue === "") {
