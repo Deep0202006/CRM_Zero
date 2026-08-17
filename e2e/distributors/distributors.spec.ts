@@ -18,6 +18,12 @@ async function seed(page: Page, id: string, isAdmin: boolean) {
   }, { id, accessToken: token(id), isAdmin });
 }
 const row = { distributor_id: distributorId, distributor_name: "Alpha Distributor", distributor_reference: "ALPHA-1", lead_id: null, phone: null, city: "Delhi", assigned_to: employee, assigned_employee_name: "Employee", installation_status: "done", installation_completed_at: "2026-08-01", training_status: "done", training_completed_at: "2026-08-02", mapping_status: "done", mapped_at: "2026-08-03", activity_status: "active", billing_status: "billed", billed_at: "2026-08-03", bill_reference: "INV-1", renewal_date: "2026-08-14", renewal_state: "renewal_due_tomorrow", version: 2, updated_at: "2026-08-13T06:00:00Z" };
+test("Admin Distributor import preview shows the server-resolved operational employee", async ({ page }) => {
+  await mock(page); await page.route("**/api/distributors/import", route => route.fulfill({ json: { rows: [{ rowNumber: 2, distributorName: "Alpha", assignedEmployeeEmail: "zerodata_vaibhav@zerodata.local", assigned_employee_name: "Vaibhav Patel", classification: "NEW" }], counts: { NEW: 1 }, preview_hash: "a".repeat(64) } }));
+  await seed(page, admin, true); await page.goto("/admin/payments/distributors"); await page.getByRole("button", { name: "Import" }).click();
+  await page.locator('input[type="file"]').setInputFiles({ name: "distributors.csv", mimeType: "text/csv", buffer: Buffer.from("Distributor Name,Assigned Employee Email,Installation Status,Installation Date,Training Status,Training Date,Mapping Status,Mapped Date,Activity Status,Billing Status,Bill Date,Bill Reference,Renewal Date,Distributor Reference\nAlpha,zerodata_vaibhav@zerodata.local,pending,,pending,,pending,,not_applicable,not_billed,,,,ALPHA\n") });
+  await expect(page.getByText("Vaibhav Patel")).toBeVisible(); await expect(page.getByRole("cell", { name: "NEW", exact: true })).toBeVisible();
+});
 async function mock(page: Page) {
   await page.route("https://e2e.supabase.co/**", (route) => route.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
   await page.route("**/api/distributors/metrics", (route) => route.fulfill({ json: { metrics: { total: 1, installation_pending: 0, training_pending: 0, installation_training_done: 1, mapped: 1, active: 1, inactive: 0, billed: 1 }, assignees: [{ user_id: employee, name: "Employee", email: "employee@example.test" }] } }));
