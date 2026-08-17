@@ -113,7 +113,7 @@ export function ReceivablesImportModal({
       ["Required", "Bill Reference, Distributor Name, Contact Person, Bill Amount, Bill Due Date, Payment Follow-up Date, Assigned Employee Email"],
       ["Money", "84500, 84,500, ₹84,500, or 84500.00"],
       ["Dates", "YYYY-MM-DD, DD/MM/YYYY, or DD-MM-YYYY"],
-      ["Assignment", "Use the exact email of an active CRM employee"],
+      ["Assignment", "Assigned Employee Email = exact CRM login email of an active operational employee."],
       ["Follow-up", "Must be today or a future India business date"],
       ["Duplicates", "Exact duplicates are skipped; conflicts are never overwritten"],
     ]);

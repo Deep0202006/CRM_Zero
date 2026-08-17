@@ -50,7 +50,9 @@ export function DistributorImportModal({ open, authFetch, onClose, onImported }:
     void import("xlsx").then((XLSX) => {
       const book = XLSX.utils.book_new();
       const sheet = XLSX.utils.aoa_to_sheet([[...DISTRIBUTOR_IMPORT_HEADERS], ["Example Distributor", "employee@example.com", "pending", "", "pending", "", "pending", "", "not_applicable", "not_billed", "", "", "2026-12-31", "DIST-001"]]);
+      const instructions = XLSX.utils.aoa_to_sheet([["Distributor Status Import Instructions"], ["Assignment", "Assigned Employee Email = exact CRM login email of an active operational employee."]]);
       XLSX.utils.book_append_sheet(book, sheet, "Distributor Status");
+      XLSX.utils.book_append_sheet(book, instructions, "Instructions");
       XLSX.writeFile(book, "Distributor_Status_Import_Template.xlsx");
     });
   }
