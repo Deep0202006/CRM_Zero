@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { fileURLToPath } from "node:url";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { completionFlags, validateWorktree, appliedMigrationDiffs, newlyChangedPaths, nextFromProgress, requiresOwnerProductionGate } from "../src/guards.js";
 
 function base(overrides:any = {}) {
@@ -60,7 +62,9 @@ test("three no-progress iterations require human escalation", () => {
 });
 
 test("diff guard rejects changes to owner-applied migrations", () => {
-  const root = fileURLToPath(new URL("../../..", import.meta.url));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(),"crm-graph-guards-"));
+  fs.mkdirSync(path.join(root,".crm-engineering","policy"),{recursive:true});
+  fs.writeFileSync(path.join(root,".crm-engineering","policy","applied-migrations.json"),'{"immutableThrough":44}');
   const hits = appliedMigrationDiffs(root, ["supabase/migrations/044_owner_history.sql", "supabase/migrations/045_new.sql"]);
   assert.deepEqual(hits, ["supabase/migrations/044_owner_history.sql"]);
 });

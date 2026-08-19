@@ -33,8 +33,13 @@ jobs:
       PGPASSWORD: postgres
     steps:
       - uses: actions/checkout@v4
-      - name: Install PostgreSQL client
-        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Activate preinstalled PostgreSQL client
+        run: |
+          pg_bin="$(pg_config --bindir)"
+          test -x "$pg_bin/psql"
+          test -x "$pg_bin/createdb"
+          echo "$pg_bin" >> "$GITHUB_PATH"
+          "$pg_bin/psql" --version
       - name: Prove financial fixtures refuse the production project
         run: |
           set +e

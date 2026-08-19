@@ -27,6 +27,15 @@ Read the generated `CRM_CONTEXT.md`.
 
 Do not ask a new chat to reconstruct CRM from old chat history.
 
+## Execution limits
+
+Graph runs default to 128 recursion steps and a four-hour whole-run timeout.
+Override them with `CRM_GRAPH_RECURSION_LIMIT` (32-512) and
+`CRM_GRAPH_RUNTIME_TIMEOUT_MS` (60,000-86,400,000). `crm:status` reports the
+active limits and the latest checkpoint node, focused acceptance, retry state,
+worker error, pending writes, and pending interrupts. After a bounded runtime
+stop, inspect status before using `crm:run -- --task <TASK_ID> --continue`.
+
 ## Human gates
 
 Owner SQL and production data/schema mutation stop at a persistent graph
