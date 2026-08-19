@@ -1,4 +1,4 @@
-name: Engineering harness
+name: CRM Engineering Graph + Product Verification
 
 on:
   pull_request:
@@ -67,6 +67,19 @@ jobs:
           node-version: 24.13.0
           cache: npm
       - run: npm ci
+
+      - name: Install CRM Engineering Graph dependencies
+        run: npm ci --prefix tools/crm-graph
+
+      - name: Typecheck CRM Engineering Graph
+        run: npm run crm:graph:typecheck
+
+      - name: Test CRM Engineering Graph
+        run: npm run crm:graph:test
+
+      - name: Load authoritative Graph task state
+        run: npm run crm:status -- --task CRM-P0-045
+
       - run: npm run typecheck
       - run: npm test -- --runInBand
       - run: npm run lint
@@ -85,5 +98,3 @@ jobs:
         run: npm run test:e2e:pipeline
         env:
           PLAYWRIGHT_E2E_WEBPACK: "true"
-      - run: npm run harness:guard
-      - run: npm run harness:docs

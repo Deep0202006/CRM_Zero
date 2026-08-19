@@ -13,6 +13,15 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts", ".agents/**", ".codex-artifacts/**", "coverage/**",
     "temp_redesign/**",
+
+    // CRM Engineering Graph is an independent engineering control-plane package.
+    // It is typechecked/tested through tools/crm-graph, not as Next.js product code.
+    "tools/crm-graph/**",
+
+    // Local repository control/recovery trees are never product source.
+    ".worktrees/**",
+    ".archive/**",
+
     "check.js", "check_active.js", "check_cols.js", "check_users.js", "check_users_paginated.js",
     "scripts/seed-production-users.js",
   ]),
@@ -28,4 +37,3 @@ const eslintConfig = defineConfig([
 ]);
 
 export default eslintConfig;
-
