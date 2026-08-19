@@ -1,0 +1,164 @@
+{
+  "schemaVersion": 2,
+  "graphSchemaVersion": 1,
+  "flowVersion": "1.1.0",
+  "taskId": "CRM-GRAPH-RUNTIME-HARDEN",
+  "objective": "Harden CRM Engineering Graph into a bounded, resumable, full-lifecycle engineering controller.",
+  "risk": "R1",
+  "domains": [
+    "engineering-graph"
+  ],
+  "repository": {
+    "canonicalRoot": "C:\\Users\\dcp69\\Desktop\\CRM_Zero",
+    "worktreePath": "C:\\Users\\dcp69\\Desktop\\CRM_Zero\\.worktrees\\graph-runtime-hardening",
+    "branch": "fix/graph-runtime-hardening",
+    "expectedBaseRef": "origin/main",
+    "expectedBaseSha": "5c43afc46fbd033185a50b132501803c681fbe30",
+    "observedHeadSha": "5c43afc46fbd033185a50b132501803c681fbe30",
+    "dirtyBaselineHash": "af0eddf8d6f605c1aa3864f702f6c15b5d4fd0ec5f14ce36806aefad6a8cb901"
+  },
+  "phase": "COMPLETE",
+  "allowedPaths": [
+    ".crm-engineering/**",
+    "docs/engineering-graph/**",
+    "tools/crm-graph/**",
+    "package.json"
+  ],
+  "protectedDomains": [
+    "attendance",
+    "pipeline",
+    "field-visits",
+    "call-logs",
+    "auth",
+    "distributor-status",
+    "receivables",
+    "payment-collections",
+    "imports",
+    "product-runtime"
+  ],
+  "productionDataMutation": false,
+  "schemaChange": false,
+  "humanGate": null,
+  "acceptance": [
+    {
+      "id": "GRAPH-RUNTIME-A01",
+      "description": "App Server protocol transport is bounded and observable, including request ordering, stderr, timeouts, lifecycle diagnostics, exact server-request handling, and final output capture.",
+      "stage": "IMPLEMENTATION",
+      "status": "PASS",
+      "required": true,
+      "evidenceIds": [
+        "A01-CONTROLLER-TYPECHECK-PASS",
+        "A01-TRANSPORT-FOCUSED-TESTS-19-PASS",
+        "A01-DIFF-CHECK-PASS"
+      ]
+    },
+    {
+      "id": "GRAPH-RUNTIME-A02",
+      "description": "One live Codex worker session is reused across continuation turns and saved threads are explicitly resumed after process restart.",
+      "stage": "IMPLEMENTATION",
+      "status": "PASS",
+      "required": true,
+      "evidenceIds": [
+        "A02-WORKER-SESSION-FOCUSED-TESTS-10-PASS",
+        "A02-CONTROLLER-TYPECHECK-PASS",
+        "A02-DIFF-CHECK-PASS"
+      ]
+    },
+    {
+      "id": "GRAPH-RUNTIME-A03",
+      "description": "Worker runtime failures become checkpointed typed Graph state and follow focused retry, strategy change, then escalation.",
+      "stage": "IMPLEMENTATION",
+      "status": "PASS",
+      "required": true,
+      "evidenceIds": [
+        "A03-TYPED-CHECKPOINT-RETRY-ESCALATION-TEST-PASS",
+        "A03-RETRY-PROMPT-DIRECTIVES-TEST-PASS",
+        "A03-FOCUSED-TYPESCRIPT-COMPILE-PASS",
+        "A03-DIFF-CHECK-PASS"
+      ]
+    },
+    {
+      "id": "GRAPH-RUNTIME-A04",
+      "description": "Required verification acceptance is executed by the Graph after implementation completes.",
+      "stage": "IMPLEMENTATION",
+      "status": "PASS",
+      "required": true,
+      "evidenceIds": [
+        "A04-IMPLEMENTATION-BARRIER-LIFECYCLE-TEST-PASS",
+        "A04-FOCUSED-ACCEPTANCE-BINDING-TEST-PASS",
+        "A04-PREMATURE-VERIFICATION-REJECTION-TEST-PASS",
+        "A04-FOCUSED-TYPESCRIPT-COMPILE-PASS",
+        "A04-DIFF-CHECK-PASS"
+      ]
+    },
+    {
+      "id": "GRAPH-RUNTIME-A05",
+      "description": "Human interrupts are durable and resumable from CLI using the same SQLite thread and structured resume input.",
+      "stage": "IMPLEMENTATION",
+      "status": "PASS",
+      "required": true,
+      "evidenceIds": [
+        "A05-SQLITE-OWNER-GATE-RESUME-TEST-PASS",
+        "A05-SQLITE-AGENT-STALL-RESUME-TEST-PASS",
+        "A05-STRUCTURED-RESUME-VALIDATION-TEST-PASS",
+        "A05-FOCUSED-TYPESCRIPT-COMPILE-PASS",
+        "A05-DIFF-CHECK-PASS"
+      ]
+    },
+    {
+      "id": "GRAPH-RUNTIME-A06",
+      "description": "Repository dirty baseline is content-sensitive for tracked and untracked content.",
+      "stage": "IMPLEMENTATION",
+      "status": "PASS",
+      "required": true,
+      "evidenceIds": [
+        "A06-FINGERPRINT-FOCUSED-TESTS-7-PASS",
+        "A06-STAGED-SAME-STATUS-CONTENT-TEST-PASS",
+        "A06-UNTRACKED-BINARY-CONTENT-TEST-PASS",
+        "A06-FOCUSED-TYPESCRIPT-COMPILE-PASS",
+        "A06-DIFF-CHECK-PASS"
+      ]
+    },
+    {
+      "id": "GRAPH-RUNTIME-A07",
+      "description": "Task repository binding is first-class and deterministic through crm:bind.",
+      "stage": "IMPLEMENTATION",
+      "status": "PASS",
+      "required": true,
+      "evidenceIds": [
+        "A07-BIND-FOCUSED-TESTS-7-PASS",
+        "A07-CLI-PERSISTENCE-TEST-PASS",
+        "A07-IDEMPOTENT-NO-REBASELINE-TEST-PASS",
+        "A07-REPOSITORY-IDENTITY-TEST-PASS",
+        "A07-FOCUSED-TYPESCRIPT-COMPILE-PASS",
+        "A07-DIFF-CHECK-PASS"
+      ]
+    },
+    {
+      "id": "GRAPH-RUNTIME-A08",
+      "description": "Graph execution uses bounded realistic configurable recursion and runtime limits with useful status diagnostics.",
+      "stage": "IMPLEMENTATION",
+      "status": "PASS",
+      "required": true,
+      "evidenceIds": [
+        "A08-RUNTIME-POLICY-FOCUSED-TESTS-7-PASS",
+        "A08-RECURSION-ENFORCEMENT-TEST-PASS",
+        "A08-WHOLE-RUN-TIMEOUT-TEST-PASS",
+        "A08-CHECKPOINT-DIAGNOSTICS-TEST-PASS",
+        "A08-FOCUSED-TYPESCRIPT-COMPILE-PASS",
+        "A08-DIFF-CHECK-PASS"
+      ]
+    },
+    {
+      "id": "GRAPH-RUNTIME-V01",
+      "description": "Controller typecheck/tests, raw App Server smoke, and disposable full Graph lifecycle certification pass.",
+      "stage": "VERIFICATION",
+      "status": "PASS",
+      "required": true,
+      "evidenceIds": [
+        ".crm-engineering/proofs/CRM-GRAPH-RUNTIME-HARDEN/GRAPH-RUNTIME-V01.json"
+      ]
+    }
+  ],
+  "blocker": null
+}

@@ -27,6 +27,14 @@ const Blocker = z.object({
   evidenceIds: z.array(z.string()).default([])
 }).nullable();
 
+const WorkerError = z.object({
+  code:z.string(),
+  message:z.string(),
+  stderrTail:z.string().optional(),
+  attempt:z.number().int().positive(),
+  occurredAt:z.string()
+});
+
 export const EngineeringState = new StateSchema({
   graphSchemaVersion: z.number().int().default(1),
   flowVersion: z.string().default("1.0.0"),
@@ -71,10 +79,17 @@ export const EngineeringState = new StateSchema({
   beforePassCount: z.number().int().default(0),
   afterPassCount: z.number().int().default(0),
   stallCount: z.number().int().default(0),
+  workerIntent: z.enum(["IMPLEMENT","VERIFY"]).default("IMPLEMENT"),
+  focusedAcceptanceId: z.string().nullable().default(null),
+  workerRetryMode: z.enum(["INITIAL","FOCUSED_RETRY","STRATEGY_CHANGE","ESCALATE"]).default("INITIAL"),
+  workerFailureCount: z.number().int().nonnegative().default(0),
+  workerErrorHistory: z.array(WorkerError).default([]),
+  workerStrategyGuidance: z.string().nullable().default(null),
 
   codexThreadId: z.string().nullable().default(null),
   codexLastMessage: z.string().default(""),
   codexResultValid: z.boolean().default(false),
+  lastWorkerError: WorkerError.nullable().default(null),
 
   findings: z.array(z.string()).default([])
 });

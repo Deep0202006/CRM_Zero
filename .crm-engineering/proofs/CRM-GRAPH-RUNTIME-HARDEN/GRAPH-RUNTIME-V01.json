@@ -1,0 +1,65 @@
+{
+  "taskId": "CRM-GRAPH-RUNTIME-HARDEN",
+  "acceptanceId": "GRAPH-RUNTIME-V01",
+  "status": "PASS",
+  "observedAt": "2026-08-19T09:07:08.1907559Z",
+  "repository": {
+    "head": "5c43afc46fbd033185a50b132501803c681fbe30",
+    "expectedBase": "5c43afc46fbd033185a50b132501803c681fbe30",
+    "originMain": "5c43afc46fbd033185a50b132501803c681fbe30"
+  },
+  "evidence": [
+    {
+      "id": "controller-typecheck",
+      "command": "npm --prefix tools/crm-graph run typecheck",
+      "exitCode": 0,
+      "result": "PASS"
+    },
+    {
+      "id": "controller-tests-and-disposable-lifecycle",
+      "command": "npm --prefix tools/crm-graph test",
+      "exitCode": 0,
+      "tests": 71,
+      "passed": 71,
+      "failed": 0,
+      "durationMs": 38715.2142,
+      "coveredLifecycleCases": [
+        "implementation advances to required verification before legal END",
+        "all implementation acceptance precedes verification",
+        "runtime failures follow retry, strategy change, and escalation",
+        "SQLite human interrupts resume on the same thread",
+        "repository binding, dirty fingerprinting, worker sessions, and protocol transport"
+      ],
+      "result": "PASS"
+    },
+    {
+      "id": "raw-app-server-smoke",
+      "command": "codex app-server --stdio",
+      "termination": "stopped after successful bounded handshake",
+      "codexHome": "isolated temporary directory",
+      "appVersion": "0.148.0",
+      "initializeRequestId": 1,
+      "initializeResponseMatched": true,
+      "threadStartRequestId": 2,
+      "threadStartResponseMatched": true,
+      "threadId": "01a01942-ada1-7eb2-9c5e-760921df9132",
+      "threadStatus": "idle",
+      "cwd": "C:\\Users\\dcp69\\Desktop\\CRM_Zero\\.worktrees\\graph-runtime-hardening",
+      "approvalPolicy": "never",
+      "modelTurnSent": false,
+      "networkObservation": "The sandbox denied an unsolicited websocket attempt before connection; no successful production contact occurred.",
+      "result": "PASS"
+    },
+    {
+      "id": "scoped-diff-check",
+      "command": "git diff --check -- tools/crm-graph .crm-engineering docs/engineering-graph package.json",
+      "exitCode": 0,
+      "result": "PASS"
+    }
+  ],
+  "verificationRepairs": [
+    "tools/crm-graph/tests/guards.test.ts",
+    "tools/crm-graph/package.json",
+    "tools/crm-graph/scripts/run-tests.mjs"
+  ]
+}

@@ -5,11 +5,12 @@
   "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "node --test --import tsx tests/*.test.ts",
+    "test": "node scripts/run-tests.mjs",
     "cli": "tsx src/cli.ts",
     "status": "tsx src/cli.ts status",
     "context": "tsx src/cli.ts context",
     "index": "tsx src/cli.ts index",
+    "bind": "tsx src/cli.ts bind",
     "shadow": "tsx src/cli.ts shadow",
     "run": "tsx src/cli.ts run"
   },

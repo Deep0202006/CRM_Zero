@@ -28,6 +28,7 @@
     "crm:status": "npm --prefix tools/crm-graph run status --",
     "crm:context": "npm --prefix tools/crm-graph run context --",
     "crm:index": "npm --prefix tools/crm-graph run index --",
+    "crm:bind": "npm --prefix tools/crm-graph run bind --",
     "crm:shadow": "npm --prefix tools/crm-graph run shadow --",
     "crm:run": "npm --prefix tools/crm-graph run run --",
     "crm:graph:test": "npm --prefix tools/crm-graph test",
