@@ -4,13 +4,13 @@ import { Command } from "@langchain/langgraph";
 import { SqliteSaver } from "@langchain/langgraph-checkpoint-sqlite";
 import { loadTask, saveTask } from "./loader.js";
 import { compileContext, writeContextProjection } from "./context.js";
-import { inspectRepo } from "./git.js";
 import { buildRepoIndex } from "./repo-index.js";
 import { buildGraph } from "./graph.js";
 import { bindTaskRepository } from "./binding.js";
 import { CodexWorkerSession, loadSavedCodexThreadId } from "./worker.js";
 import { parseResumeEnvelope, pendingHumanInterrupt, resumeFileTemplate } from "./resume.js";
 import { checkpointDiagnostics, executionLimitDiagnostic, graphExecutionPolicy, graphRunConfig } from "./runtime.js";
+import { inspectBoundRepository } from "./status.js";
 
 function arg(name:string) { const index = process.argv.indexOf(name); return index >= 0 ? process.argv[index+1] : undefined; }
 function findGraphRoot(start:string) {
@@ -42,7 +42,7 @@ if (command === "bind") {
   console.log(JSON.stringify({taskId:task.taskId,...result},null,2));
 } else if (command === "status") {
   const task = needTask();
-  const repo = task.repository.worktreePath ? inspectRepo(task.repository.worktreePath) : null;
+  const {repo,repositoryDiagnostic}=inspectBoundRepository(task.repository.worktreePath);
   let checkpoint:any = null;
   if (fs.existsSync(runtimePath())) {
     const checkpointer:any = saver();
@@ -53,7 +53,7 @@ if (command === "bind") {
   const verificationIncomplete = task.acceptance.filter(item=>item.required && item.stage === "VERIFICATION" && item.status !== "PASS").map(item=>item.id);
   const releaseIncomplete = task.acceptance.filter(item=>item.required && item.stage === "RELEASE" && item.status !== "PASS").map(item=>item.id);
   console.log(JSON.stringify({
-    taskId:task.taskId, objective:task.objective, phase:task.phase, repository:task.repository, repo,
+    taskId:task.taskId, objective:task.objective, phase:task.phase, repository:task.repository, repo, repositoryDiagnostic,
     dirtyFingerprintMatches:repo ? repo.dirtyHash === task.repository.dirtyBaselineHash : false,
     implementationIncomplete, verificationIncomplete, releaseIncomplete,
     acceptance:task.acceptance, blocker:task.blocker, limits:graphExecutionPolicy(), checkpoint,
