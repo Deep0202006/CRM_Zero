@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 2,
+  "graphSchemaVersion": 1,
+  "flowVersion": "1.1.0",
+  "taskId": "CRM-GRAPH-ENFORCE-CERT-V2",
+  "objective": "Certify the CRM Engineering Graph full enforce lifecycle by creating one harmless durable engineering proof through the bounded Codex worker, then verifying persisted state and legal END.",
+  "risk": "R0",
+  "domains": [
+    "engineering-graph"
+  ],
+  "repository": {
+    "canonicalRoot": "C:\\Users\\dcp69\\Desktop\\CRM_Zero",
+    "worktreePath": "C:\\Users\\dcp69\\Desktop\\CRM_Zero\\.worktrees\\graph-enforce-cert-v2",
+    "branch": "chore/graph-enforce-cert-v2",
+    "expectedBaseRef": "origin/main",
+    "expectedBaseSha": "2db8872189c315c7fc57a3a7da64f24ec3a9b9a2",
+    "observedHeadSha": "2db8872189c315c7fc57a3a7da64f24ec3a9b9a2",
+    "dirtyBaselineHash": "fe605eaec3b7f0051b5175105a6a5e3068581c3dd76bb0629e211184a3bb61a4"
+  },
+  "phase": "COMPLETE",
+  "allowedPaths": [
+    ".crm-engineering/**",
+    "docs/engineering-graph/**"
+  ],
+  "protectedDomains": [
+    "attendance",
+    "pipeline",
+    "field-visits",
+    "call-logs",
+    "auth",
+    "distributor-status",
+    "receivables",
+    "payment-collections",
+    "imports",
+    "product-runtime"
+  ],
+  "productionDataMutation": false,
+  "schemaChange": false,
+  "humanGate": null,
+  "acceptance": [
+    {
+      "id": "GRAPH-ENFORCE-V2-A01",
+      "description": "Create .crm-engineering/proofs/graph-enforce-certification-v2.json recording task ID, Graph versions, enforce mode, exact repository binding, Codex worker invocation, acceptance PASS, productFilesTouched=false, productionContact=false, productionDataMutation=false, schemaChange=false, verification evidence, and timestamp.",
+      "stage": "IMPLEMENTATION",
+      "status": "PASS",
+      "required": true,
+      "evidenceIds": [
+        "graph-enforce-certification-v2"
+      ]
+    },
+    {
+      "id": "GRAPH-ENFORCE-V2-V01",
+      "description": "Verify the real crm:run used the Codex worker and SQLite checkpoint, advanced implementation and verification, touched no product files, contacted no production system, and can reach COMPLETE with legal END; persist durable verification evidence under .crm-engineering/proofs/CRM-GRAPH-ENFORCE-CERT-V2/.",
+      "stage": "VERIFICATION",
+      "status": "PASS",
+      "required": true,
+      "evidenceIds": [
+        "GRAPH-ENFORCE-V2-V01"
+      ]
+    }
+  ],
+  "blocker": null
+}
