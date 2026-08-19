@@ -1,11 +1,11 @@
-# Supabase guidance
+# Supabase boundary
 
-Read `docs/architecture/DATA_AUTHORITY.md` and the affected domain contract.
+Execution flow is controlled only by the root `AGENTS.md` and CRM Engineering
+Graph. Legacy harness/OS prose must not control phase, blocker or completion.
 
-- All schema, RLS, migration, auth, and foundational persistence work is R3.
-- Perform a read-only audit first.
-- Do not apply migrations without explicit authorization.
-- Do not create destructive migrations.
-- Never infer production schema solely from local migrations.
-- Never run production mutation SQL as verification.
-- Keep service-role credentials out of client code, logs, docs, tests, and CI.
+Local invariant:
+
+Applied owner migrations are immutable. New schema changes use forward migrations. R3 SQL requires disposable PostgreSQL runtime proof. Owner SQL and production mutation are human-gated.
+
+Load the current task context packet and affected domain contract before making
+changes. Do not broaden scope.

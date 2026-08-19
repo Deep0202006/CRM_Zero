@@ -1,0 +1,123 @@
+{
+  "schemaVersion": 2,
+  "repository": "Deep0202006/CRM_Zero",
+  "facts": [
+    {
+      "id": "employee_identity",
+      "authority": "auth.users.id == public.users.user_id",
+      "identity": [
+        "user_id"
+      ],
+      "notes": [
+        "Auth login identity and public profile fields are independent authorities.",
+        "Imports resolve employee login identity through canonical resolver."
+      ]
+    },
+    {
+      "id": "attendance",
+      "authority": "public.attendance",
+      "identity": [
+        "user_id",
+        "attendance_date"
+      ],
+      "writer": "server confirmation path",
+      "readers": [
+        "employee attendance",
+        "Admin Attendance",
+        "Team KPI"
+      ]
+    },
+    {
+      "id": "distributor_account",
+      "authority": "public.distributor_accounts",
+      "identity": [
+        "distributor_id"
+      ],
+      "owns": [
+        "distributor operational identity",
+        "assigned_to",
+        "renewal_date",
+        "installation",
+        "training",
+        "mapping",
+        "activity",
+        "billing milestone"
+      ],
+      "mustNotOwn": [
+        "financial paid/received/outstanding truth"
+      ]
+    },
+    {
+      "id": "receivable",
+      "authority": "public.receivables",
+      "identity": [
+        "receivable_id"
+      ],
+      "owns": [
+        "financial obligation"
+      ]
+    },
+    {
+      "id": "payment",
+      "authority": "public.receivable_payments",
+      "identity": [
+        "payment_id"
+      ],
+      "owns": [
+        "collection/payment events"
+      ],
+      "financialRule": "Only effective confirmed non-reversed payments reduce outstanding."
+    },
+    {
+      "id": "renewal",
+      "authority": "public.distributor_accounts.renewal_date",
+      "identity": [
+        "distributor_id"
+      ]
+    },
+    {
+      "id": "pipeline_lead",
+      "authority": "public.leads via public.pipeline_create_lead_v1",
+      "identity": [
+        "lead_id"
+      ]
+    },
+    {
+      "id": "pipeline_stage",
+      "authority": "public.leads.status via public.transition_lead_stage_v2",
+      "identity": [
+        "lead_id"
+      ]
+    },
+    {
+      "id": "call_history",
+      "authority": "public.call_logs",
+      "identity": [
+        "log_id"
+      ]
+    },
+    {
+      "id": "field_visit",
+      "authority": "public.field_visits",
+      "identity": [
+        "visit_id"
+      ]
+    },
+    {
+      "id": "distributor_receivable_link",
+      "status": "P0_PLANNED_MIGRATION_045",
+      "authority": "public.receivables.distributor_id -> public.distributor_accounts.distributor_id",
+      "identity": [
+        "receivable_id",
+        "distributor_id"
+      ],
+      "rules": [
+        "No fuzzy distributor matching.",
+        "Names/references are snapshots, not cross-domain authority.",
+        "Distributor reflection in Payment Collections is not a financial write.",
+        "Operational billed is not a financial obligation.",
+        "Payment targets exact receivable_id."
+      ]
+    }
+  ]
+}

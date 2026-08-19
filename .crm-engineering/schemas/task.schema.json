@@ -1,0 +1,199 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "crm-engineering-task-v2",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "taskId",
+    "objective",
+    "risk",
+    "domains",
+    "repository",
+    "phase",
+    "allowedPaths",
+    "acceptance"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 2
+    },
+    "graphSchemaVersion": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "flowVersion": {
+      "type": "string"
+    },
+    "taskId": {
+      "type": "string"
+    },
+    "objective": {
+      "type": "string"
+    },
+    "risk": {
+      "enum": [
+        "R0",
+        "R1",
+        "R2",
+        "R3"
+      ]
+    },
+    "domains": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "repository": {
+      "type": "object",
+      "required": [
+        "canonicalRoot",
+        "expectedBaseRef"
+      ],
+      "properties": {
+        "canonicalRoot": {
+          "type": "string"
+        },
+        "worktreePath": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "branch": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "expectedBaseRef": {
+          "type": "string"
+        },
+        "expectedBaseSha": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "observedHeadSha": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "dirtyBaselineHash": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "phase": {
+      "enum": [
+        "REPOSITORY_RECOVERY",
+        "DISCOVERY",
+        "IMPLEMENTATION",
+        "STATIC_VERIFICATION",
+        "TARGETED_VERIFICATION",
+        "REVIEW",
+        "RELEASE",
+        "PRODUCTION_GATE",
+        "CERTIFICATION",
+        "COMPLETE"
+      ]
+    },
+    "allowedPaths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "protectedDomains": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "productionDataMutation": {
+      "type": "boolean"
+    },
+    "schemaChange": {
+      "type": "boolean"
+    },
+    "acceptance": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "description",
+          "stage",
+          "status",
+          "required",
+          "evidenceIds"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "stage": {
+            "enum": [
+              "IMPLEMENTATION",
+              "VERIFICATION",
+              "RELEASE"
+            ]
+          },
+          "status": {
+            "enum": [
+              "PENDING",
+              "PASS",
+              "FAIL",
+              "BLOCKED",
+              "INVALIDATED"
+            ]
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "evidenceIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "blocker": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "type": {
+          "enum": [
+            "TRANSIENT_TOOL_FAILURE",
+            "IMPLEMENTATION_INCOMPLETE",
+            "AGENT_STALLED",
+            "VERIFICATION_FAILURE",
+            "ENVIRONMENT_DRIFT",
+            "EXTERNAL_DEPENDENCY",
+            "HUMAN_APPROVAL_REQUIRED",
+            "SAFETY_VIOLATION",
+            "UNEXPECTED_SYSTEM_ERROR"
+          ]
+        },
+        "external": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

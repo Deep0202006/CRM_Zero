@@ -1,0 +1,30 @@
+{
+  "name": "@zerodata/crm-engineering-graph",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "node --test --import tsx tests/*.test.ts",
+    "cli": "tsx src/cli.ts",
+    "status": "tsx src/cli.ts status",
+    "context": "tsx src/cli.ts context",
+    "index": "tsx src/cli.ts index",
+    "shadow": "tsx src/cli.ts shadow",
+    "run": "tsx src/cli.ts run"
+  },
+  "dependencies": {
+    "@langchain/core": "^1.0.0",
+    "@langchain/langgraph": "^1.0.0",
+    "@langchain/langgraph-checkpoint-sqlite": "^1.0.3",
+    "better-sqlite3": "^12.0.0",
+    "minimatch": "^10.0.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^22.0.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0"
+  }
+}

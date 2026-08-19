@@ -1,134 +1,101 @@
 <!-- BEGIN:nextjs-agent-rules -->
 # This is NOT the Next.js you know
 
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
+This repository uses the installed Next.js version as authority. Before changing
+Next.js APIs, conventions, routing, caching, rendering, middleware, or server
+behavior, read the relevant guide under `node_modules/next/dist/docs/`.
 <!-- END:nextjs-agent-rules -->
 
-# ZeroData Engineering Map
+# CRM_Zero Engineering Authority
 
-This file is the compact entry point. Load only the documents relevant to the task.
+Repository scope: `Deep0202006/CRM_Zero` only.
 
-## System of record
+## The engineering controller is authoritative
 
-- Start at [docs/os/INDEX.md](docs/os/INDEX.md).
-- Read [ARCHITECTURE.md](ARCHITECTURE.md) for the current high-level shape.
-- Follow links into [docs/architecture/](docs/architecture/) only for affected boundaries.
-- Read only affected domain contracts in [docs/contracts/](docs/contracts/).
-- Protect [Golden Principles](docs/quality/GOLDEN_PRINCIPLES.md) on every change.
-- Classify with [Risk Model](docs/os/RISK_MODEL.md).
-- Execute through [Change Protocol](docs/os/CHANGE_PROTOCOL.md).
-- Ship through [Release Protocol](docs/os/RELEASE_PROTOCOL.md).
+Engineering flow, task state, transition legality, blocker semantics, proof
+reuse, worktree authority, and human production gates are owned by:
 
-Implementation and tests are authoritative when documentation conflicts. Correct stale docs in the same task.
+- `.crm-engineering/manifest.json`
+- `.crm-engineering/policy/`
+- `.crm-engineering/knowledge/`
+- `.crm-engineering/tasks/`
+- `tools/crm-graph/`
+- `docs/engineering-graph/`
 
-## Operating loop
+Run the controller instead of inventing workflow from prose:
 
-### SCAN
+```powershell
+npm run crm:status -- --task <TASK_ID>
+npm run crm:context -- --task <TASK_ID>
+npm run crm:run -- --task <TASK_ID>
+```
 
-- Confirm repository, branch, SHA, and worktree state.
-- Preserve unrelated user changes.
-- Read the root map, task manifest, affected contracts, relevant code, and tests.
-- For Next.js changes, read the relevant installed Next.js guide first.
+## Legacy governance is not execution authority
 
-### CLASSIFY
+The pre-graph governance under `docs/os/`, old `.harness/` task manifests,
+historical execution plans, archived worktrees, repair folders, chat prompts,
+and completed checkpoints are evidence/history only unless the current graph
+task explicitly imports a fact from them.
 
-- Create `.harness/task.json` before implementation; never commit it.
-- Declare risk, domains, allowed paths, protected domains, data/schema effects, and acceptance.
-- Risk may escalate automatically. Never silently downgrade it.
+They MUST NOT determine:
+- current workflow phase;
+- whether work is complete;
+- whether work is blocked;
+- what verification runs next;
+- what worktree is authoritative;
+- whether production action is allowed.
 
-### PLAN
+The context compiler excludes legacy/vendor/generated trees by default.
 
-- R0/R1: keep the plan proportional.
-- Large R2: use an execution plan when coordination or rollback is non-trivial.
-- R3: create an active plan from `docs/exec-plans/TEMPLATE.md` before changing code.
-- State non-goals and invariants before implementation.
+## Normative business knowledge
 
-### CHANGE
+Business semantics are loaded through the CRM knowledge registry and the
+current affected domain contracts. One fact has one authority.
 
-- Stay inside manifest paths and affected domains.
-- Keep stable business IDs across retries.
-- Preserve unknown records; do not guess or fabricate.
-- Never mutate production data during local verification.
-- Do not change schema, RLS, auth, or API contracts without explicit scope and R3 controls.
+Do not create a second editable authority for an existing business fact.
 
-### VERIFY
+## Non-negotiable owner safety
 
-- Run `npm run harness:verify`; risk selects the required gates.
-- Use `npm run harness:related` for focused tests during development.
-- Run full required gates before handoff.
-- Treat failures as evidence; do not weaken tests or guards to obtain green output.
+- Never fabricate or write test business data to production.
+- Never delete production business history to make a test pass.
+- Owner SQL / production schema mutation requires an explicit human gate.
+- Do not expose service-role credentials to browser/client code.
+- Preserve unknown owner work.
+- Do not reset, clean, prune, overwrite, or delete unknown dirty work.
+- Applied owner migrations are immutable; use a forward migration.
+- Do not push directly to `main` or force-push.
 
-### REVIEW
+## Repository rule
 
-- Review the diff for scope, invariants, authority boundaries, recovery, and rollback.
-- Confirm executable guards avoid comments/docs false positives.
-- Confirm no healthy product behavior changed unintentionally.
+Canonical root:
 
-### RELEASE
+`C:\Users\dcp69\Desktop\CRM_Zero`
 
-- R2/R3 default: feature branch → verification → PR → Vercel preview → merge → production.
-- Never push directly to `main` or force-push.
-- Do not contact production Supabase from CI.
-- Use the emergency hotfix exception only as documented.
+Any non-root development worktree must live below:
 
-### LEARN
+`C:\Users\dcp69\Desktop\CRM_Zero\.worktrees\`
 
-- A repeated production defect must consider a contract update, invariant guard, regression test, and incident note.
-- Do not require incident notes for trivial bugs.
-- Move completed execution plans to `docs/exec-plans/completed/`.
+A task may not start implementation unless repository preflight is green.
 
-## Non-negotiable safety
+## Agent role
 
-- No deletion of `call_logs` or `field_visits`.
-- No clearing browser databases or durable recovery state.
-- No fabricated production records.
-- No service-role secrets in browser/client code.
-- Critical calls and field visits use approved server confirmation APIs.
-- Evidence failure cannot undo or block a confirmed field visit.
-- India business dates use the shared IST helpers.
-- Employee ownership is explicit; admin reporting is server-authoritative.
+Codex is an implementation worker inside the graph. It does not own:
+- task completion;
+- persistent BLOCKED state;
+- phase transitions;
+- release authorization;
+- production authorization.
 
-## Capability Reuse & Verification
+If required implementation acceptance remains incomplete and there is no valid
+external/human/safety blocker, the legal next action is IMPLEMENT/REPAIR.
 
-- **Reuse Existing Capabilities:** Before implementing a feature that needs an existing domain capability, you MUST locate and reuse the existing working implementation rather than independently recreating it.
-  - Employee selection → reuse canonical employee authority
-  - Authentication → reuse canonical auth context
-  - Admin authorization → reuse canonical authorization
-  - Distributor identity → reuse distributor authority
-  - Renewal → reuse `distributor_accounts.renewal_date`
-  - Financial data → never duplicate receivables authority
-- **End-to-End Verification:** A successful database migration does not prove a feature works. Database schema, API, authorization, frontend state, and E2E behavior must all be verified.
-- **UI Bug Diagnosis:** Never prescribe a database migration solely because a UI feature is empty or broken. First determine whether the authoritative table exists and whether the application can read/write it.
+## Context rule
 
-## Progressive disclosure
+Load only the context packet produced for the current task/node. Do not preload
+all contracts, migrations, archived repairs, old governance, or historical
+worktrees.
 
-For each task read, in order:
+## Scoped AGENTS files
 
-1. this file;
-2. `.harness/task.json` risk and scope;
-3. affected domain contract(s);
-4. a relevant repository skill, if applicable;
-5. relevant implementation and tests.
-
-Do not preload every contract, historical repair folder, or migration.
-
-## Scoped instructions
-
-More specific instructions exist in:
-
-- `src/app/api/AGENTS.md`
-- `src/lib/callLogs/AGENTS.md`
-- `src/lib/fieldVisits/AGENTS.md`
-- `supabase/AGENTS.md`
-
-## Useful commands
-
-- `npm run harness:preflight`
-- `npm run harness:scope`
-- `npm run harness:guard`
-- `npm run harness:docs`
-- `npm run harness:related`
-- `npm run harness:verify`
-- `npm run harness:full`
-
-Runtime harness files under `.harness/` are ignored except `.gitkeep`.
+Scoped AGENTS files may add local domain constraints only. They cannot redefine
+the engineering workflow or override graph state.

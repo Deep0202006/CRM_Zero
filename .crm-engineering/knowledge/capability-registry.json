@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "capabilities": [
+    {
+      "id": "employee-import-identity",
+      "status": "PRODUCTION_CERTIFIED",
+      "authorityRefs": [
+        "employee_identity"
+      ],
+      "reuse": "required",
+      "notes": [
+        "PR53 production-shaped employee login resolution must not be reimplemented independently."
+      ]
+    },
+    {
+      "id": "receivables-money",
+      "status": "PRODUCTION_AVAILABLE",
+      "authorityRefs": [
+        "receivable",
+        "payment"
+      ],
+      "reuse": "required"
+    },
+    {
+      "id": "distributor-renewal",
+      "status": "PRODUCTION_CERTIFIED",
+      "authorityRefs": [
+        "distributor_account",
+        "renewal"
+      ],
+      "reuse": "required"
+    },
+    {
+      "id": "pipeline-authoritative-transition",
+      "status": "PRODUCTION_CERTIFIED",
+      "authorityRefs": [
+        "pipeline_lead",
+        "pipeline_stage"
+      ],
+      "reuse": "required"
+    },
+    {
+      "id": "attendance-write-read-closure",
+      "status": "PRODUCTION_CERTIFIED",
+      "authorityRefs": [
+        "attendance"
+      ],
+      "reuse": "required"
+    }
+  ]
+}

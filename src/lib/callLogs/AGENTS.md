@@ -1,8 +1,11 @@
-# Call-log guidance
+# Calls boundary
 
-Read `docs/contracts/calls.md` and `docs/architecture/CRITICAL_FLOWS.md`.
+Execution flow is controlled only by the root `AGENTS.md` and CRM Engineering
+Graph. Legacy harness/OS prose must not control phase, blocker or completion.
 
-- Preserve stable `log_id`, explicit ownership, local durability, and server confirmation.
-- Never delete or clear call logs.
-- Retry/reconciliation must not fabricate confirmation.
-- Run the call-log and core reliability related tests selected by the harness.
+Local invariant:
+
+Call history authority is public.call_logs. Critical confirmed history must not be suppressed by optional metric failure. Offline/server validation share one semantic contract.
+
+Load the current task context packet and affected domain contract before making
+changes. Do not broaden scope.

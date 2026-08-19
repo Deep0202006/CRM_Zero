@@ -1,4 +1,4 @@
-name: Engineering harness
+name: CRM Engineering Graph + Product Verification
 
 on:
   pull_request:
@@ -10,6 +10,7 @@ permissions:
 jobs:
   receivables-postgres:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     services:
       postgres:
         image: postgres:17.6-alpine
@@ -54,6 +55,7 @@ jobs:
 
   verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     env:
       NEXT_PUBLIC_SUPABASE_URL: https://e2e.supabase.co
       NEXT_PUBLIC_SUPABASE_ANON_KEY: e2e-anon-key
@@ -67,12 +69,43 @@ jobs:
           node-version: 24.13.0
           cache: npm
       - run: npm ci
+
+      - name: Install CRM Engineering Graph dependencies
+        run: npm ci --prefix tools/crm-graph
+
+      - name: Typecheck CRM Engineering Graph
+        run: npm run crm:graph:typecheck
+
+      - name: Test CRM Engineering Graph
+        run: npm run crm:graph:test
+
+      - name: Load authoritative Graph task state
+        run: npm run crm:status -- --task CRM-P0-045
+
       - run: npm run typecheck
       - run: npm test -- --runInBand
       - run: npm run lint
       - run: npm run build
-      - name: Install Chromium for Receivables browser flows
-        run: npx playwright install --with-deps chromium
+
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    container:
+      image: mcr.microsoft.com/playwright:v1.54.2-noble
+      options: --ipc=host
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://e2e.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: e2e-anon-key
+      SUPABASE_SERVICE_ROLE_KEY: BUILD_TIME_PLACEHOLDER_KEY
+      PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.13.0
+          cache: npm
+      - run: npm ci
+      - run: npm run build
       - name: Run Receivables browser authorization and intake flows
         run: npm run test:e2e:receivables
       - name: Run Field Visits and Attendance evidence browser flows
@@ -85,5 +118,3 @@ jobs:
         run: npm run test:e2e:pipeline
         env:
           PLAYWRIGHT_E2E_WEBPACK: "true"
-      - run: npm run harness:guard
-      - run: npm run harness:docs
