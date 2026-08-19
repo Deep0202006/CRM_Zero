@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 2,
+  "graphSchemaVersion": 1,
+  "flowVersion": "1.1.1",
+  "taskId": "CRM-GRAPH-WORKER-RESULT-HARDEN",
+  "objective": "Prevent malformed worker blocker payloads and transient verification files from crashing CRM Engineering Graph.",
+  "risk": "R1",
+  "domains": [
+    "engineering-graph"
+  ],
+  "repository": {
+    "canonicalRoot": "C:\\Users\\dcp69\\Desktop\\CRM_Zero",
+    "worktreePath": "C:\\Users\\dcp69\\Desktop\\CRM_Zero\\.worktrees\\graph-worker-result-hardening",
+    "branch": "fix/graph-worker-result-hardening",
+    "expectedBaseRef": "origin/main",
+    "expectedBaseSha": "9ff23b2e9c19864c5d9ce536be8482850df99345",
+    "observedHeadSha": "9ff23b2e9c19864c5d9ce536be8482850df99345",
+    "dirtyBaselineHash": "fe605eaec3b7f0051b5175105a6a5e3068581c3dd76bb0629e211184a3bb61a4"
+  },
+  "phase": "COMPLETE",
+  "allowedPaths": [
+    ".crm-engineering/**",
+    "docs/engineering-graph/**",
+    "tools/crm-graph/**",
+    "package.json"
+  ],
+  "protectedDomains": [
+    "attendance",
+    "pipeline",
+    "field-visits",
+    "call-logs",
+    "auth",
+    "distributor-status",
+    "receivables",
+    "payment-collections",
+    "imports",
+    "product-runtime"
+  ],
+  "productionDataMutation": false,
+  "schemaChange": false,
+  "humanGate": null,
+  "acceptance": [
+    {
+      "id": "GRAPH-WORKER-RESULT-A01",
+      "description": "Malformed external blocker payloads fail as typed worker errors before task or LangGraph state mutation, and transient untracked-file cleanup cannot crash fingerprinting.",
+      "stage": "IMPLEMENTATION",
+      "status": "PASS",
+      "required": true,
+      "evidenceIds": [
+        "test:worker-malformed-external-blocker-typed-error",
+        "test:graph-malformed-blocker-no-state-mutation",
+        "test:repository-transient-untracked-cleanup"
+      ]
+    },
+    {
+      "id": "GRAPH-WORKER-RESULT-V01",
+      "description": "Controller typecheck and full deterministic Graph tests pass, including malformed blocker and transient fingerprint regressions.",
+      "stage": "VERIFICATION",
+      "status": "PASS",
+      "required": true,
+      "evidenceIds": [
+        "command:crm-graph-typecheck:exit-0",
+        "test:crm-graph-deterministic:76-pass-0-fail",
+        "test:worker-malformed-external-blocker-typed-error",
+        "test:graph-malformed-blocker-no-state-mutation",
+        "test:repository-transient-untracked-cleanup"
+      ]
+    }
+  ],
+  "blocker": null
+}

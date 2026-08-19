@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { CodexWorkerSession, extractWorkerJson, loadSavedCodexThreadId, validateWorkerResult } from "../src/worker.js";
+import { CodexWorkerSession, extractWorkerJson, loadSavedCodexThreadId, validateWorkerResult, WorkerResultError } from "../src/worker.js";
 
 function task(overrides:any={}) { return {
   schemaVersion:2,graphSchemaVersion:1,flowVersion:"1.1.0",taskId:"T",objective:"test",risk:"R0",domains:["engineering-graph"],
@@ -24,6 +24,8 @@ test("worker rejects absent JSON",()=>assert.throws(()=>extractWorkerJson("none"
 test("worker validates exact task id",()=>assert.throws(()=>validateWorkerResult(task(),{taskId:"X",acceptanceUpdates:[],changedPaths:[],externalBlocker:null,summary:""}),/TASK_MISMATCH/));
 test("worker rejects unknown acceptance id",()=>assert.throws(()=>validateWorkerResult(task(),{taskId:"T",acceptanceUpdates:[{id:"X",status:"PASS",evidenceIds:["x"]}],changedPaths:[],externalBlocker:null,summary:""}),/UNKNOWN_ACCEPTANCE/));
 test("worker PASS requires evidence",()=>assert.throws(()=>validateWorkerResult(task(),{taskId:"T",acceptanceUpdates:[{id:"A",status:"PASS",evidenceIds:[]}],changedPaths:[],externalBlocker:null,summary:""}),/EVIDENCE_REQUIRED/));
+test("worker rejects malformed external blocker with a typed error before state mutation",()=>assert.throws(()=>validateWorkerResult(task(),{taskId:"T",acceptanceUpdates:[{id:"A",status:"PENDING",evidenceIds:[]}],changedPaths:[],externalBlocker:{} as any,summary:"partial"}),(error:unknown)=>error instanceof WorkerResultError && error.code === "CODEX_WORKER_MALFORMED_EXTERNAL_BLOCKER"));
+test("worker accepts an external blocker only with a durable reason",()=>assert.doesNotThrow(()=>validateWorkerResult(task(),{taskId:"T",acceptanceUpdates:[{id:"A",status:"PENDING",evidenceIds:[]}],changedPaths:[],externalBlocker:{reason:"Disposable PostgreSQL is unavailable"},summary:"partial"})));
 
 test("worker result is bound to exactly the focused acceptance",()=>{
   const t=task({acceptance:[

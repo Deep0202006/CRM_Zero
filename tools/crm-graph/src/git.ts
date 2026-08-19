@@ -13,7 +13,11 @@ function gitBuffer(cwd:string, args:string[]) {
   return execFileSync("git", ["-C", cwd, ...args], { encoding:null, stdio:["ignore","pipe","pipe"] });
 }
 
-export function worktreeFingerprint(cwd:string) {
+interface FingerprintOptions {
+  beforeHashUntracked?:(relative:string)=>void;
+}
+
+function fingerprintAttempt(cwd:string, options:FingerprintOptions) {
   // Controller task/checkpoint projections mutate as part of legal execution;
   // they are persisted state, not owner working-tree baseline. Product and
   // proof content remain fingerprinted.
@@ -35,6 +39,7 @@ export function worktreeFingerprint(cwd:string) {
   hash.update(unstagedDiff);
   hash.update("\0UNTRACKED\0");
   for (const relative of untracked) {
+    options.beforeHashUntracked?.(relative);
     const contentId = git(cwd, ["hash-object","--no-filters","--",relative]);
     hash.update(relative, "utf8");
     hash.update("\0");
@@ -46,6 +51,19 @@ export function worktreeFingerprint(cwd:string) {
     Buffer.from("\nUNSTAGED\n"),unstagedDiff
   ]).toString("utf8");
   return { hash:hash.digest("hex"), status:status.toString("utf8"), trackedDiff, untracked };
+}
+
+export function worktreeFingerprint(cwd:string, options:FingerprintOptions = {}) {
+  let lastError:unknown;
+  for (let attempt=1; attempt<=3; attempt++) {
+    try {
+      return fingerprintAttempt(cwd,options);
+    } catch (error) {
+      lastError=error;
+    }
+  }
+  const message=lastError instanceof Error ? lastError.message : String(lastError);
+  throw new Error(`WORKTREE_FINGERPRINT_UNSTABLE: unable to capture a stable repository snapshot after 3 attempts: ${message}`);
 }
 
 export function inspectRepo(cwd: string) {
