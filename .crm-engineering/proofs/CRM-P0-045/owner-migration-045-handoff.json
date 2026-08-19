@@ -1,0 +1,53 @@
+{
+  "taskId": "CRM-P0-045",
+  "releaseAcceptanceId": "P0-045-R01",
+  "status": "AWAITING_OWNER_MANUAL_APPLICATION",
+  "productionProjectRef": "gwfjkpsoaoherntwhdyf",
+  "productionAccessMode": "READ_ONLY",
+  "precheck": {
+    "observedAt": "2026-08-19T12:41:53.6751651Z",
+    "query": "select (select count(*) from public.receivables) as receivable_rows, (select coalesce(sum(bill_amount),0) from public.receivables) as receivable_bill_total, (select count(*) from public.receivable_payments) as payment_rows, (select coalesce(sum(amount),0) from public.receivable_payments where verification_status = 'confirmed' and reversed_at is null) as effective_confirmed_collected;",
+    "result": {
+      "receivable_rows": 0,
+      "receivable_bill_total": "0",
+      "payment_rows": 0,
+      "effective_confirmed_collected": "0"
+    }
+  },
+  "ownerSql": {
+    "path": "supabase/migrations/045_distributor_receivable_canonical_link.sql",
+    "sha256": "d06380e0027740415caa60926c4cc2876c64e4e697972cd65ee69efcde548a36",
+    "applyMethod": "Owner manually executes the complete reviewed file in the production Supabase SQL Editor.",
+    "appliedByCodex": false,
+    "historicalFinancialBackfill": false,
+    "businessRowMutation": false
+  },
+  "expectedSchemaDelta": [
+    "public.receivables.distributor_id uuid NULL",
+    "receivables_distributor_id_fkey references public.distributor_accounts(distributor_id) ON DELETE RESTRICT",
+    "partial lookup and per-Distributor bill-reference indexes",
+    "execute_receivable_command_v1 and import_receivables_v1 retain their deployed public signatures",
+    "bounded distributor financial projection and exact-receivable read functions become available"
+  ],
+  "postcheckSql": "select c.column_name,c.data_type,c.is_nullable from information_schema.columns c where c.table_schema='public' and c.table_name='receivables' and c.column_name='distributor_id';\nselect con.conname,pg_get_constraintdef(con.oid) as definition from pg_constraint con where con.conrelid='public.receivables'::regclass and con.conname='receivables_distributor_id_fkey';\nselect indexname,indexdef from pg_indexes where schemaname='public' and tablename='receivables' and indexname in ('receivables_distributor_id_lookup_idx','receivables_distributor_bill_reference_uidx') order by indexname;\nselect jsonb_build_object('receivable_rows',(select count(*) from public.receivables),'receivable_bill_total',(select coalesce(sum(bill_amount),0) from public.receivables),'payment_rows',(select count(*) from public.receivable_payments),'effective_confirmed_collected',(select coalesce(sum(amount),0) from public.receivable_payments where verification_status='confirmed' and reversed_at is null),'effective_outstanding',(select coalesce(sum(outstanding_amount),0) from public.receivables_financial_read_v1 where lifecycle_status<>'cancelled')) as distributor_receivable_link_postcheck;",
+  "expectedPostcheck": {
+    "column": {
+      "column_name": "distributor_id",
+      "data_type": "uuid",
+      "is_nullable": "YES"
+    },
+    "foreignKeyDeleteAction": "RESTRICT",
+    "indexesPresent": 2,
+    "receivable_rows": 0,
+    "receivable_bill_total": "0",
+    "payment_rows": 0,
+    "effective_confirmed_collected": "0",
+    "effective_outstanding": "0"
+  },
+  "forwardFixStrategy": "If the SQL Editor reports any error, stop release. Inspect the live schema and function definitions read-only, identify the last successfully created additive object, and prepare a reviewed forward-only SQL artifact for only the missing or incorrect delta. Do not blindly rerun the complete migration, remove business rows, or mutate applied migrations 001-044. Prefer forward repair over dropping the nullable link; any rollback that could affect linked rows requires a new owner-authorized plan.",
+  "graphInterrupt": {
+    "type": "OWNER_PRODUCTION_GATE",
+    "threadId": "CRM-P0-045",
+    "releaseAcceptanceRemainsPending": true
+  }
+}

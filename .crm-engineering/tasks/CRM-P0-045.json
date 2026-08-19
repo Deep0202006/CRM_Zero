@@ -17,8 +17,8 @@
     "branch": "fix/distributor-receivable-canonical-link-v2",
     "expectedBaseRef": "origin/main",
     "expectedBaseSha": "cced9075e567510146c5d060f2af80a6d491a0cb",
-    "observedHeadSha": "cfd0abf5909fbb30deac73c9d231e767d5a55052",
-    "dirtyBaselineHash": "fe605eaec3b7f0051b5175105a6a5e3068581c3dd76bb0629e211184a3bb61a4"
+    "observedHeadSha": "ea1217d9c8c5be1792928292baaa946814ad259f",
+    "dirtyBaselineHash": "42f949f939c6ea4fa00adc7e5d65d15559b8f4f211f4dcb34f4fc9959acbcd00"
   },
   "phase": "TARGETED_VERIFICATION",
   "allowedPaths": [
@@ -139,7 +139,7 @@
       "id": "P0-045-V01",
       "description": "Focused DB/unit/E2E/typecheck/build verification passes on exact final head with production-shaped disposable fixtures only.",
       "stage": "VERIFICATION",
-      "status": "PENDING",
+      "status": "PASS",
       "required": true,
       "evidenceIds": [
         "P0-045-V01-UNIT-174-PASS",
@@ -148,7 +148,33 @@
         "P0-045-V01-E2E-24-PASS",
         "P0-045-V01-BUILD-PASS",
         "P0-045-V01-DB-NOT-RUN",
-        ".crm-engineering/proofs/CRM-P0-045/P0-045-V01.partial.json"
+        ".crm-engineering/proofs/CRM-P0-045/P0-045-V01.partial.json",
+        "P0-045-V01-EA1217D-UNIT-174-PASS",
+        "P0-045-V01-EA1217D-TYPECHECK-PASS",
+        "P0-045-V01-EA1217D-SCOPED-ESLINT-PASS",
+        "P0-045-V01-EA1217D-BUILD-PASS",
+        "P0-045-V01-EA1217D-E2E-24-PASS",
+        "P0-045-V01-EA1217D-DB-UNAVAILABLE",
+        "P0-045-V01-EA1217D-DB-PSQL-UNAVAILABLE",
+        "P0-045-V01-EA1217D-LOCAL-RUNTIME-INVENTORY-NONE",
+        "P0-045-V01-EA1217D-DISPOSABLE-SUPABASE-REF-NOT-DECLARED",
+        "P0-045-V01-EA1217D-INJECTED-DISPOSABLE-TARGET-NONE",
+        "P0-045-V01-EA1217D-WINGET-OFFLINE-RUNTIME-NONE",
+        "P0-045-V01-EA1217D-MSYS-CYGWIN-RUNTIME-NONE",
+        "P0-045-V01-EA1217D-VM-CONTAINER-BACKEND-NONE",
+        "P0-045-V01-EA1217D-CONDA-NIX-RUNTIME-NONE",
+        ".crm-engineering/proofs/CRM-P0-045/P0-045-V01-ci.json",
+        "github-actions:32250410795:exact-head-ea1217d:success",
+        "github-job:96059895054:receivables-postgres:success",
+        "github-job:96059894976:verify:success",
+        "github-job:96059894846:e2e:success",
+        "vercel-preview:ea1217d:success",
+        "proof-sha256:ad178c5e4d03e224c03f7b61fc3d828f18f57f998d3d798a635c80bbf7aaf984",
+        "github-actions:32250410795:success",
+        "github-actions-job:96059895054:receivables-postgres:success",
+        "github-actions-job:96059894976:verify:success",
+        "github-actions-job:96059894846:e2e:success",
+        "vercel:TLX825GLunyybiJxN7rgxiRKdDWx:success"
       ]
     },
     {
@@ -157,7 +183,11 @@
       "stage": "RELEASE",
       "status": "PENDING",
       "required": true,
-      "evidenceIds": []
+      "evidenceIds": [
+        ".crm-engineering/proofs/CRM-P0-045/owner-migration-045-handoff.json",
+        "production-read-only-precheck:2026-08-19T12:41:53.6751651Z:zero-financial-rows",
+        "owner-sql-sha256:d06380e0027740415caa60926c4cc2876c64e4e697972cd65ee69efcde548a36"
+      ]
     }
   ],
   "blocker": null
