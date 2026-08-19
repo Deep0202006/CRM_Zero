@@ -105,7 +105,7 @@
     },
     {
       "id": "distributor_receivable_link",
-      "status": "P0_PLANNED_MIGRATION_045",
+      "status": "PRODUCTION_CERTIFIED",
       "authority": "public.receivables.distributor_id -> public.distributor_accounts.distributor_id",
       "identity": [
         "receivable_id",

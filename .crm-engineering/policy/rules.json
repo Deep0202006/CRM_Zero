@@ -72,6 +72,27 @@
       "title": "Progressive disclosure only",
       "severity": "MEDIUM",
       "effect": "CONTEXT_COMPILER_ONLY"
+    },
+    {
+      "id": "G-PROOF-001",
+      "title": "Reuse fresh exact-head proof",
+      "severity": "HIGH",
+      "effect": "REUSE_UNCHANGED_VERIFICATION_EVIDENCE",
+      "enforcement": "CONTEXT_AND_POLICY"
+    },
+    {
+      "id": "G-LEARN-001",
+      "title": "R2/R3 incident lessons become durable Graph knowledge",
+      "severity": "HIGH",
+      "effect": "REQUIRE_KNOWLEDGE_CLOSEOUT",
+      "enforcement": "CONTEXT_AND_POLICY"
+    },
+    {
+      "id": "G-PROD-003",
+      "title": "Owner migration completion requires read-only certification before release",
+      "severity": "CRITICAL",
+      "effect": "REQUIRE_OWNER_POSTCHECK_EVIDENCE",
+      "enforcement": "CONTEXT_AND_POLICY; Graph resume requires durable evidence IDs but does not inspect postcheck semantics"
     }
   ]
 }
