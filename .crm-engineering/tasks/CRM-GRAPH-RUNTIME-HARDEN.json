@@ -20,6 +20,7 @@
   "phase": "COMPLETE",
   "allowedPaths": [
     ".crm-engineering/**",
+    ".github/workflows/harness.yml",
     "docs/engineering-graph/**",
     "tools/crm-graph/**",
     "package.json"

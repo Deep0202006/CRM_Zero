@@ -19,6 +19,10 @@
     "policyAction": "FOCUSED_RETRY",
     "result": "PASS"
   },
+  "releaseCiScopeCorrection": {
+    "path": ".github/workflows/harness.yml",
+    "reason": "The required database gate exhausted its job timeout downloading an already-preinstalled PostgreSQL client before any test ran; activate the runner toolchain deterministically without changing product tests."
+  },
   "controllerTests": {
     "count": 72,
     "passed": 72,
