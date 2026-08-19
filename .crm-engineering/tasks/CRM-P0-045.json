@@ -1,0 +1,123 @@
+{
+  "schemaVersion": 2,
+  "graphSchemaVersion": 1,
+  "flowVersion": "1.0.0",
+  "taskId": "CRM-P0-045",
+  "objective": "Finish canonical Distributor Status \u2194 Payment Collections integration without duplicating financial authority.",
+  "risk": "R3",
+  "domains": [
+    "distributor-status",
+    "receivables",
+    "payment-collections",
+    "imports"
+  ],
+  "repository": {
+    "canonicalRoot": "C:\\Users\\dcp69\\Desktop\\CRM_Zero",
+    "worktreePath": null,
+    "branch": "fix/distributor-receivable-canonical-link-v2",
+    "expectedBaseRef": "origin/main",
+    "expectedBaseSha": "31d3e73dc2d1b6b0fd9ea72a68b3b66816517c6b",
+    "observedHeadSha": null,
+    "dirtyBaselineHash": null
+  },
+  "phase": "REPOSITORY_RECOVERY",
+  "allowedPaths": [
+    "supabase/migrations/045_distributor_receivable_canonical_link.sql",
+    "src/lib/receivables/**",
+    "src/lib/distributors/**",
+    "src/components/receivables/**",
+    "src/components/distributors/**",
+    "src/app/api/receivables/**",
+    "src/app/api/distributors/**",
+    "src/app/admin/payments/**",
+    "tests/**",
+    "src/lib/__tests__/**",
+    ".crm-engineering/**",
+    "docs/engineering-graph/**"
+  ],
+  "protectedDomains": [
+    "attendance",
+    "pipeline",
+    "field-visits",
+    "call-logs",
+    "auth"
+  ],
+  "productionDataMutation": false,
+  "schemaChange": true,
+  "humanGate": null,
+  "acceptance": [
+    {
+      "id": "P0-045-A01",
+      "description": "Migration 045 is additive, has nullable receivables.distributor_id FK ON DELETE RESTRICT, canonical indexes, and zero historical financial row mutation.",
+      "stage": "IMPLEMENTATION",
+      "status": "PENDING",
+      "required": true,
+      "evidenceIds": []
+    },
+    {
+      "id": "P0-045-A02",
+      "description": "Existing Receivables command RPC signature is preserved; optional canonical distributor_id is validated and persisted on create while legacy no-UUID payload remains compatible.",
+      "stage": "IMPLEMENTATION",
+      "status": "PENDING",
+      "required": true,
+      "evidenceIds": []
+    },
+    {
+      "id": "P0-045-A03",
+      "description": "Existing import_receivables_v1 signature is preserved; canonical distributor_id is validated/staged/hashed/persisted; legacy no-UUID path remains compatible.",
+      "stage": "IMPLEMENTATION",
+      "status": "PENDING",
+      "required": true,
+      "evidenceIds": []
+    },
+    {
+      "id": "P0-045-A04",
+      "description": "Distributor-first bounded collection read model derives NOT_BILLED, COLLECTION_SETUP_REQUIRED, UNPAID, PARTIALLY_PAID, PAID and DISPUTED from canonical authorities with filter-before-pagination and page max 50.",
+      "stage": "IMPLEMENTATION",
+      "status": "PENDING",
+      "required": true,
+      "evidenceIds": []
+    },
+    {
+      "id": "P0-045-A05",
+      "description": "Payment Collections exposes Distributor Collections, Total Collected and Collection Setup Required without removing invoice-level Receivables.",
+      "stage": "IMPLEMENTATION",
+      "status": "PENDING",
+      "required": true,
+      "evidenceIds": []
+    },
+    {
+      "id": "P0-045-A06",
+      "description": "Distributor Status shows read-only Payment/Received/Outstanding and reuses Receivables create/payment actions; multiple outstanding receivables require exact selection.",
+      "stage": "IMPLEMENTATION",
+      "status": "PENDING",
+      "required": true,
+      "evidenceIds": []
+    },
+    {
+      "id": "P0-045-A07",
+      "description": "Manual create and spreadsheet import resolve canonical Distributor identity; no fuzzy matching; PR53 Auth employee resolver remains unchanged.",
+      "stage": "IMPLEMENTATION",
+      "status": "PENDING",
+      "required": true,
+      "evidenceIds": []
+    },
+    {
+      "id": "P0-045-V01",
+      "description": "Focused DB/unit/E2E/typecheck/build verification passes on exact final head with production-shaped disposable fixtures only.",
+      "stage": "VERIFICATION",
+      "status": "PENDING",
+      "required": true,
+      "evidenceIds": []
+    },
+    {
+      "id": "P0-045-R01",
+      "description": "Owner precheck still proves zero production financial rows before applying migration 045; owner SQL is reviewed and manually applied; production certification is read-only/natural.",
+      "stage": "RELEASE",
+      "status": "PENDING",
+      "required": true,
+      "evidenceIds": []
+    }
+  ],
+  "blocker": null
+}

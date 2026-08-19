@@ -1,0 +1,236 @@
+{
+  "schemaVersion": 1,
+  "lessons": [
+    {
+      "date": "2026-08-17",
+      "domain": "Execution management",
+      "id": "EXECUTION_BUDGET_RULE",
+      "rule": "Split large work into implementation completion and verification/release. Incomplete implementation without external dependency is not BLOCKED.",
+      "enforcementStatus": "TO_COMPILE"
+    },
+    {
+      "date": "2026-08-17",
+      "domain": "Canonical distributor-financial link",
+      "id": "ZERO_DATA_MIGRATION_RULE",
+      "rule": "Empty authoritative financial tables require additive zero-row migrations, not invented backfill.",
+      "enforcementStatus": "TO_COMPILE"
+    },
+    {
+      "date": "2026-08-17",
+      "domain": "Canonical distributor-financial link",
+      "id": "REFLECTION_IS_NOT_MUTATION",
+      "rule": "Distributor appearing in a collection view creates no financial obligation.",
+      "enforcementStatus": "TO_COMPILE"
+    },
+    {
+      "date": "2026-08-17",
+      "domain": "Canonical distributor-financial link",
+      "id": "BILLED_IS_NOT_UNPAID",
+      "rule": "Operational billing milestone is not a monetary obligation until a Receivable exists.",
+      "enforcementStatus": "TO_COMPILE"
+    },
+    {
+      "date": "2026-08-17",
+      "domain": "Canonical distributor-financial link",
+      "id": "EXACT_PAYMENT_TARGET_RULE",
+      "rule": "Payments target exact receivable_id; never silently allocate a distributor aggregate.",
+      "enforcementStatus": "TO_COMPILE"
+    },
+    {
+      "date": "2026-08-17",
+      "domain": "Canonical distributor-financial link",
+      "id": "CANONICAL_IDENTITY_RULE",
+      "rule": "Cross-domain links use stable UUID identity.",
+      "enforcementStatus": "TO_COMPILE"
+    },
+    {
+      "date": "2026-08-17",
+      "domain": "Canonical distributor-financial link",
+      "id": "ONE_MONEY_AUTHORITY",
+      "rule": "Receivables plus effective confirmed non-reversed payments are financial truth.",
+      "enforcementStatus": "TO_COMPILE"
+    },
+    {
+      "date": "2026-08-17",
+      "domain": "Worktree authority",
+      "id": "WORKTREE_AUTHORITY_RULE",
+      "rule": "Compare local HEAD to canonical origin/main before implementation.",
+      "enforcementStatus": "TO_COMPILE"
+    },
+    {
+      "date": "2026-08-17",
+      "domain": "Worktree authority",
+      "id": "DIRTY_TREE_ISOLATION_RULE",
+      "rule": "Preserve unknown owner edits; use an isolated clean worktree.",
+      "enforcementStatus": "TO_COMPILE"
+    },
+    {
+      "date": "2026-08-17",
+      "domain": "Worktree authority",
+      "id": "STALE_BASE_PENALTY",
+      "rule": "Stale-branch evidence is invalid for current-main implementation claims.",
+      "enforcementStatus": "TO_COMPILE"
+    },
+    {
+      "date": "2026-08-17",
+      "domain": "Employee identity / Imports",
+      "id": "TEST_REALISM_RULE",
+      "rule": "Mocks must preserve independent production authorities when production permits them to differ.",
+      "enforcementStatus": "TO_COMPILE"
+    },
+    {
+      "date": "2026-08-17",
+      "domain": "Employee identity / Imports",
+      "id": "PREEXISTING_FAILURE_RULE",
+      "rule": "A failure is pre-existing only when the same command fails on clean current main.",
+      "enforcementStatus": "TO_COMPILE"
+    },
+    {
+      "date": "2026-08-16",
+      "domain": "Field Visits / Mapping",
+      "id": "WRITE_READ_ADMIN_EXPORT",
+      "rule": "Important field additions close Write \u2192 Read \u2192 Admin \u2192 Export.",
+      "enforcementStatus": "TO_COMPILE"
+    },
+    {
+      "date": "2026-08-15",
+      "domain": "Pipeline creation and visibility",
+      "id": "SINGLE_SERVER_ENTRY_RULE",
+      "rule": "A business authority needs one server entry point plus database/CI firewall.",
+      "enforcementStatus": "TO_COMPILE"
+    },
+    {
+      "date": "2026-08-14",
+      "domain": "Attendance offline confirmation",
+      "id": "TERMINAL_4XX_RULE",
+      "rule": "Deterministic terminal 4xx is passive evidence and must not auto-replay; only uncertain/transient failures back off.",
+      "enforcementStatus": "TO_COMPILE"
+    },
+    {
+      "date": "2026-08-14",
+      "domain": "Attendance write/read closure",
+      "id": "WRITE_READ_CLOSURE_RULE",
+      "rule": "Important mutation success means authoritative write\u2192reader closure, not local durability.",
+      "enforcementStatus": "TO_COMPILE"
+    },
+    {
+      "date": "2026-08-14",
+      "domain": "Critical route integrity",
+      "id": "ROUTE_MATRIX_RULE",
+      "rule": "Critical role/navigation routes require CI route-matrix protection.",
+      "enforcementStatus": "TO_COMPILE"
+    },
+    {
+      "date": "2026-08-14",
+      "domain": "Main CI baseline",
+      "id": "MAIN_BASELINE_RULE",
+      "rule": "Required main CI stays green; baseline repair is separate from product behavior.",
+      "enforcementStatus": "TO_COMPILE"
+    },
+    {
+      "date": "2026-08-15",
+      "domain": "Owner SQL",
+      "id": "OWNER_SQL_PURE_POSTGRESQL",
+      "rule": "Owner SQL must run in Supabase SQL Editor with no psql meta commands.",
+      "enforcementStatus": "TO_COMPILE"
+    },
+    {
+      "date": "2026-08-13",
+      "domain": "Distributor lifecycle",
+      "id": "BOUNDED_READ_SIDE_EFFECT_RULE",
+      "rule": "Declare authority/read/write/RLS/index/failure/concurrency/idempotency/test budgets.",
+      "enforcementStatus": "TO_COMPILE"
+    },
+    {
+      "date": "2026-08-10",
+      "domain": "Calls",
+      "id": "SEMANTIC_CONTRACT_RULE",
+      "rule": "UI, offline payload and server validation share one semantic contract.",
+      "enforcementStatus": "TO_COMPILE"
+    },
+    {
+      "date": "2026-08-10",
+      "domain": "Production safety",
+      "id": "NO_PRODUCTION_DUMMY_DATA",
+      "rule": "Production verification is read-only unless the owner authorizes the exact business mutation.",
+      "enforcementStatus": "TO_COMPILE"
+    },
+    {
+      "date": "2026-08-10",
+      "domain": "Calls",
+      "id": "OPTIONAL_METRIC_FAILURE_RULE",
+      "rule": "Optional metric failure must not suppress successfully retrieved authoritative business history.",
+      "enforcementStatus": "TO_COMPILE"
+    },
+    {
+      "date": "2026-08-10",
+      "domain": "Pipeline",
+      "id": "DURABLE_TRANSITION_RULE",
+      "rule": "Durable state-machine retries preserve command identity, expected state, target state, actor and conflict result.",
+      "enforcementStatus": "TO_COMPILE"
+    },
+    {
+      "date": "2026-08-10",
+      "domain": "Engineering OS / Pipeline",
+      "id": "REAL_ROUTE_MAP_RULE",
+      "rule": "Domain automation must map actual production routes, not stale conceptual paths.",
+      "enforcementStatus": "TO_COMPILE"
+    },
+    {
+      "date": "2026-08-10",
+      "domain": "Pipeline",
+      "id": "LOCAL_TO_SERVER_CONVERGENCE_RULE",
+      "rule": "Promoting server authority requires explicit reconciliation of legitimate pre-existing durable local intent.",
+      "enforcementStatus": "TO_COMPILE"
+    },
+    {
+      "date": "2026-08-10",
+      "domain": "Calls",
+      "id": "TOTAL_VS_PAGE_RULE",
+      "rule": "Business total comes from authoritative count metadata, never loaded-page length.",
+      "enforcementStatus": "TO_COMPILE"
+    },
+    {
+      "date": "2026-08-11",
+      "domain": "Financial batch mutations",
+      "id": "ATOMIC_BATCH_RULE",
+      "rule": "Validate the whole batch write-free before mutation, or raise to abort transaction.",
+      "enforcementStatus": "TO_COMPILE"
+    },
+    {
+      "date": "2026-08-11",
+      "domain": "R3 schema verification",
+      "id": "RUNTIME_DB_PROOF_RULE",
+      "rule": "Schema-critical SQL requires disposable PostgreSQL apply/invariant/RLS proof; static text checks are supplementary.",
+      "enforcementStatus": "TO_COMPILE"
+    },
+    {
+      "date": "2026-08-11",
+      "domain": "Durable command recovery",
+      "id": "SEMANTIC_RETRY_RULE",
+      "rule": "Expected deterministic database failures become typed terminal results; only uncertain infrastructure outcomes auto-retry.",
+      "enforcementStatus": "TO_COMPILE"
+    },
+    {
+      "date": "2026-08-11",
+      "domain": "Financial bulk intake",
+      "id": "BOUNDED_IS_NOT_LINEARITY_RULE",
+      "rule": "Input caps do not excuse quadratic validation; use set-based/indexed staging.",
+      "enforcementStatus": "TO_COMPILE"
+    },
+    {
+      "date": "2026-08-11",
+      "domain": "Financial export",
+      "id": "SPREADSHEET_FORMULA_RULE",
+      "rule": "Neutralize formula-capable user text before workbook generation.",
+      "enforcementStatus": "TO_COMPILE"
+    },
+    {
+      "date": "2026-08-12",
+      "domain": "Evidence lifecycle",
+      "id": "MEDIA_LIFECYCLE_RULE",
+      "rule": "Temporary media lifecycle is separate from permanent business row lifecycle and retries idempotently.",
+      "enforcementStatus": "TO_COMPILE"
+    }
+  ]
+}

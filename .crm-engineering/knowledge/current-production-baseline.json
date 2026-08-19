@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "repository": "Deep0202006/CRM_Zero",
+  "note": "Historical baseline imported from CRM governance corpus; current production must be re-certified before release decisions.",
+  "knownLatestConversationBaseline": {
+    "productionMainSha": "31d3e73dc2d1b6b0fd9ea72a68b3b66816517c6b",
+    "vercelDeployment": "dpl_3VWN4DLZFw8kFEq8ashTnHS7wyLk",
+    "supabaseProjectRef": "gwfjkpsoaoherntwhdyf",
+    "lastAppliedOwnerMigration": 44,
+    "receivableRows": 0,
+    "paymentRows": 0,
+    "receivableBillTotal": 0,
+    "effectiveConfirmedCollected": 0,
+    "effectiveOutstanding": 0
+  },
+  "freshnessPolicy": "Never treat this file alone as current release proof. Proof records bind to SHA, dependencies and observed_at."
+}

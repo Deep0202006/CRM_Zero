@@ -1,10 +1,11 @@
-# API route guidance
+# API boundary
 
-Read the affected contract under `docs/contracts/` and `docs/architecture/DATA_AUTHORITY.md`.
+Execution flow is controlled only by the root `AGENTS.md` and CRM Engineering
+Graph. Legacy harness/OS prose must not control phase, blocker or completion.
 
-- Route handlers are server authorization and data-authority boundaries.
-- Validate the session and authorization server-side; never trust client role/user claims alone.
-- Keep service-role credentials server-only.
-- Calls and field visits must retain their approved confirmation-route contracts.
-- API contract, auth, privileged-client, or critical-write changes escalate to R2/R3 per the risk model.
-- Read the installed Next.js route-handler documentation before changing these files.
+Local invariant:
+
+API routes reuse canonical server authorities, validate actor/role, preserve typed terminal-vs-transient outcomes, and never invent a second business authority.
+
+Load the current task context packet and affected domain contract before making
+changes. Do not broaden scope.

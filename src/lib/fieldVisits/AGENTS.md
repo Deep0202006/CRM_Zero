@@ -1,9 +1,11 @@
-# Field-visit guidance
+# Field Visits boundary
 
-Read `docs/contracts/field-visits.md` and `docs/architecture/CRITICAL_FLOWS.md`.
+Execution flow is controlled only by the root `AGENTS.md` and CRM Engineering
+Graph. Legacy harness/OS prose must not control phase, blocker or completion.
 
-- Preserve stable `visit_id`, owner-scoped recovery, and local visit/media durability.
-- Never delete/clear visit or media records.
-- A confirmed visit remains confirmed when evidence upload fails.
-- Use approved server confirmation and shared IST date helpers.
-- Run the field-visit reliability suites selected by the harness.
+Local invariant:
+
+Field visit authority is public.field_visits. Evidence/media lifecycle is separate from permanent business rows. Evidence failure cannot undo a confirmed visit.
+
+Load the current task context packet and affected domain contract before making
+changes. Do not broaden scope.

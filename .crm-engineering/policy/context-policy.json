@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "defaultMode": "deny-unless-selected",
+  "alwaysExclude": [
+    "**/node_modules/**",
+    "**/.next/**",
+    "**/test-results/**",
+    "**/playwright-report/**",
+    "**/.archive/**",
+    "**/.worktrees/**",
+    "**/.git/**",
+    ".harness/**",
+    "docs/os/**",
+    "docs/data-platform-repair/**",
+    "docs/exec-plans/completed/**",
+    ".codex-artifacts/**",
+    "scratch/**"
+  ],
+  "authoritativeRoots": [
+    ".crm-engineering/**",
+    "docs/engineering-graph/**",
+    "docs/contracts/**",
+    "ARCHITECTURE.md",
+    "src/**",
+    "supabase/**",
+    "tests/**"
+  ],
+  "legacyMayBeReadOnlyWhenTaskExplicitlyRequestsHistoricalEvidence": true
+}
