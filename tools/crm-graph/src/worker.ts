@@ -43,7 +43,18 @@ export function extractWorkerJson(text:string):WorkerResult {
 }
 
 export function validateWorkerResult(task:TaskFile, result:WorkerResult, focusedAcceptance?:AcceptanceItem, intent?:WorkerIntent) {
+  if (!result || typeof result !== "object") throw new Error("CODEX_WORKER_MALFORMED_RESULT: expected an object");
   if (result.taskId !== task.taskId) throw new Error(`CODEX_WORKER_TASK_MISMATCH: expected ${task.taskId}, received ${result.taskId}`);
+  if (!Array.isArray(result.acceptanceUpdates)) throw new Error("CODEX_WORKER_MALFORMED_RESULT: acceptanceUpdates must be an array");
+  if (!Array.isArray(result.changedPaths) || result.changedPaths.some(candidate => typeof candidate !== "string")) {
+    throw new Error("CODEX_WORKER_MALFORMED_RESULT: changedPaths must be a string array");
+  }
+  if (result.externalBlocker !== null) {
+    if (!result.externalBlocker || typeof result.externalBlocker !== "object" || typeof result.externalBlocker.reason !== "string" || !result.externalBlocker.reason.trim()) {
+      throw new Error("CODEX_WORKER_MALFORMED_EXTERNAL_BLOCKER: externalBlocker requires a non-empty reason");
+    }
+  }
+  if (typeof result.summary !== "string") throw new Error("CODEX_WORKER_MALFORMED_RESULT: summary must be a string");
   const known = new Set(task.acceptance.map(item => item.id));
   if (focusedAcceptance && intent) {
     const expectedStage = intent === "IMPLEMENT" ? "IMPLEMENTATION" : "VERIFICATION";
