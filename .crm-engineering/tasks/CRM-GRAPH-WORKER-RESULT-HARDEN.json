@@ -17,7 +17,7 @@
     "observedHeadSha": "9ff23b2e9c19864c5d9ce536be8482850df99345",
     "dirtyBaselineHash": "fe605eaec3b7f0051b5175105a6a5e3068581c3dd76bb0629e211184a3bb61a4"
   },
-  "phase": "DISCOVERY",
+  "phase": "COMPLETE",
   "allowedPaths": [
     ".crm-engineering/**",
     "docs/engineering-graph/**",
@@ -44,17 +44,27 @@
       "id": "GRAPH-WORKER-RESULT-A01",
       "description": "Malformed external blocker payloads fail as typed worker errors before task or LangGraph state mutation, and transient untracked-file cleanup cannot crash fingerprinting.",
       "stage": "IMPLEMENTATION",
-      "status": "PENDING",
+      "status": "PASS",
       "required": true,
-      "evidenceIds": []
+      "evidenceIds": [
+        "test:worker-malformed-external-blocker-typed-error",
+        "test:graph-malformed-blocker-no-state-mutation",
+        "test:repository-transient-untracked-cleanup"
+      ]
     },
     {
       "id": "GRAPH-WORKER-RESULT-V01",
       "description": "Controller typecheck and full deterministic Graph tests pass, including malformed blocker and transient fingerprint regressions.",
       "stage": "VERIFICATION",
-      "status": "PENDING",
+      "status": "PASS",
       "required": true,
-      "evidenceIds": []
+      "evidenceIds": [
+        "command:crm-graph-typecheck:exit-0",
+        "test:crm-graph-deterministic:76-pass-0-fail",
+        "test:worker-malformed-external-blocker-typed-error",
+        "test:graph-malformed-blocker-no-state-mutation",
+        "test:repository-transient-untracked-cleanup"
+      ]
     }
   ],
   "blocker": null

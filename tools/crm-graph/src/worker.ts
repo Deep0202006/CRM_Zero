@@ -19,6 +19,13 @@ export interface WorkerResult {
   summary: string;
 }
 
+export class WorkerResultError extends Error {
+  constructor(public readonly code:string, message:string) {
+    super(`${code}: ${message}`);
+    this.name = "WorkerResultError";
+  }
+}
+
 export interface WorkerSessionLike {
   run(task:TaskFile, contextPacket:string, intent:WorkerIntent, acceptance:AcceptanceItem, savedThreadId?:string|null, runtime?:WorkerRuntimeContext):Promise<{threadId:string;result:WorkerResult;raw:string}>;
   close():void;
@@ -51,7 +58,7 @@ export function validateWorkerResult(task:TaskFile, result:WorkerResult, focused
   }
   if (result.externalBlocker !== null) {
     if (!result.externalBlocker || typeof result.externalBlocker !== "object" || typeof result.externalBlocker.reason !== "string" || !result.externalBlocker.reason.trim()) {
-      throw new Error("CODEX_WORKER_MALFORMED_EXTERNAL_BLOCKER: externalBlocker requires a non-empty reason");
+      throw new WorkerResultError("CODEX_WORKER_MALFORMED_EXTERNAL_BLOCKER","externalBlocker requires a non-empty reason");
     }
   }
   if (typeof result.summary !== "string") throw new Error("CODEX_WORKER_MALFORMED_RESULT: summary must be a string");
