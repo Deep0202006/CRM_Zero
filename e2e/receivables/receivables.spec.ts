@@ -39,7 +39,7 @@ function summaryRow(overrides: Record<string, unknown> = {}) {
 
 async function mockBackend(page: Page, role: "admin" | "employee") {
   await page.route("https://e2e.supabase.co/**", async (route) => route.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
-  await page.route("**/api/distributors?**", async (route) => route.fulfill({ json: { rows: [{ distributor_id: distributorId, distributor_name: "Acme Distribution", distributor_reference: "ACME-1" }], page: 1, pageSize: 50, total: 1 } }));
+  await page.route("**/api/distributors?**", async (route) => route.fulfill({ json: { rows: [{ distributor_id: distributorId, distributor_name: "Acme Distribution", distributor_reference: "ACME-1", assigned_to: employeeId, billing_status: "billed" }], page: 1, pageSize: 50, total: 1 } }));
   await page.route("**/api/receivables/health", async (route) => route.fulfill({ json: { ready: true } }));
   await page.route("**/api/receivables/admin**", async (route) => {
     const url = new URL(route.request().url());
@@ -78,10 +78,9 @@ test("Admin Payment Collections intake supports manual receivable and spreadshee
   await page.getByLabel("Bill Amount").fill("₹84,500");
   await page.getByLabel("Bill Due Date").fill("2026-08-01");
   await page.getByLabel("Payment Follow-up Date").fill(today);
-  await page.getByLabel("Assigned Employee").selectOption(employeeId);
   await page.getByRole("button", { name: "Create Receivable" }).click();
   await expect(page.getByText("Receivable created and confirmed.")).toBeVisible();
-  expect(commands[0]).toMatchObject({ operation_type: "create", payload: { distributor_id: distributorId, distributor_name: "Acme Distribution", distributor_code: "ACME-1" } });
+  expect(commands[0]).toMatchObject({ operation_type: "create", payload: { distributor_id: distributorId, distributor_name: "Acme Distribution", distributor_code: "ACME-1", assigned_to: employeeId } });
   await page.getByRole("button", { name: "Import Spreadsheet" }).click();
   const templateDownload = page.waitForEvent("download");
   await page.getByRole("button", { name: "Download Import Template" }).click();
