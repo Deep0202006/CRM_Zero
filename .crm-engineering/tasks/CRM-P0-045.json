@@ -16,8 +16,8 @@
     "worktreePath": "C:\\Users\\dcp69\\Desktop\\CRM_Zero\\.worktrees\\crm-p0-045",
     "branch": "fix/distributor-receivable-canonical-link-v2",
     "expectedBaseRef": "origin/main",
-    "expectedBaseSha": "802394bff5fc49fcf19b2ce851f94cde6554bce8",
-    "observedHeadSha": "8f2fc3f0412248495073dfb3cd40fd6b5e74c7d5",
+    "expectedBaseSha": "cced9075e567510146c5d060f2af80a6d491a0cb",
+    "observedHeadSha": "cfd0abf5909fbb30deac73c9d231e767d5a55052",
     "dirtyBaselineHash": "fe605eaec3b7f0051b5175105a6a5e3068581c3dd76bb0629e211184a3bb61a4"
   },
   "phase": "TARGETED_VERIFICATION",
