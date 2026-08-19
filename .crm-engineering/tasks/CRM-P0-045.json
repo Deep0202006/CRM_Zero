@@ -17,8 +17,8 @@
     "branch": "fix/distributor-receivable-canonical-link-v2",
     "expectedBaseRef": "origin/main",
     "expectedBaseSha": "cced9075e567510146c5d060f2af80a6d491a0cb",
-    "observedHeadSha": "ea1217d9c8c5be1792928292baaa946814ad259f",
-    "dirtyBaselineHash": "42f949f939c6ea4fa00adc7e5d65d15559b8f4f211f4dcb34f4fc9959acbcd00"
+    "observedHeadSha": "74ada0bc28d1b1e5e39e7e902889303e0d1eafd8",
+    "dirtyBaselineHash": "fe605eaec3b7f0051b5175105a6a5e3068581c3dd76bb0629e211184a3bb61a4"
   },
   "phase": "TARGETED_VERIFICATION",
   "allowedPaths": [
