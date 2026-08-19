@@ -20,7 +20,7 @@
     "observedHeadSha": "74ada0bc28d1b1e5e39e7e902889303e0d1eafd8",
     "dirtyBaselineHash": "fe605eaec3b7f0051b5175105a6a5e3068581c3dd76bb0629e211184a3bb61a4"
   },
-  "phase": "TARGETED_VERIFICATION",
+  "phase": "COMPLETE",
   "allowedPaths": [
     "supabase/migrations/045_distributor_receivable_canonical_link.sql",
     "src/lib/receivables/**",
@@ -181,12 +181,13 @@
       "id": "P0-045-R01",
       "description": "Owner precheck still proves zero production financial rows before applying migration 045; owner SQL is reviewed and manually applied; production certification is read-only/natural.",
       "stage": "RELEASE",
-      "status": "PENDING",
+      "status": "PASS",
       "required": true,
       "evidenceIds": [
         ".crm-engineering/proofs/CRM-P0-045/owner-migration-045-handoff.json",
         "production-read-only-precheck:2026-08-19T12:41:53.6751651Z:zero-financial-rows",
-        "owner-sql-sha256:d06380e0027740415caa60926c4cc2876c64e4e697972cd65ee69efcde548a36"
+        "owner-sql-sha256:d06380e0027740415caa60926c4cc2876c64e4e697972cd65ee69efcde548a36",
+        ".crm-engineering/proofs/CRM-P0-045/production-045-certification.json"
       ]
     }
   ],

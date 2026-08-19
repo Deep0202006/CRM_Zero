@@ -1,17 +1,21 @@
 {
   "schemaVersion": 1,
   "repository": "Deep0202006/CRM_Zero",
-  "note": "Historical baseline imported from CRM governance corpus; current production must be re-certified before release decisions.",
+  "note": "Production baseline read-only certified after Owner-manual Migration 045 and PR #58 merge.",
   "knownLatestConversationBaseline": {
-    "productionMainSha": "31d3e73dc2d1b6b0fd9ea72a68b3b66816517c6b",
-    "vercelDeployment": "dpl_3VWN4DLZFw8kFEq8ashTnHS7wyLk",
+    "observedAt": "2026-08-19T13:10:24Z",
+    "productionMainSha": "a02193aa871493a19b33acaaaab93e7a4b0ad666",
+    "vercelDeployment": "dpl_6HMH4hxKbQ8V19FwW7p335FxvXZw",
+    "vercelDeploymentUrl": "zero-usqe1uunu-zero-data.vercel.app",
+    "vercelStatus": "READY",
     "supabaseProjectRef": "gwfjkpsoaoherntwhdyf",
-    "lastAppliedOwnerMigration": 44,
+    "lastAppliedOwnerMigration": 45,
     "receivableRows": 0,
     "paymentRows": 0,
     "receivableBillTotal": 0,
     "effectiveConfirmedCollected": 0,
-    "effectiveOutstanding": 0
+    "effectiveOutstanding": 0,
+    "canonicalDistributorReceivableLink": "PRODUCTION_CERTIFIED"
   },
   "freshnessPolicy": "Never treat this file alone as current release proof. Proof records bind to SHA, dependencies and observed_at."
 }

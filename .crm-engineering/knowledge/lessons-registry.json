@@ -231,6 +231,62 @@
       "id": "MEDIA_LIFECYCLE_RULE",
       "rule": "Temporary media lifecycle is separate from permanent business row lifecycle and retries idempotently.",
       "enforcementStatus": "TO_COMPILE"
+    },
+    {
+      "date": "2026-08-19",
+      "domain": "Execution management",
+      "id": "GRAPH_WORKER_BOUNDED_TERMINATION_RULE",
+      "rule": "Every external worker subprocess must terminate as success or typed failure. Drain stderr, handle exit/cancel/failure, and use bounded turn/stall timeouts. Never allow indefinite waiting.",
+      "enforcementStatus": "COMPILED"
+    },
+    {
+      "date": "2026-08-19",
+      "domain": "Execution management",
+      "id": "GRAPH_THREAD_RESUME_RULE",
+      "rule": "A saved Codex thread used by a new App Server process must be explicitly resumed; human Graph interrupts resume the same SQLite thread/checkpoint.",
+      "enforcementStatus": "COMPILED"
+    },
+    {
+      "date": "2026-08-19",
+      "domain": "Worktree authority",
+      "id": "CONTENT_SENSITIVE_WORKTREE_RULE",
+      "rule": "Repository binding must fingerprint actual tracked/untracked content, not only git-status labels.",
+      "enforcementStatus": "COMPILED"
+    },
+    {
+      "date": "2026-08-19",
+      "domain": "Production safety",
+      "id": "HUMAN_GATE_EVIDENCE_RULE",
+      "rule": "Owner approval alone cannot satisfy production acceptance. Resume requires durable read-only evidence proving the authorized production action/result.",
+      "enforcementStatus": "COMPILED"
+    },
+    {
+      "date": "2026-08-19",
+      "domain": "Execution management",
+      "id": "EXACT_HEAD_PROOF_REUSE_RULE",
+      "rule": "Do not manually rerun expensive verification when an exact-head proof remains valid and no relevant implementation/dependency input changed. Re-run only when the certified head or affected dependency/invariant changes.",
+      "enforcementStatus": "POLICY_CONTEXT"
+    },
+    {
+      "date": "2026-08-19",
+      "domain": "Main CI baseline",
+      "id": "CI_HOT_PATH_TOOLCHAIN_RULE",
+      "rule": "Do not add live network package installation to the critical PR verification path when a compatible preinstalled or pinned toolchain is available. Current CI activates the available PostgreSQL client instead of apt-get downloading it.",
+      "enforcementStatus": "POLICY_CONTEXT"
+    },
+    {
+      "date": "2026-08-19",
+      "domain": "Owner SQL",
+      "id": "OWNER_MIGRATION_CLOSURE_RULE",
+      "rule": "After an Owner-manual migration succeeds, immediately perform read-only postcheck, advance immutable migration policy, update production baseline, and persist proof before declaring release complete.",
+      "enforcementStatus": "POLICY_CONTEXT"
+    },
+    {
+      "date": "2026-08-19",
+      "domain": "Execution management",
+      "id": "GRAPH_LEARNING_CLOSURE_RULE",
+      "rule": "When an R2/R3 task exposes a novel failure or operational lesson, task closure must persist reusable knowledge in the Graph registry instead of leaving the lesson only in chat/output.",
+      "enforcementStatus": "POLICY_CONTEXT"
     }
   ]
 }

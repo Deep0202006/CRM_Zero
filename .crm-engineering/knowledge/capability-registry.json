@@ -31,6 +31,21 @@
       "reuse": "required"
     },
     {
+      "id": "canonical-distributor-receivables",
+      "status": "PRODUCTION_CERTIFIED",
+      "authorityRefs": [
+        "distributor_account",
+        "distributor_receivable_link",
+        "receivable",
+        "payment",
+        "renewal"
+      ],
+      "reuse": "required",
+      "notes": [
+        "Canonical Distributor identity links to Receivables through nullable receivables.distributor_id; money remains owned by receivables and receivable_payments."
+      ]
+    },
+    {
       "id": "pipeline-authoritative-transition",
       "status": "PRODUCTION_CERTIFIED",
       "authorityRefs": [
