@@ -48,9 +48,8 @@ test("Distributor Collections exposes read-only money and reuses exact Receivabl
   await create.getByLabel("Bill Amount").fill("500");
   await create.getByLabel("Bill Due Date").fill("2099-01-01");
   await create.getByLabel("Payment Follow-up Date").fill("2099-01-01");
-  await create.getByLabel("Assigned Employee").selectOption(employee);
   await create.getByRole("button", { name: "Create Receivable" }).click();
-  expect(commands[0]).toMatchObject({ operation_type: "create", payload: { distributor_id: distributorId, distributor_name: "Alpha Distributor", distributor_code: "ALPHA-1" } });
+  expect(commands[0]).toMatchObject({ operation_type: "create", payload: { distributor_id: distributorId, distributor_name: "Alpha Distributor", distributor_code: "ALPHA-1", assigned_to: employee } });
   await distributorRow.getByRole("button", { name: "Record Payment" }).click();
   const payment = page.getByRole("dialog", { name: "Record Payment" });
   await payment.getByLabel("Amount").fill("100");
