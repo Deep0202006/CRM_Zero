@@ -3,7 +3,7 @@
   "graphSchemaVersion": 1,
   "flowVersion": "1.0.0",
   "taskId": "CRM-P0-045",
-  "objective": "Finish canonical Distributor Status \u2194 Payment Collections integration without duplicating financial authority.",
+  "objective": "Finish canonical Distributor Status ↔ Payment Collections integration without duplicating financial authority.",
   "risk": "R3",
   "domains": [
     "distributor-status",
@@ -13,14 +13,14 @@
   ],
   "repository": {
     "canonicalRoot": "C:\\Users\\dcp69\\Desktop\\CRM_Zero",
-    "worktreePath": null,
+    "worktreePath": "C:\\Users\\dcp69\\Desktop\\CRM_Zero\\.worktrees\\crm-p0-045",
     "branch": "fix/distributor-receivable-canonical-link-v2",
     "expectedBaseRef": "origin/main",
-    "expectedBaseSha": "31d3e73dc2d1b6b0fd9ea72a68b3b66816517c6b",
-    "observedHeadSha": null,
-    "dirtyBaselineHash": null
+    "expectedBaseSha": "9ff23b2e9c19864c5d9ce536be8482850df99345",
+    "observedHeadSha": "9ff23b2e9c19864c5d9ce536be8482850df99345",
+    "dirtyBaselineHash": "f915ebd8e2155898022fa81bd922c1a1c2e4a98451ec3ae879436d7186290558"
   },
-  "phase": "REPOSITORY_RECOVERY",
+  "phase": "TARGETED_VERIFICATION",
   "allowedPaths": [
     "supabase/migrations/045_distributor_receivable_canonical_link.sql",
     "src/lib/receivables/**",
@@ -32,6 +32,11 @@
     "src/app/admin/payments/**",
     "tests/**",
     "src/lib/__tests__/**",
+    "docs/contracts/receivables.md",
+    "docs/contracts/distributor-status.md",
+    "scripts/receivables-db/**",
+    "e2e/receivables/**",
+    "e2e/distributors/**",
     ".crm-engineering/**",
     "docs/engineering-graph/**"
   ],
@@ -50,57 +55,85 @@
       "id": "P0-045-A01",
       "description": "Migration 045 is additive, has nullable receivables.distributor_id FK ON DELETE RESTRICT, canonical indexes, and zero historical financial row mutation.",
       "stage": "IMPLEMENTATION",
-      "status": "PENDING",
+      "status": "PASS",
       "required": true,
-      "evidenceIds": []
+      "evidenceIds": [
+        "supabase/migrations/045_distributor_receivable_canonical_link.sql",
+        "focused-check:P0-045-A01-migration-contract"
+      ]
     },
     {
       "id": "P0-045-A02",
       "description": "Existing Receivables command RPC signature is preserved; optional canonical distributor_id is validated and persisted on create while legacy no-UUID payload remains compatible.",
       "stage": "IMPLEMENTATION",
-      "status": "PENDING",
+      "status": "PASS",
       "required": true,
-      "evidenceIds": []
+      "evidenceIds": [
+        "src/lib/__tests__/receivables/canonicalCreate.test.ts",
+        "focused-test:canonicalCreate-hardening:16-passed",
+        "focused-check:P0-045-A02-rpc-signature"
+      ]
     },
     {
       "id": "P0-045-A03",
       "description": "Existing import_receivables_v1 signature is preserved; canonical distributor_id is validated/staged/hashed/persisted; legacy no-UUID path remains compatible.",
       "stage": "IMPLEMENTATION",
-      "status": "PENDING",
+      "status": "PASS",
       "required": true,
-      "evidenceIds": []
+      "evidenceIds": [
+        "src/lib/__tests__/receivables/canonicalImport.test.ts",
+        "focused-test:canonical-import-hardening-security:25-passed",
+        "focused-check:P0-045-A03-import-contract"
+      ]
     },
     {
       "id": "P0-045-A04",
       "description": "Distributor-first bounded collection read model derives NOT_BILLED, COLLECTION_SETUP_REQUIRED, UNPAID, PARTIALLY_PAID, PAID and DISPUTED from canonical authorities with filter-before-pagination and page max 50.",
       "stage": "IMPLEMENTATION",
-      "status": "PENDING",
+      "status": "PASS",
       "required": true,
-      "evidenceIds": []
+      "evidenceIds": [
+        "src/lib/__tests__/distributors/canonicalCollectionRead.test.ts",
+        "focused-test:canonical-collection-read:4-passed",
+        "focused-check:P0-045-A04-read-model-contract"
+      ]
     },
     {
       "id": "P0-045-A05",
       "description": "Payment Collections exposes Distributor Collections, Total Collected and Collection Setup Required without removing invoice-level Receivables.",
       "stage": "IMPLEMENTATION",
-      "status": "PENDING",
+      "status": "PASS",
       "required": true,
-      "evidenceIds": []
+      "evidenceIds": [
+        "src/lib/__tests__/receivables/paymentCollectionsIntegration.test.ts",
+        "focused-test:payment-collections-integration:4-passed",
+        "focused-lint:payment-collections-pages"
+      ]
     },
     {
       "id": "P0-045-A06",
       "description": "Distributor Status shows read-only Payment/Received/Outstanding and reuses Receivables create/payment actions; multiple outstanding receivables require exact selection.",
       "stage": "IMPLEMENTATION",
-      "status": "PENDING",
+      "status": "PASS",
       "required": true,
-      "evidenceIds": []
+      "evidenceIds": [
+        "P0-045-A06-FOCUSED-JEST-4-PASS",
+        "P0-045-A06-SCOPED-ESLINT-PASS",
+        "P0-045-A06-DIFF-CHECK-PASS"
+      ]
     },
     {
       "id": "P0-045-A07",
       "description": "Manual create and spreadsheet import resolve canonical Distributor identity; no fuzzy matching; PR53 Auth employee resolver remains unchanged.",
       "stage": "IMPLEMENTATION",
-      "status": "PENDING",
+      "status": "PASS",
       "required": true,
-      "evidenceIds": []
+      "evidenceIds": [
+        "P0-045-A07-FOCUSED-JEST-17-PASS",
+        "P0-045-A07-SCOPED-ESLINT-PASS",
+        "P0-045-A07-EMPLOYEE-RESOLVER-BASE-DIFF-CLEAN",
+        "P0-045-A07-DIFF-CHECK-PASS"
+      ]
     },
     {
       "id": "P0-045-V01",
@@ -108,7 +141,15 @@
       "stage": "VERIFICATION",
       "status": "PENDING",
       "required": true,
-      "evidenceIds": []
+      "evidenceIds": [
+        "P0-045-V01-UNIT-174-PASS",
+        "P0-045-V01-TYPECHECK-PASS",
+        "P0-045-V01-SCOPED-ESLINT-PASS",
+        "P0-045-V01-E2E-24-PASS",
+        "P0-045-V01-BUILD-PASS",
+        "P0-045-V01-DB-NOT-RUN",
+        ".crm-engineering/proofs/CRM-P0-045/P0-045-V01.partial.json"
+      ]
     },
     {
       "id": "P0-045-R01",

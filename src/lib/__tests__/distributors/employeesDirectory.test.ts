@@ -7,6 +7,7 @@ import { buildImportPreview } from "@/lib/receivables/importServer";
 function service(users: Array<Record<string, unknown>>, authUsers: Array<Record<string, unknown>>, adminIds: string[] = [], errors: { users?: unknown; capabilities?: unknown; auth?: unknown } = {}) {
   return {
     auth: { admin: { listUsers: jest.fn().mockResolvedValue({ data: { users: authUsers }, error: errors.auth ?? null }) } },
+    rpc: jest.fn().mockImplementation((_function: string, args: { p_rows: Array<{ row_number: number; distributor_name: string; distributor_code: string }> }) => Promise.resolve({ data: args.p_rows.map(row => ({ row_number: row.row_number, distributor_id: "40000000-0000-4000-a000-000000000001", distributor_name: row.distributor_name, distributor_reference: row.distributor_code, resolution: "RESOLVED" })), error: null })),
     from(table: string) {
       const result = table === "users"
         ? { data: users, error: errors.users ?? null }

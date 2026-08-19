@@ -1,0 +1,61 @@
+{
+  "taskId": "CRM-P0-045",
+  "acceptanceId": "P0-045-V01",
+  "status": "PENDING",
+  "capturedAt": "2026-08-19T11:12:58.7563527Z",
+  "revision": {
+    "head": "9ff23b2e9c19864c5d9ce536be8482850df99345",
+    "originMain": "9ff23b2e9c19864c5d9ce536be8482850df99345",
+    "taskContentManifestSha256": "114bb4f1aa89b6a4c5323a40757a70b5bd5bad45c7f765e78cfd63b44fef4ec7",
+    "exactFinalHead": false,
+    "reason": "Task changes remain uncommitted; the manifest binds the verified worktree content but is not a Git commit."
+  },
+  "checks": [
+    {
+      "id": "P0-045-V01-UNIT-174-PASS",
+      "command": "npm test -- --runInBand --testMatch **/src/lib/__tests__/{receivables,distributors}/**/*.test.ts",
+      "exitCode": 0,
+      "result": "25 suites passed; 174 tests passed"
+    },
+    {
+      "id": "P0-045-V01-TYPECHECK-PASS",
+      "command": "npm run typecheck",
+      "exitCode": 0
+    },
+    {
+      "id": "P0-045-V01-SCOPED-ESLINT-PASS",
+      "command": "npx eslint <CRM-P0-045 changed TypeScript and E2E paths>",
+      "exitCode": 0
+    },
+    {
+      "id": "P0-045-V01-E2E-24-PASS",
+      "command": "npx playwright test --config=.crm-engineering/proofs/CRM-P0-045/playwright.focused.config.ts e2e/receivables e2e/distributors",
+      "exitCode": 0,
+      "result": "24 passed",
+      "server": "separately managed local Next production build at 127.0.0.1:3111"
+    },
+    {
+      "id": "P0-045-V01-BUILD-PASS",
+      "command": "NEXT_PUBLIC_SUPABASE_URL=https://e2e.supabase.co NEXT_PUBLIC_SUPABASE_ANON_KEY=e2e-anon-key RECEIVABLES_V1_READY=true DISTRIBUTOR_STATUS_V1_READY=true npm run build",
+      "exitCode": 0,
+      "result": "46 static/dynamic routes generated, including /api/distributors/[id]/receivables"
+    },
+    {
+      "id": "P0-045-V01-DB-NOT-RUN",
+      "command": "bash scripts/receivables-db/run-integration.sh",
+      "exitCode": null,
+      "result": "not run",
+      "reason": "This host has no Docker, Podman, PostgreSQL client/server, Bash, or WSL distribution. Static SQL proof is not accepted as a substitute."
+    }
+  ],
+  "dbRunner": {
+    "productionRefusalGuard": true,
+    "postgresTarget": "disposable PostgreSQL 17.6",
+    "includesMigration045": true,
+    "fixtures": [
+      "scripts/receivables-db/canonical-link-before.sql",
+      "scripts/receivables-db/canonical-link-integration.sql"
+    ]
+  },
+  "productionContacted": false
+}

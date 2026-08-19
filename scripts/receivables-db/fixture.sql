@@ -20,6 +20,10 @@ create table public.user_capabilities (
   capability_code text not null,
   primary key(user_id,capability_code)
 );
+-- Distributor Status migration 039 references the canonical lead identity.
+-- Receivables verification needs only the production-shaped UUID authority,
+-- not Pipeline behavior or fixtures.
+create table public.leads (lead_id uuid primary key);
 grant select on public.users,public.user_capabilities to authenticated,service_role;
 grant all on public.users,public.user_capabilities to service_role;
 

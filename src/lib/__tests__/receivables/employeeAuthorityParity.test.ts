@@ -9,7 +9,7 @@ const employee = { user_id: "20000000-0000-4000-a000-000000000001", name: "Emplo
 const loginEmail = "employee@example.com";
 
 function service() {
-  return { auth: { admin: { listUsers: jest.fn().mockResolvedValue({ data: { users: [{ id: employee.user_id, email: loginEmail }] }, error: null }) } }, from(table: string) {
+  return { auth: { admin: { listUsers: jest.fn().mockResolvedValue({ data: { users: [{ id: employee.user_id, email: loginEmail }] }, error: null }) } }, rpc: jest.fn().mockImplementation((_function: string, args: { p_rows: Array<{ row_number: number; distributor_name: string; distributor_code: string }> }) => Promise.resolve({ data: args.p_rows.map(row => ({ row_number: row.row_number, distributor_id: "40000000-0000-4000-a000-000000000001", distributor_name: row.distributor_name, distributor_reference: row.distributor_code, resolution: "RESOLVED" })), error: null })), from(table: string) {
     const result = table === "users" ? { data: [employee], error: null } : { data: [], error: null };
     const builder = { select: () => builder, eq: () => builder, order: () => builder, range: () => Promise.resolve(result), in: () => Promise.resolve(result) };
     return builder;
