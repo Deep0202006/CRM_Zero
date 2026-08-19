@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
 import { changedPaths, inspectRepo, worktreeFingerprint } from "../src/git.js";
 import { bindTaskRepository } from "../src/binding.js";
+import { inspectBoundRepository } from "../src/status.js";
 
 function git(cwd:string,...args:string[]){return execFileSync("git",["-C",cwd,...args],{encoding:"utf8"}).trim();}
 function repo(){
@@ -68,4 +69,41 @@ test("task bind rejects sibling worktree outside canonical .worktrees",()=>{
   const root=repo();const sibling=fs.mkdtempSync(path.join(os.tmpdir(),"crm-graph-sibling-"));
   const task:any={repository:{canonicalRoot:root,worktreePath:null,branch:null,expectedBaseRef:"origin/main"},phase:"REPOSITORY_RECOVERY"};
   assert.throws(()=>bindTaskRepository(task,sibling),/WORKTREE_LOCATION/);
+});
+
+test("status reports an unavailable machine-local bound worktree without throwing",()=>{
+  const unavailable=path.join(os.tmpdir(),`crm-graph-missing-${process.pid}-${Date.now()}`);
+  const result=inspectBoundRepository(unavailable);
+  assert.equal(result.repo,null);
+  assert.equal(result.repositoryDiagnostic?.code,"BOUND_WORKTREE_UNAVAILABLE");
+  assert.equal(result.repositoryDiagnostic?.boundWorktreePath,unavailable);
+  assert.match(result.repositoryDiagnostic?.message??"",/fatal|cannot change|not a git repository|ENOENT/i);
+});
+
+test("status CLI loads task state when its bound worktree is unavailable while run preflight still fails closed",()=>{
+  const root=repo();
+  const unavailable=path.join(root,".worktrees","missing-on-this-machine");
+  fs.mkdirSync(path.join(root,".crm-engineering","tasks"),{recursive:true});
+  fs.writeFileSync(path.join(root,".crm-engineering","manifest.json"),"{}\n");
+  const task:any={
+    schemaVersion:2,graphSchemaVersion:1,flowVersion:"1.1.0",taskId:"T",objective:"portable status",risk:"R1",domains:["engineering-graph"],
+    repository:{canonicalRoot:root,worktreePath:unavailable,branch:"feature",expectedBaseRef:"origin/main",expectedBaseSha:git(root,"rev-parse","origin/main"),observedHeadSha:null,dirtyBaselineHash:"bound-elsewhere"},
+    phase:"DISCOVERY",allowedPaths:["tools/crm-graph/**"],protectedDomains:[],productionDataMutation:false,schemaChange:false,humanGate:null,
+    acceptance:[{id:"A",description:"implement",stage:"IMPLEMENTATION",status:"PENDING",required:true,evidenceIds:[]}],blocker:null
+  };
+  fs.writeFileSync(path.join(root,".crm-engineering","tasks","T.json"),JSON.stringify(task,null,2)+"\n");
+  const cli=path.resolve(path.dirname(fileURLToPath(import.meta.url)),"../src/cli.js");
+
+  const status=JSON.parse(execFileSync(process.execPath,[cli,"status","--root",root,"--task","T"],{encoding:"utf8",cwd:root}));
+  assert.equal(status.taskId,"T");
+  assert.equal(status.phase,"DISCOVERY");
+  assert.deepEqual(status.implementationIncomplete,["A"]);
+  assert.equal(status.repo,null);
+  assert.equal(status.repositoryDiagnostic.code,"BOUND_WORKTREE_UNAVAILABLE");
+  assert.equal(status.repositoryDiagnostic.boundWorktreePath,unavailable);
+
+  const run=JSON.parse(execFileSync(process.execPath,[cli,"run","--root",root,"--task","T"],{encoding:"utf8",cwd:root}));
+  assert.equal(run.repoHealthy,false);
+  assert.equal(run.blocker.type,"ENVIRONMENT_DRIFT");
+  assert.match(run.blocker.reason,/fatal|cannot change|not a git repository|ENOENT/i);
 });
