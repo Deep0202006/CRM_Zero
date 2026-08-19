@@ -8,7 +8,7 @@ const requiredText=(max:number)=>z.string().trim().min(1).max(max);
 const existing=z.object({receivable_id:uuid,expected_version:z.number().int().positive()}).strict();
 
 export const receivablePayloadSchemas={
- create:z.object({receivable_id:uuid,bill_reference:requiredText(120),distributor_name:requiredText(200),distributor_code:optionalText(80).default(""),contact_person:requiredText(160),contact_phone:optionalText(40).default(""),bill_amount:money,bill_due_date:date,next_follow_up_date:date,assigned_to:uuid,note:optionalText(1000).default("")}).strict(),
+ create:z.object({receivable_id:uuid,distributor_id:uuid.optional(),bill_reference:requiredText(120),distributor_name:optionalText(200).default(""),distributor_code:optionalText(80).default(""),contact_person:requiredText(160),contact_phone:optionalText(40).default(""),bill_amount:money,bill_due_date:date,next_follow_up_date:date,assigned_to:uuid,note:optionalText(1000).default("")}).strict().superRefine((value,context)=>{if(!value.distributor_id&&!value.distributor_name)context.addIssue({code:z.ZodIssueCode.custom,path:["distributor_name"],message:"Distributor Name is required for legacy Receivables creation."})}),
  contacted:existing.extend({next_follow_up_date:date,note:optionalText(1000)}).strict(),
  no_response:existing.extend({next_follow_up_date:date,note:optionalText(1000)}).strict(),
  promise:existing.extend({promise_date:date,promise_amount:money.optional(),note:optionalText(1000)}).strict(),

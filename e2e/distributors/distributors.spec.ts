@@ -17,7 +17,7 @@ async function seed(page: Page, id: string, isAdmin: boolean) {
     database.close(); localStorage.setItem("authenticated_user_id", id); localStorage.setItem("sb-e2e-auth-token", JSON.stringify({ access_token: accessToken, refresh_token: "e2e", expires_at: 1999999999, expires_in: 999999999, token_type: "bearer", user: { id, aud: "authenticated", role: "authenticated", email: "user@example.test", app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() } }));
   }, { id, accessToken: token(id), isAdmin });
 }
-const row = { distributor_id: distributorId, distributor_name: "Alpha Distributor", distributor_reference: "ALPHA-1", lead_id: null, phone: null, city: "Delhi", assigned_to: employee, assigned_employee_name: "Employee", installation_status: "done", installation_completed_at: "2026-08-01", training_status: "done", training_completed_at: "2026-08-02", mapping_status: "done", mapped_at: "2026-08-03", activity_status: "active", billing_status: "billed", billed_at: "2026-08-03", bill_reference: "INV-1", renewal_date: "2026-08-14", renewal_state: "renewal_due_tomorrow", version: 2, updated_at: "2026-08-13T06:00:00Z" };
+const row = { distributor_id: distributorId, distributor_name: "Alpha Distributor", distributor_reference: "ALPHA-1", lead_id: null, phone: null, city: "Delhi", assigned_to: employee, assigned_employee_name: "Employee", installation_status: "done", installation_completed_at: "2026-08-01", training_status: "done", training_completed_at: "2026-08-02", mapping_status: "done", mapped_at: "2026-08-03", activity_status: "active", billing_status: "billed", billed_at: "2026-08-03", bill_reference: "INV-1", renewal_date: "2026-08-14", renewal_state: "renewal_due_tomorrow", version: 2, updated_at: "2026-08-13T06:00:00Z", active_receivable_count: 1, total_bill_amount: "1000.00", confirmed_collected_amount: "400.00", outstanding_amount: "600.00", pending_verification_count: 0, collection_state: "PARTIALLY_PAID", billing_collection_mismatch: false };
 test("Admin Distributor import preview shows the server-resolved operational employee", async ({ page }) => {
   await mock(page); await page.route("**/api/distributors/import", route => route.fulfill({ json: { rows: [{ rowNumber: 2, distributorName: "Alpha", assignedEmployeeEmail: "zerodata_vaibhav@zerodata.local", assigned_employee_name: "Vaibhav Patel", classification: "NEW" }], counts: { NEW: 1 }, preview_hash: "a".repeat(64) } }));
   await seed(page, admin, true); await page.goto("/admin/payments/distributors"); await page.getByRole("button", { name: "Import" }).click();
@@ -28,8 +28,50 @@ async function mock(page: Page) {
   await page.route("https://e2e.supabase.co/**", (route) => route.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
   await page.route("**/api/distributors/metrics", (route) => route.fulfill({ json: { metrics: { total: 1, installation_pending: 0, training_pending: 0, installation_training_done: 1, mapped: 1, active: 1, inactive: 0, billed: 1 }, assignees: [{ user_id: employee, name: "Employee", email: "employee@example.test" }] } }));
   await page.route(`**/api/distributors/${distributorId}`, (route) => route.fulfill({ json: { record: row, events: [] } }));
+  await page.route(`**/api/distributors/${distributorId}/receivables`, (route) => route.fulfill({ json: { total: 1, rows: [{ receivable_id: "50000000-0000-4000-a000-000000000001", bill_reference: "INV-1", outstanding_amount: "600.00", version: 3, pending_payment_count: 0 }], limit: 50, has_more: false } }));
   await page.route("**/api/distributors?**", (route) => route.fulfill({ json: { rows: [row], page: 1, pageSize: 50, total: 1 } }));
 }
+
+test("Distributor Collections exposes read-only money and reuses exact Receivables commands", async ({ page }) => {
+  await mock(page); const commands: Array<Record<string, unknown>> = [];
+  await page.route("**/api/receivables/commands", async route => { commands.push(route.request().postDataJSON()); await route.fulfill({ json: { success: true } }); });
+  await seed(page, admin, true); await page.goto("/admin/payments/distributors");
+  const distributorRow = page.getByRole("row").filter({ hasText: "Alpha Distributor" });
+  await expect(distributorRow).toContainText("PARTIALLY PAID");
+  await expect(distributorRow).toContainText("₹400");
+  await expect(distributorRow).toContainText("₹600");
+  await distributorRow.getByRole("button", { name: "New Receivable" }).click();
+  const create = page.getByRole("dialog", { name: "New Receivable" });
+  await expect(create).toContainText("Alpha Distributor · ALPHA-1");
+  await create.getByLabel("Bill / Invoice Reference").fill("INV-2");
+  await create.getByLabel("Contact Person").fill("Owner");
+  await create.getByLabel("Bill Amount").fill("500");
+  await create.getByLabel("Bill Due Date").fill("2099-01-01");
+  await create.getByLabel("Payment Follow-up Date").fill("2099-01-01");
+  await create.getByRole("button", { name: "Create Receivable" }).click();
+  expect(commands[0]).toMatchObject({ operation_type: "create", payload: { distributor_id: distributorId, distributor_name: "Alpha Distributor", distributor_code: "ALPHA-1", assigned_to: employee } });
+  await distributorRow.getByRole("button", { name: "Record Payment" }).click();
+  const payment = page.getByRole("dialog", { name: "Record Payment" });
+  await payment.getByLabel("Amount").fill("100");
+  await payment.getByRole("button", { name: "Confirm" }).click();
+  expect(commands[1]).toMatchObject({ operation_type: "direct_payment", payload: { receivable_id: "50000000-0000-4000-a000-000000000001", expected_version: 3 } });
+});
+
+test("multiple outstanding invoices require exact selection before payment", async ({ page }) => {
+  await mock(page); const commands: Array<Record<string, unknown>> = [];
+  await page.unroute(`**/api/distributors/${distributorId}/receivables`);
+  await page.route(`**/api/distributors/${distributorId}/receivables`, route => route.fulfill({ json: { total: 2, rows: [{ receivable_id: "50000000-0000-4000-a000-000000000001", bill_reference: "INV-1", outstanding_amount: "600.00", version: 3, pending_payment_count: 0 }, { receivable_id: "50000000-0000-4000-a000-000000000002", bill_reference: "INV-2", outstanding_amount: "300.00", version: 7, pending_payment_count: 0 }], limit: 50, has_more: false } }));
+  await page.route("**/api/receivables/commands", async route => { commands.push(route.request().postDataJSON()); await route.fulfill({ json: { success: true } }); });
+  await seed(page, admin, true); await page.goto("/admin/payments/distributors");
+  await page.getByRole("row").filter({ hasText: "Alpha Distributor" }).getByRole("button", { name: "Record Payment" }).click();
+  const selection = page.getByRole("dialog", { name: "Select exact Receivable" });
+  await expect(selection).toBeVisible(); expect(commands).toHaveLength(0);
+  await selection.getByRole("button", { name: /INV-2/ }).click();
+  const payment = page.getByRole("dialog", { name: "Record Payment" });
+  await payment.getByLabel("Amount").fill("50");
+  await payment.getByRole("button", { name: "Confirm" }).click();
+  expect(commands[0]).toMatchObject({ operation_type: "direct_payment", payload: { receivable_id: "50000000-0000-4000-a000-000000000002", expected_version: 7 } });
+});
 
 async function mockRenewals(page: Page, renewalRows = [row]) {
   await page.route("https://e2e.supabase.co/**", (route) => route.fulfill({ status: 200, contentType: "application/json", body: "[]" }));

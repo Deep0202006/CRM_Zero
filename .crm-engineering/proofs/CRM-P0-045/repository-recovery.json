@@ -1,0 +1,57 @@
+{
+  "taskId": "CRM-P0-045",
+  "gate": "REPOSITORY_RECOVERY",
+  "certifiedBaseSha": "9ff23b2e9c19864c5d9ce536be8482850df99345",
+  "legalWorktree": "C:\\Users\\dcp69\\Desktop\\CRM_Zero\\.worktrees\\crm-p0-045",
+  "branch": "fix/distributor-receivable-canonical-link-v2",
+  "sources": [
+    {
+      "path": "C:\\Users\\dcp69\\Desktop\\CRM_Zero",
+      "head": "2169061fcbdcc489fe6ea274a60e3c8dc1fda0fe",
+      "classification": "mixed owner work and stale pre-PR53 import evidence",
+      "copied": false
+    },
+    {
+      "path": "C:\\Users\\dcp69\\Desktop\\CRM_Zero\\.archive\\CRM_Zero_p0_link_v2",
+      "head": "31d3e73dc2d1b6b0fd9ea72a68b3b66816517c6b",
+      "classification": "genuine partial P0 implementation evidence",
+      "copied": true
+    }
+  ],
+  "recoveryArchive": "C:\\Users\\dcp69\\Desktop\\CRM_Zero\\.archive\\CRM-P0-045-recovery-20260819",
+  "retained": [
+    "canonical distributor selector and create payload",
+    "canonical import resolution plan",
+    "distributor financial projection draft",
+    "read-only distributor finance surface draft",
+    "migration 045 draft"
+  ],
+  "superseded": [
+    "pre-PR53 employee resolver alternative; current src/lib/employees/server.ts remains authoritative"
+  ],
+  "adapted": [
+    "ten P0 source files applied cleanly to exact certified main for further Graph-controlled repair"
+  ],
+  "rejectedAsStale": [
+    "docs/os/LESSONS_LEDGER.md workflow material",
+    "historical docs/exec-plans/045-distributor-receivable-canonical-link.md as execution authority",
+    "canonical-root mixed owner and test artifacts",
+    "immutable migration 038 newline delta"
+  ],
+  "scopeCorrection": {
+    "paths": [
+      "docs/contracts/receivables.md",
+      "docs/contracts/distributor-status.md",
+      "scripts/receivables-db/**",
+      "e2e/receivables/**",
+      "e2e/distributors/**"
+    ],
+    "reason": "A01-A07 and V01 explicitly require affected contract, disposable database, and bounded Receivables/Distributor E2E evidence. No broader docs or E2E scope was added."
+  },
+  "sourceFilesPreserved": true,
+  "productionContact": false,
+  "productionDataMutation": false,
+  "migration045Applied": false,
+  "result": "PASS",
+  "timestamp": "2026-08-19T15:25:05.8480572+05:30"
+}

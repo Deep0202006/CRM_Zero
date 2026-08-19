@@ -12,6 +12,13 @@ psql -v ON_ERROR_STOP=1 -f scripts/receivables-db/fixture.sql
 psql -v ON_ERROR_STOP=1 -f supabase/migrations/033_receivables_v1.sql
 psql -v ON_ERROR_STOP=1 -f supabase/migrations/034_receivables_production_completion.sql
 psql -v ON_ERROR_STOP=1 -f supabase/migrations/035_receivables_import_linearization.sql
+psql -v ON_ERROR_STOP=1 -f supabase/migrations/039_distributor_status_v1.sql
+psql -v ON_ERROR_STOP=1 -f supabase/migrations/040_distributor_status_v2.sql
+psql -v ON_ERROR_STOP=1 -f supabase/migrations/041_distributor_mapped_status.sql
+psql -v ON_ERROR_STOP=1 -f supabase/migrations/042_payment_collection_renewals.sql
+psql -v ON_ERROR_STOP=1 -f scripts/receivables-db/canonical-link-before.sql
+psql -v ON_ERROR_STOP=1 -f supabase/migrations/045_distributor_receivable_canonical_link.sql
+psql -v ON_ERROR_STOP=1 -f scripts/receivables-db/canonical-link-integration.sql
 psql -v ON_ERROR_STOP=1 -f scripts/receivables-db/integration.sql
 
 # Two concurrent Admin direct-payment commands both start at version 1. One may

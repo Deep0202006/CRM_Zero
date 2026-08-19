@@ -43,6 +43,7 @@ export const distributorListSchema = z.object({
   activity: z.enum(["", ...activityStatuses]).default(""),
   billing: z.enum(["", ...billingStatuses]).default(""),
   renewal: z.enum(["", "due_soon"]).default(""),
+  paymentStatus: z.enum(["", "PAID", "NOT_PAID", "DISPUTED", "COLLECTION_SETUP_REQUIRED", "NOT_BILLED"]).default(""),
 });
 
 export const renewalReadSchema = z.object({

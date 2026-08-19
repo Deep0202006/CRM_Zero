@@ -8,7 +8,7 @@ import { Modal } from "@/components/ui/Modal";
 import { MAX_IMPORT_BYTES, parseReceivablesTable, RECEIVABLE_HEADERS, type ImportRow, type InvalidImportRow } from "@/lib/receivables/import";
 
 type Cell = string | number | boolean | Date | null | undefined;
-interface PreviewRow extends ImportRow { classification: "NEW" | "EXACT_DUPLICATE" | "CONFLICTING_DUPLICATE" | "INVALID_EMPLOYEE" | "INVALID"; reason?: string; assigned_employee_name?: string }
+interface PreviewRow extends ImportRow { classification: "NEW" | "EXACT_DUPLICATE" | "CONFLICTING_DUPLICATE" | "INVALID_EMPLOYEE" | "INVALID" | "INVALID_DISTRIBUTOR" | "INVALID_DISTRIBUTOR_STATUS" | "AMBIGUOUS_DISTRIBUTOR"; reason?: string; assigned_employee_name?: string; resolved_distributor_name?: string }
 interface Preview { rows: PreviewRow[]; counts: Record<string, number>; preview_hash: string }
 interface ImportResult { created_count: number; duplicate_count: number }
 
@@ -114,6 +114,7 @@ export function ReceivablesImportModal({
       ["Money", "84500, 84,500, ₹84,500, or 84500.00"],
       ["Dates", "YYYY-MM-DD, DD/MM/YYYY, or DD-MM-YYYY"],
       ["Assignment", "Assigned Employee Email = exact CRM login email of an active operational employee."],
+      ["Distributor Code", "Exact Distributor Status Distributor Reference. If blank, Distributor Name must exactly match one Distributor Status record."],
       ["Follow-up", "Must be today or a future India business date"],
       ["Duplicates", "Exact duplicates are skipped; conflicts are never overwritten"],
     ]);
@@ -152,7 +153,7 @@ export function ReceivablesImportModal({
           <div className="flex flex-wrap gap-2"><Chip variant="success">New: {preview.counts.new}</Chip><Chip>Duplicates skipped: {preview.counts.exactDuplicate}</Chip><Chip variant={conflictCount ? "danger" : "neutral"}>Conflicts: {conflictCount}</Chip><Chip variant={invalidCount ? "danger" : "neutral"}>Invalid: {invalidCount}</Chip></div>
           <div className="max-h-72 overflow-auto rounded-lg border"><table className="w-full min-w-[760px] text-left text-xs"><thead><tr>{["Row","Bill reference","Distributor","Amount","Due","Follow-up","Employee","Classification","Reason"].map((heading) => <th className="p-2" key={heading}>{heading}</th>)}</tr></thead><tbody>
             {invalid.map((row) => <tr className="border-t" key={`invalid-${row.rowNumber}`}><td className="p-2">{row.rowNumber}</td><td className="p-2" colSpan={6}>—</td><td className="p-2 font-semibold">INVALID</td><td className="p-2">{row.reason}</td></tr>)}
-            {preview.rows.map((row) => <tr className="border-t" key={row.rowNumber}><td className="p-2">{row.rowNumber}</td><td className="p-2">{row.billReference}</td><td className="p-2">{row.distributorName}</td><td className="p-2">{row.billAmount}</td><td className="p-2">{row.billDueDate}</td><td className="p-2">{row.nextFollowUpDate}</td><td className="p-2"><span className="block font-medium">{row.assigned_employee_name ?? "Unresolved employee"}</span><span className="text-[var(--text-muted)]">{row.assignedEmployeeEmail}</span></td><td className="p-2 font-semibold">{row.classification}</td><td className="p-2">{row.reason ?? "—"}</td></tr>)}
+            {preview.rows.map((row) => <tr className="border-t" key={row.rowNumber}><td className="p-2">{row.rowNumber}</td><td className="p-2">{row.billReference}</td><td className="p-2">{row.resolved_distributor_name ?? row.distributorName}</td><td className="p-2">{row.billAmount}</td><td className="p-2">{row.billDueDate}</td><td className="p-2">{row.nextFollowUpDate}</td><td className="p-2"><span className="block font-medium">{row.assigned_employee_name ?? "Unresolved employee"}</span><span className="text-[var(--text-muted)]">{row.assignedEmployeeEmail}</span></td><td className="p-2 font-semibold">{row.classification}</td><td className="p-2">{row.reason ?? "—"}</td></tr>)}
           </tbody></table></div>
           {(conflictCount > 0 || invalidCount > 0) && <p className="text-xs font-medium text-[var(--status-danger)]">Correct conflicts and invalid rows, then choose the file again. Confirmation is disabled.</p>}
         </>}

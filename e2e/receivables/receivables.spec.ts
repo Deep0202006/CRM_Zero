@@ -5,6 +5,7 @@ import { getCurrentISTDate } from "../../src/lib/dateTime";
 const adminId = "10000000-0000-4000-a000-000000000001";
 const employeeId = "20000000-0000-4000-a000-000000000001";
 const receivableId = "30000000-0000-4000-a000-000000000001";
+const distributorId = "40000000-0000-4000-a000-000000000001";
 const today = getCurrentISTDate();
 
 function token(userId: string) {
@@ -33,20 +34,21 @@ async function seedUser(page: Page, role: "admin" | "employee") {
 }
 
 function summaryRow(overrides: Record<string, unknown> = {}) {
-  return { receivable_id: receivableId, bill_reference: "INV-100", distributor_name: "Unicode वितरण", contact_person: "Priya", contact_phone: "9999999999", bill_amount: "1000.00", confirmed_paid_amount: "0.00", outstanding_amount: "1000.00", bill_due_date: "2026-08-01", next_follow_up_date: "2026-08-11", assigned_to: employeeId, owner_name: "Employee User", lifecycle_status: "active", payment_state: "Unpaid", alert_state: "followup_overdue", version: 1, pending_payment_count: 0, aging_bucket: "8-15 days", ...overrides };
+  return { receivable_id: receivableId, distributor_id: distributorId, bill_reference: "INV-100", distributor_name: "Unicode वितरण", contact_person: "Priya", contact_phone: "9999999999", bill_amount: "1000.00", confirmed_paid_amount: "0.00", outstanding_amount: "1000.00", bill_due_date: "2026-08-01", next_follow_up_date: "2026-08-11", assigned_to: employeeId, owner_name: "Employee User", lifecycle_status: "active", payment_state: "Unpaid", alert_state: "followup_overdue", version: 1, pending_payment_count: 0, aging_bucket: "8-15 days", ...overrides };
 }
 
 async function mockBackend(page: Page, role: "admin" | "employee") {
   await page.route("https://e2e.supabase.co/**", async (route) => route.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
+  await page.route("**/api/distributors?**", async (route) => route.fulfill({ json: { rows: [{ distributor_id: distributorId, distributor_name: "Acme Distribution", distributor_reference: "ACME-1", assigned_to: employeeId, billing_status: "billed" }], page: 1, pageSize: 50, total: 1 } }));
   await page.route("**/api/receivables/health", async (route) => route.fulfill({ json: { ready: true } }));
   await page.route("**/api/receivables/admin**", async (route) => {
     const url = new URL(route.request().url());
     if (url.searchParams.has("receivable_id")) return route.fulfill({ json: { receivable: summaryRow(), payments: [], activity: [], history: { payment_count: 0, payment_has_more: false, activity_count: 0, activity_has_more: false } } });
-    return route.fulfill({ json: { metrics: { total_outstanding: "1000.00", followups_due_today: 1, overdue_outstanding: "1000.00", collected_this_month: "0.00", awaiting_verification: 0, disputed_outstanding: "0.00", aging: { Current: "0.00", "1-7 days": "0.00", "8-15 days": "1000.00", "16-30 days": "0.00", "31+ days": "0.00" } }, assignees: [{ user_id: employeeId, name: "Employee User", email: "employee@example.test" }], pending: [] } });
+    return route.fulfill({ json: { metrics: { total_outstanding: "1000.00", followups_due_today: 1, overdue_outstanding: "1000.00", collected_this_month: "0.00", total_collected: "400.00", collection_setup_required: 1, awaiting_verification: 0, disputed_outstanding: "0.00", aging: { Current: "0.00", "1-7 days": "0.00", "8-15 days": "1000.00", "16-30 days": "0.00", "31+ days": "0.00" } }, assignees: [{ user_id: employeeId, name: "Employee User", email: "employee@example.test" }], pending: [] } });
   });
   await page.route("**/api/receivables/import", async (route) => {
     const body = route.request().postDataJSON();
-    if (body.mode === "preview") return route.fulfill({ json: { rows: body.rows.map((row: object) => ({ ...row, assigned_employee_name: "Employee User", classification: "NEW" })), counts: { new: body.rows.length, exactDuplicate: 0, conflict: 0, invalid: 0 }, preview_hash: "a".repeat(64) } });
+    if (body.mode === "preview") return route.fulfill({ json: { rows: body.rows.map((row: object) => ({ ...row, distributor_id: distributorId, resolved_distributor_name: "Acme Distribution", assigned_employee_name: "Employee User", classification: "NEW" })), counts: { new: body.rows.length, exactDuplicate: 0, conflict: 0, invalid: 0 }, preview_hash: "a".repeat(64) } });
     return route.fulfill({ json: { success: true, created_count: body.rows.length, duplicate_count: 0 } });
   });
   await page.route("**/api/receivables/commands", async (route) => route.fulfill({ json: { success: true, receivable: summaryRow() } }));
@@ -61,20 +63,24 @@ async function mockBackend(page: Page, role: "admin" | "employee") {
 
 test("Admin Payment Collections intake supports manual receivable and spreadsheet preview", async ({ page }) => {
   await mockBackend(page, "admin");
+  const commands: Array<Record<string, unknown>> = [];
+  await page.unroute("**/api/receivables/commands");
+  await page.route("**/api/receivables/commands", async (route) => { commands.push(route.request().postDataJSON()); await route.fulfill({ json: { success: true, receivable: summaryRow() } }); });
   await seedUser(page, "admin");
   await page.goto("/admin/payments");
   await expect(page.getByRole("heading", { name: "Payment Collections", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "New Receivable" }).click();
   await expect(page.getByRole("dialog", { name: "New Receivable" })).toBeVisible();
-  await page.getByLabel("Distributor Name").fill("Acme Distribution");
+  await page.getByLabel("Search Distributor Status").fill("Acme");
+  await page.locator('select[name="distributor_id"]').selectOption(distributorId);
   await page.getByLabel("Bill / Invoice Reference").fill("INV-MANUAL-1");
   await page.getByLabel("Contact Person").fill("Anita");
   await page.getByLabel("Bill Amount").fill("₹84,500");
   await page.getByLabel("Bill Due Date").fill("2026-08-01");
   await page.getByLabel("Payment Follow-up Date").fill(today);
-  await page.getByLabel("Assigned Employee").selectOption(employeeId);
   await page.getByRole("button", { name: "Create Receivable" }).click();
   await expect(page.getByText("Receivable created and confirmed.")).toBeVisible();
+  expect(commands[0]).toMatchObject({ operation_type: "create", payload: { distributor_id: distributorId, distributor_name: "Acme Distribution", distributor_code: "ACME-1", assigned_to: employeeId } });
   await page.getByRole("button", { name: "Import Spreadsheet" }).click();
   const templateDownload = page.waitForEvent("download");
   await page.getByRole("button", { name: "Download Import Template" }).click();
