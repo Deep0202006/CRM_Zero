@@ -3,7 +3,7 @@
   "capabilities": [
     {
       "id": "erp-partner-visibility",
-      "status": "OWNER_GATE",
+      "status": "PRODUCTION_CERTIFIED",
       "authorityRefs": [
         "erp_system",
         "distributor_erp_assignment",
