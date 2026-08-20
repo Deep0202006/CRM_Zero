@@ -1,0 +1,13 @@
+{
+  "taskId": "CRM-P1-046",
+  "acceptanceId": "P1-046-A08",
+  "command": "node node_modules/jest/bin/jest.js --config .crm-engineering/proofs/CRM-P1-046/jest.a08.config.js --runInBand --runTestsByPath src/lib/__tests__/distributorMaster/compatibility.test.ts src/lib/__tests__/distributors/import.test.ts src/lib/__tests__/distributors/importAuthority.test.ts src/lib/__tests__/distributors/distributorReceivableActions.test.ts src/lib/__tests__/receivables/canonicalImport.test.ts src/lib/__tests__/receivables/canonicalCreate.test.ts src/lib/__tests__/receivables/paymentCollectionsIntegration.test.ts src/lib/__tests__/receivables/domain.test.ts",
+  "result": {
+    "exitCode": 0,
+    "testSuitesPassed": 8,
+    "testSuitesTotal": 8,
+    "testsPassed": 46,
+    "testsTotal": 46
+  },
+  "productionContacted": false
+}

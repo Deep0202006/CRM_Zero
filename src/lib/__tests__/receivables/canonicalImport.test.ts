@@ -16,7 +16,7 @@ describe("canonical Receivables import compatibility",()=>{
 
  test("hashes resolved commit rows and preserves the six-argument RPC boundary",()=>{
   const route=fs.readFileSync(path.join(process.cwd(),"src/app/api/receivables/import/route.ts"),"utf8");
-  const sql=fs.readFileSync(path.join(process.cwd(),"supabase/migrations/045_distributor_receivable_canonical_link.sql"),"utf8");
+  const sql=fs.readFileSync(path.join(process.cwd(),"supabase/migrations/045_distributor_receivable_canonical_link.sql"),"utf8").replace(/\r\n/g,"\n");
   expect(route).toContain("payloadHash=requestHash(preview.resolvedRows)");
   expect(sql).toMatch(/import_receivables_v1\(\s*p_operation_id uuid,p_actor_id uuid,p_request_hash text,p_filename text,p_payload_hash text,p_rows jsonb\s*\)/);
   expect(sql).toContain("v_row:=v_row||jsonb_build_object('distributor_id',v_distributor_id");
@@ -26,7 +26,7 @@ describe("canonical Receivables import compatibility",()=>{
  });
 
  test("validates canonical rows and retains the legacy name/code branch",()=>{
-  const sql=fs.readFileSync(path.join(process.cwd(),"supabase/migrations/045_distributor_receivable_canonical_link.sql"),"utf8");
+  const sql=fs.readFileSync(path.join(process.cwd(),"supabase/migrations/045_distributor_receivable_canonical_link.sql"),"utf8").replace(/\r\n/g,"\n");
   expect(sql).toContain("where distributor_id=v_distributor_id");
   expect(sql).toContain("'INVALID_DISTRIBUTOR'");
   expect(sql).toContain("'INVALID_DISTRIBUTOR_STATUS'");

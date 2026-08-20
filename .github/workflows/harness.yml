@@ -57,6 +57,8 @@ jobs:
         run: createdb pipeline_test && PGDATABASE=pipeline_test bash scripts/pipeline-db/run-integration.sh
       - name: Fresh-apply Distributor Status migration and prove concurrency, isolation, and 10k scale
         run: createdb distributor_status_test && PGDATABASE=distributor_status_test bash scripts/distributor-status-db/run-integration.sh
+      - name: Fresh-apply Migration 046 and prove master-import atomicity and payment concurrency
+        run: createdb distributor_master_test && CRM_MASTER_DB_DISPOSABLE=1 PGDATABASE=distributor_master_test bash scripts/distributor-master-db/run-integration.sh
 
   verify:
     runs-on: ubuntu-latest

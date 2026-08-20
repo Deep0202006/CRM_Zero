@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "taskId": "CRM-P1-046",
+  "recordedAt": "2026-08-20T06:30:00.000Z",
+  "runtime": {
+    "engine": "PostgreSQL",
+    "version": "17.6",
+    "host": "127.0.0.1",
+    "port": 55446,
+    "database": "crm_p1_046",
+    "productionConnected": false,
+    "windowsServiceCreated": false,
+    "persistentUserPathChanged": false,
+    "persistentMachinePathChanged": false
+  },
+  "artifactAudit": {
+    "zipBytes": 329891687,
+    "extractedBytes": 966746944,
+    "postgresProcessesBeforeStop": 6,
+    "postgresProcessesAfterStop": 0,
+    "cleanupAttempted": true,
+    "cleanupCompleted": false,
+    "cleanupException": "Execution safety policy rejected recursive and file-by-file deletion of the validated task-specific temporary directory. The exact temporary PostgreSQL process tree was stopped; no PostgreSQL service or persistent PATH entry exists."
+  },
+  "command": "CRM_MASTER_DB_DISPOSABLE=1 scripts/distributor-master-db/run-integration.sh",
+  "result": "PASS",
+  "exactForCurrentMigration": false,
+  "supersessionReason": "The local proof found and fixed real transaction/fixture defects, then Migration 046 gained final RPC naming, payload-hash, Distributor command reuse, set-based planning, and exact concurrent CI assertions. Per the local toolchain amendment, the temporary runtime was not restarted. GitHub Actions PostgreSQL 17.6 is the authoritative exact-head proof.",
+  "assertions": [
+    "fresh prerequisite and Migration 046 apply",
+    "canonical distributor and renewal commit",
+    "canonical receivable creation",
+    "confirmed payment event and derived partially-paid projection",
+    "operation replay",
+    "payment import-key idempotency (sequential local proof; exact concurrent proof delegated to CI)",
+    "typed overpayment rejection",
+    "zero partial business writes and no successful batch on rollback"
+  ],
+  "authoritativeReleaseDatabaseProof": "GitHub Actions disposable PostgreSQL 17.6 exact-head job"
+}

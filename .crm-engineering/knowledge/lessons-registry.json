@@ -3,6 +3,69 @@
   "lessons": [
     {
       "date": "2026-08-20",
+      "domain": "Local database verification",
+      "id": "LOCAL_EPHEMERAL_DB_TOOLCHAIN_RULE",
+      "rule": "Schema-critical tasks require real disposable database proof, but local database software must not be installed persistently when an ephemeral runtime or authoritative CI database can provide the evidence. Reuse an existing runtime when available; avoid repeated downloads; clean temporary tooling after proof.",
+      "enforcementStatus": "POLICY_CONTEXT"
+    },
+    {
+      "date": "2026-08-20",
+      "domain": "Cross-domain imports",
+      "id": "MASTER_WORKBOOK_IS_ORCHESTRATOR_RULE",
+      "rule": "Unified spreadsheet intake may coordinate multiple domains but must never become a new authority.",
+      "enforcementStatus": "COMPILED"
+    },
+    {
+      "date": "2026-08-20",
+      "domain": "Cross-domain imports",
+      "id": "CROSS_AUTHORITY_ATOMIC_IMPORT_RULE",
+      "rule": "A cross-domain business import validates the complete resolved plan write-free and commits all authority mutations in one transaction or none.",
+      "enforcementStatus": "COMPILED"
+    },
+    {
+      "date": "2026-08-20",
+      "domain": "Import identity",
+      "id": "STABLE_EXTERNAL_IMPORT_KEY_RULE",
+      "rule": "Repeated imports resolve canonical business identity through stable external keys; names are display snapshots, not durable synchronization identity.",
+      "enforcementStatus": "COMPILED"
+    },
+    {
+      "date": "2026-08-20",
+      "domain": "Payment imports",
+      "id": "PAYMENT_IMPORT_IDEMPOTENCY_RULE",
+      "rule": "Imported payment events require a stable external import key protected by a database uniqueness invariant so repeated/concurrent imports cannot duplicate money.",
+      "enforcementStatus": "COMPILED"
+    },
+    {
+      "date": "2026-08-20",
+      "domain": "Financial authority",
+      "id": "DERIVED_FINANCIAL_STATE_RULE",
+      "rule": "PAID/PARTIALLY_PAID/UNPAID in spreadsheet previews are result projections, not writable financial authority.",
+      "enforcementStatus": "COMPILED"
+    },
+    {
+      "date": "2026-08-20",
+      "domain": "Import preview",
+      "id": "PREVIEW_RESOLVED_PLAN_HASH_RULE",
+      "rule": "Import confirmation hashes and revalidates the fully resolved execution plan, not only raw workbook cells.",
+      "enforcementStatus": "COMPILED"
+    },
+    {
+      "date": "2026-08-20",
+      "domain": "Patch imports",
+      "id": "PATCH_BLANK_SEMANTICS_RULE",
+      "rule": "For existing master records, blank import cells mean NO_CHANGE; destructive clearing requires an explicit supported token.",
+      "enforcementStatus": "COMPILED"
+    },
+    {
+      "date": "2026-08-20",
+      "domain": "Payment history",
+      "id": "MULTI_PAYMENT_HISTORY_RULE",
+      "rule": "Never flatten multiple payment events into a Distributor status or aggregate import field; preserve each payment event against an exact Receivable.",
+      "enforcementStatus": "COMPILED"
+    },
+    {
+      "date": "2026-08-20",
       "domain": "Data/API contracts",
       "id": "POSTGRES_NUMERIC_WIRE_CONTRACT_RULE",
       "rule": "PostgreSQL numeric values embedded in JSON/JSONB may reach JavaScript as numbers. Server API boundaries must normalize financial values to the declared canonical money representation before UI consumption; TypeScript annotations do not perform runtime coercion.",
