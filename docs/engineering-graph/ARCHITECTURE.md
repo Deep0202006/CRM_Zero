@@ -20,3 +20,20 @@ Logical graphs:
 
 The first four are repository knowledge structures. The sixth is the LangGraph
 workflow. Do not force all knowledge into LangGraph state.
+
+## Worker context
+
+Human-facing `CRM_CONTEXT.md` may remain descriptive. Worker turns use a
+separate bounded projection containing only task scope, directly relevant
+authorities/capabilities, and relevance-ranked lessons. The projection has a
+stable SHA256 digest. A new or resumed App Server process sends it once; later
+turns on the same live thread send only an unchanged-digest marker until the
+projection changes.
+
+## Verification routing
+
+Pull-request scope classification fails safe to full product verification.
+Only changes confined to Graph knowledge/controller/documentation paths use the
+Graph-only fast path. Workflow, product, schema, and unknown paths run the full
+database, product, build, and browser gates. Changed Graph tasks are discovered
+from the pull-request diff; generic CI never names a historical task.

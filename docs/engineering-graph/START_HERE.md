@@ -19,8 +19,8 @@ Old `docs/os` workflow prose and `.harness/task.json` do not control execution.
 Run:
 
 ```powershell
-npm run crm:status -- --task CRM-P0-045
-npm run crm:context -- --task CRM-P0-045
+npm run crm:status -- --task <TASK_ID>
+npm run crm:context -- --task <TASK_ID>
 ```
 
 Read the generated `CRM_CONTEXT.md`.

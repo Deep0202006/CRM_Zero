@@ -11,10 +11,11 @@ function task(overrides:any={}) { return {
 
 class FakeServer {
   initialized=0; started=0; resumed=0; turns=0; closed=0; resumedIds:string[]=[]; turnThreadIds:string[]=[];
+  prompts:string[]=[];
   async initialize(){this.initialized++;}
   async startThread(){this.started++;return "new-thread";}
   async resumeThread(id:string){this.resumed++;this.resumedIds.push(id);return id;}
-  async runTurn(id:string){this.turns++;this.turnThreadIds.push(id);return {text:'{"taskId":"T","acceptanceUpdates":[{"id":"A","status":"PASS","evidenceIds":["test:ok"]}],"changedPaths":[],"externalBlocker":null,"summary":"ok"}',turn:{}};}
+  async runTurn(id:string,_cwd?:string,prompt?:string){this.turns++;this.turnThreadIds.push(id);this.prompts.push(prompt ?? "");return {text:'{"taskId":"T","acceptanceUpdates":[{"id":"A","status":"PASS","evidenceIds":["test:ok"]}],"changedPaths":[],"externalBlocker":null,"summary":"ok"}',turn:{}};}
   close(){this.closed++;}
 }
 
@@ -50,10 +51,37 @@ test("same App Server and live thread are reused across turns",async()=>{
   session.close(); assert.equal(fake.closed,1); session.close(); assert.equal(fake.closed,1);
 });
 
+test("worker sends full digest-bound context once then a substantially smaller unchanged marker",async()=>{
+  const fake=new FakeServer(); const session=new CodexWorkerSession(()=>fake as any); const t=task();
+  const context=`WORKER_CONTEXT\n${"canonical context ".repeat(400)}`;
+  await session.run(t,context,"IMPLEMENT",t.acceptance[0]);
+  await session.run(t,context,"IMPLEMENT",t.acceptance[0]);
+  assert.match(fake.prompts[0],/CONTEXT_DIGEST [a-f0-9]{64}\nWORKER_CONTEXT/);
+  assert.match(fake.prompts[1],/CONTEXT_DIGEST [a-f0-9]{64} UNCHANGED/);
+  assert.doesNotMatch(fake.prompts[1],/WORKER_CONTEXT/);
+  assert.ok(fake.prompts[1].length < fake.prompts[0].length * 0.25,`expected repeated prompt ${fake.prompts[1].length} to be <25% of initial ${fake.prompts[0].length}`);
+  assert.match(fake.prompts[0],/Work only on acceptance A: do it/);
+  assert.match(fake.prompts[1],/Work only on acceptance A: do it/);
+  session.close();
+});
+
+test("materially changed context is sent in full once",async()=>{
+  const fake=new FakeServer(); const session=new CodexWorkerSession(()=>fake as any); const t=task();
+  await session.run(t,"context-v1","IMPLEMENT",t.acceptance[0]);
+  await session.run(t,"context-v2","IMPLEMENT",t.acceptance[0]);
+  assert.match(fake.prompts[0],/CONTEXT_DIGEST [a-f0-9]{64}\ncontext-v1/);
+  assert.match(fake.prompts[1],/CONTEXT_DIGEST [a-f0-9]{64}\ncontext-v2/);
+  assert.doesNotMatch(fake.prompts[1],/UNCHANGED/);
+  session.close();
+});
+
 test("new process explicitly resumes saved Codex thread",async()=>{
   const fake=new FakeServer(); const session=new CodexWorkerSession(()=>fake as any); const t=task();
   const result=await session.run(t,"ctx","IMPLEMENT",t.acceptance[0],"saved-thread");
-  assert.equal(result.threadId,"saved-thread"); assert.equal(fake.resumed,1); assert.equal(fake.started,0); session.close();
+  assert.equal(result.threadId,"saved-thread"); assert.equal(fake.resumed,1); assert.equal(fake.started,0);
+  assert.match(fake.prompts[0],/CONTEXT_DIGEST [a-f0-9]{64}\nctx/);
+  assert.match(fake.prompts[0],/Work only on acceptance A: do it/);
+  session.close();
 });
 
 test("restart loads durable Codex thread id from the graph checkpoint and resumes it",async()=>{

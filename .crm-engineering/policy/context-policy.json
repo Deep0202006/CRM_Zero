@@ -25,5 +25,16 @@
     "supabase/**",
     "tests/**"
   ],
+  "workerContext": {
+    "maxLessons": 14,
+    "mandatoryLessonIds": [
+      "CONTENT_SENSITIVE_WORKTREE_RULE",
+      "EXACT_HEAD_PROOF_REUSE_RULE",
+      "LOCAL_EPHEMERAL_DB_TOOLCHAIN_RULE",
+      "REDUNDANT_LOCAL_TOOLCHAIN_DENY_RULE",
+      "NO_PRODUCTION_DUMMY_DATA",
+      "GRAPH_LEARNING_CLOSURE_RULE"
+    ]
+  },
   "legacyMayBeReadOnlyWhenTaskExplicitlyRequestsHistoricalEvidence": true
 }
