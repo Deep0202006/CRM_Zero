@@ -18,6 +18,7 @@ async function seed(page: Page, id: string, isAdmin: boolean) {
   }, { id, accessToken: token(id), isAdmin });
 }
 const row = { distributor_id: distributorId, distributor_name: "Alpha Distributor", distributor_reference: "ALPHA-1", lead_id: null, phone: null, city: "Delhi", assigned_to: employee, assigned_employee_name: "Employee", installation_status: "done", installation_completed_at: "2026-08-01", training_status: "done", training_completed_at: "2026-08-02", mapping_status: "done", mapped_at: "2026-08-03", activity_status: "active", billing_status: "billed", billed_at: "2026-08-03", bill_reference: "INV-1", renewal_date: "2026-08-14", renewal_state: "renewal_due_tomorrow", version: 2, updated_at: "2026-08-13T06:00:00Z", active_receivable_count: 1, total_bill_amount: "1000.00", confirmed_collected_amount: "400.00", outstanding_amount: "600.00", pending_verification_count: 0, collection_state: "PARTIALLY_PAID", billing_collection_mismatch: false };
+const numericProjectionRow = { ...row, total_bill_amount: 1000, confirmed_collected_amount: 400, outstanding_amount: 600 };
 test("Admin Distributor import preview shows the server-resolved operational employee", async ({ page }) => {
   await mock(page); await page.route("**/api/distributors/import", route => route.fulfill({ json: { rows: [{ rowNumber: 2, distributorName: "Alpha", assignedEmployeeEmail: "zerodata_vaibhav@zerodata.local", assigned_employee_name: "Vaibhav Patel", classification: "NEW" }], counts: { NEW: 1 }, preview_hash: "a".repeat(64) } }));
   await seed(page, admin, true); await page.goto("/admin/payments/distributors"); await page.getByRole("button", { name: "Import" }).click();
@@ -29,7 +30,7 @@ async function mock(page: Page) {
   await page.route("**/api/distributors/metrics", (route) => route.fulfill({ json: { metrics: { total: 1, installation_pending: 0, training_pending: 0, installation_training_done: 1, mapped: 1, active: 1, inactive: 0, billed: 1 }, assignees: [{ user_id: employee, name: "Employee", email: "employee@example.test" }] } }));
   await page.route(`**/api/distributors/${distributorId}`, (route) => route.fulfill({ json: { record: row, events: [] } }));
   await page.route(`**/api/distributors/${distributorId}/receivables`, (route) => route.fulfill({ json: { total: 1, rows: [{ receivable_id: "50000000-0000-4000-a000-000000000001", bill_reference: "INV-1", outstanding_amount: "600.00", version: 3, pending_payment_count: 0 }], limit: 50, has_more: false } }));
-  await page.route("**/api/distributors?**", (route) => route.fulfill({ json: { rows: [row], page: 1, pageSize: 50, total: 1 } }));
+  await page.route("**/api/distributors?**", (route) => route.fulfill({ json: { rows: [numericProjectionRow], page: 1, pageSize: 50, total: 1 } }));
 }
 
 test("Distributor Collections exposes read-only money and reuses exact Receivables commands", async ({ page }) => {

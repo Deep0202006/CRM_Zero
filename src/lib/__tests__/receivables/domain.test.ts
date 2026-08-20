@@ -21,7 +21,12 @@ describe("receivables exact money and alert contract", () => {
     expect(derivePaymentState("cancelled", BigInt(100000), BigInt(0))).toBe("Cancelled");
   });
 
-  test("formats Indian currency", () => expect(formatInr("142500.00")).toContain("1,42,500"));
+  test("formats Indian currency from canonical strings and finite numeric display inputs", () => {
+    expect(formatInr("142500.00")).toContain("1,42,500");
+    expect(formatInr(400)).toBe("₹400");
+    expect(formatInr(600.25)).toBe("₹600.25");
+    expect(() => formatInr(Number.NaN)).toThrow("Invalid money display value.");
+  });
 
   test("pending verification suppresses chase and terminal states suppress alerts", () => {
     const base = { lifecycleStatus: "active" as const, outstandingMinor: BigInt(100000), today: "2026-08-11", nextFollowUpDate: "2026-08-10", promiseDate: null };

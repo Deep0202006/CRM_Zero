@@ -1,0 +1,113 @@
+{
+  "schemaVersion": 2,
+  "graphSchemaVersion": 1,
+  "flowVersion": "1.1.1",
+  "taskId": "CRM-INC-DISTRIBUTOR-NUMERIC-WIRE",
+  "objective": "Restore Distributor Collections rendering and permanently enforce the PostgreSQL-numeric to application-money serialization contract.",
+  "risk": "R1",
+  "domains": [
+    "distributor-status",
+    "receivables",
+    "data-api-contracts",
+    "testing"
+  ],
+  "repository": {
+    "canonicalRoot": "C:\\Users\\dcp69\\Desktop\\CRM_Zero",
+    "worktreePath": "C:\\Users\\dcp69\\Desktop\\CRM_Zero\\.worktrees\\CRM-INC-DISTRIBUTOR-NUMERIC-WIRE",
+    "branch": "hotfix/CRM-INC-DISTRIBUTOR-NUMERIC-WIRE",
+    "expectedBaseRef": "origin/main",
+    "expectedBaseSha": "3477f528ee4660c24025e56744f2c9f2850fe39a",
+    "observedHeadSha": "3477f528ee4660c24025e56744f2c9f2850fe39a",
+    "dirtyBaselineHash": "fe605eaec3b7f0051b5175105a6a5e3068581c3dd76bb0629e211184a3bb61a4"
+  },
+  "phase": "TARGETED_VERIFICATION",
+  "allowedPaths": [
+    "src/app/api/distributors/route.ts",
+    "src/lib/distributors/**",
+    "src/lib/receivables/domain.ts",
+    "src/lib/__tests__/distributors/**",
+    "src/lib/__tests__/receivables/**",
+    "e2e/distributors/**",
+    ".crm-engineering/**",
+    "docs/engineering-graph/**"
+  ],
+  "protectedDomains": [
+    "supabase-migrations",
+    "receivable-payment-sql",
+    "financial-business-rules",
+    "migration-045",
+    "distributor-authority",
+    "payment-targeting",
+    "field-visits",
+    "pipeline"
+  ],
+  "productionDataMutation": false,
+  "schemaChange": false,
+  "humanGate": null,
+  "incidentContract": {
+    "userObservedFailure": "Admin Distributor Status / Distributor Collections is non-responsive because production projection money values are JSON numbers and formatInr calls split directly on them.",
+    "authoritativeExpectedResult": "The canonical Distributor API serializes PostgreSQL numeric projection money as two-decimal strings and the UI renders numeric display inputs without crashing.",
+    "writePath": "Unchanged; this task performs no business or production data writes.",
+    "readPath": "public.distributor_financial_projection_v1 to GET /api/distributors to Distributor Collections UI.",
+    "acceptanceInvariant": "Projection values 0, 400, and 400.5 serialize as 0.00, 400.00, and 400.50 strings; numeric-wire browser data renders INR 400 and INR 600 without throwing."
+  },
+  "budgets": {
+    "dataAuthority": "Receivables and the authoritative PostgreSQL projection remain financial authority; normalization is serialization only.",
+    "readBudget": "Unchanged bounded Distributor list and metrics requests; maximum normal list page remains 50.",
+    "writeBudget": "Zero writes.",
+    "rlsModel": "Unchanged.",
+    "indexRequirements": "None.",
+    "failureMode": "Malformed unexpected RPC money values fail at the server boundary; finite numeric display inputs are normalized defensively.",
+    "concurrencyModel": "Unchanged read-only projection.",
+    "idempotencyModel": "Not applicable; no mutation.",
+    "testPlan": "Focused unit/API regression, Distributor E2E numeric wire mock, typecheck, scoped lint, build, diff check, and Graph status/proof."
+  },
+  "acceptance": [
+    {
+      "id": "DIST-NUMERIC-WIRE-A01",
+      "description": "The Distributor API boundary deterministically normalizes trusted finite string or number projection money to canonical two-decimal strings, rejects malformed values, and formatInr defensively accepts string or number without changing financial authority.",
+      "stage": "IMPLEMENTATION",
+      "status": "PASS",
+      "required": true,
+      "evidenceIds": [
+        "git:fcf542fab133fc55ba0090edcd1e2b4a3a2034ff",
+        "jest:distributors-and-receivables-domain:43-passed"
+      ]
+    },
+    {
+      "id": "DIST-NUMERIC-WIRE-V01",
+      "description": "Focused unit coverage proves 0, 400, and 400.5 numeric wire values become canonical strings; Distributor E2E uses numeric money at least once and renders INR 400 and INR 600; typecheck, scoped lint, production build, and git diff check pass.",
+      "stage": "VERIFICATION",
+      "status": "PASS",
+      "required": true,
+      "evidenceIds": [
+        "jest:focused-money-contract:2-suites-43-tests-passed",
+        "playwright:distributor-numeric-wire:1-passed",
+        "typecheck:tsc-noemit-passed",
+        "lint:scoped-eslint-passed",
+        "build:next-production-fcf542f-passed",
+        "git-diff-check:3477f52-to-fcf542f-passed"
+      ]
+    },
+    {
+      "id": "DIST-NUMERIC-WIRE-L01",
+      "description": "POSTGRES_NUMERIC_WIRE_CONTRACT_RULE and WIRE_MOCK_REALISM_RULE are persisted as COMPILED in the Graph lessons registry with implementation and regression protection.",
+      "stage": "IMPLEMENTATION",
+      "status": "PASS",
+      "required": true,
+      "evidenceIds": [
+        "git:fcf542fab133fc55ba0090edcd1e2b4a3a2034ff",
+        "focused-proof:compiled-lessons-and-regression-linkage"
+      ]
+    },
+    {
+      "id": "DIST-NUMERIC-WIRE-R01",
+      "description": "A focused hotfix PR has green required CI and READY Vercel Preview, is merged normally, the resulting main production deployment is READY, and production logs are inspected read-only without dummy data.",
+      "stage": "RELEASE",
+      "status": "PENDING",
+      "required": true,
+      "evidenceIds": []
+    }
+  ],
+  "blocker": null
+}
