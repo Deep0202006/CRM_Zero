@@ -25,5 +25,8 @@ psql -X -v ON_ERROR_STOP=1 -f supabase/migrations/045_distributor_receivable_can
 psql -X -v ON_ERROR_STOP=1 -f supabase/migrations/046_unified_distributor_master_import.sql
 psql -X -v ON_ERROR_STOP=1 -f scripts/distributor-master-db/integration.sql
 bash scripts/distributor-master-db/concurrency.sh
+psql -X -v ON_ERROR_STOP=1 -f scripts/erp-visibility-db/pre-047.sql
+psql -X -v ON_ERROR_STOP=1 -f supabase/migrations/047_distributor_erp_partner_visibility.sql
+psql -X -v ON_ERROR_STOP=1 -f scripts/erp-visibility-db/integration.sql
 
-echo "Distributor master PostgreSQL integration passed."
+echo "Distributor master and ERP visibility PostgreSQL integration passed."

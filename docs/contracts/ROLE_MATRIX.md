@@ -15,4 +15,6 @@ This matrix records authorization shapes, not display labels. Server authorizati
 
 Employee eligibility for Distributor Status and Payment Collection comes from the same canonical active non-Admin employee authority. Distributor identity is exact `distributor_id`; Attendance identity is `auth.users.id == public.users.user_id == attendance.user_id`; Receivables ownership is explicit `assigned_to`. Names, emails, and role labels are never record identity.
 
+ERP Partner Viewer is a separate, exclusive external account type—not an operational employee. It may read only `/erp/distributors` and `/erp/renewals` through dedicated server-scoped projections for assigned canonical ERP systems. It has no attendance, employee assignment, internal synchronization, Distributor mutation, import, Receivable, Payment, Admin, employee-directory, or broad internal read access. Scope and capability changes use the Admin ERP Partner Access service path; the ordinary mixed capability matrix cannot grant this role.
+
 CI must keep distinct fixtures for Admin, field Attendance, office Attendance, assigned employee, unassigned employee, and inactive/unlinked user. Every successful important mutation requires authoritative write-to-read closure in all readers listed above.

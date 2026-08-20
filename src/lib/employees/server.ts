@@ -12,18 +12,24 @@ const AUTH_PAGE_SIZE = 1000;
 const MAX_AUTH_DIRECTORY_PAGES = 5;
 
 export async function listEligibleOperationalEmployees(service: SupabaseClient): Promise<{ employees: EligibleEmployee[]; error: unknown | null }> {
-  const [users, adminCapabilities] = await Promise.all([
+  const excludedQuery = service
+    .from("user_capabilities")
+    .select("user_id,capability_code")
+    .in("capability_code", ["admin", "erp_partner_viewer"]);
+  const [users, excludedCapabilities] = await Promise.all([
     service.from("users").select("user_id,name,email,is_active").eq("is_active", true).order("name").range(0, MAX_OPERATIONAL_EMPLOYEES),
-    service.from("user_capabilities").select("user_id").eq("capability_code", "admin").range(0, MAX_OPERATIONAL_EMPLOYEES),
+    typeof (excludedQuery as { range?: unknown }).range === "function"
+      ? excludedQuery.range(0, MAX_OPERATIONAL_EMPLOYEES)
+      : excludedQuery,
   ]);
-  const error = users.error ?? adminCapabilities.error;
+  const error = users.error ?? excludedCapabilities.error;
   if (error) return { employees: [], error };
-  if ((users.data?.length ?? 0) > MAX_OPERATIONAL_EMPLOYEES || (adminCapabilities.data?.length ?? 0) > MAX_OPERATIONAL_EMPLOYEES) {
+  if ((users.data?.length ?? 0) > MAX_OPERATIONAL_EMPLOYEES || (excludedCapabilities.data?.length ?? 0) > MAX_OPERATIONAL_EMPLOYEES) {
     return { employees: [], error: new Error("EMPLOYEE_DIRECTORY_LIMIT_EXCEEDED") };
   }
-  const adminIds = new Set((adminCapabilities.data ?? []).map((row) => row.user_id));
+  const excludedIds = new Set((excludedCapabilities.data ?? []).map((row) => row.user_id));
   const operationalProfiles = (users.data ?? [])
-    .filter((user) => (user.is_active === true || user.is_active === 1) && !adminIds.has(user.user_id));
+    .filter((user) => (user.is_active === true || user.is_active === 1) && !excludedIds.has(user.user_id));
   const profilesById = new Map(operationalProfiles.map((user) => [String(user.user_id), user]));
   const authIdsByEmail = new Map<string, string>();
   const ambiguousEmails = new Set<string>();

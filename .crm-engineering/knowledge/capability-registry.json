@@ -2,6 +2,21 @@
   "schemaVersion": 1,
   "capabilities": [
     {
+      "id": "erp-partner-visibility",
+      "status": "OWNER_GATE",
+      "authorityRefs": [
+        "erp_system",
+        "distributor_erp_assignment",
+        "erp_partner_scope",
+        "distributor_account",
+        "renewal"
+      ],
+      "reuse": "required",
+      "notes": [
+        "Read-only external projection capability only; no financial, renewal, or Distributor business authority is introduced."
+      ]
+    },
+    {
       "id": "employee-import-identity",
       "status": "PRODUCTION_CERTIFIED",
       "authorityRefs": [

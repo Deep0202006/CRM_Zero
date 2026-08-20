@@ -290,11 +290,11 @@ export function DistributorMasterImportModal({ open, authFetch, onClose, onImpor
             </>; })()}</div>
             <div className="max-h-96 overflow-auto rounded-lg border border-[var(--border-subtle)]">
               <table className="w-full min-w-[1000px] text-left text-xs">
-                <thead><tr>{["Sheet", "Row", "Distributor", "Bill", "Current State", "Action", "Result State", "Reason"].map((heading) => <th className="p-2" key={heading}>{heading}</th>)}</tr></thead>
+                <thead><tr>{["Sheet", "Row", "Distributor", "ERP", "Bill", "Current State", "Action", "Result State", "Reason"].map((heading) => <th className="p-2" key={heading}>{heading}</th>)}</tr></thead>
                 <tbody>{SHEETS.flatMap(({ key, label }) => preview.rows[key].map((row) => (
                   <tr className={`border-t border-[var(--border-subtle)] align-top ${row.action === "BLOCK" ? "bg-[var(--status-danger-soft)]" : ""}`} key={`${key}-${row.rowNumber}`}>
                     <td className="p-2">{label}</td><td className="p-2 tabular-nums">{row.rowNumber}</td>
-                    <td className="p-2 font-semibold">{displayValue(row.distributorName ?? row.distributorReference)}</td><td className="p-2">{displayValue(row.billReference)}</td>
+                    <td className="p-2 font-semibold">{displayValue(row.distributorName ?? row.distributorReference)}</td><td className="p-2">{displayValue(row.erpName ?? objectValue(row.after, "erp_name") ?? objectValue(row.before, "erp_name"))}</td><td className="p-2">{displayValue(row.billReference)}</td>
                     <td className="max-w-64 p-2 text-[var(--text-muted)]">{displayValue(row.before)}</td>
                     <td className="p-2"><Chip size="sm" variant={row.action === "BLOCK" ? "danger" : row.action === "SKIP" ? "neutral" : "success"}>{actionLabel(row.action)}</Chip></td>
                     <td className="max-w-64 p-2">{displayValue(row.after)}</td><td className="max-w-52 p-2 text-[var(--status-danger)]">{row.reason ?? "—"}</td>

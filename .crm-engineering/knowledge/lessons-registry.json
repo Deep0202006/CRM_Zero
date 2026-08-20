@@ -3,6 +3,48 @@
   "lessons": [
     {
       "date": "2026-08-20",
+      "domain": "ERP authority",
+      "id": "ERP_DIMENSION_AUTHORITY_RULE",
+      "rule": "One canonical ERP registry/key feeds all readers; do not replicate mutable ERP text across Distributor, Renewal and financial tables.",
+      "enforcementStatus": "COMPILED"
+    },
+    {
+      "date": "2026-08-20",
+      "domain": "External authorization",
+      "id": "SERVER_SCOPE_NOT_UI_FILTER_RULE",
+      "rule": "External tenant/partner visibility is enforced by server/database scope; client filters are never authorization.",
+      "enforcementStatus": "COMPILED"
+    },
+    {
+      "date": "2026-08-20",
+      "domain": "External identity",
+      "id": "EXTERNAL_ACCOUNT_NOT_EMPLOYEE_RULE",
+      "rule": "External viewer capabilities are excluded from employee assignment, attendance, work queues and internal synchronization.",
+      "enforcementStatus": "COMPILED"
+    },
+    {
+      "date": "2026-08-20",
+      "domain": "Cross-domain reads",
+      "id": "SINGLE_IMPORT_PROPAGATION_RULE",
+      "rule": "One canonical Distributor import updates shared operational facts once and all readers project them; readers do not create duplicate facts.",
+      "enforcementStatus": "COMPILED"
+    },
+    {
+      "date": "2026-08-20",
+      "domain": "External data minimization",
+      "id": "EXTERNAL_VIEW_DATA_MINIMIZATION_RULE",
+      "rule": "External projections expose only the minimum authorized business fields and never reuse broad internal read models containing sensitive/financial data.",
+      "enforcementStatus": "COMPILED"
+    },
+    {
+      "date": "2026-08-20",
+      "domain": "Import contracts",
+      "id": "IMPORT_TEMPLATE_VERSION_RULE",
+      "rule": "A structural change to an exact workbook contract increments its format version and fails old structural formats with an explicit upgrade message.",
+      "enforcementStatus": "COMPILED"
+    },
+    {
+      "date": "2026-08-20",
       "domain": "Local database verification",
       "id": "LOCAL_EPHEMERAL_DB_TOOLCHAIN_RULE",
       "rule": "Schema-critical tasks require real disposable database proof. If authoritative CI already supplies equivalent disposable database/runtime proof, agents must not download or install redundant local infrastructure. Local external tooling download requires explicit Owner approval unless already present, and agents must not create temporary infrastructure they cannot clean up themselves.",

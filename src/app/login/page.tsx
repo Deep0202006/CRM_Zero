@@ -5,10 +5,11 @@ import Image from "next/image";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/db";
+import { supabase } from "@/lib/supabaseClient";
 import styles from "./page.module.css";
 
 export default function LoginPage() {
-  const { currentUser, login, isLoading } = useAuth();
+  const { currentUser, login, isLoading, isErpPartnerViewer } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -24,6 +25,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!currentUser) return;
+    if (isErpPartnerViewer) { window.location.href = "/erp/distributors"; return; }
     const todayStr = new Date().toISOString().slice(0, 10);
     db.attendance
       .where("[user_id+date]")
@@ -35,7 +37,7 @@ export default function LoginPage() {
       .catch(() => {
         window.location.href = "/attendance";
       });
-  }, [currentUser]);
+  }, [currentUser, isErpPartnerViewer]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -46,7 +48,9 @@ export default function LoginPage() {
     }
     const success = await login(email, password);
     if (success) {
-      window.location.href = "/attendance";
+      const userId = (await supabase.auth.getUser()).data.user?.id;
+      const caps = userId ? await db.user_capabilities.where("user_id").equals(userId).toArray() : [];
+      window.location.href = caps.some((capability) => capability.capability_code === "erp_partner_viewer") ? "/erp/distributors" : "/attendance";
     } else {
       setErrorMsg("We could not verify these credentials. Check the username and password, then try again.");
     }

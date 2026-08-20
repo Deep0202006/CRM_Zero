@@ -1,3 +1,5 @@
+jest.mock("server-only", () => ({}), { virtual: true });
+
 const contextForMock = jest.fn();
 const rpcMock = jest.fn();
 
@@ -5,6 +7,7 @@ jest.mock("@/lib/distributors/server", () => ({
   contextFor: (...args: unknown[]) => contextForMock(...args),
   apiError: (status: number, code: string, message: string, current?: unknown) => Response.json({ code, message, ...(current === undefined ? {} : { current }) }, { status }),
   distributorReadError: () => Response.json({ code: "DISTRIBUTOR_SERVER_ERROR", message: "failed" }, { status: 503 }),
+  externalViewerDenied: () => null,
   requestHash: () => "request-hash",
   stableDistributorId: () => "40000000-0000-4000-a000-000000000001",
 }));

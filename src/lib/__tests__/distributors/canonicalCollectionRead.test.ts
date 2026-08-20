@@ -9,7 +9,7 @@ const projection=sql.slice(start,end);
 
 describe("distributor-first canonical collection read model",()=>{
  test("derives money only from canonical receivables and effective payments",()=>{
-  expect(projection).toContain("from allowed d\n join public.receivables r on r.distributor_id=d.distributor_id");
+  expect(projection).toMatch(/from allowed d\r?\n join public\.receivables r on r\.distributor_id=d\.distributor_id/);
   expect(projection).toContain("rp.receivable_id=r.receivable_id");
   expect(projection).toContain("rp.verification_status='confirmed' and rp.reversed_at is null");
   expect(projection).not.toContain("receivables_financial_read_v1");

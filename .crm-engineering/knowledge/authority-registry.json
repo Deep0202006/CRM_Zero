@@ -3,6 +3,47 @@
   "repository": "Deep0202006/CRM_Zero",
   "facts": [
     {
+      "id": "erp_system",
+      "status": "OWNER_GATE",
+      "authority": "public.erp_systems",
+      "identity": [
+        "erp_id",
+        "erp_key"
+      ],
+      "owns": [
+        "canonical ERP identity and name"
+      ]
+    },
+    {
+      "id": "distributor_erp_assignment",
+      "status": "OWNER_GATE",
+      "authority": "public.distributor_accounts.erp_id",
+      "identity": [
+        "distributor_id"
+      ],
+      "rules": [
+        "Owned only by Distributor Status.",
+        "Renewal and financial readers join through canonical distributor_id."
+      ]
+    },
+    {
+      "id": "erp_partner_scope",
+      "status": "OWNER_GATE",
+      "authority": "public.erp_partner_scopes",
+      "identity": [
+        "user_id",
+        "erp_id"
+      ],
+      "owns": [
+        "ERP Partner Viewer authorization scope"
+      ],
+      "mustNotOwn": [
+        "Distributor business facts",
+        "renewal facts",
+        "financial facts"
+      ]
+    },
+    {
       "id": "employee_identity",
       "authority": "auth.users.id == public.users.user_id",
       "identity": [

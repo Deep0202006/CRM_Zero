@@ -12,7 +12,7 @@ export async function GET(request: Request) {
   const detailId = new URL(request.url).searchParams.get("receivable_id");
   if (detailId) {
     const [receivableResult, paymentResult, activityResult, identityResult] = await Promise.all([
-      context.service.from("receivables_financial_read_v1").select("receivable_id,bill_reference,distributor_name,contact_person,contact_phone,bill_amount,confirmed_paid_amount,outstanding_amount,bill_due_date,next_follow_up_date,assigned_to,lifecycle_status,payment_state,alert_state,version,pending_payment_count,aging_bucket,promise_date").eq("receivable_id", detailId).maybeSingle(),
+      context.service.from("receivables_financial_read_v2").select("receivable_id,bill_reference,distributor_name,erp_id,erp_name,contact_person,contact_phone,bill_amount,confirmed_paid_amount,outstanding_amount,bill_due_date,next_follow_up_date,assigned_to,lifecycle_status,payment_state,alert_state,version,pending_payment_count,aging_bucket,promise_date").eq("receivable_id", detailId).maybeSingle(),
       context.service.from("receivable_payments").select("payment_id,receivable_id,amount,payment_date,payment_mode,payment_reference,note,verification_status,reported_by,reported_at,verified_by,verified_at,reversed_at", { count: "exact" }).eq("receivable_id", detailId).order("reported_at", { ascending: false }).range(0, 49),
       context.service.from("receivable_activity_events").select("activity_id,receivable_id,event_type,note,change_set,actor_id,created_at", { count: "exact" }).eq("receivable_id", detailId).order("created_at", { ascending: false }).range(0, 49),
       context.service.from("receivables").select("distributor_id,distributor_identity_key").eq("receivable_id", detailId).maybeSingle(),
@@ -23,7 +23,7 @@ export async function GET(request: Request) {
     if (identityResult.error) {
       distributorStatusError = isDistributorCapabilityMissing(identityResult.error) ? "CAPABILITY_MISSING" : "READ_FAILED";
     } else if (identityResult.data?.distributor_id) {
-      const match = await context.service.from("distributor_accounts").select("distributor_id,renewal_date").eq("distributor_id", identityResult.data.distributor_id).maybeSingle();
+      const match = await context.service.from("distributor_accounts").select("distributor_id,erp_id,renewal_date").eq("distributor_id", identityResult.data.distributor_id).maybeSingle();
       if (match.error) distributorStatusError = isDistributorCapabilityMissing(match.error) ? "CAPABILITY_MISSING" : "READ_FAILED";
       else if (match.data) distributorStatus = { ...match.data, renewal_state: null };
     } else if (identityResult.data?.distributor_identity_key) {

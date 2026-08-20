@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import {
   BarChart3,
@@ -54,6 +54,7 @@ type NavGroup = {
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const {
     currentUser,
     capabilities,
@@ -65,6 +66,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     hasOnboarding,
     hasSupport,
     isTaskAssigner,
+    isErpPartnerViewer,
+    logout,
   } = useAuth();
 
   const [isOnline, setIsOnline] = useState(true);
@@ -84,19 +87,34 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const storedCollapsed = localStorage.getItem("zerodata-sidebar-collapsed") === "true";
+    const storedCollapsed =
+      localStorage.getItem("zerodata-sidebar-collapsed") === "true";
     setCollapsed(storedCollapsed);
-    const currentTheme = document.documentElement.dataset.theme === "dark" ? "dark" : "light";
+    const currentTheme =
+      document.documentElement.dataset.theme === "dark" ? "dark" : "light";
     setTheme(currentTheme);
   }, []);
 
   useEffect(() => {
-    if (typeof window === "undefined" || pathname === "/login") return;
+    if (
+      typeof window === "undefined" ||
+      pathname === "/login" ||
+      isErpPartnerViewer
+    )
+      return;
     setIsOnline(navigator.onLine);
-    const drainWork = () => { void Promise.allSettled([processSyncQueue(), syncFieldVisits()]); };
-    const handleOnline = () => { setIsOnline(true); drainWork(); };
+    const drainWork = () => {
+      void Promise.allSettled([processSyncQueue(), syncFieldVisits()]);
+    };
+    const handleOnline = () => {
+      setIsOnline(true);
+      drainWork();
+    };
     const handleOffline = () => setIsOnline(false);
-    const handleVisibility = () => { if (document.visibilityState === "visible" && navigator.onLine) drainWork(); };
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible" && navigator.onLine)
+        drainWork();
+    };
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
     document.addEventListener("visibilitychange", handleVisibility);
@@ -105,8 +123,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     const refreshSyncState = async () => {
       try {
         const all = await db.sync_queue.toArray();
-        setSyncQueueCount(all.filter((item) => (item.retry_count ?? 0) < 5).length);
-        setFailedSyncCount(all.filter((item) => (item.retry_count ?? 0) >= 5).length);
+        setSyncQueueCount(
+          all.filter((item) => (item.retry_count ?? 0) < 5).length,
+        );
+        setFailedSyncCount(
+          all.filter((item) => (item.retry_count ?? 0) >= 5).length,
+        );
       } catch {
         setSyncQueueCount(0);
         setFailedSyncCount(0);
@@ -121,7 +143,18 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       document.removeEventListener("visibilitychange", handleVisibility);
       window.clearInterval(interval);
     };
-  }, [pathname]);
+  }, [isErpPartnerViewer, pathname]);
+
+  useEffect(() => {
+    if (
+      !isLoading &&
+      isErpPartnerViewer &&
+      pathname !== "/erp/distributors" &&
+      pathname !== "/erp/renewals"
+    ) {
+      router.replace("/erp/distributors");
+    }
+  }, [isErpPartnerViewer, isLoading, pathname, router]);
 
   const [prevPathname, setPrevPathname] = useState(pathname);
   if (prevPathname !== pathname) {
@@ -135,18 +168,23 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     if (!mobileOpen) return;
 
     const previousOverflow = document.body.style.overflow;
-    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const previousFocus =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
     const focusableSelector = [
-      'a[href]',
-      'button:not([disabled])',
-      'input:not([disabled])',
-      'select:not([disabled])',
-      'textarea:not([disabled])',
+      "a[href]",
+      "button:not([disabled])",
+      "input:not([disabled])",
+      "select:not([disabled])",
+      "textarea:not([disabled])",
       '[tabindex]:not([tabindex="-1"])',
     ].join(",");
 
     const focusFirstControl = window.requestAnimationFrame(() => {
-      mobileDrawerRef.current?.querySelector<HTMLElement>(focusableSelector)?.focus();
+      mobileDrawerRef.current
+        ?.querySelector<HTMLElement>(focusableSelector)
+        ?.focus();
     });
 
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -158,7 +196,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
       if (event.key !== "Tab" || !mobileDrawerRef.current) return;
       const focusable = Array.from(
-        mobileDrawerRef.current.querySelectorAll<HTMLElement>(focusableSelector)
+        mobileDrawerRef.current.querySelectorAll<HTMLElement>(
+          focusableSelector,
+        ),
       ).filter((element) => element.offsetParent !== null);
 
       if (!focusable.length) {
@@ -194,8 +234,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   useEffect(() => {
     function handleOutside(event: MouseEvent) {
       const target = event.target as Node;
-      if (profileRef.current && !profileRef.current.contains(target)) setProfileOpen(false);
-      if (syncRef.current && !syncRef.current.contains(target)) setSyncOpen(false);
+      if (profileRef.current && !profileRef.current.contains(target))
+        setProfileOpen(false);
+      if (syncRef.current && !syncRef.current.contains(target))
+        setSyncOpen(false);
     }
     document.addEventListener("mousedown", handleOutside);
     return () => document.removeEventListener("mousedown", handleOutside);
@@ -212,7 +254,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           .replace("ret_", "Retailer ")
           .replace("field_", "Field ")
           .replace("tech_", "Technical ")
-          .replace(/_/g, " ")
+          .replace(/_/g, " "),
       )
       .join(" · ");
   }, [capabilities, isAdmin]);
@@ -228,7 +270,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   if (pathname === "/login") return <>{children}</>;
 
-  const navGroups: NavGroup[] = [
+  const internalNavGroups: NavGroup[] = [
     {
       label: "Workspace",
       items: [
@@ -267,7 +309,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         {
           icon: <CalendarDays size={17} />,
           label: "Distributor Status",
-          path: isAdmin ? "/admin/payments/distributors" : "/payments/distributors",
+          path: isAdmin
+            ? "/admin/payments/distributors"
+            : "/payments/distributors",
           description: "Operational status and renewals",
           group: "Workspace",
           keywords: ["distributor", "renewal", "installation", "training"],
@@ -386,13 +430,41 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     },
   ];
 
+  const navGroups: NavGroup[] = isErpPartnerViewer
+    ? [
+        {
+          label: "ERP Partner",
+          items: [
+            {
+              icon: <LayoutDashboard size={17} />,
+              label: "ERP Distributor Status",
+              path: "/erp/distributors",
+              description: "Read-only status for assigned ERP systems",
+              group: "ERP Partner",
+            },
+            {
+              icon: <CalendarDays size={17} />,
+              label: "ERP Renewals",
+              path: "/erp/renewals",
+              description:
+                "Read-only renewal schedule for assigned ERP systems",
+              group: "ERP Partner",
+            },
+          ],
+        },
+      ]
+    : internalNavGroups;
+
   const visibleGroups = navGroups
-    .map((group) => ({ ...group, items: group.items.filter((item) => item.visible !== false) }))
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => item.visible !== false),
+    }))
     .filter((group) => group.items.length > 0);
 
   const commandItems = visibleGroups.flatMap((group) => group.items);
   const activeItem = commandItems.find((item) =>
-    item.path === "/" ? pathname === "/" : pathname.startsWith(item.path)
+    item.path === "/" ? pathname === "/" : pathname.startsWith(item.path),
   );
 
   const toggleTheme = () => {
@@ -412,7 +484,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const navContent = (
     <>
-      <div className={`flex h-[76px] items-center border-b border-[var(--border-inverse)] px-4 ${navCollapsed ? "justify-center" : "justify-between"}`}>
+      <div
+        className={`flex h-[76px] items-center border-b border-[var(--border-inverse)] px-4 ${navCollapsed ? "justify-center" : "justify-between"}`}
+      >
         <AppLogo collapsed={navCollapsed} inverse />
         {!navCollapsed && (
           <button
@@ -426,7 +500,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         )}
       </div>
 
-      <nav className="min-h-0 flex-1 overflow-y-auto px-3 py-4" aria-label="Primary navigation">
+      <nav
+        className="min-h-0 flex-1 overflow-y-auto px-3 py-4"
+        aria-label="Primary navigation"
+      >
         <div className="space-y-5">
           {visibleGroups.map((group) => (
             <div key={group.label}>
@@ -437,7 +514,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               )}
               <div className="space-y-1">
                 {group.items.map((item) => {
-                  const active = item.path === "/" ? pathname === "/" : pathname.startsWith(item.path);
+                  const active =
+                    item.path === "/"
+                      ? pathname === "/"
+                      : pathname.startsWith(item.path);
                   return (
                     <Link
                       key={item.path}
@@ -452,11 +532,20 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                           : "text-[var(--text-inverse-muted)] hover:bg-[var(--surface-sidebar-hover)] hover:text-white"
                       }`}
                     >
-                      {active && !navCollapsed && <span className="absolute left-0 h-5 w-[2px] rounded-r-full bg-[var(--brand-400)]" aria-hidden="true" />}
-                      <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-[8px] ${active ? "bg-white/8 text-[var(--brand-300)]" : "text-current group-hover:bg-white/5"}`}>
+                      {active && !navCollapsed && (
+                        <span
+                          className="absolute left-0 h-5 w-[2px] rounded-r-full bg-[var(--brand-400)]"
+                          aria-hidden="true"
+                        />
+                      )}
+                      <span
+                        className={`grid h-7 w-7 shrink-0 place-items-center rounded-[8px] ${active ? "bg-white/8 text-[var(--brand-300)]" : "text-current group-hover:bg-white/5"}`}
+                      >
                         {item.icon}
                       </span>
-                      {!navCollapsed && <span className="truncate">{item.label}</span>}
+                      {!navCollapsed && (
+                        <span className="truncate">{item.label}</span>
+                      )}
                     </Link>
                   );
                 })}
@@ -471,10 +560,18 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           <div className="mb-2 rounded-[var(--radius-md)] border border-[var(--border-inverse)] bg-white/[0.025] p-3">
             <div className="flex items-center justify-between gap-3">
               <span className="flex items-center gap-2 text-[10px] font-semibold text-[var(--text-inverse-muted)]">
-                {isOnline ? <Wifi size={13} className="text-[var(--brand-300)]" /> : <WifiOff size={13} className="text-[var(--status-danger)]" />}
+                {isOnline ? (
+                  <Wifi size={13} className="text-[var(--brand-300)]" />
+                ) : (
+                  <WifiOff size={13} className="text-[var(--status-danger)]" />
+                )}
                 {isOnline ? "Connected" : "Offline mode"}
               </span>
-              {syncQueueCount > 0 && <span className="rounded-full bg-[var(--brand-400)]/15 px-2 py-0.5 text-[9px] font-bold text-[var(--brand-300)]">{syncQueueCount} queued</span>}
+              {syncQueueCount > 0 && (
+                <span className="rounded-full bg-[var(--brand-400)]/15 px-2 py-0.5 text-[9px] font-bold text-[var(--brand-300)]">
+                  {syncQueueCount} queued
+                </span>
+              )}
             </div>
           </div>
         )}
@@ -482,9 +579,18 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           type="button"
           onClick={toggleCollapsed}
           className={`hidden h-9 w-full items-center rounded-[var(--radius-md)] text-[11px] font-medium text-[var(--text-inverse-muted)] transition hover:bg-[var(--surface-sidebar-hover)] hover:text-white md:flex ${navCollapsed ? "justify-center" : "gap-3 px-3"}`}
-          aria-label={navCollapsed ? "Expand navigation" : "Collapse navigation"}
+          aria-label={
+            navCollapsed ? "Expand navigation" : "Collapse navigation"
+          }
         >
-          {navCollapsed ? <ChevronRight size={16} /> : <><ChevronLeft size={16} /><span>Collapse navigation</span></>}
+          {navCollapsed ? (
+            <ChevronRight size={16} />
+          ) : (
+            <>
+              <ChevronLeft size={16} />
+              <span>Collapse navigation</span>
+            </>
+          )}
         </button>
       </div>
     </>
@@ -502,7 +608,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
       <aside
         className={`relative z-[var(--z-sidebar)] hidden h-dvh shrink-0 flex-col overflow-hidden border-r border-[var(--border-inverse)] bg-[var(--surface-sidebar)] transition-[width] duration-200 ease-[var(--ease-standard)] md:flex ${
-          collapsed ? "w-[var(--sidebar-collapsed)]" : "w-[var(--sidebar-expanded)]"
+          collapsed
+            ? "w-[var(--sidebar-collapsed)]"
+            : "w-[var(--sidebar-expanded)]"
         }`}
       >
         {navContent}
@@ -545,9 +653,15 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
           <div className="min-w-0 flex-1">
             <div className="flex min-w-0 items-center gap-2">
-              <span className="hidden text-[11px] font-medium text-[var(--text-muted)] sm:inline">ZeroData CRM</span>
-              <span className="hidden text-[var(--border-strong)] sm:inline">/</span>
-              <span className="truncate text-[13px] font-semibold text-[var(--text-primary)]">{activeItem?.label || "Workspace"}</span>
+              <span className="hidden text-[11px] font-medium text-[var(--text-muted)] sm:inline">
+                ZeroData CRM
+              </span>
+              <span className="hidden text-[var(--border-strong)] sm:inline">
+                /
+              </span>
+              <span className="truncate text-[13px] font-semibold text-[var(--text-primary)]">
+                {activeItem?.label || "Workspace"}
+              </span>
             </div>
           </div>
 
@@ -559,7 +673,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           >
             <Search size={15} />
             <span className="flex-1">Search CRM</span>
-            <kbd className="rounded border border-[var(--border-default)] bg-[var(--surface-primary)] px-1.5 py-0.5 text-[9px] font-semibold text-[var(--text-muted)]">Ctrl K</kbd>
+            <kbd className="rounded border border-[var(--border-default)] bg-[var(--surface-primary)] px-1.5 py-0.5 text-[9px] font-semibold text-[var(--text-muted)]">
+              Ctrl K
+            </kbd>
           </button>
 
           <button
@@ -594,33 +710,61 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             >
               {isOnline ? <Wifi size={17} /> : <WifiOff size={17} />}
               {(syncQueueCount > 0 || failedSyncCount > 0) && (
-                <span className={`absolute right-1.5 top-1.5 h-2 w-2 rounded-full ring-2 ring-[var(--surface-primary)] ${failedSyncCount > 0 ? "bg-[var(--status-danger)]" : "bg-[var(--brand-500)]"}`} />
+                <span
+                  className={`absolute right-1.5 top-1.5 h-2 w-2 rounded-full ring-2 ring-[var(--surface-primary)] ${failedSyncCount > 0 ? "bg-[var(--status-danger)]" : "bg-[var(--brand-500)]"}`}
+                />
               )}
             </button>
             {syncOpen && (
-              <div role="dialog" aria-label="Workspace sync status" className="absolute right-0 top-11 w-[300px] overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--surface-elevated)] shadow-[var(--shadow-popover)]">
+              <div
+                role="dialog"
+                aria-label="Workspace sync status"
+                className="absolute right-0 top-11 w-[300px] overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--surface-elevated)] shadow-[var(--shadow-popover)]"
+              >
                 <div className="border-b border-[var(--border-subtle)] px-4 py-3">
-                  <p className="text-[13px] font-semibold text-[var(--text-primary)]">Workspace status</p>
-                  <p className="mt-0.5 text-[11px] text-[var(--text-muted)]">Connectivity and offline sync queue</p>
+                  <p className="text-[13px] font-semibold text-[var(--text-primary)]">
+                    Workspace status
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-[var(--text-muted)]">
+                    Connectivity and offline sync queue
+                  </p>
                 </div>
                 <div className="space-y-2 p-3">
                   <div className="flex items-center gap-3 rounded-[var(--radius-md)] bg-[var(--surface-secondary)] p-3">
-                    <span className={`grid h-8 w-8 place-items-center rounded-[var(--radius-md)] ${isOnline ? "bg-[var(--status-success-soft)] text-[var(--status-success)]" : "bg-[var(--status-danger-soft)] text-[var(--status-danger)]"}`}>
+                    <span
+                      className={`grid h-8 w-8 place-items-center rounded-[var(--radius-md)] ${isOnline ? "bg-[var(--status-success-soft)] text-[var(--status-success)]" : "bg-[var(--status-danger-soft)] text-[var(--status-danger)]"}`}
+                    >
                       {isOnline ? <Wifi size={15} /> : <WifiOff size={15} />}
                     </span>
                     <div className="min-w-0 flex-1">
-                      <p className="text-[12px] font-semibold text-[var(--text-primary)]">{isOnline ? "Online" : "Offline"}</p>
-                      <p className="text-[10px] text-[var(--text-muted)]">{isOnline ? "Changes can sync to the server." : "Changes stay safely in the local queue."}</p>
+                      <p className="text-[12px] font-semibold text-[var(--text-primary)]">
+                        {isOnline ? "Online" : "Offline"}
+                      </p>
+                      <p className="text-[10px] text-[var(--text-muted)]">
+                        {isOnline
+                          ? "Changes can sync to the server."
+                          : "Changes stay safely in the local queue."}
+                      </p>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] p-3">
-                      <p className="text-[20px] font-semibold tabular-nums text-[var(--text-primary)]">{syncQueueCount}</p>
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--text-muted)]">Queued</p>
+                      <p className="text-[20px] font-semibold tabular-nums text-[var(--text-primary)]">
+                        {syncQueueCount}
+                      </p>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--text-muted)]">
+                        Queued
+                      </p>
                     </div>
                     <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] p-3">
-                      <p className={`text-[20px] font-semibold tabular-nums ${failedSyncCount ? "text-[var(--status-danger)]" : "text-[var(--text-primary)]"}`}>{failedSyncCount}</p>
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--text-muted)]">Needs review</p>
+                      <p
+                        className={`text-[20px] font-semibold tabular-nums ${failedSyncCount ? "text-[var(--status-danger)]" : "text-[var(--text-primary)]"}`}
+                      >
+                        {failedSyncCount}
+                      </p>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--text-muted)]">
+                        Needs review
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -644,19 +788,36 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 {isLoading ? "…" : initials}
               </span>
               <span className="hidden max-w-[150px] min-w-0 text-left sm:block">
-                <span className="block truncate text-[11px] font-semibold text-[var(--text-primary)]">{currentUser?.name || "Loading account"}</span>
-                <span className="block truncate text-[9px] text-[var(--text-muted)]">{roleLabel}</span>
+                <span className="block truncate text-[11px] font-semibold text-[var(--text-primary)]">
+                  {currentUser?.name || "Loading account"}
+                </span>
+                <span className="block truncate text-[9px] text-[var(--text-muted)]">
+                  {roleLabel}
+                </span>
               </span>
-              <ChevronDown size={14} className="hidden text-[var(--text-muted)] sm:block" />
+              <ChevronDown
+                size={14}
+                className="hidden text-[var(--text-muted)] sm:block"
+              />
             </button>
             {profileOpen && (
-              <div role="menu" aria-label="User menu" className="absolute right-0 top-12 w-[270px] overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--surface-elevated)] shadow-[var(--shadow-popover)]">
+              <div
+                role="menu"
+                aria-label="User menu"
+                className="absolute right-0 top-12 w-[270px] overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--surface-elevated)] shadow-[var(--shadow-popover)]"
+              >
                 <div className="border-b border-[var(--border-subtle)] p-4">
                   <div className="flex items-center gap-3">
-                    <span className="grid h-10 w-10 place-items-center rounded-[12px] bg-[var(--brand-100)] text-[12px] font-bold text-[var(--brand-800)]">{initials}</span>
+                    <span className="grid h-10 w-10 place-items-center rounded-[12px] bg-[var(--brand-100)] text-[12px] font-bold text-[var(--brand-800)]">
+                      {initials}
+                    </span>
                     <div className="min-w-0">
-                      <p className="truncate text-[13px] font-semibold text-[var(--text-primary)]">{currentUser?.name || "ZeroData user"}</p>
-                      <p className="mt-0.5 truncate text-[10px] text-[var(--text-muted)]">{roleLabel}</p>
+                      <p className="truncate text-[13px] font-semibold text-[var(--text-primary)]">
+                        {currentUser?.name || "ZeroData user"}
+                      </p>
+                      <p className="mt-0.5 truncate text-[10px] text-[var(--text-muted)]">
+                        {roleLabel}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -675,29 +836,50 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     role="menuitem"
                     onClick={() => {
                       setProfileOpen(false);
-                      setLogoutOpen(true);
+                      if (isErpPartnerViewer) {
+                        void logout();
+                      } else {
+                        setLogoutOpen(true);
+                      }
                     }}
                     className="flex w-full items-center gap-3 rounded-[var(--radius-md)] px-3 py-2.5 text-left text-[12px] font-medium text-[var(--status-danger)] hover:bg-[var(--status-danger-soft)]"
                   >
                     <LogOut size={16} />
                     Sign out securely
                   </button>
-                  <p className="px-3 pb-2 text-[10px] leading-4 text-[var(--text-muted)]">
-                    Use Logout to record your clock-out. Closing the browser does not complete attendance.
-                  </p>
+                  {!isErpPartnerViewer && (
+                    <p className="px-3 pb-2 text-[10px] leading-4 text-[var(--text-muted)]">
+                      Use Logout to record your clock-out. Closing the browser
+                      does not complete attendance.
+                    </p>
+                  )}
                 </div>
               </div>
             )}
           </div>
         </header>
 
-        <main id="main-content" className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-          <div className="px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-7">{children}</div>
+        <main
+          id="main-content"
+          className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+        >
+          <div className="px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-7">
+            {children}
+          </div>
         </main>
       </div>
 
-      <CommandPalette items={commandItems} open={commandOpen} onOpenChange={setCommandOpen} />
-      <VerifiedLogoutModal open={logoutOpen} onClose={() => setLogoutOpen(false)} />
+      <CommandPalette
+        items={commandItems}
+        open={commandOpen}
+        onOpenChange={setCommandOpen}
+      />
+      {!isErpPartnerViewer && (
+        <VerifiedLogoutModal
+          open={logoutOpen}
+          onClose={() => setLogoutOpen(false)}
+        />
+      )}
     </div>
   );
 }

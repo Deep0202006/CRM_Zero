@@ -4,6 +4,8 @@
 
 Receivables is the financial-critical authority for Payment Collections. PostgreSQL-confirmed rows and service-only transactional functions own bills, payment verification, balances, versions, audit history, import batches, and operation receipts. Employee-facing Payment Follow-ups, Admin Payment Collections, and the My Day priority panel consume bounded server read models.
 
+ERP remains a Distributor Status fact. Payment Collection readers may join `receivables.distributor_id -> distributor_accounts.erp_id -> erp_systems.erp_id` for server-filtered context and exports, but neither `receivables` nor `receivable_payments` stores ERP identity or text. ERP Partner Viewer accounts have no access to Receivable, Payment, export, command, or broad financial read APIs.
+
 ## AUTHORITY AND MONEY
 
 - `receivables` is money owed; `receivable_payments` is immutable payment identity; activity and operation receipts are append-only evidence.

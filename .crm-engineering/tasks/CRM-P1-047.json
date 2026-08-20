@@ -1,0 +1,127 @@
+{
+  "schemaVersion": 2,
+  "graphSchemaVersion": 1,
+  "flowVersion": "1.2.0",
+  "taskId": "CRM-P1-047",
+  "objective": "Add one canonical ERP fact to Distributor Status and expose a strictly read-only ERP Partner Viewer scoped to assigned ERP systems while preserving existing operational, renewal, and financial authorities.",
+  "risk": "R3",
+  "domains": [
+    "distributor-status",
+    "renewal",
+    "payment-collections",
+    "receivables",
+    "imports",
+    "auth",
+    "erp-access"
+  ],
+  "repository": {
+    "canonicalRoot": "C:\\Users\\dcp69\\Desktop\\CRM_Zero",
+    "worktreePath": "C:\\Users\\dcp69\\Desktop\\CRM_Zero\\.worktrees\\crm-p1-047-erp",
+    "branch": "feat/distributor-erp-partner-visibility",
+    "expectedBaseRef": "origin/main",
+    "expectedBaseSha": "84b944e97efcf01404fe65e2e0e09dbfd23913ea",
+    "observedHeadSha": "84b944e97efcf01404fe65e2e0e09dbfd23913ea",
+    "dirtyBaselineHash": "3e82710a42dde297ef723b359b97bc268a11fbe40791b471405e05ab382b834a"
+  },
+  "phase": "VERIFICATION",
+  "allowedPaths": [
+    "supabase/migrations/047_distributor_erp_partner_visibility.sql",
+    "src/app/**",
+    "src/components/**",
+    "src/context/**",
+    "src/lib/**",
+    "e2e/**",
+    "scripts/**",
+    "docs/contracts/**",
+    "docs/architecture/**",
+    "docs/exec-plans/**",
+    "docs/generated/REPO_MAP.md",
+    ".crm-engineering/**",
+    ".github/workflows/harness.yml"
+  ],
+  "protectedDomains": [
+    "migrations-001-through-046",
+    "attendance-authority",
+    "pipeline",
+    "field-visits",
+    "call-logs",
+    "financial-authority"
+  ],
+  "productionDataMutation": false,
+  "schemaChange": true,
+  "humanGate": {
+    "kind": "OWNER_PRODUCTION_GATE",
+    "status": "PENDING",
+    "reason": "Owner must manually apply reviewed Migration 047 after exact-head product and database verification; Codex remains read-only against production Supabase."
+  },
+  "budgets": {
+    "dataAuthority": "ERP identity is public.erp_systems; Distributor ERP assignment is distributor_accounts.erp_id; renewal remains distributor_accounts.renewal_date; financial authority remains receivables plus effective receivable_payments; ERP scopes are authorization only.",
+    "readBudget": "Internal and external list endpoints apply ERP/search/state filters server-side before pagination, cap pages at 50 rows, and resolve import ERP keys in bounded chunks without per-row network queries.",
+    "writeBudget": "Admin-authorized Distributor commands/imports may resolve or create one canonical ERP and patch distributor_accounts.erp_id; scope management writes only erp_partner_scopes. No migration backfill or financial write is permitted.",
+    "rlsModel": "ERP tables and all ERP read/scope RPCs are service-role only; external visibility is enforced inside security-definer functions by active capability plus exact scope, never by client filtering or base-table exposure.",
+    "indexRequirements": "Unique erp_systems.erp_key plus distributor ERP/update and ERP/renewal indexes; no ERP column or index is added to Receivables or Payments.",
+    "failureMode": "Unknown ERP, invalid mixed capability, active employee assignments, stale import plans, missing scope, or authority errors fail closed without partial authority changes.",
+    "concurrencyModel": "Deterministic ERP IDs, unique normalized keys, existing Distributor versions/import transactions, assignment triggers, and atomic scope RPCs protect concurrent writes.",
+    "idempotencyModel": "Exact normalized ERP keys reuse canonical IDs; existing Distributor and Master Workbook operation/request/resolved-plan hashes remain authoritative; financial idempotency remains Migration 046.",
+    "testPlan": "Focused parser/planner/auth/API tests, Distributor E2E, GitHub PostgreSQL 17.6 fresh-apply and database invariants, exact-head product verification/build, Vercel Preview, and read-only production pre/postchecks."
+  },
+  "acceptance": [
+    {
+      "id": "P1-047-A01",
+      "description": "Create canonical ERP and exclusive ERP Partner access authorities, service-only scope management, and database assignment exclusion without backfill or duplicate business authority.",
+      "stage": "IMPLEMENTATION",
+      "status": "PASS",
+      "required": true,
+      "evidenceIds": ["CRM-P1-047-A01-A05-LOCAL-FOCUSED-PASS", "supabase/migrations/047_distributor_erp_partner_visibility.sql", "scripts/erp-visibility-db/integration.sql"]
+    },
+    {
+      "id": "P1-047-A02",
+      "description": "Integrate ERP create/update/preserve/clear semantics into manual Distributor editing, legacy Distributor import, and versioned Master Workbook V2 with resolved-plan hashing and explicit V1 upgrade failure.",
+      "stage": "IMPLEMENTATION",
+      "status": "PASS",
+      "required": true,
+      "evidenceIds": ["CRM-P1-047-A01-A05-LOCAL-FOCUSED-PASS", "src/lib/__tests__/distributorMaster/workbook.test.ts", "src/lib/__tests__/distributors/importAuthority.test.ts"]
+    },
+    {
+      "id": "P1-047-A03",
+      "description": "Project and server-filter the same canonical ERP fact across Distributor Status, Renewals, Distributor Collections, invoice Payment Collections, and applicable exports without duplicating financial or renewal facts.",
+      "stage": "IMPLEMENTATION",
+      "status": "PASS",
+      "required": true,
+      "evidenceIds": ["CRM-P1-047-A01-A05-LOCAL-FOCUSED-PASS", "e2e/distributors/distributors.spec.ts", "scripts/erp-visibility-db/integration.sql"]
+    },
+    {
+      "id": "P1-047-A04",
+      "description": "Provide a minimal read-only, server-scoped ERP Partner portal, account/scope management, auth isolation, safe navigation, and explicit denial of internal and financial APIs.",
+      "stage": "IMPLEMENTATION",
+      "status": "PASS",
+      "required": true,
+      "evidenceIds": ["CRM-P1-047-A01-A05-LOCAL-FOCUSED-PASS", "src/lib/__tests__/erpVisibilityContract.test.ts", "e2e/distributors/distributors.spec.ts"]
+    },
+    {
+      "id": "P1-047-A05",
+      "description": "Preserve existing Distributor, Renewal, Receivable, Payment, import, numeric-wire and Master Workbook authorities; update contracts, Graph authorities/capabilities, and compile the six requested lessons.",
+      "stage": "IMPLEMENTATION",
+      "status": "PASS",
+      "required": true,
+      "evidenceIds": ["CRM-P1-047-A01-A05-LOCAL-FOCUSED-PASS", ".crm-engineering/knowledge/lessons-registry.json", "src/lib/__tests__/receivables/moneyWire.test.ts"]
+    },
+    {
+      "id": "P1-047-V01",
+      "description": "Focused unit, database, E2E, typecheck, lint, build, exact-head CI and Vercel Preview evidence proves the high-value ERP authority, propagation, security, isolation and compatibility invariants.",
+      "stage": "VERIFICATION",
+      "status": "PENDING",
+      "required": true,
+      "evidenceIds": []
+    },
+    {
+      "id": "P1-047-R01",
+      "description": "Prepare Migration 047 owner SQL, hash, read-only precheck, schema/security delta, zero-backfill and zero-financial-mutation statements, postcheck and forward-only recovery; stop at OWNER_PRODUCTION_GATE.",
+      "stage": "RELEASE",
+      "status": "PENDING",
+      "required": true,
+      "evidenceIds": []
+    }
+  ],
+  "blocker": null
+}
