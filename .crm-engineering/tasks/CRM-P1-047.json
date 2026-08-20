@@ -20,10 +20,10 @@
     "branch": "feat/distributor-erp-partner-visibility",
     "expectedBaseRef": "origin/main",
     "expectedBaseSha": "84b944e97efcf01404fe65e2e0e09dbfd23913ea",
-    "observedHeadSha": "84b944e97efcf01404fe65e2e0e09dbfd23913ea",
+    "observedHeadSha": "8eebf1439dccc42470d6d41f5c237f00477a09c4",
     "dirtyBaselineHash": "3e82710a42dde297ef723b359b97bc268a11fbe40791b471405e05ab382b834a"
   },
-  "phase": "VERIFICATION",
+  "phase": "PRODUCTION_GATE",
   "allowedPaths": [
     "supabase/migrations/047_distributor_erp_partner_visibility.sql",
     "src/app/**",
@@ -110,9 +110,9 @@
       "id": "P1-047-V01",
       "description": "Focused unit, database, E2E, typecheck, lint, build, exact-head CI and Vercel Preview evidence proves the high-value ERP authority, propagation, security, isolation and compatibility invariants.",
       "stage": "VERIFICATION",
-      "status": "PENDING",
+      "status": "PASS",
       "required": true,
-      "evidenceIds": []
+      "evidenceIds": [".crm-engineering/proofs/CRM-P1-047/v01-exact-head-verification.json", "CI-RUN-32363892068", "VERCEL-PREVIEW-READY-6CJy2mLiMNzEEQtAqY1iy6NbQ8b2"]
     },
     {
       "id": "P1-047-R01",
@@ -120,7 +120,7 @@
       "stage": "RELEASE",
       "status": "PENDING",
       "required": true,
-      "evidenceIds": []
+      "evidenceIds": [".crm-engineering/proofs/CRM-P1-047/owner-migration-047-gate.json", ".crm-engineering/proofs/CRM-P1-047/migration-047-precheck.sql", ".crm-engineering/proofs/CRM-P1-047/migration-047-postcheck.sql"]
     }
   ],
   "blocker": null
