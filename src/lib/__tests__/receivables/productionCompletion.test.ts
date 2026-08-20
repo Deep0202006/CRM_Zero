@@ -49,8 +49,11 @@ describe("Receivables production completion contracts", () => {
     const migration = read("supabase/migrations/034_receivables_production_completion.sql");
     expect(adminRoute).toContain("assignees");
     expect(adminRoute).toContain("listEligibleOperationalEmployees");
-    expect(read("src/lib/employees/server.ts")).toContain('capability_code", "admin');
-    expect(read("src/lib/employees/server.ts")).toContain("MAX_OPERATIONAL_EMPLOYEES");
+    const employeeAuthority = read("src/lib/employees/server.ts");
+    expect(employeeAuthority).toMatch(
+      /\.in\(\s*"capability_code",\s*\[\s*"admin",\s*"erp_partner_viewer"\s*\]\s*\)/,
+    );
+    expect(employeeAuthority).toContain("MAX_OPERATIONAL_EMPLOYEES");
     expect(commandRoute).toContain('error.code==="ZD001"');
     expect(commandRoute).toContain("INVALID_ASSIGNEE");
     expect(importRoute).toContain("IMPORT_EMPLOYEE_CHANGED");

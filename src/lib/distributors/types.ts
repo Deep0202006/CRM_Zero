@@ -7,6 +7,8 @@ export interface DistributorStatusRow {
   distributor_id: string;
   distributor_name: string;
   distributor_reference: string | null;
+  erp_id: string | null;
+  erp_name: string | null;
   lead_id: string | null;
   phone: string | null;
   city: string | null;
@@ -58,6 +60,9 @@ export interface RenewalMetrics {
 export interface RenewalListRow {
   distributor_id: string;
   distributor_name: string;
+  distributor_reference?: string | null;
+  erp_id: string | null;
+  erp_name: string | null;
   assigned_to: string;
   assigned_employee_name: string;
   renewal_date: string | null;

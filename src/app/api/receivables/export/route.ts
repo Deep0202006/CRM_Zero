@@ -18,7 +18,7 @@ export async function GET(request: Request) {
   let rows: Record<string, unknown>[];
   try {
     rows = await collectBoundedExportRows(async (from, to) => {
-      let query = context.service.from("receivables_financial_read_v1").select("distributor_name,contact_person,bill_reference,bill_amount,confirmed_paid_amount,outstanding_amount,bill_due_date,next_follow_up_date,assigned_to,payment_state,lifecycle_status,aging_bucket,created_at");
+      let query = context.service.from("receivables_financial_read_v2").select("distributor_name,erp_id,erp_name,contact_person,bill_reference,bill_amount,confirmed_paid_amount,outstanding_amount,bill_due_date,next_follow_up_date,assigned_to,payment_state,lifecycle_status,aging_bucket,created_at");
       query = applyReceivableFilters(query, parsed.data, true).order("created_at", { ascending: false }).order("receivable_id", { ascending: true }).range(from, to);
       const { data, error } = await query;
       if (error) throw error;

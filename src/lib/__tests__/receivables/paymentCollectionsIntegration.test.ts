@@ -16,14 +16,18 @@ describe("Payment Collections additive distributor integration",()=>{
  });
 
  test("exposes Total Collected from effective confirmed payments",()=>{
-  expect(payments).toContain('["Total Collected",formatInr(summary.total_collected)]');
+  expect(payments).toMatch(
+    /\[\s*"Total Collected",\s*formatInr\(summary\.total_collected\)\s*\]/,
+  );
   expect(migration).toContain("where verification_status='confirmed' and reversed_at is null");
   expect(migration).toContain("'total_collected',coalesce((select sum(amount) from payments),0)::text");
  });
 
  test("exposes Collection Setup Required without fabricating a receivable",()=>{
   expect(payments).toContain("Collection Setup Required");
-  expect(distributors).toContain('<option value="COLLECTION_SETUP_REQUIRED">Collection Setup Required</option>');
+  expect(distributors).toMatch(
+    /<option value="COLLECTION_SETUP_REQUIRED">\s*Collection Setup Required\s*<\/option>/,
+  );
   expect(migration).toContain("'collection_setup_required',(select setup_required from collection_setup)");
   expect(migration).toContain("d.billing_status='billed'");
   expect(migration).toContain("not exists(select 1 from public.receivables r where r.distributor_id=d.distributor_id and r.lifecycle_status<>'cancelled')");

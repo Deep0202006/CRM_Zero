@@ -201,7 +201,7 @@ requireInvariant(!/\b(?:insert\s+into|update|delete\s+from|truncate)\b/i.test(re
 requireInvariant(renewalMigration.includes("greatest(1,least(coalesce(p_page_size,50),50))"), "Renewal list must remain bounded to 50 rows");
 const renewalRoute = readFileSync(resolve(root, "src/app/api/distributors/renewals/route.ts"), "utf8");
 requireInvariant((renewalRoute.match(/distributor_renewal_metrics_v1/g) ?? []).length === 1, "Renewal cards must use one metrics RPC");
-requireInvariant((renewalRoute.match(/distributor_renewals_list_v1/g) ?? []).length === 1, "Renewal table must use one bounded list RPC");
+requireInvariant((renewalRoute.match(/distributor_renewals_list_v2/g) ?? []).length === 1, "Renewal table must use one bounded ERP-aware list RPC");
 requireInvariant(renewalRoute.includes("distributorReadError") && !/catch[\s\S]{0,160}(?:rows\s*:\s*\[\]|return\s+\[\])/i.test(renewalRoute), "Renewal API errors cannot silently become empty data");
 const renewalPage = readFileSync(resolve(root, "src/components/distributors/PaymentRenewalsPage.tsx"), "utf8");
 requireInvariant(renewalPage.includes("view=metrics") && renewalPage.includes("view=list") && renewalPage.includes("pageSize=50"), "Renewal screen must declare its two-request 50-row budget");

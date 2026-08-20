@@ -29,6 +29,7 @@ export function receivablesExportFilename(now = new Date()): string {
 export function toReceivableExportRow(row: Record<string, unknown>, ownerName: string) {
   return {
     Distributor: spreadsheetSafeText(row.distributor_name),
+    ERP: spreadsheetSafeText(row.erp_name ?? "Not Set"),
     Contact: spreadsheetSafeText(row.contact_person),
     "Bill Ref": spreadsheetSafeText(row.bill_reference),
     "Bill Amount": row.bill_amount,

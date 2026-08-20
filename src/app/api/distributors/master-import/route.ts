@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { apiError, contextFor, distributorReadError } from "@/lib/distributors/server";
-import { MAX_MASTER_WORKBOOK_BYTES, readMasterWorkbook, type ParsedMasterWorkbook } from "@/lib/distributorMaster/workbook";
+import { MasterTemplateOutdatedError, MAX_MASTER_WORKBOOK_BYTES, readMasterWorkbook, type ParsedMasterWorkbook } from "@/lib/distributorMaster/workbook";
 import { MasterPlanRevalidationError, buildMasterImportPreview, revalidateMasterImportConfirmation } from "@/lib/distributorMaster/preview";
 import { confirmMasterImport, MasterConfirmationError } from "@/lib/distributorMaster/confirmation";
 
@@ -33,6 +33,7 @@ export async function POST(request: Request) {
   try {
     workbook = readMasterWorkbook(new Uint8Array(await file.arrayBuffer()), file.name);
   } catch (cause) {
+    if (cause instanceof MasterTemplateOutdatedError) return apiError(400, cause.code, cause.message);
     return apiError(400, "MASTER_WORKBOOK_INVALID", cause instanceof Error ? cause.message : "The master workbook is invalid.");
   }
   try {

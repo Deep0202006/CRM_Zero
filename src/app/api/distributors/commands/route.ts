@@ -1,10 +1,13 @@
 import { normalizedIdentity } from "@/lib/distributors/domain";
-import { apiError, contextFor, distributorReadError, requestHash, stableDistributorId } from "@/lib/distributors/server";
+import { apiError, contextFor, distributorReadError, externalViewerDenied, requestHash, stableDistributorId } from "@/lib/distributors/server";
 import { distributorCommandSchema, distributorCreateSchema, distributorRenewSchema, distributorUpdateSchema } from "@/lib/distributors/validation";
+import { resolveErpNames } from "@/lib/erp/server";
 
 export async function POST(request: Request) {
   const context = await contextFor(request);
   if (!context) return apiError(401, "AUTH_REQUIRED", "Sign in again.");
+  const externalDenied = externalViewerDenied(context);
+  if (externalDenied) return externalDenied;
   let raw: unknown;
   try { raw = await request.json(); } catch { return apiError(400, "INVALID_JSON", "Invalid request."); }
   const command = distributorCommandSchema.safeParse(raw);
@@ -14,11 +17,20 @@ export async function POST(request: Request) {
   if (command.data.operation_type === "create") {
     const parsed = distributorCreateSchema.safeParse(command.data.payload);
     if (!parsed.success) return apiError(400, "VALIDATION_FAILED", parsed.error.issues[0]?.message ?? "Invalid distributor status.");
-    payload = { ...parsed.data, distributor_id: stableDistributorId(command.data.operation_id), identity_key: normalizedIdentity(parsed.data.distributor_name, parsed.data.distributor_reference) };
+    const erp = (await resolveErpNames(context.service, [parsed.data.erp_name!])).get(parsed.data.erp_name!.normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleLowerCase("en-IN"))!;
+    const { erp_action: _erpAction, ...fields } = parsed.data;
+    void _erpAction;
+    payload = { ...fields, erp_id: erp.erp_id, erp_name: erp.erp_name, distributor_id: stableDistributorId(command.data.operation_id), identity_key: normalizedIdentity(parsed.data.distributor_name, parsed.data.distributor_reference) };
   } else if (command.data.operation_type === "update") {
     const parsed = distributorUpdateSchema.safeParse(command.data.payload);
     if (!parsed.success) return apiError(400, "VALIDATION_FAILED", parsed.error.issues[0]?.message ?? "Invalid distributor status.");
-    payload = { ...parsed.data, identity_key: normalizedIdentity(parsed.data.distributor_name, parsed.data.distributor_reference) };
+    const { erp_action: erpAction, ...fields } = parsed.data;
+    let erpPatch: Record<string, unknown> = {};
+    if (erpAction === "set" && parsed.data.erp_name) {
+      const erp = (await resolveErpNames(context.service, [parsed.data.erp_name])).get(parsed.data.erp_name.normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleLowerCase("en-IN"))!;
+      erpPatch = { erp_id: erp.erp_id, erp_name: erp.erp_name };
+    } else if (erpAction === "clear") erpPatch = { erp_id: null };
+    payload = { ...fields, ...erpPatch, identity_key: normalizedIdentity(parsed.data.distributor_name, parsed.data.distributor_reference) };
   } else {
     const parsed = distributorRenewSchema.safeParse(command.data.payload);
     if (!parsed.success) return apiError(400, "VALIDATION_FAILED", parsed.error.issues[0]?.message ?? "Invalid renewal.");

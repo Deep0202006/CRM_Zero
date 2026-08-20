@@ -44,6 +44,7 @@ export const importRequestSchema=z.object({mode:z.enum(["preview","confirm"]),op
 const optionalDateParam=z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional();
 export const receivablesFilterSchema=z.object({
  page:z.coerce.number().int().min(1).default(1),pageSize:z.coerce.number().int().min(1).max(50).default(20),search:z.string().trim().max(120).optional(),owner:uuid.optional(),paymentState:z.enum(["Unpaid","Partially Paid","Paid","Disputed","Cancelled"]).optional(),alertState:z.enum(["payment_verification_pending","promise_overdue","followup_overdue","promise_due_today","followup_due_today","upcoming","disputed","none"]).optional(),aging:z.enum(["Current","1-7 days","8-15 days","16-30 days","31+ days"]).optional(),billDueFrom:optionalDateParam,billDueTo:optionalDateParam,followUpFrom:optionalDateParam,followUpTo:optionalDateParam,
+ erp:uuid.optional(),erpUnset:z.enum(["true"]).optional(),
 }).strict();
 export type ReceivablesFilters=z.infer<typeof receivablesFilterSchema>;
 export function parseReceivablesFilters(url:URL){const values=Object.fromEntries([...url.searchParams.entries()].filter(([,value])=>value!==""));return receivablesFilterSchema.safeParse(values)}

@@ -1,4 +1,4 @@
-import { apiError, contextFor, distributorReadError } from "@/lib/distributors/server";
+import { apiError, contextFor, distributorReadError, externalViewerDenied } from "@/lib/distributors/server";
 
 export const dynamic = "force-dynamic";
 
@@ -7,6 +7,8 @@ type DistributorRouteContext = { params: Promise<{ id: string }> };
 export async function GET(request: Request, routeContext: DistributorRouteContext) {
   const auth = await contextFor(request);
   if (!auth) return apiError(401, "AUTH_REQUIRED", "Sign in again.");
+  const externalDenied = externalViewerDenied(auth);
+  if (externalDenied) return externalDenied;
   const { id } = await routeContext.params;
   const [record, events] = await Promise.all([
     auth.userClient.from("distributor_accounts").select("distributor_id,distributor_name,distributor_reference,phone,city,identity_key,lead_id,assigned_to,installation_status,installation_completed_at,training_status,training_completed_at,mapping_status,mapped_at,activity_status,billing_status,billed_at,bill_reference,renewal_date,version,updated_at").eq("distributor_id", id).maybeSingle(),

@@ -12,26 +12,26 @@ const outstandingRpc=migration.slice(functionStart,functionEnd);
 
 describe("Distributor Status Receivables actions",()=>{
  test("renders canonical collection facts as read-only columns",()=>{
-  expect(page).toContain('["Distributor Name","Assigned Employee","Installation","Training","Mapping","Activity","Billing","Payment","Received","Outstanding"');
+  expect(page).toMatch(/\[\s*"Distributor Name",\s*"ERP",\s*"Assigned Employee"/);
   expect(page).toContain("row.collection_state");
-  expect(page).toContain('formatInr(row.confirmed_collected_amount??"0.00")');
-  expect(page).toContain('formatInr(row.outstanding_amount??"0.00")');
+  expect(page).toMatch(/formatInr\(row\.confirmed_collected_amount\s*\?\?\s*"0.00"\)/);
+  expect(page).toMatch(/formatInr\(row\.outstanding_amount\s*\?\?\s*"0.00"\)/);
   expect(page).not.toMatch(/name=["'](?:confirmed_collected_amount|outstanding_amount|collection_state)["']/);
  });
 
  test("reuses canonical Receivables create and payment commands",()=>{
   expect(page).toContain("<ReceivablesCreateModal");
-  expect(page).toContain('<AdminReceivableActionModal action="direct_payment"');
-  expect(page).toContain('operation_type:"create"');
-  expect(page).toContain('operation_type:"direct_payment"');
-  expect(page).toContain("receivable_id:paymentTarget.receivable_id");
-  expect(page).toContain("expected_version:paymentTarget.version");
+  expect(page).toMatch(/<AdminReceivableActionModal\s+action="direct_payment"/);
+  expect(page).toMatch(/operation_type:\s*"create"/);
+  expect(page).toMatch(/operation_type:\s*"direct_payment"/);
+  expect(page).toMatch(/receivable_id:\s*paymentTarget\.receivable_id/);
+  expect(page).toMatch(/expected_version:\s*paymentTarget\.version/);
   expect(createModal).toContain('name="distributor_id" value={initialDistributor.distributor_id}');
   expect(createModal).toContain("const distributor=initialDistributor??distributors.find");
  });
 
  test("requires exact selection when a distributor has multiple outstanding receivables",()=>{
-  expect(page).toContain("if(Number(result.total)===1){setPaymentTarget(exact[0]);return}");
+  expect(page).toMatch(/if \(Number\(result\.total\) === 1\)[\s\S]*setPaymentTarget\(exact\[0\]\);[\s\S]*return;/);
   expect(page).toContain('title="Select exact Receivable"');
   expect(page).toContain("key={candidate.receivable_id}");
   expect(page).toContain("setPaymentTarget(candidate)");

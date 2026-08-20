@@ -35,7 +35,9 @@ describe("Attendance terminal queue selection", () => {
 
   test("office auto-attendance requires the server-authoritative role mode before durable save", () => {
     const auth = read("src/context/AuthContext.tsx");
-    const authority = auth.indexOf('fetch(`/api/attendance/mine?date=${todayStr}`');
+    const authority = auth.search(
+      /fetch\(\s*`\/api\/attendance\/mine\?date=\$\{todayStr\}`/,
+    );
     const mode = auth.indexOf('authority.mode !== "office_auto"', authority);
     const save = auth.indexOf("saveAttendanceWithEvidence(newRecord, null)", authority);
     expect(authority).toBeGreaterThan(0);

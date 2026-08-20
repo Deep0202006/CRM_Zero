@@ -8,6 +8,8 @@ const optionalDate = z.union([date, z.literal(""), z.null()]).transform((value) 
 const commonFields = {
   distributor_name: z.string().trim().min(1).max(200),
   distributor_reference: z.string().trim().max(80).default(""),
+  erp_name: z.string().trim().max(160).optional(),
+  erp_action: z.enum(["set", "clear", "preserve"]).default("preserve"),
   lead_id: z.union([uuid, z.literal(""), z.null()]).default(null),
   phone: z.string().trim().max(40).default(""),
   city: z.string().trim().max(120).default(""),
@@ -30,7 +32,10 @@ const validate = (value: { installation_status: string; training_status: string;
   if (message) context.addIssue({ code: "custom", path: message.startsWith("Mapping") || message.startsWith("Mapped") ? ["mapping_status"] : ["activity_status"], message });
 };
 
-export const distributorCreateSchema = z.object({ ...commonFields, mapping_status: z.enum(mappingStatuses).default("pending") }).strict().superRefine(validate);
+export const distributorCreateSchema = z.object({ ...commonFields, mapping_status: z.enum(mappingStatuses).default("pending") }).strict().superRefine((value, context) => {
+  validate(value, context);
+  if (value.erp_action !== "set" || !value.erp_name) context.addIssue({ code: "custom", path: ["erp_name"], message: "ERP is required for a new Distributor." });
+});
 export const distributorUpdateSchema = z.object({ ...commonFields, mapping_status: z.enum(mappingStatuses).nullable(), distributor_id: uuid, expected_version: z.number().int().positive() }).strict().superRefine(validate);
 export const distributorRenewSchema = z.object({ distributor_id: uuid, expected_version: z.number().int().positive(), renewal_date: date, note: z.string().trim().max(1000).default("") }).strict();
 export const distributorCommandSchema = z.object({ operation_id: uuid, operation_type: z.enum(["create", "update", "renew"]), payload: z.record(z.string(), z.unknown()) }).strict();
@@ -44,6 +49,8 @@ export const distributorListSchema = z.object({
   billing: z.enum(["", ...billingStatuses]).default(""),
   renewal: z.enum(["", "due_soon"]).default(""),
   paymentStatus: z.enum(["", "PAID", "NOT_PAID", "DISPUTED", "COLLECTION_SETUP_REQUIRED", "NOT_BILLED"]).default(""),
+  erp: z.union([uuid, z.literal("")]).default(""),
+  erpUnset: z.enum(["", "true"]).default(""),
 });
 
 export const renewalReadSchema = z.object({
@@ -52,4 +59,6 @@ export const renewalReadSchema = z.object({
   page: z.coerce.number().int().min(1).max(10000).default(1),
   pageSize: z.coerce.number().int().min(1).max(50).default(50),
   limit: z.coerce.number().int().min(1).max(50).default(50),
+  erp: z.union([uuid, z.literal("")]).default(""),
+  erpUnset: z.enum(["", "true"]).default(""),
 });
