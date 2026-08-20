@@ -20,7 +20,7 @@
     "observedHeadSha": "3477f528ee4660c24025e56744f2c9f2850fe39a",
     "dirtyBaselineHash": "fe605eaec3b7f0051b5175105a6a5e3068581c3dd76bb0629e211184a3bb61a4"
   },
-  "phase": "DISCOVERY",
+  "phase": "TARGETED_VERIFICATION",
   "allowedPaths": [
     "src/app/api/distributors/route.ts",
     "src/lib/distributors/**",
@@ -67,25 +67,38 @@
       "id": "DIST-NUMERIC-WIRE-A01",
       "description": "The Distributor API boundary deterministically normalizes trusted finite string or number projection money to canonical two-decimal strings, rejects malformed values, and formatInr defensively accepts string or number without changing financial authority.",
       "stage": "IMPLEMENTATION",
-      "status": "PENDING",
+      "status": "PASS",
       "required": true,
-      "evidenceIds": []
+      "evidenceIds": [
+        "git:fcf542fab133fc55ba0090edcd1e2b4a3a2034ff",
+        "jest:distributors-and-receivables-domain:43-passed"
+      ]
     },
     {
       "id": "DIST-NUMERIC-WIRE-V01",
       "description": "Focused unit coverage proves 0, 400, and 400.5 numeric wire values become canonical strings; Distributor E2E uses numeric money at least once and renders INR 400 and INR 600; typecheck, scoped lint, production build, and git diff check pass.",
       "stage": "VERIFICATION",
-      "status": "PENDING",
+      "status": "PASS",
       "required": true,
-      "evidenceIds": []
+      "evidenceIds": [
+        "jest:focused-money-contract:2-suites-43-tests-passed",
+        "playwright:distributor-numeric-wire:1-passed",
+        "typecheck:tsc-noemit-passed",
+        "lint:scoped-eslint-passed",
+        "build:next-production-fcf542f-passed",
+        "git-diff-check:3477f52-to-fcf542f-passed"
+      ]
     },
     {
       "id": "DIST-NUMERIC-WIRE-L01",
       "description": "POSTGRES_NUMERIC_WIRE_CONTRACT_RULE and WIRE_MOCK_REALISM_RULE are persisted as COMPILED in the Graph lessons registry with implementation and regression protection.",
       "stage": "IMPLEMENTATION",
-      "status": "PENDING",
+      "status": "PASS",
       "required": true,
-      "evidenceIds": []
+      "evidenceIds": [
+        "git:fcf542fab133fc55ba0090edcd1e2b4a3a2034ff",
+        "focused-proof:compiled-lessons-and-regression-linkage"
+      ]
     },
     {
       "id": "DIST-NUMERIC-WIRE-R01",
