@@ -4,7 +4,7 @@
   "facts": [
     {
       "id": "erp_system",
-      "status": "OWNER_GATE",
+      "status": "PRODUCTION_CERTIFIED",
       "authority": "public.erp_systems",
       "identity": [
         "erp_id",
@@ -16,7 +16,7 @@
     },
     {
       "id": "distributor_erp_assignment",
-      "status": "OWNER_GATE",
+      "status": "PRODUCTION_CERTIFIED",
       "authority": "public.distributor_accounts.erp_id",
       "identity": [
         "distributor_id"
@@ -28,7 +28,7 @@
     },
     {
       "id": "erp_partner_scope",
-      "status": "OWNER_GATE",
+      "status": "PRODUCTION_CERTIFIED",
       "authority": "public.erp_partner_scopes",
       "identity": [
         "user_id",

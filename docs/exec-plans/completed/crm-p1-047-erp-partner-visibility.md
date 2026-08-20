@@ -43,7 +43,11 @@ Focused unit/API/E2E tests locally; GitHub Actions PostgreSQL for Migration 047;
 
 - [x] Production mutation is not authorized for Codex.
 - [x] Schema/RLS impact is explicitly authorized through Migration 047 and Owner gate.
-- [ ] Read-only production precheck completed before handoff.
+- [x] Read-only production precheck completed before handoff.
+- [x] Owner manually applied Migration 047.
+- [x] Read-only production postcheck passed with zero ERP backfill and zero financial mutation.
+- [x] Product PR #65 merged only after Owner certification.
+- [x] Exact production main deployment reached READY.
 - [x] Secrets and production connections are excluded from CI/local tests.
 
 ## Rollback
@@ -58,3 +62,9 @@ Product remains unmerged until schema certification. Any post-application correc
 ## Progress
 
 - Worktree created from Graph v1.2 main `84b944e97efcf01404fe65e2e0e09dbfd23913ea`.
+- Exact certified product head: `057e760cc5f00155d1cece63e2bcbb61bc261f6b`.
+- Owner manually applied Migration 047; SQL SHA256 `37059fc850ef6f5bc545609965ffcf3eac87cf80ae8298121500949afae0c06a`.
+- Read-only production postcheck PASS: 59 distributors, 0 ERP backfill, 0 receivables, 0 payments, 0 confirmed collected.
+- PR #65 merged as `3374b6a4c0a8f39b8305010113736cc8cd8f49d8`.
+- Production Vercel deployment `dpl_5wRbKi6b9q83pR4n1FhqdPJyp2Jm` is READY.
+- CRM-P1-047 is COMPLETE.

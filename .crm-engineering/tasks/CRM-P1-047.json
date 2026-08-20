@@ -20,10 +20,10 @@
     "branch": "feat/distributor-erp-partner-visibility",
     "expectedBaseRef": "origin/main",
     "expectedBaseSha": "84b944e97efcf01404fe65e2e0e09dbfd23913ea",
-    "observedHeadSha": "8eebf1439dccc42470d6d41f5c237f00477a09c4",
+    "observedHeadSha": "057e760cc5f00155d1cece63e2bcbb61bc261f6b",
     "dirtyBaselineHash": "3e82710a42dde297ef723b359b97bc268a11fbe40791b471405e05ab382b834a"
   },
-  "phase": "PRODUCTION_GATE",
+  "phase": "COMPLETE",
   "allowedPaths": [
     "supabase/migrations/047_distributor_erp_partner_visibility.sql",
     "src/app/**",
@@ -51,8 +51,8 @@
   "schemaChange": true,
   "humanGate": {
     "kind": "OWNER_PRODUCTION_GATE",
-    "status": "PENDING",
-    "reason": "Owner must manually apply reviewed Migration 047 after exact-head product and database verification; Codex remains read-only against production Supabase."
+    "status": "SATISFIED",
+    "reason": "Owner manually applied reviewed Migration 047; Codex then completed read-only production certification and performed no production mutation."
   },
   "budgets": {
     "dataAuthority": "ERP identity is public.erp_systems; Distributor ERP assignment is distributor_accounts.erp_id; renewal remains distributor_accounts.renewal_date; financial authority remains receivables plus effective receivable_payments; ERP scopes are authorization only.",
@@ -116,11 +116,11 @@
     },
     {
       "id": "P1-047-R01",
-      "description": "Prepare Migration 047 owner SQL, hash, read-only precheck, schema/security delta, zero-backfill and zero-financial-mutation statements, postcheck and forward-only recovery; stop at OWNER_PRODUCTION_GATE.",
+      "description": "Owner manually applies reviewed Migration 047; production is then certified read-only before product merge and release completion.",
       "stage": "RELEASE",
-      "status": "PENDING",
+      "status": "PASS",
       "required": true,
-      "evidenceIds": [".crm-engineering/proofs/CRM-P1-047/owner-migration-047-gate.json", ".crm-engineering/proofs/CRM-P1-047/migration-047-precheck.sql", ".crm-engineering/proofs/CRM-P1-047/migration-047-postcheck.sql"]
+      "evidenceIds": [".crm-engineering/proofs/CRM-P1-047/production-047-certification.json", ".crm-engineering/proofs/CRM-P1-047/owner-migration-047-gate.json", ".crm-engineering/proofs/CRM-P1-047/migration-047-precheck.sql", ".crm-engineering/proofs/CRM-P1-047/migration-047-postcheck.sql"]
     }
   ],
   "blocker": null
