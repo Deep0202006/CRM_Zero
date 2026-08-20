@@ -2,6 +2,7 @@ const rpc = jest.fn();
 const context = {
   userId: "20000000-0000-4000-a000-000000000001",
   isAdmin: false,
+  isErpPartnerViewer: false,
   service: { rpc },
   userClient: {},
 };
@@ -11,6 +12,7 @@ jest.mock("@/lib/receivables/server", () => ({
   contextFor: jest.fn(async () => context),
   requestHash: () => "a".repeat(64),
   commandMessages: {},
+  externalViewerDenied: () => null,
   apiError: (status: number, code: string, message: string, current?: unknown) => Response.json({ success: false, code, message, ...(current ? { current } : {}) }, { status }),
 }));
 jest.mock("@/lib/receivables/importServer", () => ({ buildImportPreview: jest.fn() }));
