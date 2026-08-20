@@ -5,8 +5,15 @@
       "date": "2026-08-20",
       "domain": "Local database verification",
       "id": "LOCAL_EPHEMERAL_DB_TOOLCHAIN_RULE",
-      "rule": "Schema-critical tasks require real disposable database proof, but local database software must not be installed persistently when an ephemeral runtime or authoritative CI database can provide the evidence. Reuse an existing runtime when available; avoid repeated downloads; clean temporary tooling after proof.",
-      "enforcementStatus": "POLICY_CONTEXT"
+      "rule": "Schema-critical tasks require real disposable database proof. If authoritative CI already supplies equivalent disposable database/runtime proof, agents must not download or install redundant local infrastructure. Local external tooling download requires explicit Owner approval unless already present, and agents must not create temporary infrastructure they cannot clean up themselves.",
+      "enforcementStatus": "COMPILED"
+    },
+    {
+      "date": "2026-08-20",
+      "domain": "Local database verification",
+      "id": "REDUNDANT_LOCAL_TOOLCHAIN_DENY_RULE",
+      "rule": "Prefer authoritative CI proof over redundant local setup when equivalent; reuse an existing approved toolchain before obtaining Owner approval for any external tooling download.",
+      "enforcementStatus": "COMPILED"
     },
     {
       "date": "2026-08-20",
