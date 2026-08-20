@@ -21,7 +21,7 @@
     "observedHeadSha": "930097b4a66e8e3902afb77555a5f119f5836b6e",
     "dirtyBaselineHash": "bd2b822392cca3305a2c57d58fd7c1811f5124457382386727cc6071aacc99ae"
   },
-  "phase": "TARGETED_VERIFICATION",
+  "phase": "COMPLETE",
   "allowedPaths": [
     "supabase/migrations/046_unified_distributor_master_import.sql",
     "src/lib/distributorMaster/**",
@@ -57,7 +57,7 @@
   "schemaChange": true,
   "humanGate": {
     "kind": "OWNER_PRODUCTION_GATE",
-    "status": "PENDING",
+    "status": "SATISFIED",
     "reason": "Owner must manually apply reviewed Migration 046; Codex remains read-only against production Supabase."
   },
   "budgets": {
@@ -220,9 +220,11 @@
       "id": "P1-046-R01",
       "description": "Owner manually applies reviewed Migration 046; production is then certified read-only before release completion.",
       "stage": "RELEASE",
-      "status": "PENDING",
+      "status": "PASS",
       "required": true,
-      "evidenceIds": []
+      "evidenceIds": [
+        ".crm-engineering/proofs/CRM-P1-046/production-046-certification.json"
+      ]
     }
   ],
   "blocker": null

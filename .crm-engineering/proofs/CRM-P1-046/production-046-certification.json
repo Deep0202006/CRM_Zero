@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "taskId": "CRM-P1-046",
+  "result": "PASS",
+  "certification": "OWNER_APPLIED_AND_INDEPENDENTLY_READ_ONLY_VERIFIED",
+  "ownerAppliedManually": true,
+  "migration": 46,
+  "sqlSha256": "bd1fb0376a82fee6fed60a49d00ec4ea497b2e747afa22d3bdbf271269b25ecc",
+  "productionMutationByCodex": false,
+  "noHistoricalBackfill": true,
+  "noDummyOrTestProductionData": true,
+  "schema": {
+    "receivablePaymentsImportKey": {
+      "exists": true,
+      "dataType": "text",
+      "nullable": true
+    },
+    "receivablePaymentsImportKeyIndex": {
+      "name": "receivable_payments_import_key_uidx",
+      "exists": true,
+      "unique": true,
+      "valid": true,
+      "predicate": "import_key IS NOT NULL"
+    },
+    "masterImportBatches": {
+      "relation": "public.distributor_master_import_batches",
+      "exists": true,
+      "rlsEnabled": true,
+      "anonTableAccess": false,
+      "authenticatedTableAccess": false,
+      "serviceRoleTableAccess": true
+    }
+  },
+  "serviceOnlyFunctions": [
+    "resolve_distributor_master_receivables_v1",
+    "resolve_distributor_master_payment_targets_v1",
+    "apply_distributor_master_payments_v1",
+    "import_distributor_master_v1"
+  ],
+  "functionPermissions": {
+    "anonExecute": false,
+    "authenticatedExecute": false,
+    "serviceRoleExecute": true
+  },
+  "productionBusinessState": {
+    "distributorRows": 59,
+    "receivableRows": 0,
+    "paymentRows": 0,
+    "confirmedCollected": "0",
+    "existingPaymentsBackfilledWithImportKey": false
+  }
+}

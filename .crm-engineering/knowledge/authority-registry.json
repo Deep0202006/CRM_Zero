@@ -118,6 +118,23 @@
         "Operational billed is not a financial obligation.",
         "Payment targets exact receivable_id."
       ]
+    },
+    {
+      "id": "unified_distributor_master_import_orchestration",
+      "status": "PRODUCTION_CERTIFIED",
+      "kind": "ORCHESTRATION_CAPABILITY_ONLY",
+      "authority": "No independent business authority; delegates to canonical Distributor, Renewal, Receivable, and Payment authorities in one transaction.",
+      "identity": [
+        "operation_id",
+        "resolved_plan_hash"
+      ],
+      "mustNotOwn": [
+        "financial obligation",
+        "payment truth",
+        "PAID/PARTIALLY_PAID/UNPAID state",
+        "renewal date",
+        "distributor lifecycle"
+      ]
     }
   ]
 }

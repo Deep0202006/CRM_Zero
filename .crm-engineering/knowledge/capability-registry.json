@@ -46,6 +46,22 @@
       ]
     },
     {
+      "id": "unified-distributor-master-import",
+      "status": "PRODUCTION_CERTIFIED",
+      "authorityRefs": [
+        "employee_identity",
+        "distributor_account",
+        "renewal",
+        "distributor_receivable_link",
+        "receivable",
+        "payment"
+      ],
+      "reuse": "required",
+      "notes": [
+        "Cross-domain workbook orchestration only; it introduces no Distributor, Renewal, Receivable, Payment, or financial-state authority."
+      ]
+    },
+    {
       "id": "pipeline-authoritative-transition",
       "status": "PRODUCTION_CERTIFIED",
       "authorityRefs": [
