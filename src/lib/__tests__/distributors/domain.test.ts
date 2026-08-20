@@ -1,8 +1,25 @@
 import { addISTDateDays } from "@/lib/dateTime";
-import { renewalState, validateStatusCombination } from "@/lib/distributors/domain";
+import { normalizeDistributorFinancialProjectionRow, normalizeProjectionMoney, renewalState, validateStatusCombination } from "@/lib/distributors/domain";
 import { distributorListSchema, distributorRenewSchema } from "@/lib/distributors/validation";
 
 describe("Distributor Status domain", () => {
+  test.each([
+    [0, "0.00"],
+    [400, "400.00"],
+    [400.5, "400.50"],
+    ["600.25", "600.25"],
+    ["000400.5", "400.50"],
+    [999999999999.99, "999999999999.99"],
+    ["999999999999.99", "999999999999.99"],
+  ])("normalizes projection money %s without financial arithmetic", (value, expected) => expect(normalizeProjectionMoney(value)).toBe(expected));
+  test.each([Number.NaN, Number.POSITIVE_INFINITY, "NaN", "1e3", "1000000000000.00", "0.001"])("rejects malformed projection money %s", value => expect(() => normalizeProjectionMoney(value)).toThrow("Invalid financial projection value."));
+  test("normalizes PostgreSQL numeric JSON wire rows at the Distributor API boundary", () => {
+    expect(normalizeDistributorFinancialProjectionRow({ total_bill_amount: 1000, confirmed_collected_amount: 400, outstanding_amount: 600.5 })).toMatchObject({
+      total_bill_amount: "1000.00",
+      confirmed_collected_amount: "400.00",
+      outstanding_amount: "600.50",
+    });
+  });
   test.each([["2026-08-16", "renewal_upcoming"], ["2026-08-15", "renewal_due_in_2_days"], ["2026-08-14", "renewal_due_tomorrow"], ["2026-08-13", "renewal_due_today"], ["2026-08-12", "renewal_overdue"], [null, "none"]])("derives IST renewal state for %s", (date, state) => expect(renewalState(date, "2026-08-13")).toBe(state));
   test("adds IST calendar days across month/year boundaries", () => { expect(addISTDateDays("2026-12-31", 1)).toBe("2027-01-01"); expect(addISTDateDays("2026-02-28", 1)).toBe("2026-03-01"); });
   test("preserves lifecycle projections and independent overlapping facts", () => {

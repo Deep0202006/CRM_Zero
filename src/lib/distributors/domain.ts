@@ -7,6 +7,26 @@ export const activityStatuses = ["not_applicable", "active", "inactive"] as cons
 export const billingStatuses = ["not_billed", "billed"] as const;
 export type RenewalState = "renewal_due_in_2_days" | "renewal_due_tomorrow" | "renewal_due_today" | "renewal_overdue" | "renewal_upcoming" | "none";
 
+const PROJECTION_MONEY = /^(\d{1,12})(?:\.(\d{1,2}))?$/;
+
+export function normalizeProjectionMoney(input: string | number): string {
+  if (typeof input === "number" && !Number.isFinite(input)) throw new Error("Invalid financial projection value.");
+  if (typeof input !== "string" && typeof input !== "number") throw new Error("Invalid financial projection value.");
+  const match = PROJECTION_MONEY.exec(String(input).trim());
+  if (!match) throw new Error("Invalid financial projection value.");
+  const whole = match[1].replace(/^0+(?=\d)/, "");
+  return `${whole}.${(match[2] ?? "").padEnd(2, "0")}`;
+}
+
+export function normalizeDistributorFinancialProjectionRow(row: Record<string, unknown>) {
+  return {
+    ...row,
+    total_bill_amount: normalizeProjectionMoney(row.total_bill_amount as string | number),
+    confirmed_collected_amount: normalizeProjectionMoney(row.confirmed_collected_amount as string | number),
+    outstanding_amount: normalizeProjectionMoney(row.outstanding_amount as string | number),
+  };
+}
+
 function utcDateValue(dateKey: string) {
   const [year, month, day] = dateKey.split("-").map(Number);
   return Date.UTC(year, month - 1, day);

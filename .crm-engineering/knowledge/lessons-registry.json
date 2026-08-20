@@ -2,6 +2,20 @@
   "schemaVersion": 1,
   "lessons": [
     {
+      "date": "2026-08-20",
+      "domain": "Data/API contracts",
+      "id": "POSTGRES_NUMERIC_WIRE_CONTRACT_RULE",
+      "rule": "PostgreSQL numeric values embedded in JSON/JSONB may reach JavaScript as numbers. Server API boundaries must normalize financial values to the declared canonical money representation before UI consumption; TypeScript annotations do not perform runtime coercion.",
+      "enforcementStatus": "COMPILED"
+    },
+    {
+      "date": "2026-08-20",
+      "domain": "Testing",
+      "id": "WIRE_MOCK_REALISM_RULE",
+      "rule": "API/E2E mocks for database-derived data must preserve production wire types. Do not use convenient string mocks when production PostgreSQL JSON returns numbers.",
+      "enforcementStatus": "COMPILED"
+    },
+    {
       "date": "2026-08-17",
       "domain": "Execution management",
       "id": "EXECUTION_BUDGET_RULE",

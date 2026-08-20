@@ -13,8 +13,9 @@ export function parseMoneyToMinorUnits(input: string | number): bigint {
 }
 export function minorUnitsToDecimal(value: bigint): string { return `${value / BigInt(100)}.${(value % BigInt(100)).toString().padStart(2, "0")}`; }
 export function canonicalMoney(input: string | number): string { return minorUnitsToDecimal(parseMoneyToMinorUnits(input)); }
-export function formatInr(decimal: string): string {
-  const [whole, fraction = "00"] = decimal.split(".");
+export function formatInr(decimal: string | number): string {
+  if (typeof decimal === "number" && !Number.isFinite(decimal)) throw new Error("Invalid money display value.");
+  const [whole, fraction = "00"] = String(decimal).split(".");
   const tail=whole.slice(-3), head=whole.slice(0,-3).replace(/\B(?=(\d{2})+(?!\d))/g,",");
   return `₹${head ? `${head},` : ""}${tail}${fraction !== "00" ? `.${fraction}` : ""}`;
 }
