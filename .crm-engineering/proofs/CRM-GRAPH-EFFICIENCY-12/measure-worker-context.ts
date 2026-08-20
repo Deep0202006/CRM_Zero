@@ -1,4 +1,6 @@
 import { CodexWorkerSession } from "../../../tools/crm-graph/src/worker.js";
+import type { CodexAppServer } from "../../../tools/crm-graph/src/codex-app-server.js";
+import type { TaskFile } from "../../../tools/crm-graph/src/types.js";
 
 async function main() {
   const prompts:string[]=[];
@@ -12,12 +14,12 @@ async function main() {
   },
   close:()=>{}
   };
-  const task:any={
+  const task={
   taskId:"MEASURE",
   repository:{worktreePath:process.cwd()},
   acceptance:[{id:"A",description:"Measure repeated prompt",stage:"IMPLEMENTATION",status:"PENDING",required:true,evidenceIds:[]}]
-  };
-  const session=new CodexWorkerSession(()=>fake as any);
+  } as unknown as TaskFile;
+  const session=new CodexWorkerSession(()=>fake as unknown as CodexAppServer);
   const context=`WORKER_CONTEXT\n${"canonical context ".repeat(400)}`;
   await session.run(task,context,"IMPLEMENT",task.acceptance[0]);
   await session.run(task,context,"IMPLEMENT",task.acceptance[0]);
