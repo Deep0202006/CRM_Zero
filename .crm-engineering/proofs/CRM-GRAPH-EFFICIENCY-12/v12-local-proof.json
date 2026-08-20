@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "taskId": "CRM-GRAPH-EFFICIENCY-12",
+  "result": "PASS",
+  "workerContext": {
+    "digestAlgorithm": "SHA256",
+    "initialPromptBytes": 7922,
+    "repeatedPromptBytes": 781,
+    "reductionPercent": 90.14,
+    "fullContextRepeated": false,
+    "focusedAcceptancePresentOnEveryTurn": true,
+    "maxSelectedLessons": 14,
+    "selectionOrder": [
+      "exact task-domain relevance",
+      "authority/capability linkage",
+      "mandatory applicable safety/execution lessons"
+    ]
+  },
+  "ciClassification": {
+    "graphOnlyAllowlistTested": true,
+    "workflowChangeForcesFull": true,
+    "productChangeForcesFull": true,
+    "schemaChangeForcesFull": true,
+    "unknownPathForcesFull": true,
+    "emptyDiffForcesFull": true,
+    "historicalTaskHardCodePresent": false,
+    "changedTaskDiscovery": true
+  },
+  "verification": {
+    "graphTypecheck": "PASS",
+    "graphTests": {
+      "passed": 84,
+      "failed": 0
+    },
+    "gitDiffCheck": "PASS",
+    "githubFullWorkflow": "REQUIRED_ON_PR_BECAUSE_WORKFLOW_CHANGED"
+  },
+  "productionContact": false,
+  "productFilesTouched": false,
+  "schemaChange": false
+}

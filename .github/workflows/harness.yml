@@ -8,7 +8,33 @@ permissions:
   contents: read
 
 jobs:
+  classify:
+    runs-on: ubuntu-latest
+    outputs:
+      graph_only: ${{ steps.scope.outputs.graph_only }}
+      classification: ${{ steps.scope.outputs.classification }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: scope
+        name: Classify pull request scope fail-safe
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          classification="$(node tools/crm-graph/scripts/classify-ci-scope.mjs --base "$BASE_SHA" --head "$HEAD_SHA")"
+          echo "classification=$classification"
+          echo "classification=$classification" >> "$GITHUB_OUTPUT"
+          if [ "$classification" = "graph_only" ]; then
+            echo "graph_only=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "graph_only=false" >> "$GITHUB_OUTPUT"
+          fi
+
   receivables-postgres:
+    needs: classify
+    if: needs.classify.outputs.graph_only != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     services:
@@ -61,6 +87,7 @@ jobs:
         run: createdb distributor_master_test && CRM_MASTER_DB_DISPOSABLE=1 PGDATABASE=distributor_master_test bash scripts/distributor-master-db/run-integration.sh
 
   verify:
+    needs: classify
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -75,7 +102,9 @@ jobs:
         with:
           node-version: 24.13.0
           cache: npm
-      - run: npm ci
+      - name: Install product dependencies for full verification
+        if: needs.classify.outputs.graph_only != 'true'
+        run: npm ci
 
       - name: Install CRM Engineering Graph dependencies
         run: npm ci --prefix tools/crm-graph
@@ -86,15 +115,40 @@ jobs:
       - name: Test CRM Engineering Graph
         run: npm run crm:graph:test
 
-      - name: Load authoritative Graph task state
-        run: npm run crm:status -- --task CRM-P0-045
+      - name: Load changed authoritative Graph task state
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          mapfile -d '' changed_tasks < <(git diff --name-only -z "$BASE_SHA" "$HEAD_SHA" -- '.crm-engineering/tasks/*.json')
+          if [ "${#changed_tasks[@]}" -eq 0 ]; then
+            echo "No changed Graph tasks; continuing."
+          else
+            for task_file in "${changed_tasks[@]}"; do
+              test -f "$task_file"
+              task_id="$(node -e 'const fs=require("fs"); const task=JSON.parse(fs.readFileSync(process.argv[1],"utf8")); if(!task.taskId) process.exit(2); process.stdout.write(task.taskId);' "$task_file")"
+              npm run crm:status -- --task "$task_id"
+            done
+          fi
 
-      - run: npm run typecheck
-      - run: npm test -- --runInBand
-      - run: npm run lint
-      - run: npm run build
+      - name: Check changed diff integrity
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: git diff --check "$BASE_SHA" "$HEAD_SHA"
+
+      - if: needs.classify.outputs.graph_only != 'true'
+        run: npm run typecheck
+      - if: needs.classify.outputs.graph_only != 'true'
+        run: npm test -- --runInBand
+      - if: needs.classify.outputs.graph_only != 'true'
+        run: npm run lint
+      - if: needs.classify.outputs.graph_only != 'true'
+        run: npm run build
 
   e2e:
+    needs: classify
+    if: needs.classify.outputs.graph_only != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     container:

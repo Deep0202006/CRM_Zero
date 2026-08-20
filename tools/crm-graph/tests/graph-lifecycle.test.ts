@@ -18,6 +18,7 @@ function fixture(release=false,secondImplementation=false) {
   fs.writeFileSync(path.join(root,".crm-engineering/knowledge/authority-registry.json"),'{"facts":[]}');
   fs.writeFileSync(path.join(root,".crm-engineering/knowledge/capability-registry.json"),'{"capabilities":[]}');
   fs.writeFileSync(path.join(root,".crm-engineering/knowledge/lessons-registry.json"),'{"lessons":[]}');
+  fs.writeFileSync(path.join(root,".crm-engineering/policy/context-policy.json"),'{"workerContext":{"maxLessons":14,"mandatoryLessonIds":[]}}');
   fs.writeFileSync(path.join(root,".crm-engineering/policy/applied-migrations.json"),'{"immutableThrough":44}');
   const acceptance:any[]=[
     {id:"A",description:"implement",stage:"IMPLEMENTATION",status:"PENDING",required:true,evidenceIds:[]},

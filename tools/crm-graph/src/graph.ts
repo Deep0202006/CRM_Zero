@@ -3,7 +3,7 @@ import path from "node:path";
 import { END, START, StateGraph, interrupt, type GraphNode } from "@langchain/langgraph";
 import { EngineeringState, type EngineeringStateType } from "./state.js";
 import { inspectRepo, diffSnapshot, changedPaths, isAncestor } from "./git.js";
-import { compileContext } from "./context.js";
+import { compileWorkerContext } from "./context.js";
 import { loadTask, saveTask } from "./loader.js";
 import { appliedMigrationDiffs, completionFlags, newlyChangedPaths, outOfScopePaths, requiresOwnerProductionGate, validateWorktree } from "./guards.js";
 import { validateWorkerResult, type WorkerSessionLike } from "./worker.js";
@@ -29,15 +29,17 @@ const repoPreflight:GraphNode<typeof EngineeringState> = state => {
   }
 };
 
-const contextNode:GraphNode<typeof EngineeringState> = state => ({ currentNode:"context", contextPacket:compileContext(state.graphRoot, taskFromState(state)) });
+const contextNode:GraphNode<typeof EngineeringState> = state => ({ currentNode:"context", contextPacket:compileWorkerContext(state.graphRoot, taskFromState(state)).packet });
 const barrierNode:GraphNode<typeof EngineeringState> = state => ({ currentNode:"barrier", ...completionFlags(state) });
 
 const beforeWorker:GraphNode<typeof EngineeringState> = state => {
   const intent = incomplete(state,"IMPLEMENTATION") ? "IMPLEMENT" : "VERIFY";
   const acceptance = incomplete(state, intent === "IMPLEMENT" ? "IMPLEMENTATION" : "VERIFICATION");
   const snap = diffSnapshot(state.worktreePath);
+  const contextPacket = compileWorkerContext(state.graphRoot,taskFromState(state)).packet;
   return {
     currentNode:"beforeWorker", workerIntent:intent, focusedAcceptanceId:acceptance?.id ?? null,
+    contextPacket,
     beforeDiffHash:snap.hash, beforeChangedPaths:changedPaths(state.worktreePath),
     beforePassCount:state.acceptance.filter(item => item.status === "PASS").length,
     codexResultValid:false,

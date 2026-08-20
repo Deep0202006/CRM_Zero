@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { createHash } from "node:crypto";
 import type { AcceptanceItem, TaskFile } from "./types.js";
 import { CodexAppServer } from "./codex-app-server.js";
 
@@ -94,6 +95,7 @@ export class CodexWorkerSession implements WorkerSessionLike {
   private server:CodexAppServer|null = null;
   private initialized = false;
   private liveThreadId:string|null = null;
+  private lastContextDigest:string|null = null;
   constructor(private readonly serverFactory:()=>CodexAppServer = () => new CodexAppServer()) {}
 
   async run(task:TaskFile, contextPacket:string, intent:WorkerIntent, acceptance:AcceptanceItem, savedThreadId?:string|null, runtime?:WorkerRuntimeContext) {
@@ -113,6 +115,10 @@ export class CodexWorkerSession implements WorkerSessionLike {
       : runtime?.retryMode === "STRATEGY_CHANGE"
         ? `Strategy-change retry ${runtime.failureCount + 1}: the prior approach failed repeatedly. Use a materially different in-scope implementation strategy. Guidance: ${runtime.strategyGuidance ?? "none supplied"}. Prior error: ${runtime.previousError?.code ?? "unknown"}.`
         : null;
+    const contextDigest = createHash("sha256").update(contextPacket,"utf8").digest("hex");
+    const contextInstruction = this.lastContextDigest === contextDigest
+      ? `CONTEXT_DIGEST ${contextDigest} UNCHANGED.\nReuse the authoritative context already present in this thread.`
+      : `CONTEXT_DIGEST ${contextDigest}\n${contextPacket}`;
     const prompt = [
       `You are the bounded ${intent} worker inside CRM Engineering Graph.`,
       "You do NOT own task completion, BLOCKED state, phase transitions, release, or production authorization.",
@@ -124,12 +130,13 @@ export class CodexWorkerSession implements WorkerSessionLike {
       "Never contact production systems.",
       ...(retryInstruction ? [retryInstruction] : []),
       "",
-      contextPacket,
+      contextInstruction,
       "",
       "Return JSON only:",
       '{"taskId":"...","acceptanceUpdates":[{"id":"...","status":"PASS|FAIL|PENDING","evidenceIds":["..."]}],"changedPaths":["..."],"externalBlocker":null,"summary":"..."}'
     ].join("\n");
     const turn = await this.server.runTurn(this.liveThreadId, task.repository.worktreePath, prompt);
+    this.lastContextDigest = contextDigest;
     const result = extractWorkerJson(turn.text);
     validateWorkerResult(task, result, acceptance, intent);
     return { threadId:this.liveThreadId, result, raw:turn.text };
@@ -140,5 +147,6 @@ export class CodexWorkerSession implements WorkerSessionLike {
     this.server = null;
     this.initialized = false;
     this.liveThreadId = null;
+    this.lastContextDigest = null;
   }
 }
