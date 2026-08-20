@@ -19,9 +19,71 @@ async function seed(page: Page, id: string, isAdmin: boolean) {
 }
 const row = { distributor_id: distributorId, distributor_name: "Alpha Distributor", distributor_reference: "ALPHA-1", lead_id: null, phone: null, city: "Delhi", assigned_to: employee, assigned_employee_name: "Employee", installation_status: "done", installation_completed_at: "2026-08-01", training_status: "done", training_completed_at: "2026-08-02", mapping_status: "done", mapped_at: "2026-08-03", activity_status: "active", billing_status: "billed", billed_at: "2026-08-03", bill_reference: "INV-1", renewal_date: "2026-08-14", renewal_state: "renewal_due_tomorrow", version: 2, updated_at: "2026-08-13T06:00:00Z", active_receivable_count: 1, total_bill_amount: "1000.00", confirmed_collected_amount: "400.00", outstanding_amount: "600.00", pending_verification_count: 0, collection_state: "PARTIALLY_PAID", billing_collection_mismatch: false };
 const numericProjectionRow = { ...row, total_bill_amount: 1000, confirmed_collected_amount: 400, outstanding_amount: 600 };
+const masterHash = "a".repeat(64);
+
+test("Admin previews and atomically confirms one complete master workbook", async ({ page }) => {
+  await mock(page);
+  const requests: Array<{ contentType: string; body: string }> = [];
+  await page.route("**/api/distributors/master-import", async route => {
+    const request = route.request();
+    const body = request.postDataBuffer()?.toString("utf8") ?? "";
+    requests.push({ contentType: request.headers()["content-type"] ?? "", body });
+    if (body.includes('name="mode"\r\n\r\nconfirm')) {
+      return route.fulfill({ json: { success: true, replayed: false, distributors: { created_count: 1, updated_count: 0, duplicate_count: 0 }, receivables: { created_count: 1, duplicate_count: 0 }, payments: { created_count: 1, duplicate_count: 0 } } });
+    }
+    return route.fulfill({ json: {
+      rows: {
+        distributors: [{ rowNumber: 2, distributorReference: "ALPHA-1", distributorName: "Alpha Distributor", classification: "NEW_DISTRIBUTOR", action: "CREATE", before: null, after: { renewal_date: "2027-08-20", billing_status: "billed" } }],
+        receivables: [{ rowNumber: 2, distributorReference: "ALPHA-1", billReference: "INV-MASTER-1", resolvedReceivableId: "50000000-0000-4000-a000-000000000099", classification: "CREATE_PARTIAL_RECEIVABLE", action: "CREATE", before: null, after: { receivable_id: "50000000-0000-4000-a000-000000000099", bill_amount: "1000.00", bill_due_date: "2026-09-01" } }],
+        payments: [{ rowNumber: 2, distributorReference: "ALPHA-1", billReference: "INV-MASTER-1", resolvedReceivableId: "50000000-0000-4000-a000-000000000099", paymentImportKey: "PAY-1", classification: "CREATE_CONFIRMED_PAYMENT", action: "CONFIRM", before: { paymentState: "Unpaid", outstandingAmount: "1000.00" }, after: { paymentState: "Partially Paid", outstandingAmount: "600.00" } }],
+      },
+      counts: { distributors: { NEW_DISTRIBUTOR: 1 }, receivables: { CREATE_PARTIAL_RECEIVABLE: 1 }, payments: { CREATE_CONFIRMED_PAYMENT: 1 }, total: 3, blocking: 0 },
+      blocking: false,
+      resolvedPlanHash: masterHash,
+    } });
+  });
+  await seed(page, admin, true);
+  await page.goto("/admin/payments/distributors");
+  await expect(page.getByRole("button", { name: "Distributor Import" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Invoice Receivables" })).toBeVisible();
+  await page.getByRole("button", { name: "Import / Update Master Workbook" }).click();
+  const dialog = page.getByRole("dialog", { name: "Import / Update Master Workbook" });
+  await expect(dialog.getByText("Confirmation is atomic. Either all planned changes commit or none do.")).toBeVisible();
+  await dialog.locator('input[type="file"]').setInputFiles({ name: "ZeroData_Distributor_Master_Import.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: Buffer.from("e2e-master-workbook") });
+  await dialog.getByRole("button", { name: "Preview workbook" }).click();
+  await expect(dialog.getByText("3 row(s) resolved")).toBeVisible();
+  await expect(dialog.getByRole("cell", { name: "Partially Paid" })).toBeVisible();
+  await expect(dialog.getByRole("cell", { name: "Confirm Payment" })).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Refresh preview" })).toBeVisible();
+  await dialog.getByRole("button", { name: "Confirm 3 Safe Changes" }).click();
+  await expect(dialog.getByText("Master workbook imported successfully.")).toBeVisible();
+  await expect(dialog.getByText("Payments recorded").locator("..")).toContainText("1");
+  expect(requests).toHaveLength(2);
+  expect(requests.every(request => request.contentType.startsWith("multipart/form-data; boundary="))).toBe(true);
+  expect(requests[1].body).toContain(masterHash);
+});
+
+test("Admin cannot confirm a master workbook with a blocking row", async ({ page }) => {
+  await mock(page);
+  await page.route("**/api/distributors/master-import", route => route.fulfill({ json: {
+    rows: { distributors: [{ rowNumber: 2, distributorReference: "ALPHA-1", distributorName: "Alpha", classification: "AMBIGUOUS_DISTRIBUTOR", action: "BLOCK", reason: "Canonical identity changed.", before: { version: 2 }, after: null }], receivables: [], payments: [] },
+    counts: { distributors: { AMBIGUOUS_DISTRIBUTOR: 1 }, receivables: {}, payments: {}, total: 1, blocking: 1 },
+    blocking: true,
+    resolvedPlanHash: masterHash,
+  } }));
+  await seed(page, admin, true);
+  await page.goto("/admin/payments/distributors");
+  await page.getByRole("button", { name: "Import / Update Master Workbook" }).click();
+  const dialog = page.getByRole("dialog", { name: "Import / Update Master Workbook" });
+  await dialog.locator('input[type="file"]').setInputFiles({ name: "ZeroData_Distributor_Master_Import.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: Buffer.from("blocking-master-workbook") });
+  await dialog.getByRole("button", { name: "Preview workbook" }).click();
+  await expect(dialog.getByText("1 blocking row(s) must be corrected")).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Confirm 0 Safe Changes" })).toBeDisabled();
+  await expect(dialog.getByText("Canonical identity changed.")).toBeVisible();
+});
 test("Admin Distributor import preview shows the server-resolved operational employee", async ({ page }) => {
   await mock(page); await page.route("**/api/distributors/import", route => route.fulfill({ json: { rows: [{ rowNumber: 2, distributorName: "Alpha", assignedEmployeeEmail: "zerodata_vaibhav@zerodata.local", assigned_employee_name: "Vaibhav Patel", classification: "NEW" }], counts: { NEW: 1 }, preview_hash: "a".repeat(64) } }));
-  await seed(page, admin, true); await page.goto("/admin/payments/distributors"); await page.getByRole("button", { name: "Import" }).click();
+  await seed(page, admin, true); await page.goto("/admin/payments/distributors"); await page.getByRole("button", { name: "Distributor Import", exact: true }).click();
   await page.locator('input[type="file"]').setInputFiles({ name: "distributors.csv", mimeType: "text/csv", buffer: Buffer.from("Distributor Name,Assigned Employee Email,Installation Status,Installation Date,Training Status,Training Date,Mapping Status,Mapped Date,Activity Status,Billing Status,Bill Date,Bill Reference,Renewal Date,Distributor Reference\nAlpha,zerodata_vaibhav@zerodata.local,pending,,pending,,pending,,not_applicable,not_billed,,,,ALPHA\n") });
   await expect(page.getByText("Vaibhav Patel")).toBeVisible(); await expect(page.getByRole("cell", { name: "NEW", exact: true })).toBeVisible();
 });

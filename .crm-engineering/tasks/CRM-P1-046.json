@@ -1,0 +1,229 @@
+{
+  "schemaVersion": 2,
+  "graphSchemaVersion": 1,
+  "flowVersion": "1.1.1",
+  "taskId": "CRM-P1-046",
+  "objective": "Provide one atomic master workbook import for Distributor Status, Renewal, Receivables, and historical confirmed Payments while preserving canonical domain authorities.",
+  "risk": "R3",
+  "domains": [
+    "distributor-status",
+    "renewal",
+    "receivables",
+    "payment-collections",
+    "imports"
+  ],
+  "repository": {
+    "canonicalRoot": "C:\\Users\\dcp69\\Desktop\\CRM_Zero",
+    "worktreePath": "C:\\Users\\dcp69\\Desktop\\CRM_Zero\\.worktrees\\crm-p1-046-master-import",
+    "branch": "feat/unified-distributor-master-import",
+    "expectedBaseRef": "origin/main",
+    "expectedBaseSha": "930097b4a66e8e3902afb77555a5f119f5836b6e",
+    "observedHeadSha": "930097b4a66e8e3902afb77555a5f119f5836b6e",
+    "dirtyBaselineHash": "bd2b822392cca3305a2c57d58fd7c1811f5124457382386727cc6071aacc99ae"
+  },
+  "phase": "TARGETED_VERIFICATION",
+  "allowedPaths": [
+    "supabase/migrations/046_unified_distributor_master_import.sql",
+    "src/lib/distributorMaster/**",
+    "src/lib/distributors/**",
+    "src/lib/receivables/**",
+    "src/app/api/distributors/master-import/**",
+    "src/components/distributors/DistributorMasterImportModal.tsx",
+    "src/app/admin/payments/distributors/page.tsx",
+    "src/lib/__tests__/distributorMaster/**",
+    "src/lib/__tests__/distributors/**",
+    "src/lib/__tests__/receivables/**",
+    "e2e/distributors/**",
+    "scripts/distributor-master-db/**",
+    "docs/contracts/distributor-status.md",
+    "docs/contracts/receivables.md",
+    ".crm-engineering/**",
+    "docs/engineering-graph/**",
+    "tools/crm-graph/**",
+    ".github/workflows/harness.yml",
+    "docs/exec-plans/active/crm-p1-046-unified-distributor-master-import.md"
+  ],
+  "protectedDomains": [
+    "migrations-001-through-045",
+    "attendance",
+    "pipeline",
+    "field-visits",
+    "call-logs",
+    "auth",
+    "tasks",
+    "chat"
+  ],
+  "productionDataMutation": false,
+  "schemaChange": true,
+  "humanGate": {
+    "kind": "OWNER_PRODUCTION_GATE",
+    "status": "PENDING",
+    "reason": "Owner must manually apply reviewed Migration 046; Codex remains read-only against production Supabase."
+  },
+  "budgets": {
+    "dataAuthority": "Distributor operational and renewal facts remain in distributor_accounts; obligations remain in receivables; payment events remain in receivable_payments; collection state remains derived.",
+    "readBudget": "Preview resolves distributor references, employee emails, receivable keys, and payment import keys in bounded set/chunk reads with no per-row network queries.",
+    "writeBudget": "Confirmation may write only distributor_accounts and its existing event/receipt authorities, receivables and their existing event/receipt authorities, receivable_payments, and distributor_master_import_batches in one transaction.",
+    "rlsModel": "Master orchestration metadata and function are service-role only; browser writes are revoked.",
+    "indexRequirements": "Unique partial normalized payment import key per receivable; existing Migration 045 distributor/receivable keys reused.",
+    "failureMode": "Any blocking row, stale resolved plan, authority rejection, or unexpected error yields zero partial business writes.",
+    "concurrencyModel": "Database uniqueness, row locks, existing expected-version semantics, and one outer PostgreSQL transaction protect concurrent confirmation.",
+    "idempotencyModel": "Stable operation/request/payload hashes plus distributor reference, receivable bill key, and per-receivable payment import key make replay deterministic.",
+    "testPlan": "Focused parser/planner/API/UI tests, disposable PostgreSQL apply/invariant/idempotency/concurrency/rollback proof, compatibility regressions, focused E2E, typecheck, scoped lint, build, and Graph proof."
+  },
+  "acceptance": [
+    {
+      "id": "P1-046-A01",
+      "description": "Use exact filename ZeroData_Distributor_Master_Import.xlsx; exact Distributors, Receivables, Payments, Instructions sheets and requested columns; reject unknown/duplicate headers and formulas; allow at least one business row; bound XLSX to 10 MB and 5,000 total rows; document realistic examples and formula safety.",
+      "stage": "IMPLEMENTATION",
+      "status": "PASS",
+      "required": true,
+      "evidenceIds": [
+        "P1-046-A01-WORKBOOK-JEST-6-PASS",
+        "P1-046-A01-SCOPED-ESLINT-PASS",
+        "P1-046-A01-DIFF-CHECK-PASS",
+        "src/lib/__tests__/distributorMaster/workbook.test.ts",
+        ".crm-engineering/proofs/CRM-P1-046/a01-workbook-format-proof.json"
+      ]
+    },
+    {
+      "id": "P1-046-A02",
+      "description": "Distributor rows resolve case-insensitive Distributor Reference only, never fuzzy names; existing blanks mean NO_CHANGE, [CLEAR] only clears legal nullable fields, and new rows require complete valid operational state; reuse exact active non-Admin employee resolver and preserve phone, city, notes, renewal and lifecycle authority.",
+      "stage": "IMPLEMENTATION",
+      "status": "PASS",
+      "required": true,
+      "evidenceIds": [
+        "P1-046-A02-DISTRIBUTOR-JEST-8-PASS",
+        "P1-046-A02-WORKBOOK-JEST-6-PASS",
+        "P1-046-A02-SCOPED-ESLINT-PASS",
+        "P1-046-A02-DIFF-CHECK-PASS",
+        "src/lib/__tests__/distributorMaster/distributors.test.ts",
+        ".crm-engineering/proofs/CRM-P1-046/a02-distributor-resolution-proof.json"
+      ]
+    },
+    {
+      "id": "P1-046-A03",
+      "description": "Receivables use exactly the requested eight columns, derive assignment from the post-import Distributor, allow same-workbook billed onboarding, skip exact distributor_id+bill_reference duplicates, block conflicting obligations, and require a valid follow-up only when the complete planned payment result remains outstanding.",
+      "stage": "IMPLEMENTATION",
+      "status": "PASS",
+      "required": true,
+      "evidenceIds": [
+        "P1-046-A03-RECEIVABLES-JEST-9-PASS",
+        "P1-046-A03-PREVIEW-JEST-6-PASS",
+        "P1-046-A03-PAYMENTS-REGRESSION-JEST-7-PASS",
+        "P1-046-A03-WORKBOOK-JEST-6-PASS",
+        "P1-046-A03-SCOPED-ESLINT-PASS",
+        "P1-046-A03-DIFF-CHECK-PASS",
+        "src/lib/__tests__/distributorMaster/receivables.test.ts",
+        "src/lib/__tests__/distributorMaster/preview.test.ts",
+        ".crm-engineering/proofs/CRM-P1-046/a03-receivables-planning-proof.json",
+        ".crm-engineering/proofs/CRM-P1-046/a01-workbook-format-proof.json"
+      ]
+    },
+    {
+      "id": "P1-046-A04",
+      "description": "Payments create separate confirmed receivable_payments events using nullable import_key and a unique normalized per-receivable partial index; exact replay skips, material conflict blocks, concurrent replay cannot duplicate money, and PAID/PARTIALLY_PAID remain derived only.",
+      "stage": "IMPLEMENTATION",
+      "status": "PASS",
+      "required": true,
+      "evidenceIds": [
+        "P1-046-A04-PAYMENTS-JEST-9-PASS",
+        "P1-046-A04-PREVIEW-REGRESSION-JEST-6-PASS",
+        "P1-046-A04-COMPATIBILITY-JEST-5-PASS",
+        "P1-046-A04-DATABASE-FIXTURE-CONTRACT-2-PASS",
+        "P1-046-A04-SCOPED-ESLINT-PASS",
+        "P1-046-A04-DIFF-CHECK-PASS",
+        "src/lib/__tests__/distributorMaster/payments.test.ts",
+        "supabase/migrations/046_unified_distributor_master_import.sql"
+      ]
+    },
+    {
+      "id": "P1-046-A05",
+      "description": "Preview performs zero writes, uses the exact requested classifications, resolves complete cross-sheet before/action/after state including all planned payments, hashes canonical resolved IDs/actions, and confirmation rebuilds from the same raw workbook with 409 IMPORT_REFRESH_REQUIRED on change.",
+      "stage": "IMPLEMENTATION",
+      "status": "PASS",
+      "required": true,
+      "evidenceIds": [
+        "P1-046-A05-PREVIEW-JEST-7-PASS",
+        "P1-046-A05-API-CONTRACT-JEST-2-PASS",
+        "P1-046-A05-CONFIRMATION-REGRESSION-JEST-4-PASS",
+        "P1-046-A05-SCOPED-ESLINT-PASS",
+        "P1-046-A05-DIFF-CHECK-PASS",
+        "src/lib/__tests__/distributorMaster/preview.test.ts",
+        "src/lib/__tests__/distributorMaster/previewApiContract.test.ts"
+      ]
+    },
+    {
+      "id": "P1-046-A06",
+      "description": "Confirmation is atomic across Distributor, Renewal, Receivable and Payment writes; any validation or conflict failure produces zero partial business writes.",
+      "stage": "IMPLEMENTATION",
+      "status": "PASS",
+      "required": true,
+      "evidenceIds": [
+        "src/lib/__tests__/distributorMaster/confirmation.test.ts",
+        "supabase/migrations/046_unified_distributor_master_import.sql",
+        "P1-046-A06-FOCUSED-JEST-4-PASS",
+        "P1-046-A06-MASTER-REGRESSION-JEST-36-PASS",
+        "P1-046-A06-SCOPED-ESLINT-PASS",
+        "P1-046-A06-DIFF-CHECK-PASS"
+      ]
+    },
+    {
+      "id": "P1-046-A07",
+      "description": "Admin Distributor Collections prominently offers Import / Update Master Workbook, exact template download, XLSX-only upload, requested summary/table/action labels, blocking-row disablement, atomicity warning, completion counts, and refresh while preserving both legacy importers.",
+      "stage": "IMPLEMENTATION",
+      "status": "PASS",
+      "required": true,
+      "evidenceIds": [
+        "P1-046-A07-UI-JEST-5-PASS",
+        "P1-046-A07-SCOPED-ESLINT-PASS",
+        "P1-046-A07-DIFF-CHECK-PASS",
+        "src/lib/__tests__/distributorMaster/ui.test.ts",
+        "e2e/distributors/distributors.spec.ts"
+      ]
+    },
+    {
+      "id": "P1-046-A08",
+      "description": "Existing Distributor Import, Receivables Import, manual Receivable creation, manual Record Payment, employee payment reporting, renewal flows, and PR61 numeric-wire contract remain compatible.",
+      "stage": "IMPLEMENTATION",
+      "status": "PASS",
+      "required": true,
+      "evidenceIds": [
+        ".crm-engineering/proofs/CRM-P1-046/a08-focused-proof.json",
+        "src/lib/__tests__/distributorMaster/compatibility.test.ts"
+      ]
+    },
+    {
+      "id": "P1-046-V01",
+      "description": "Focused database, unit, E2E, typecheck, lint, and build verification proves complete end-to-end workbook behavior against production-shaped disposable fixtures.",
+      "stage": "VERIFICATION",
+      "status": "PASS",
+      "required": true,
+      "evidenceIds": [
+        "V01-UNIT-10-SUITES-48-TESTS-PASS",
+        "V01-TYPECHECK-PASS",
+        "V01-SCOPED-LINT-PASS",
+        "V01-NEXT-PRODUCTION-BUILD-PASS",
+        "V01-CHROMIUM-MASTER-WORKBOOK-2-PASS",
+        "V01-DATABASE-FIXTURE-CONTRACT-2-PASS",
+        ".crm-engineering/proofs/CRM-P1-046/local-postgresql-17.6-proof.json",
+        "V01-LOCAL-POSTGRESQL-17.6-INTEGRATION-PASS",
+        "CRM-P1-046-V01-DB-INTEGRATION",
+        "CRM-P1-046-V01-UNIT",
+        "CRM-P1-046-V01-E2E",
+        "CRM-P1-046-V01-TYPECHECK",
+        "CRM-P1-046-V01-LINT",
+        "CRM-P1-046-V01-BUILD"
+      ]
+    },
+    {
+      "id": "P1-046-R01",
+      "description": "Owner manually applies reviewed Migration 046; production is then certified read-only before release completion.",
+      "stage": "RELEASE",
+      "status": "PENDING",
+      "required": true,
+      "evidenceIds": []
+    }
+  ],
+  "blocker": null
+}

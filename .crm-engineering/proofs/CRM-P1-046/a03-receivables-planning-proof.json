@@ -1,0 +1,23 @@
+{
+  "taskId": "CRM-P1-046",
+  "acceptanceId": "P1-046-A03",
+  "command": "node node_modules/jest/bin/jest.js --config .crm-engineering/proofs/CRM-P1-046/jest.a08.config.js --runInBand --runTestsByPath src/lib/__tests__/distributorMaster/receivables.test.ts",
+  "result": {
+    "exitCode": 0,
+    "testSuitesPassed": 1,
+    "testSuitesTotal": 1,
+    "testsPassed": 9,
+    "testsTotal": 9
+  },
+  "reusedEvidence": [
+    ".crm-engineering/proofs/CRM-P1-046/a01-workbook-format-proof.json"
+  ],
+  "contentSha256": {
+    "src/lib/distributorMaster/receivables.ts": "88DC2BA342C88B0687192980206D5E5379551044272E8E65DE90853A6D20F41E",
+    "src/lib/__tests__/distributorMaster/receivables.test.ts": "CB0F348D577D5653D682B6DEB9F41F9F5FBC3237468CB3CE56DFEC25A80EAE37",
+    "src/lib/distributorMaster/workbook.ts": "911E3168A6AB0497B90A73B19913E878232B8655B1EB94BF23F5353AA757DA25",
+    "docs/contracts/receivables.md": "4BBD71EDF591B2A057D40C822354AA6A10448956D719A08C3D399EDCE70E1BA6",
+    "supabase/migrations/046_unified_distributor_master_import.sql": "589E01955BC23094C618E49CC2C8323A26235500990F4C27A52F75DDBA7A7510"
+  },
+  "productionContacted": false
+}
