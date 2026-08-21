@@ -203,6 +203,12 @@ export interface LocalFieldVisit {
   next_sync_attempt_at?: string;
   created_at: string;
   updated_at: string;
+  /** Present only for visits captured under the ERP-observation contract. */
+  erp_contract_version?: 1;
+  erp_usage_state?: "erp" | "none" | null;
+  erp_name_input?: string | null;
+  erp_id?: string | null;
+  erp_name?: string | null;
 }
 
 export interface LocalFieldVisitMedia {

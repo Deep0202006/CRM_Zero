@@ -145,6 +145,13 @@
       ]
     },
     {
+      "id": "field_visit_erp_observation",
+      "authority": "public.field_visits(erp_usage_state, erp_id)",
+      "identity": ["visit_id"],
+      "owns": ["ERP observed during that exact Field Visit"],
+      "mustNotOwn": ["Distributor canonical ERP assignment", "Pipeline/Lead ERP authority", "financial facts", "renewal facts"]
+    },
+    {
       "id": "distributor_receivable_link",
       "status": "PRODUCTION_CERTIFIED",
       "authority": "public.receivables.distributor_id -> public.distributor_accounts.distributor_id",

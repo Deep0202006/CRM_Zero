@@ -22,7 +22,7 @@ export async function GET(request: Request) {
     if (reconciliation.error) return json(502, { code: "FIELD_VISITS_READ_FAILED" });
     return json(200, { confirmed_requested_visit_ids: (reconciliation.data ?? []).map((row) => row.visit_id) });
   }
-  const columns = "visit_id,lead_id,user_id,visit_date,check_in_time,check_in_lat,check_in_lng,address,pincode,check_in_photo_url,visit_outcome,visit_notes,created_at,updated_at,attendance_id,person_met,segment_type,follow_up_date,location_accuracy_m,location_captured_at,location_acquisition_mode,location_quality,selfie_captured_at,selfie_capture_method,selfie_storage_path,selfie_uploaded_at,selfie_purged_at";
+  const columns = "visit_id,lead_id,user_id,visit_date,check_in_time,check_in_lat,check_in_lng,address,pincode,check_in_photo_url,visit_outcome,visit_notes,created_at,updated_at,attendance_id,person_met,segment_type,follow_up_date,location_accuracy_m,location_captured_at,location_acquisition_mode,location_quality,selfie_captured_at,selfie_capture_method,selfie_storage_path,selfie_uploaded_at,selfie_purged_at,erp_id,erp_usage_state,erp_systems(erp_name)";
   const today = getCurrentISTDate(); const bounds = getISTBusinessDayBounds(today);
   const pageQuery = service.from("field_visits").select(columns, { count: "exact" }).eq("user_id", auth.user.id).order("created_at", { ascending: false }).order("visit_id", { ascending: false }).range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
   const reconciliationQuery = requestedIds.length ? service.from("field_visits").select("visit_id").eq("user_id", auth.user.id).in("visit_id", requestedIds) : Promise.resolve({ data: [], error: null });
@@ -32,5 +32,6 @@ export async function GET(request: Request) {
     reconciliationQuery,
   ]);
   if (pageResult.error || todayResult.error || reconciliationResult.error) return json(502, { code: "FIELD_VISITS_READ_FAILED" });
-  return json(200, { visits: pageResult.data ?? [], page, page_size: PAGE_SIZE, total: pageResult.count ?? 0, visits_today: todayResult.count ?? 0, has_more: page * PAGE_SIZE < (pageResult.count ?? 0), confirmed_requested_visit_ids: (reconciliationResult.data ?? []).map((row) => row.visit_id) });
+  const visits = (pageResult.data ?? []).map((row: Record<string, unknown>) => ({ ...row, erp_name: (row.erp_systems as { erp_name?: string } | null)?.erp_name ?? null }));
+  return json(200, { visits, page, page_size: PAGE_SIZE, total: pageResult.count ?? 0, visits_today: todayResult.count ?? 0, has_more: page * PAGE_SIZE < (pageResult.count ?? 0), confirmed_requested_visit_ids: (reconciliationResult.data ?? []).map((row) => row.visit_id) });
 }

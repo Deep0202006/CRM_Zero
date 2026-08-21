@@ -135,6 +135,13 @@ export function buildFieldVisitConfirmPayload(visit: LocalFieldVisit) {
     address: visit.address ?? null,
     pincode: visit.pincode ?? null,
     ...(visit.pincode_contract_version ? { pincode_contract_version: visit.pincode_contract_version } : {}),
+    ...(visit.erp_contract_version ? {
+      erp_contract_version: visit.erp_contract_version,
+      erp_usage_state: visit.erp_usage_state ?? null,
+      erp_name_input: visit.erp_name_input ?? null,
+      erp_id: visit.erp_id ?? null,
+      erp_name: visit.erp_name ?? null,
+    } : {}),
     segment_type: visit.segment_type,
     follow_up_date: visit.follow_up_date ?? null,
     created_at: visit.created_at,

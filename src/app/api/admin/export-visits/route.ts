@@ -61,7 +61,7 @@ export async function GET(request: Request) {
   const visits: Array<Record<string, unknown> & { visit_id: string; user_id: string; lead_id: string }> = [];
   for (let from = 0; ; from += EXPORT_PAGE_SIZE) {
     let query = admin.from("field_visits")
-      .select("visit_id,user_id,lead_id,visit_date,check_in_time,check_in_lat,check_in_lng,address,pincode,segment_type,person_met,visit_outcome,visit_notes,follow_up_date,selfie_storage_path,selfie_purged_at,created_at")
+      .select("visit_id,user_id,lead_id,visit_date,check_in_time,check_in_lat,check_in_lng,address,pincode,segment_type,person_met,visit_outcome,visit_notes,follow_up_date,selfie_storage_path,selfie_purged_at,created_at,erp_id,erp_usage_state,erp_systems(erp_name)")
       .order("created_at", { ascending: false })
       .order("visit_id", { ascending: false })
       .range(from, from + EXPORT_PAGE_SIZE - 1);
@@ -115,6 +115,8 @@ export async function GET(request: Request) {
       Latitude: visit.check_in_lat ?? "",
       Longitude: visit.check_in_lng ?? "",
       Outcome: getOutcomeLabel(String(visit.visit_outcome)),
+      ERP: visit.erp_usage_state === "erp" ? ((visit.erp_systems as { erp_name?: string } | null)?.erp_name ?? "Not captured") : visit.erp_usage_state === "none" ? "None" : "Not captured",
+      "ERP Capture State": visit.erp_usage_state === "erp" ? "ERP" : visit.erp_usage_state === "none" ? "None" : "Not captured",
       "Follow-up date": visit.follow_up_date ?? "",
       Notes: visit.visit_notes ?? "",
       "Selfie status": visit.selfie_purged_at ? "Expired after 5-day retention" : visit.selfie_storage_path ? "Available" : "Pending",

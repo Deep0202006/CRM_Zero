@@ -20,6 +20,7 @@ const VisitsIntelligence = dynamic(() => import("@/components/analytics/VisitsIn
   ssr: false,
   loading: () => <AnalyticsSkeleton label="Loading field activity intelligence" />,
 });
+const FieldVisitErpIntelligence = dynamic(() => import("@/components/analytics/FieldVisitErpIntelligence"), { ssr: false, loading: () => <AnalyticsSkeleton label="Loading ERP intelligence" /> });
 
 interface AdminVisit extends LocalFieldVisit {
   has_selfie_evidence?: boolean;
@@ -70,6 +71,8 @@ export default function AdminVisitsPage() {
   const requestSequence = useRef(0);
   const realtimeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [realtimeSubscribed, setRealtimeSubscribed] = useState(false);
+  const [analyticsMode, setAnalyticsMode] = useState<"activity" | "erp">("activity");
+  const [erpSegments, setErpSegments] = useState<Record<string, { unique_businesses: number; coverage_percent: number; categories: Array<{ erp_name: string; count: number; share_percent: number }> }> | null>(null);
 
   const loadData = useCallback(async (targetPage = 1) => {
     if (!isAdmin) return;
@@ -113,6 +116,8 @@ export default function AdminVisitsPage() {
   }, [date, dateFrom, dateTo, isAdmin, outcome, representative, search, segment]);
 
   const visitAnalytics = useMemo(() => buildVisitAnalytics(visits), [visits]);
+
+  useEffect(() => { if (!isAdmin || analyticsMode !== "erp" || erpSegments) return; void (async () => { const { data } = await supabase.auth.getSession(); const token = data.session?.access_token; if (!token) return; const response = await fetch("/api/admin/visits/erp-analytics", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }); const result = await response.json(); if (response.ok) setErpSegments(result.segments ?? {}); })(); }, [analyticsMode, erpSegments, isAdmin]);
 
   useEffect(() => {
     queueMicrotask(() => void loadData(1));
@@ -193,7 +198,8 @@ export default function AdminVisitsPage() {
         <MetricCard label="Representatives" value={<NumberTicker value={representatives.length} />} icon={<User size={17} />} tone="brand" />
         <MetricCard label="Loaded rows" value={<NumberTicker value={visits.length} />} icon={<CheckCircle2 size={17} />} />
       </div>
-      {loading ? <AnalyticsSkeleton label="Loading field activity intelligence" /> : !errorMessage ? <VisitsIntelligence model={visitAnalytics} matchedTotal={matchedTotal} page={page} /> : null}
+      <div className="mb-3 flex gap-2" role="tablist" aria-label="Visit analytics"><Button size="sm" variant={analyticsMode === "activity" ? "primary" : "outline"} onClick={() => setAnalyticsMode("activity")}>Visit Activity</Button><Button size="sm" variant={analyticsMode === "erp" ? "primary" : "outline"} onClick={() => setAnalyticsMode("erp")}>ERP Intelligence</Button></div>
+      {loading && analyticsMode === "activity" ? <AnalyticsSkeleton label="Loading field activity intelligence" /> : !errorMessage && analyticsMode === "activity" ? <VisitsIntelligence model={visitAnalytics} matchedTotal={matchedTotal} page={page} /> : analyticsMode === "erp" && erpSegments ? <FieldVisitErpIntelligence segments={erpSegments} /> : analyticsMode === "erp" ? <AnalyticsSkeleton label="Loading ERP intelligence" /> : null}
       <div className="mb-3 flex flex-wrap gap-2">
         <Button size="sm" variant={date ? "outline" : "primary"} onClick={() => { setPage(1); setDate(""); }}>All visits</Button>
         <Button size="sm" variant={date === getCurrentISTDate() ? "primary" : "outline"} onClick={() => { setPage(1); setDate(getCurrentISTDate()); }}>Today</Button>
@@ -230,6 +236,7 @@ export default function AdminVisitsPage() {
                 <p className="break-words text-[13px] font-semibold leading-snug text-[var(--text-primary)]">{visit.leads?.business_name?.trim() || visit.lead_id?.trim() || "Unavailable business"} <span className="font-normal text-[var(--text-secondary)]">({visit.segment_type})</span></p>
                 <p className="mt-1 break-all text-[11px] leading-5 text-[var(--text-muted)]">Rep · {visit.users?.name || "Unknown"} · {visit.users?.email || "Unavailable"}</p>
                 <p className="mt-1 text-[12px] text-[var(--text-secondary)]">Person met: {visit.person_met || "Unavailable"}{visit.follow_up_date ? ` · Follow-up: ${visit.follow_up_date}` : ""} · {confirmationText}</p>
+                <p className="mt-1 text-[12px] text-[var(--text-secondary)]">ERP: {visit.erp_usage_state === "erp" ? visit.erp_name || "Not captured" : visit.erp_usage_state === "none" ? "None" : "Not captured"}</p>
                 <p className="mt-2 whitespace-pre-wrap break-words text-[13px] font-medium leading-5 text-[var(--text-primary)]"><strong>{visit.segment_type === "Retailer" ? "Area" : "Address"}:</strong> {visit.address?.trim() || "Legacy visit — address was not captured"}</p>
                 <details className="mt-2 rounded border border-[var(--border-subtle)] p-3 text-[12px] leading-5 text-[var(--text-secondary)]"><summary className="cursor-pointer font-semibold">Visit detail</summary><p><strong>Pincode:</strong> {visit.pincode?.trim() || "—"}</p><p><strong>GPS:</strong> {visit.check_in_lat != null && visit.check_in_lng != null ? `${visit.check_in_lat}, ${visit.check_in_lng}` : "Not captured"}</p><p><strong>Sync:</strong> {visit.sync_status || "Confirmed"}</p><p><strong>Follow-up:</strong> {visit.follow_up_date || "None"}</p><p className="whitespace-pre-wrap"><strong>Notes:</strong> {visit.visit_notes || "None"}</p>{visit.check_in_lat != null && visit.check_in_lng != null && <a target="_blank" rel="noreferrer" className="text-[var(--brand-700)] underline" href={`https://www.google.com/maps?q=${visit.check_in_lat},${visit.check_in_lng}`}>Open Location</a>}</details>
               </div>

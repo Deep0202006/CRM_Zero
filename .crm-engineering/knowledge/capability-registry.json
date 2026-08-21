@@ -92,6 +92,12 @@
         "attendance"
       ],
       "reuse": "required"
+    },
+    {
+      "id": "field-visit-erp-intelligence",
+      "status": "IMPLEMENTED_PENDING_OWNER_CERTIFICATION",
+      "authorityRefs": ["field_visit", "erp_system", "field_visit_erp_observation"],
+      "reuse": "required"
     }
   ]
 }

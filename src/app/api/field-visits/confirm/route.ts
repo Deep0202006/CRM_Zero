@@ -33,6 +33,11 @@ export const VisitConfirmationSchema = z.object({
   address: z.string().trim().min(1).max(500).nullable().optional(),
   pincode: PincodeSchema.nullable().optional(),
   pincode_contract_version: z.literal(1).optional(),
+  erp_contract_version: z.literal(1).optional(),
+  erp_usage_state: z.enum(["erp", "none"]).nullable().optional(),
+  erp_name_input: z.string().trim().max(160).nullable().optional(),
+  erp_id: uuid.nullable().optional(),
+  erp_name: z.string().trim().max(160).nullable().optional(),
   segment_type: z.enum(FIELD_VISIT_SEGMENTS),
   follow_up_date: z.string().refine(isValidISTDateKey).nullable().optional(),
   created_at: z.string().datetime({ offset: true }),
@@ -100,7 +105,8 @@ export function validateNewVisit(visit: VisitPayload): boolean {
     && Boolean(visit.location_accuracy_m)
     && Boolean(visit.location_captured_at)
     && Boolean(visit.location_acquisition_mode)
-    && Boolean(visit.location_quality);
+    && Boolean(visit.location_quality)
+    && (visit.erp_contract_version !== 1 || visit.erp_usage_state === "erp" || visit.erp_usage_state === "none");
 }
 
 export function validateLeadCompatibility(
@@ -156,6 +162,10 @@ export function optionalRemotePayload(visit: VisitPayload) {
     selfie_captured_at: visit.selfie_captured_at ?? null,
     selfie_capture_method: visit.selfie_capture_method ?? null,
     selfie_storage_path: null,
+    erp_contract_version: visit.erp_contract_version,
+    erp_usage_state: visit.erp_usage_state,
+    erp_name_input: visit.erp_name_input ?? visit.erp_name ?? null,
+    erp_id: visit.erp_id ?? null,
   };
 }
 
@@ -238,7 +248,7 @@ export async function POST(request: Request) {
   if (attendanceResolution.integrityError) warningCodes.push("ATTENDANCE_LINK_PENDING");
   if (!resolvedAttendanceId && !warningCodes.includes("ATTENDANCE_LINK_PENDING")) warningCodes.push("ATTENDANCE_LINK_PENDING");
 
-  const select = "visit_id,user_id,lead_id,segment_type,selfie_storage_path,selfie_purged_at";
+  const select = "visit_id,user_id,lead_id,segment_type,selfie_storage_path,selfie_purged_at,erp_id,erp_usage_state,erp_systems(erp_name)";
   const preflight = await admin.from("field_visits").select(select).eq("visit_id", visit.visit_id).maybeSingle();
   if (preflight.error) return response(500, "VISIT_CONFIRMATION_FAILED", "The exact visit could not be checked safely.");
   if (preflight.data && preflight.data.user_id !== auth.user.id) {
@@ -247,17 +257,31 @@ export async function POST(request: Request) {
   let alreadyConfirmed = Boolean(preflight.data);
   if (!alreadyConfirmed) {
     if (!leadCompatibility.allowed) return response(400, "VISIT_VALIDATION_FAILED", "The selected business reference conflicts with the current business segment.");
-    let insertError = (await admin.from("field_visits").insert({ ...coreRemotePayload(visit, resolvedAttendanceId), ...optionalRemotePayload(visit) })).error;
-    if (insertError && (insertError.code === "42703" || insertError.code === "PGRST204" || insertError.code === "23514")) {
-      console.error("Field visit optional schema mismatch", { code: insertError.code });
-      warningCodes.push("OPTIONAL_SCHEMA_MISMATCH");
-      insertError = (await admin.from("field_visits").insert(coreRemotePayload(visit, resolvedAttendanceId))).error;
-    }
-    if (insertError?.code === "23505") alreadyConfirmed = true;
-    else if (insertError) {
-      const safeCode = mapInsertError(insertError.code);
-      console.error("Field visit insert failed", { code: insertError.code ?? "UNKNOWN" });
-      return response(safeCode === "SERVER_AUTHORIZATION_FAILED" ? 403 : 500, safeCode, "The visit was retained locally and will retry.");
+    if (visit.erp_contract_version === 1) {
+      if (visit.erp_usage_state !== "erp" && visit.erp_usage_state !== "none") return response(422, "VISIT_VALIDATION_FAILED", "ERP_REQUIRED");
+      const { data: result, error: rpcError } = await admin.rpc("confirm_field_visit_erp_v1", {
+        p_actor_id: auth.user.id,
+        p_visit: { ...coreRemotePayload(visit, resolvedAttendanceId), ...optionalRemotePayload(visit), erp_usage_state: visit.erp_usage_state, erp_name_input: visit.erp_name_input ?? visit.erp_name ?? null },
+      });
+      const rpcCode = typeof result?.code === "string" ? result.code : "";
+      if (rpcError || !result?.success) {
+        const code = rpcCode === "ERP_REQUIRED" ? "VISIT_VALIDATION_FAILED" : rpcCode === "ERP_INVALID" ? "VISIT_VALIDATION_FAILED" : rpcCode === "VISIT_ID_OWNERSHIP_COLLISION" ? "VISIT_ID_OWNERSHIP_COLLISION" : rpcCode === "CAPABILITY_MISMATCH" ? "CAPABILITY_MISMATCH" : "VISIT_INSERT_FAILED";
+        return response(code === "CAPABILITY_MISMATCH" ? 403 : code === "VISIT_ID_OWNERSHIP_COLLISION" ? 409 : 500, code, rpcCode || "ERP_VISIT_CAPABILITY_MISSING");
+      }
+      alreadyConfirmed = Boolean(result.already_confirmed);
+    } else {
+      let insertError = (await admin.from("field_visits").insert({ ...coreRemotePayload(visit, resolvedAttendanceId), ...optionalRemotePayload(visit) })).error;
+      if (insertError && (insertError.code === "42703" || insertError.code === "PGRST204" || insertError.code === "23514")) {
+        console.error("Field visit optional schema mismatch", { code: insertError.code });
+        warningCodes.push("OPTIONAL_SCHEMA_MISMATCH");
+        insertError = (await admin.from("field_visits").insert(coreRemotePayload(visit, resolvedAttendanceId))).error;
+      }
+      if (insertError?.code === "23505") alreadyConfirmed = true;
+      else if (insertError) {
+        const safeCode = mapInsertError(insertError.code);
+        console.error("Field visit insert failed", { code: insertError.code ?? "UNKNOWN" });
+        return response(safeCode === "SERVER_AUTHORIZATION_FAILED" ? 403 : 500, safeCode, "The visit was retained locally and will retry.");
+      }
     }
   } else if (resolvedAttendanceId) {
     const linkResult = await admin.from("field_visits").update({ attendance_id: resolvedAttendanceId })

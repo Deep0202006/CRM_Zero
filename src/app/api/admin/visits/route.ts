@@ -131,7 +131,7 @@ export async function GET(request: Request) {
 
     let query = admin
       .from("field_visits")
-      .select("visit_id,user_id,lead_id,visit_date,check_in_time,check_in_lat,check_in_lng,address,pincode,selfie_storage_path,selfie_uploaded_at,selfie_purged_at,visit_outcome,visit_notes,person_met,segment_type,follow_up_date,sync_status,created_at,updated_at", { count: "exact" })
+      .select("visit_id,user_id,lead_id,visit_date,check_in_time,check_in_lat,check_in_lng,address,pincode,selfie_storage_path,selfie_uploaded_at,selfie_purged_at,visit_outcome,visit_notes,person_met,segment_type,follow_up_date,sync_status,created_at,updated_at,erp_id,erp_usage_state,erp_systems(erp_name)", { count: "exact" })
       .order("created_at", { ascending: false })
       .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
     if (date && selectedBounds) query = query.or(`visit_date.eq.${date},and(check_in_time.gte.${selectedBounds.startsAt},check_in_time.lt.${selectedBounds.endsAt})`);
@@ -196,6 +196,9 @@ export async function GET(request: Request) {
       person_met: visit.person_met,
       segment_type: visit.segment_type,
       follow_up_date: visit.follow_up_date,
+      erp_id: visit.erp_id,
+      erp_usage_state: visit.erp_usage_state,
+      erp_name: (visit.erp_systems as { erp_name?: string } | null)?.erp_name ?? null,
       created_at: visit.created_at,
       updated_at: visit.updated_at,
       sync_status: visit.sync_status,
