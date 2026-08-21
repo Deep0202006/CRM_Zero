@@ -1,0 +1,10 @@
+do $$ begin create role anon; exception when duplicate_object then null; end $$;
+do $$ begin create role authenticated; exception when duplicate_object then null; end $$;
+do $$ begin create role service_role; exception when duplicate_object then null; end $$;
+create table public.user_capabilities (user_id uuid not null references public.users(user_id), capability_code text not null, primary key(user_id,capability_code));
+alter table public.users add column is_active boolean not null default true;
+insert into public.user_capabilities values ('00000000-0000-4000-8000-000000000001','field_ret');
+create or replace function public.erp_normalized_key_v1(p_value text) returns text language sql immutable as $$ select lower(regexp_replace(btrim(coalesce(p_value,'')), '\s+', ' ', 'g')) $$;
+create table public.erp_systems (erp_id uuid primary key, erp_name text not null, erp_key text not null unique, created_by uuid not null references public.users(user_id));
+alter table public.field_visits add column pincode text null;
+grant usage on schema public to service_role;
