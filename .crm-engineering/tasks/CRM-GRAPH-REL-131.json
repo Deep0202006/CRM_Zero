@@ -19,7 +19,7 @@
     "observedHeadSha": "e7f148af6aa2ca77cd28573e4557c16c69b7c216",
     "dirtyBaselineHash": "2f0084becd64642c9ec7f98b58c76a4ecdecc3eacc9b56723f15d7e6b60e4f05"
   },
-  "phase": "TARGETED_VERIFICATION",
+  "phase": "COMPLETE",
   "allowedPaths": [
     ".crm-engineering/**",
     "tools/crm-graph/**"
@@ -77,7 +77,7 @@
       "id": "REL131-V01",
       "description": "Focused Graph regressions plus one exact-head GitHub CI run and Vercel preview certify Graph v1.3.1.",
       "stage": "VERIFICATION",
-      "status": "PENDING",
+      "status": "PASS",
       "required": true,
       "evidenceIds": [
         ".crm-engineering/proofs/CRM-GRAPH-REL-131/v01-verification.json",
@@ -86,7 +86,10 @@
         "focused:diff-check:pass",
         "focused-retry:github-auth-and-remote-probe",
         "focused:crm-graph-regressions:100-pass",
-        "focused-retry:head-and-github-auth-probe"
+        "focused-retry:head-and-github-auth-probe",
+        "github:workflow:32475307408:preflight-and-verify-pass",
+        "vercel:6ee38223e94b80221dd502ed50fe9ea6e4089694:success",
+        "github:pr:70:merge:7aae2e7d76d36939a288bfdf18af8b6bcba84c6a"
       ]
     }
   ],
