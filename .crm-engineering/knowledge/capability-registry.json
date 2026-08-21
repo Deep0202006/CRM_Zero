@@ -96,12 +96,14 @@
     {
       "id": "field-visit-erp-intelligence",
       "status": "PRODUCTION_CERTIFIED",
-      "authorityRefs": ["field_visit", "erp_system", "field_visit_erp_observation"],
+      "authorityRefs": ["field_visit", "erp_system", "field_visit_erp_observation", "field_business_erp_baseline"],
       "reuse": "required",
       "notes": [
         "ERP options require an active field_ret, field_dist, or admin capability; confirmation revalidates the exact segment capability.",
         "Browser clients cannot mutate the ERP registry or execute the confirmation and intelligence database functions.",
-        "Pre-contract queued visits remain recoverable without rewriting historical NULL observations as None."
+        "Pre-contract queued visits remain recoverable without rewriting historical NULL observations as None.",
+        "Migration 049 adds a separate zero-backfill Admin baseline and V2 current projection; V1 visit observation and intelligence contracts remain unchanged.",
+        "Manual baseline writes are active-Admin, service-only, bounded to 500 exact business identities, and atomic."
       ]
     }
   ]

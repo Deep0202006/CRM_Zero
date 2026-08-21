@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "taskId": "CRM-P1-049",
+  "acceptanceId": "P1-049-A04",
+  "evidenceId": "CRM-P1-049-A04-FOCUSED-IMPLEMENTATION",
+  "status": "PASS",
+  "productionContacted": false,
+  "files": {
+    ".crm-engineering/knowledge/authority-registry.json": "0F4E0D675362B5D6976B774DA9C78E411D9343390B421C1087EF986889C2ACC3",
+    ".crm-engineering/knowledge/capability-registry.json": "7BE1EF910FF46996496659F00E5D58D2D6EF0DAF7EE5A588229910F4507BB970",
+    ".crm-engineering/knowledge/lessons-registry.json": "433BC27ECA0B7D0235F1FAE5910CCAC834B8F066DA05D357EBF9E17DD56E4549",
+    "src/lib/__tests__/currentErpAuthority.test.ts": "36BEF3E37919AA6C64F554E73BF68D989E0D6A977AE1D4E7D9DDE56B518FAF3F"
+  },
+  "gates": [
+    {
+      "kind": "authority-registration",
+      "result": "PASS",
+      "scope": "field_business_erp_baseline is registered once as exact (segment_type,business_ref) Admin enrichment, separate from Field Visit observation, canonical Distributor ERP assignment, Pipeline, financial, and Renewal authorities."
+    },
+    {
+      "kind": "security-and-compatibility-registration",
+      "result": "PASS",
+      "scope": "Registry records zero backfill, RLS/service-only Admin writes, bounded atomic batches, V2-only projection, scoped clear, and unchanged V1 observation/intelligence compatibility."
+    },
+    {
+      "kind": "graph-learning-closure",
+      "result": "PASS",
+      "scope": "MANUAL_BASELINE_NOT_HISTORY_RULE is registered with COMPILED enforcement and the reusable field-visit-erp-intelligence capability references both observation and baseline authorities."
+    },
+    {
+      "kind": "bounded-worker-context",
+      "result": "PASS",
+      "scope": "context-policy maxLessons remains 14; no task-specific rule was hard-coded into the compiler and its policy slice remains authoritative. Controller TypeScript compilation passed."
+    },
+    {
+      "kind": "focused-verification",
+      "result": "PASS",
+      "scope": "Focused Jest authority/security/compatibility suite passed 4 tests; targeted ESLint, Graph typecheck, JSON parsing, diff check, and whitespace checks passed."
+    }
+  ],
+  "environmentNote": "Direct crm:context remains unavailable in this Windows process because Node os.userInfo fails with uv_os_get_passwd ENOMEM; Graph compiler typecheck and focused registry/context contract tests passed without contacting production."
+}

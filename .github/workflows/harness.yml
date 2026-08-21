@@ -79,6 +79,15 @@ jobs:
         run: createdb field_visits_test && PGDATABASE=field_visits_test bash scripts/field-visits-db/run-integration.sh
       - name: Fresh-apply Migration 048 and prove Field Visit ERP observation invariants
         run: createdb field_visit_erp_test && PGDATABASE=field_visit_erp_test bash scripts/field-visit-erp-db/run-integration.sh
+      - name: Fresh-apply Migration 049 and prove current ERP baseline invariants
+        run: createdb field_business_erp_test && PGDATABASE=field_business_erp_test CRM_P1_049_PROOF_PATH="$RUNNER_TEMP/crm-p1-049-postgres17.txt" bash scripts/field-business-erp-db/run-integration.sh
+      - name: Upload exact-head Migration 049 PostgreSQL 17 proof
+        uses: actions/upload-artifact@v4
+        with:
+          name: crm-p1-049-postgres17-${{ github.event.pull_request.head.sha }}
+          path: ${{ runner.temp }}/crm-p1-049-postgres17.txt
+          if-no-files-found: error
+          retention-days: 30
       - name: Prove Attendance uniqueness and permanent-row evidence lifecycle
         run: createdb attendance_test && PGDATABASE=attendance_test bash scripts/attendance-db/run-integration.sh
       - name: Fresh-apply Pipeline authority migrations and prove isolation

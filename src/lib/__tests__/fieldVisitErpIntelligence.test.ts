@@ -44,13 +44,14 @@ describe("Field Visit latest-unique-business ERP Intelligence", () => {
     const api = read("src/app/api/admin/visits/erp-analytics/route.ts");
     const page = read("src/app/admin/visits/page.tsx");
     const panel = read("src/components/analytics/FieldVisitErpIntelligence.tsx");
-    expect(api).toContain('admin.rpc("field_visit_erp_intelligence_v1")');
+    expect(api).toContain('admin.rpc("field_visit_erp_intelligence_v2")');
     expect(api).toContain('row.capability_code === "admin"');
     expect(panel).toContain("segments.Retailer");
     expect(panel).toContain("segments.Distributor");
     expect(panel).toContain("Each business is counted once; repeat visits do not inflate totals.");
-    expect(panel).toContain("var(--viz-primary)");
-    expect(panel).not.toContain("var(--viz-1)");
+    expect(panel).toContain("stableErpColor");
+    expect(panel).toContain("var(--viz-warning)");
+    expect(panel).toContain("var(--viz-muted)");
     expect(page).toContain("ERP intelligence is temporarily unavailable.");
     expect(page).toContain(">Retry</Button>");
     expect(page).toContain("setErpSegments(null)");

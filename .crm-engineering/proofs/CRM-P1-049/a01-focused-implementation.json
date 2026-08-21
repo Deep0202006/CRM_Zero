@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "taskId": "CRM-P1-049",
+  "acceptanceId": "P1-049-A01",
+  "evidenceId": "CRM-P1-049-A01-FOCUSED-IMPLEMENTATION",
+  "status": "PASS",
+  "productionContacted": false,
+  "localPostgresqlUsed": false,
+  "migration049Sha256": "9B19CF91F3E358A9CBC4165455E3BB2E8C7AA1E4CD058109BE8FBBBFC92326C5",
+  "repairTestSha256": "F3F68750C67E2CA7250D1F6AA9282E371CC03C2838582F9FEDC4266C18BACABF",
+  "baselineTestSha256": "F4F1E0547F1FE29AD113D46AED359BA71BD48DEA1CD813AA5D4414A0EA932DBB",
+  "gates": [
+    {
+      "kind": "authority-and-zero-backfill-static-audit",
+      "result": "PASS",
+      "scope": "Migration 049 creates only the manual field_business_erp_baselines authority, contains no field_visits data mutation, preserves NULL as Not captured, and does not alter migrations 001 through 048."
+    },
+    {
+      "kind": "atomic-admin-batch-static-audit",
+      "result": "PASS",
+      "scope": "Service-only Admin RPC bounds batches to 1..500, validates the complete batch and exact visited identity before durable writes, reuses canonical ERP keys, supports set/None/clear, serializes affected identities, and scopes clear to the exact manual baseline."
+    },
+    {
+      "kind": "v2-recency-provenance-static-audit",
+      "result": "PASS",
+      "scope": "The bounded V2 current projection returns at most 500 exact identities with effective timestamp and provenance; both V2 readers retain every visited identity but admit only captured erp/none visit observations and captured baselines into recency competition. Historical NULL remains Not captured and cannot displace a valid ERP fact."
+    },
+    {
+      "kind": "controller-nullability-repair",
+      "result": "PASS",
+      "scope": "field_business_erp_baselines permits the compatible (NULL,NULL) state while rejecting every mismatched state/id pair. The Admin RPC continues to write only explicit erp or none values. Four migration-repair regression tests passed."
+    },
+    {
+      "kind": "public-rpc-argument-contract",
+      "result": "PASS",
+      "scope": "The SQL function signature and Admin server call expose exactly p_actor_id plus p_rows; p_operations is absent. Two focused suites passed with 9 tests total."
+    },
+    {
+      "kind": "security-static-audit",
+      "result": "PASS",
+      "scope": "RLS is enabled; public, anon, and authenticated direct access/execution are revoked; only service_role receives table and RPC authority."
+    },
+    {
+      "kind": "diff-check",
+      "result": "PASS",
+      "scope": "Migration 049 passes git diff --check and no protected prior migration is modified."
+    }
+  ],
+  "deferredToAuthoritativeCi": [
+    "Execute Migration 049 and its behavior matrix against disposable PostgreSQL 17; no approved local PostgreSQL toolchain is present."
+  ],
+  "controllerCliNote": "Local crm:status/context could not execute because Node uv_os_get_passwd returned ENOMEM before controller evaluation."
+}
