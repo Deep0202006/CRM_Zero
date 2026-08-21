@@ -146,6 +146,7 @@
     },
     {
       "id": "field_visit_erp_observation",
+      "status": "PRODUCTION_CERTIFIED",
       "authority": "public.field_visits(erp_usage_state, erp_id)",
       "identity": ["visit_id"],
       "owns": ["ERP observed during that exact Field Visit"],

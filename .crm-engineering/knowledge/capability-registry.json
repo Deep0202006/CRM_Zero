@@ -95,7 +95,7 @@
     },
     {
       "id": "field-visit-erp-intelligence",
-      "status": "IMPLEMENTED_PENDING_OWNER_CERTIFICATION",
+      "status": "PRODUCTION_CERTIFIED",
       "authorityRefs": ["field_visit", "erp_system", "field_visit_erp_observation"],
       "reuse": "required",
       "notes": [

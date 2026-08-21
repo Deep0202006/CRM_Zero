@@ -21,7 +21,7 @@
     "observedHeadSha": "62dcf2710a2d9dc2a7c1fd6317bfa962f987eb25",
     "dirtyBaselineHash": "fe605eaec3b7f0051b5175105a6a5e3068581c3dd76bb0629e211184a3bb61a4"
   },
-  "phase": "PRODUCTION_GATE",
+  "phase": "COMPLETE",
   "allowedPaths": [
     ".crm-engineering/**",
     ".github/workflows/harness.yml",
@@ -56,7 +56,7 @@
   "schemaChange": true,
   "humanGate": {
     "kind": "OWNER_PRODUCTION_GATE",
-    "status": "PENDING",
+    "status": "SATISFIED",
     "reason": "Only the Owner may manually apply Migration 048 after exact-head controller certification."
   },
   "budgets": {
@@ -137,9 +137,12 @@
       "id": "P1-048-R01",
       "description": "Owner manually applies Migration 048 and read-only production certification confirms the expected schema and safety invariants.",
       "stage": "RELEASE",
-      "status": "PENDING",
+      "status": "PASS",
       "required": true,
-      "evidenceIds": []
+      "evidenceIds": [
+        ".crm-engineering/proofs/CRM-P1-048/r01-owner-production-postcheck-20260821.json",
+        ".crm-engineering/proofs/CRM-P1-048/production-closeout-20260821.json"
+      ]
     }
   ],
   "blocker": null
