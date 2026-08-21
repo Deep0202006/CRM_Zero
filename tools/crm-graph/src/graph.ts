@@ -7,7 +7,7 @@ import { compileWorkerContext } from "./context.js";
 import { loadTask, saveTask } from "./loader.js";
 import { appliedMigrationDiffs, completionFlags, newlyChangedPaths, outOfScopePaths, requiresOwnerProductionGate, validateWorktree } from "./guards.js";
 import { validateWorkerResult, type WorkerSessionLike } from "./worker.js";
-import { authorizeOwnerMigrationReadiness, rejectWorkerOwnerMigrationReadiness } from "./owner-gate.js";
+import { authorizeOwnerMigrationReadiness, githubReleaseAuthority, rejectWorkerOwnerMigrationReadiness, type RemoteReleaseAuthority } from "./owner-gate.js";
 
 function taskFromState(state:EngineeringStateType) { return loadTask(state.graphRoot, state.taskId); }
 function incomplete(state:EngineeringStateType, stage:"IMPLEMENTATION"|"VERIFICATION") {
@@ -58,7 +58,7 @@ function workerError(error:any, attempt:number) {
   };
 }
 
-export function buildGraph(checkpointer:any, workerSession:WorkerSessionLike) {
+export function buildGraph(checkpointer:any, workerSession:WorkerSessionLike, remoteReleaseAuthority:RemoteReleaseAuthority = githubReleaseAuthority) {
   const workerNode:GraphNode<typeof EngineeringState> = async state => {
     if (state.mode === "shadow") return { currentNode:"worker", findings:[...state.findings,`SHADOW: would invoke ${state.workerIntent} worker.`] };
     const task = taskFromState(state);
@@ -147,7 +147,7 @@ export function buildGraph(checkpointer:any, workerSession:WorkerSessionLike) {
   const reviewNode:GraphNode<typeof EngineeringState> = state => ({ currentNode:"review", phase:"REVIEW", nextLegalAction:"REVIEW" });
   const productionGate:GraphNode<typeof EngineeringState> = state => {
     const task = taskFromState(state);
-    const readinessPhrase = authorizeOwnerMigrationReadiness(state.graphRoot,task);
+    const readinessPhrase = authorizeOwnerMigrationReadiness(state.graphRoot,task,remoteReleaseAuthority);
     const answer:any = interrupt({
       type:"OWNER_PRODUCTION_GATE", taskId:state.taskId,
       instruction:readinessPhrase,
