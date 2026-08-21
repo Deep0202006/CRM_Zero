@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "jest",
+    "test": "jest --config tools/crm-graph/scripts/jest-all-tests.config.cjs",
     "test:e2e:receivables": "playwright test e2e/receivables",
     "test:e2e:field-visits": "playwright test e2e/field-visits",
     "test:e2e:mappings": "playwright test e2e/mappings",

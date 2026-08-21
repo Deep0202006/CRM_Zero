@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "taskId": "CRM-GRAPH-REL-13",
+  "acceptanceId": "REL13-V01",
+  "status": "PENDING_EXACT_HEAD_CI",
+  "observedCommit": "8487408a79df27a2735d7f42a3fae1993195a43d",
+  "implementationCommitted": false,
+  "focusedProof": [
+    {
+      "command": "npm.cmd --prefix tools/crm-graph test",
+      "result": "PASS",
+      "summary": "94 tests passed"
+    },
+    {
+      "command": "npm.cmd test -- --runInBand src/lib/__tests__/employeesDirectory.test.ts src/lib/__tests__/distributors/employeesDirectory.test.ts",
+      "result": "PASS",
+      "summary": "2 suites and 11 tests passed"
+    },
+    {
+      "command": "npm.cmd run typecheck",
+      "result": "PASS"
+    },
+    {
+      "command": "git diff --check",
+      "result": "PASS"
+    }
+  ],
+  "exactHeadCi": {
+    "status": "NOT_AVAILABLE",
+    "reason": "The verified implementation remains a dirty worktree delta over observedCommit, so no GitHub run can certify its exact content SHA."
+  },
+  "productionContacted": false
+}
