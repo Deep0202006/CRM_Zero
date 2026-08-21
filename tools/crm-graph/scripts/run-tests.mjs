@@ -4,7 +4,7 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)),"..");
-const outputRoot = fs.mkdtempSync(path.join(packageRoot,"node_modules",".crm-graph-tests-"));
+const outputRoot = fs.mkdtempSync(path.join(packageRoot,".crm-graph-tests-"));
 const tsc = path.join(packageRoot,"node_modules","typescript","bin","tsc");
 
 function run(command,args) {

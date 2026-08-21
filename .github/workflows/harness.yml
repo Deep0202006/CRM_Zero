@@ -33,7 +33,7 @@ jobs:
           fi
 
   receivables-postgres:
-    needs: classify
+    needs: [classify, preflight]
     if: needs.classify.outputs.graph_only != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -88,7 +88,7 @@ jobs:
       - name: Fresh-apply Migrations 046-047 and prove master-import, ERP scope, and financial isolation
         run: createdb distributor_master_test && CRM_MASTER_DB_DISPOSABLE=1 PGDATABASE=distributor_master_test bash scripts/distributor-master-db/run-integration.sh
 
-  verify:
+  preflight:
     needs: classify
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -104,10 +104,6 @@ jobs:
         with:
           node-version: 24.13.0
           cache: npm
-      - name: Install product dependencies for full verification
-        if: needs.classify.outputs.graph_only != 'true'
-        run: npm ci
-
       - name: Install CRM Engineering Graph dependencies
         run: npm ci --prefix tools/crm-graph
 
@@ -116,6 +112,12 @@ jobs:
 
       - name: Test CRM Engineering Graph
         run: npm run crm:graph:test
+
+      - name: Require coherent Graph task authority for product/schema diff
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node tools/crm-graph/scripts/check-pr-task-authority.mjs --base "$BASE_SHA" --head "$HEAD_SHA"
 
       - name: Load changed authoritative Graph task state
         env:
@@ -139,17 +141,64 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: git diff --check "$BASE_SHA" "$HEAD_SHA"
 
-      - if: needs.classify.outputs.graph_only != 'true'
-        run: npm run typecheck
-      - if: needs.classify.outputs.graph_only != 'true'
-        run: npm test -- --runInBand
-      - if: needs.classify.outputs.graph_only != 'true'
-        run: npm run lint
-      - if: needs.classify.outputs.graph_only != 'true'
-        run: npm run build
+      - name: Install product dependencies for affected verification
+        if: needs.classify.outputs.graph_only != 'true'
+        run: npm ci
+
+      - name: Typecheck product with exact-base failure ablation
+        if: needs.classify.outputs.graph_only != 'true'
+        run: node tools/crm-graph/scripts/run-failure-ablation.mjs --base "${{ github.event.pull_request.base.sha }}" --suite typecheck --prepare-json '["npm","ci"]' --command-json '["npm","run","typecheck"]'
+
+      - name: Run affected product tests before expensive suites
+        if: needs.classify.outputs.graph_only != 'true'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          mapfile -d '' changed_source < <(git diff --name-only -z "$BASE_SHA" "$HEAD_SHA" -- src)
+          affected=()
+          for candidate in "${changed_source[@]}"; do
+            case "$candidate" in
+              *.ts|*.tsx|*.js|*.jsx) affected+=("$candidate") ;;
+            esac
+          done
+          if [ "${#affected[@]}" -eq 0 ]; then
+            echo "No Jest-related source changes."
+          else
+            npm test -- --runInBand --findRelatedTests "${affected[@]}"
+          fi
+
+  verify:
+    needs: [classify, preflight]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://e2e.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: e2e-anon-key
+      SUPABASE_SERVICE_ROLE_KEY: BUILD_TIME_PLACEHOLDER_KEY
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.13.0
+          cache: npm
+      - name: Install product dependencies for full verification
+        if: needs.classify.outputs.graph_only != 'true'
+        run: npm ci
+      - name: Test product with exact-base failure ablation
+        if: needs.classify.outputs.graph_only != 'true'
+        run: node tools/crm-graph/scripts/run-failure-ablation.mjs --base "${{ github.event.pull_request.base.sha }}" --suite unit --prepare-json '["npm","ci"]' --command-json '["npm","test","--","--runInBand"]'
+      - name: Lint product with exact-base failure ablation
+        if: needs.classify.outputs.graph_only != 'true'
+        run: node tools/crm-graph/scripts/run-failure-ablation.mjs --base "${{ github.event.pull_request.base.sha }}" --suite lint --prepare-json '["npm","ci"]' --command-json '["npm","run","lint"]'
+      - name: Build product with exact-base failure ablation
+        if: needs.classify.outputs.graph_only != 'true'
+        run: node tools/crm-graph/scripts/run-failure-ablation.mjs --base "${{ github.event.pull_request.base.sha }}" --suite build --prepare-json '["npm","ci"]' --command-json '["npm","run","build"]'
 
   e2e:
-    needs: classify
+    needs: [classify, preflight, verify]
     if: needs.classify.outputs.graph_only != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20

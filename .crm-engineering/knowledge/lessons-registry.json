@@ -128,6 +128,13 @@
       "enforcementStatus": "COMPILED"
     },
     {
+      "date": "2026-08-21",
+      "domain": "Testing",
+      "id": "TIME_DEPENDENT_TEST_CLOCK_RULE",
+      "rule": "Tests whose result depends on the business date or time must freeze an explicit clock before exercising behavior and restore the real clock afterward; fixed fixture dates alone are not deterministic.",
+      "enforcementStatus": "COMPILED"
+    },
+    {
       "date": "2026-08-17",
       "domain": "Execution management",
       "id": "EXECUTION_BUDGET_RULE",
