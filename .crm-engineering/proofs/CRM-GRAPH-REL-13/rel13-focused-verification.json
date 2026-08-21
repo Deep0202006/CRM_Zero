@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "taskId": "CRM-GRAPH-REL-13",
   "acceptanceId": "REL13-V01",
-  "status": "PENDING_EXACT_HEAD_CI",
-  "observedCommit": "8487408a79df27a2735d7f42a3fae1993195a43d",
-  "implementationCommitted": false,
+  "status": "PASS",
+  "observedCommit": "6a6857d29a2c443ab32e7ff9585eb00ed130ba64",
+  "implementationCommitted": true,
   "focusedProof": [
     {
       "command": "npm.cmd --prefix tools/crm-graph test",
@@ -12,12 +12,7 @@
       "summary": "94 tests passed"
     },
     {
-      "command": "npm.cmd test -- --runInBand src/lib/__tests__/employeesDirectory.test.ts src/lib/__tests__/distributors/employeesDirectory.test.ts",
-      "result": "PASS",
-      "summary": "2 suites and 11 tests passed"
-    },
-    {
-      "command": "npm.cmd run typecheck",
+      "command": "npm.cmd --prefix tools/crm-graph run typecheck",
       "result": "PASS"
     },
     {
@@ -26,8 +21,32 @@
     }
   ],
   "exactHeadCi": {
-    "status": "NOT_AVAILABLE",
-    "reason": "The verified implementation remains a dirty worktree delta over observedCommit, so no GitHub run can certify its exact content SHA."
+    "status": "PASS",
+    "prNumber": 68,
+    "prUrl": "https://github.com/Deep0202006/CRM_Zero/pull/68",
+    "baseSha": "4467a8bcb209a4920f89df507127fb44eb2f4fe5",
+    "headSha": "6a6857d29a2c443ab32e7ff9585eb00ed130ba64",
+    "mergeSha": "7f613cc778e89ddd53afdce04fa18311c0204129",
+    "workflowRunId": 32462669406,
+    "workflowUrl": "https://github.com/Deep0202006/CRM_Zero/actions/runs/32462669406",
+    "requiredChecks": {
+      "preflight": "PASS",
+      "verify": "PASS",
+      "receivables-postgres": "PASS",
+      "e2e": "PASS"
+    },
+    "vercel": {
+      "status": "SUCCESS",
+      "headSha": "6a6857d29a2c443ab32e7ff9585eb00ed130ba64",
+      "deploymentUrl": "https://vercel.com/zero-data/zero_crm/AnnFiEpTjKx25KH69vFj4amaNdfM"
+    }
+  },
+  "closeoutRepair": {
+    "path": "tools/crm-graph/tests/ci-scope.test.ts",
+    "reason": "Normalize CRLF before asserting workflow job order on Windows.",
+    "gitBlob": "e5b284c9a617e570f5d31a91f47939f417d79466",
+    "focusedStatus": "PASS",
+    "remoteRequirement": "Graph-only fast CI must pass before closeout merge."
   },
   "productionContacted": false
 }

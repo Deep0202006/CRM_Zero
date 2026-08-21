@@ -12,14 +12,14 @@
   ],
   "repository": {
     "canonicalRoot": "C:\\Users\\dcp69\\Desktop\\CRM_Zero",
-    "worktreePath": "C:\\Users\\dcp69\\Desktop\\CRM_Zero\\.worktrees\\crm-graph-release-firewall",
-    "branch": "fix/graph-release-firewall-v13",
+    "worktreePath": "C:\\Users\\dcp69\\Desktop\\CRM_Zero\\.worktrees\\graph-rel13-closeout",
+    "branch": "chore/graph-rel13-closeout",
     "expectedBaseRef": "origin/main",
-    "expectedBaseSha": "4467a8bcb209a4920f89df507127fb44eb2f4fe5",
-    "observedHeadSha": "8f2c8c4bbcd23482f167b475d1b3d3a92fa08db0",
-    "dirtyBaselineHash": "fe605eaec3b7f0051b5175105a6a5e3068581c3dd76bb0629e211184a3bb61a4"
+    "expectedBaseSha": "7f613cc778e89ddd53afdce04fa18311c0204129",
+    "observedHeadSha": "7f613cc778e89ddd53afdce04fa18311c0204129",
+    "dirtyBaselineHash": "37cfde5dd52391840dbbbb4de18a82c33514dcce5d68b3f793b2fa8b159d15a5"
   },
-  "phase": "TARGETED_VERIFICATION",
+  "phase": "COMPLETE",
   "allowedPaths": [
     ".crm-engineering/**",
     ".github/workflows/harness.yml",
@@ -117,7 +117,7 @@
       "id": "REL13-V01",
       "description": "Focused regression tests and one exact-head GitHub CI run certify the release firewall.",
       "stage": "VERIFICATION",
-      "status": "PENDING",
+      "status": "PASS",
       "required": true,
       "evidenceIds": [
         "focused:crm-graph-tests:94-pass",
@@ -126,13 +126,15 @@
         "focused:git-diff-check:pass",
         ".crm-engineering/proofs/CRM-GRAPH-REL-13/rel13-focused-verification.json",
         "focused:employee-directory-clock-tests:11-pass",
-        "git-head:8f2c8c4bbcd23482f167b475d1b3d3a92fa08db0"
+        "git-head:8f2c8c4bbcd23482f167b475d1b3d3a92fa08db0",
+        "focused:crm-graph-typecheck:pass",
+        "git-blob:e5b284c9a617e570f5d31a91f47939f417d79466",
+        "github-actions:32462669406:exact-head-6a6857d29a2c443ab32e7ff9585eb00ed130ba64:success",
+        "vercel:6a6857d29a2c443ab32e7ff9585eb00ed130ba64:success",
+        "pr-68:merge:7f613cc778e89ddd53afdce04fa18311c0204129",
+        "focused:ci-scope-windows-crlf:pass"
       ]
     }
   ],
-  "blocker": {
-    "type": "EXTERNAL_DEPENDENCY",
-    "external": true,
-    "reason": "Strategy change exhausted local verification: the remaining requirement is an exact-head GitHub CI run, but the verified Jest repair is not committed. This sandbox has read-only Git metadata and the bounded VERIFY role cannot create/push the final commit or initiate release-candidate CI. An authorized repository actor must commit jest.config.js, package.json, and removal of tools/crm-graph/scripts/jest-all-tests.config.cjs, then run required CI on that exact SHA."
-  }
+  "blocker": null
 }

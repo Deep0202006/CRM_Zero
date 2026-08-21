@@ -50,7 +50,7 @@ test("Graph-only pull requests do not require a product/schema task",async()=>{
 });
 
 test("cheap authority and affected checks gate every expensive suite without removing full verification",()=>{
-  const workflow=fs.readFileSync(path.resolve(process.cwd(),"..","..",".github","workflows","harness.yml"),"utf8");
+  const workflow=fs.readFileSync(path.resolve(process.cwd(),"..","..",".github","workflows","harness.yml"),"utf8").replace(/\r\n/g,"\n");
   const preflight=workflow.indexOf("  preflight:");
   const graph=workflow.indexOf("Typecheck CRM Engineering Graph",preflight);
   const task=workflow.indexOf("Require coherent Graph task authority",preflight);
