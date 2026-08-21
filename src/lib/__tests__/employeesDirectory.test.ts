@@ -15,7 +15,13 @@ function service() {
         : table === "capability_definitions"
           ? { data: [], error: null }
           : { data: [], error: null };
-      const builder:any={select:()=>builder,eq:()=>builder,order:()=>builder,range:()=>Promise.resolve(result),in:()=>Promise.resolve(result)};
+      const builder: Record<string, jest.Mock> = {
+        select: jest.fn(() => builder),
+        eq: jest.fn(() => builder),
+        order: jest.fn(() => builder),
+        range: jest.fn(() => Promise.resolve(result)),
+        in: jest.fn(() => Promise.resolve(result)),
+      };
       return builder;
     }
   } as never;

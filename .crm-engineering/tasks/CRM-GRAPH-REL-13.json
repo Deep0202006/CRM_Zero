@@ -16,8 +16,8 @@
     "branch": "fix/graph-release-firewall-v13",
     "expectedBaseRef": "origin/main",
     "expectedBaseSha": "4467a8bcb209a4920f89df507127fb44eb2f4fe5",
-    "observedHeadSha": "8487408a79df27a2735d7f42a3fae1993195a43d",
-    "dirtyBaselineHash": "7af714fe5778a98f251650f5e51d177085e51bf2c409c7ceb17e33c6540f5989"
+    "observedHeadSha": "8f2c8c4bbcd23482f167b475d1b3d3a92fa08db0",
+    "dirtyBaselineHash": "fe605eaec3b7f0051b5175105a6a5e3068581c3dd76bb0629e211184a3bb61a4"
   },
   "phase": "TARGETED_VERIFICATION",
   "allowedPaths": [
@@ -97,7 +97,8 @@
         "focused:employee-directory-clock-tests:11-pass",
         "focused:time-dependent-clock-rule:compiled",
         "focused:product-typecheck:pass",
-        "focused:git-diff-check:pass"
+        "focused:git-diff-check:pass",
+        "github:32461420195:lint:HEAD_REGRESSION:employeesDirectory.test.ts:18"
       ]
     },
     {
@@ -123,13 +124,15 @@
         "focused:employee-directory-tests:11-pass",
         "focused:product-typecheck:pass",
         "focused:git-diff-check:pass",
-        ".crm-engineering/proofs/CRM-GRAPH-REL-13/rel13-focused-verification.json"
+        ".crm-engineering/proofs/CRM-GRAPH-REL-13/rel13-focused-verification.json",
+        "focused:employee-directory-clock-tests:11-pass",
+        "git-head:8f2c8c4bbcd23482f167b475d1b3d3a92fa08db0"
       ]
     }
   ],
   "blocker": {
     "type": "EXTERNAL_DEPENDENCY",
     "external": true,
-    "reason": "REL13-V01 requires an exact-head GitHub CI run, but the verified implementation is still uncommitted and unpublished. Creating the release-candidate commit, pushing it, and initiating remote CI are outside this bounded VERIFY worker’s authority."
+    "reason": "Strategy change exhausted local verification: the remaining requirement is an exact-head GitHub CI run, but the verified Jest repair is not committed. This sandbox has read-only Git metadata and the bounded VERIFY role cannot create/push the final commit or initiate release-candidate CI. An authorized repository actor must commit jest.config.js, package.json, and removal of tools/crm-graph/scripts/jest-all-tests.config.cjs, then run required CI on that exact SHA."
   }
 }
