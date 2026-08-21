@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "graphSchemaVersion": 1,
-  "flowVersion": "1.3.0",
+  "flowVersion": "1.3.1",
   "taskId": "CRM-P1-048",
   "objective": "Certify Field Visit ERP observation and latest-unique-business ERP Intelligence while preserving zero-loss offline recovery and all canonical authority boundaries.",
   "risk": "R3",
@@ -17,11 +17,11 @@
     "worktreePath": "C:\\Users\\dcp69\\Desktop\\CRM_Zero\\.worktrees\\crm-p1-048-field-visit-erp",
     "branch": "feat/field-visit-erp-intelligence",
     "expectedBaseRef": "origin/main",
-    "expectedBaseSha": "e7f148af6aa2ca77cd28573e4557c16c69b7c216",
-    "observedHeadSha": "586fc0e7d835283369e031540193376e469ba3a6",
-    "dirtyBaselineHash": "979ec1a722be034948e046d12bf7ae35e827d89e9b9d077723c7c0961d984680"
+    "expectedBaseSha": "f181ce5b9028dc1d9da622505409ddabd9ba895f",
+    "observedHeadSha": "0b93195567ca877724c4035b3ca54b6d73989f66",
+    "dirtyBaselineHash": "585d759e556f222ce20e914a8caa8d108230a715386101a4eeb098840805cbdf"
   },
-  "phase": "TARGETED_VERIFICATION",
+  "phase": "PRODUCTION_GATE",
   "allowedPaths": [
     ".crm-engineering/**",
     ".github/workflows/harness.yml",
@@ -122,11 +122,15 @@
       "id": "P1-048-V01",
       "description": "Focused compatibility and feature tests plus exact-head GitHub and Vercel certification pass under Graph v1.3.",
       "stage": "VERIFICATION",
-      "status": "PENDING",
+      "status": "PASS",
       "required": true,
       "evidenceIds": [
         "CRM-P1-048-V01-LOCAL-PARTIAL-20260821",
-        "CRM-P1-048-V01-STRATEGY-CHANGE-RETRY-20260821"
+        "CRM-P1-048-V01-STRATEGY-CHANGE-RETRY-20260821",
+        "CRM-P1-048-V01-EXACT-HEAD-CD0EF744",
+        "github-actions:32471521730:exact-head-cd0ef744:success",
+        "vercel-preview:dpl_8xrXvViNqTfqUqVdmrpk9Gqbjtc5:exact-head-cd0ef744:READY",
+        ".crm-engineering/proofs/CRM-P1-048/owner-migration-readiness-certification.json"
       ]
     },
     {

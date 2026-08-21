@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "taskId": "CRM-P1-048",
+  "acceptanceId": "P1-048-V01",
+  "evidenceId": "CRM-P1-048-V01-EXACT-HEAD-CD0EF744",
+  "status": "PASS",
+  "verifiedAt": "2026-08-21T16:58:00+05:30",
+  "productionContacted": false,
+  "exactHeadSha": "cd0ef7440827208d3643416d16b30f7719c6a8c0",
+  "branch": "feat/field-visit-erp-intelligence",
+  "pullRequest": 67,
+  "localFocusedProof": {
+    "evidenceId": "CRM-P1-048-V01-STRATEGY-CHANGE-RETRY-20260821",
+    "focusedJest": "5 suites passed; 32 tests passed",
+    "focusedChromium": "3 scenarios passed",
+    "typecheck": "PASS",
+    "affectedLint": "PASS",
+    "diffCheck": "PASS",
+    "databaseInputAudit": "13 invariant markers, handoff hash, shell syntax, and scoped diff passed"
+  },
+  "githubActions": {
+    "runId": 32471521730,
+    "workflowId": 330877193,
+    "workflowName": "CRM Engineering Graph + Product Verification",
+    "runNumber": 125,
+    "status": "completed",
+    "conclusion": "success",
+    "commitSha": "cd0ef7440827208d3643416d16b30f7719c6a8c0",
+    "evidenceSource": "GitHub connector fetch_commit_workflow_runs"
+  },
+  "vercelPreview": {
+    "deploymentId": "dpl_8xrXvViNqTfqUqVdmrpk9Gqbjtc5",
+    "projectId": "prj_VmSH2jViyB6pHVfvicpEMVEqXTPc",
+    "projectName": "zero_crm",
+    "url": "zero-widrkg4hr-zero-data.vercel.app",
+    "branchAlias": "zerocrm-git-feat-field-visit-erp-intelligence-zero-data.vercel.app",
+    "state": "READY",
+    "readyState": "READY",
+    "githubCommitSha": "cd0ef7440827208d3643416d16b30f7719c6a8c0",
+    "githubCommitRef": "feat/field-visit-erp-intelligence",
+    "githubPrId": "67",
+    "target": null,
+    "source": "git",
+    "aliasError": null,
+    "evidenceSource": "Vercel connector get_deployment"
+  },
+  "exactHeadChecks": {
+    "githubWorkflowSucceeded": true,
+    "vercelPreviewReady": true,
+    "githubAndVercelShaMatch": true,
+    "productionMutationPerformed": false
+  }
+}

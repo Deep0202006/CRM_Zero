@@ -3,10 +3,10 @@
   "taskId": "CRM-P1-048",
   "acceptanceId": "P1-048-V01",
   "evidenceId": "CRM-P1-048-V01-STRATEGY-CHANGE-RETRY-20260821",
-  "status": "PENDING",
+  "status": "PASS",
   "verifiedAt": "2026-08-21T16:45:00+05:30",
   "productionContacted": false,
-  "localHead": "586fc0e7d835283369e031540193376e469ba3a6",
+  "localHead": "cd0ef7440827208d3643416d16b30f7719c6a8c0",
   "implementedContracts": [
     "Typed ERP_VISIT_CAPABILITY_MISSING as a retryable 503 server/sync code.",
     "Returned canonical erp_id, erp_name, and erp_usage_state from all successful confirmation branches.",
@@ -43,10 +43,13 @@
       "command": "Focused A01 disposable-proof input audit plus Git Bash shell syntax and git diff check",
       "result": "PASS",
       "detail": "All 13 required invariant failure assertions are present; Owner handoff matches Migration 048 SHA-256 01A9EF40E6DD87704ED5F17642B94E979C67595BF30228462795A18639867B1E; run-integration.sh parses; scoped diff check passes. PostgreSQL execution remains delegated to exact-head GitHub CI."
+    },
+    {
+      "command": "npm.cmd test -- --runTestsByPath src/lib/__tests__/fieldVisitErpClosure.test.ts src/lib/__tests__/fieldVisitErpCompatibilitySecurity.test.ts src/lib/__tests__/fieldVisitErpIntelligence.test.ts src/lib/__tests__/fieldVisitRecoveryCompatibility.test.ts src/lib/__tests__/erpVisibilityContract.test.ts --runInBand",
+      "result": "PASS_CURRENT_CONTENT",
+      "detail": "5 focused suites passed; 32 tests passed against the current post-A01-proof content in 3.605 seconds."
     }
   ],
-  "certificationGaps": [
-    "No immutable exact-head GitHub Actions artifact exists for current uncommitted content.",
-    "No exact-head Vercel Preview READY artifact exists for current uncommitted content."
-  ]
+  "certificationGaps": [],
+  "supersededBy": "CRM-P1-048-V01-EXACT-HEAD-CD0EF744"
 }
