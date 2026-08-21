@@ -44,7 +44,11 @@ function fixture(release=false,secondImplementation=false) {
   } else {
     task.repository.dirtyBaselineHash=inspectRepo(root).dirtyHash;fs.writeFileSync(taskPath,JSON.stringify(task,null,2));
   }
-  const remote=()=>({pr:{head:git(root,"rev-parse","HEAD"),base:task.repository.expectedBaseSha,state:"OPEN"},requiredChecks:[{name:"verify",status:"pass"}],vercel:{status:"pass",head:git(root,"rev-parse","HEAD")}});
+  const remote=()=>({pr:{head:git(root,"rev-parse","HEAD"),base:task.repository.expectedBaseSha,state:"OPEN"},requiredChecks:[
+    {name:"verify",status:"pass"},
+    {name:"receivables-postgres",status:"pass"},
+    {name:"e2e",status:"pass"}
+  ],vercel:{status:"pass",head:git(root,"rev-parse","HEAD")}});
   return {root,task,remote};
 }
 function initial(root:string,task:any):any{return {graphSchemaVersion:1,flowVersion:"1.1.0",taskId:"T",objective:"lifecycle",mode:"enforce",canonicalRoot:root,graphRoot:root,worktreePath:root,branch:"main",expectedBaseRef:"HEAD",expectedBaseSha:task.repository.expectedBaseSha,observedHeadSha:task.repository.observedHeadSha,dirtyBaselineHash:task.repository.dirtyBaselineHash,risk:"R0",domains:["engineering-graph"],allowedPaths:[".crm-engineering/**"],protectedDomains:[],phase:"IMPLEMENTATION",acceptance:task.acceptance,blocker:null,currentNode:"START",nextLegalAction:"",contextPacket:"",repoHealthy:false,implementationComplete:false,broadVerificationAllowed:false,canEnd:false,beforeDiffHash:null,beforeChangedPaths:[],afterDiffHash:null,beforePassCount:0,afterPassCount:0,stallCount:0,workerIntent:"IMPLEMENT",focusedAcceptanceId:null,workerRetryMode:"INITIAL",workerFailureCount:0,workerErrorHistory:[],workerStrategyGuidance:null,codexThreadId:null,codexLastMessage:"",codexResultValid:false,lastWorkerError:null,findings:[]};}
