@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "taskId": "CRM-GRAPH-REL-131",
+  "acceptanceId": "REL131-V01",
+  "status": "PASS",
+  "observedHead": "6ee38223e94b80221dd502ed50fe9ea6e4089694",
+  "implementationCommittedAtObservedHead": true,
+  "localVerification": [
+    {
+      "command": "npm.cmd --prefix tools/crm-graph test",
+      "status": "PASS",
+      "result": "100 tests passed, 0 failed"
+    },
+    {
+      "command": "npm.cmd --prefix tools/crm-graph run typecheck",
+      "status": "PASS"
+    },
+    {
+      "command": "git diff --check -- .crm-engineering tools/crm-graph",
+      "status": "PASS"
+    }
+  ],
+  "repairsVerified": [
+    "Release lifecycle fixtures use committed pre-release state and injected remote authority.",
+    "Owner-phrase emitter assertion works against compiled JavaScript and TypeScript source execution."
+  ],
+  "remoteVerification": {
+    "status": "PASS",
+    "githubExactHeadCi": {
+      "pullRequest": 70,
+      "workflowRunId": 32475307408,
+      "preflight": "PASS",
+      "verify": "PASS",
+      "graphOnlySkipped": ["receivables-postgres", "e2e"]
+    },
+    "vercelPreview": {
+      "status": "SUCCESS",
+      "head": "6ee38223e94b80221dd502ed50fe9ea6e4089694",
+      "url": "https://vercel.com/zero-data/zero_crm/H7jBBRmjJzApbjMTWisRrhjZnuzW"
+    },
+    "mergeCommit": "7aae2e7d76d36939a288bfdf18af8b6bcba84c6a"
+  },
+  "focusedRetry": {
+    "number": 1,
+    "implementationCommitted": false,
+    "commands": [
+      {
+        "command": "git status --short -- .crm-engineering tools/crm-graph",
+        "result": "Implementation and task/proof changes remain uncommitted."
+      },
+      {
+        "command": "gh auth status",
+        "result": "Worker-environment credential probe failed; controller independently confirmed authenticated GitHub access."
+      },
+      {
+        "command": "git ls-remote --heads origin fix/graph-owner-gate-state-integrity-v131",
+        "result": "No remote branch existed before the implementation commit."
+      }
+    ]
+  },
+  "productionContacted": false
+}

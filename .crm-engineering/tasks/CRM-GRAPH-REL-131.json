@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 2,
+  "graphSchemaVersion": 1,
+  "flowVersion": "1.3.1",
+  "taskId": "CRM-GRAPH-REL-131",
+  "objective": "Require release-critical Graph task state to be committed at the exact certified head and validate release facts through remote authority before the Owner production gate can be reached.",
+  "risk": "R2",
+  "domains": [
+    "engineering-graph",
+    "release-governance",
+    "ci"
+  ],
+  "repository": {
+    "canonicalRoot": "C:\\Users\\dcp69\\Desktop\\CRM_Zero",
+    "worktreePath": "C:\\Users\\dcp69\\Desktop\\CRM_Zero\\.worktrees\\graph-owner-gate-v131",
+    "branch": "fix/graph-owner-gate-state-integrity-v131",
+    "expectedBaseRef": "origin/main",
+    "expectedBaseSha": "e7f148af6aa2ca77cd28573e4557c16c69b7c216",
+    "observedHeadSha": "e7f148af6aa2ca77cd28573e4557c16c69b7c216",
+    "dirtyBaselineHash": "2f0084becd64642c9ec7f98b58c76a4ecdecc3eacc9b56723f15d7e6b60e4f05"
+  },
+  "phase": "COMPLETE",
+  "allowedPaths": [
+    ".crm-engineering/**",
+    "tools/crm-graph/**"
+  ],
+  "protectedDomains": [
+    "product-runtime",
+    "production-data",
+    "migrations"
+  ],
+  "productionDataMutation": false,
+  "schemaChange": false,
+  "acceptance": [
+    {
+      "id": "REL131-A01",
+      "description": "Owner-gate authorization requires exact equality between local and HEAD release-critical task state, including phase, blocker, human gate, repository metadata, flags, and every required acceptance status and evidence ID.",
+      "stage": "IMPLEMENTATION",
+      "status": "PASS",
+      "required": true,
+      "evidenceIds": [
+        "focused:owner-gate-tests:4-pass",
+        "focused:crm-graph-typecheck:pass",
+        "CONTROLLER_REVIEW_FAIL:TYPED_STATE_MISMATCH_CODE_MISSING",
+        "focused:owner-gate-tests:8-pass",
+        "focused:diff-check:pass"
+      ]
+    },
+    {
+      "id": "REL131-A02",
+      "description": "Exact-head PR, required GitHub checks, Vercel status, migration hash, and immutability are validated through remote release authority; mutable local certification JSON cannot self-authorize release.",
+      "stage": "IMPLEMENTATION",
+      "status": "PASS",
+      "required": true,
+      "evidenceIds": [
+        "focused:owner-gate-remote-authority-tests:6-pass",
+        "focused:crm-graph-typecheck:pass",
+        "focused:diff-check:pass",
+        "CONTROLLER_REVIEW_FAIL:REQUIRED_CHECK_NAMES_NOT_ENFORCED",
+        "focused:owner-gate-tests:8-pass"
+      ]
+    },
+    {
+      "id": "REL131-A03",
+      "description": "The controller remains the only Owner-phrase emitter and compiles committed-state and remote-evidence release lessons without expanding worker context.",
+      "stage": "IMPLEMENTATION",
+      "status": "PASS",
+      "required": true,
+      "evidenceIds": [
+        "focused:owner-gate-controller-emitter-tests:7-pass",
+        "focused:controller-worker-context-tests:2-pass",
+        "focused:crm-graph-typecheck:pass",
+        "focused:diff-check:pass"
+      ]
+    },
+    {
+      "id": "REL131-V01",
+      "description": "Focused Graph regressions plus one exact-head GitHub CI run and Vercel preview certify Graph v1.3.1.",
+      "stage": "VERIFICATION",
+      "status": "PASS",
+      "required": true,
+      "evidenceIds": [
+        ".crm-engineering/proofs/CRM-GRAPH-REL-131/v01-verification.json",
+        "focused:crm-graph-regressions:99-pass",
+        "focused:crm-graph-typecheck:pass",
+        "focused:diff-check:pass",
+        "focused-retry:github-auth-and-remote-probe",
+        "focused:crm-graph-regressions:100-pass",
+        "focused-retry:head-and-github-auth-probe",
+        "github:workflow:32475307408:preflight-and-verify-pass",
+        "vercel:6ee38223e94b80221dd502ed50fe9ea6e4089694:success",
+        "github:pr:70:merge:7aae2e7d76d36939a288bfdf18af8b6bcba84c6a"
+      ]
+    }
+  ],
+  "blocker": null
+}

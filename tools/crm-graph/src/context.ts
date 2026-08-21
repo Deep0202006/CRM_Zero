@@ -59,14 +59,15 @@ function mandatoryLessonApplicable(id:string, task:TaskFile) {
   return true;
 }
 function selectWorkerLessons(task:TaskFile, knowledge:Knowledge, policy:WorkerContextPolicy) {
+  const workerLessons = knowledge.lessons.filter(item => item.workerContext !== false);
   const relevant = taskTokens(task);
   const linked = tokens([
     ...knowledge.authorities.map(item => item.id),
     ...knowledge.capabilities.map(item => item.id)
   ].join(" "));
   const mandatoryIds = new Set(policy.mandatoryLessonIds.filter(id => mandatoryLessonApplicable(id,task)));
-  const mandatory = stableById(knowledge.lessons.filter(item => mandatoryIds.has(item.id)));
-  const ranked = knowledge.lessons
+  const mandatory = stableById(workerLessons.filter(item => mandatoryIds.has(item.id)));
+  const ranked = workerLessons
     .filter(item => !mandatoryIds.has(item.id))
     .map(item => {
       const domainText = normalized(item.domain ?? "");

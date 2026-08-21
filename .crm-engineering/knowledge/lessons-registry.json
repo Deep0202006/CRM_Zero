@@ -420,6 +420,22 @@
       "id": "GRAPH_LEARNING_CLOSURE_RULE",
       "rule": "When an R2/R3 task exposes a novel failure or operational lesson, task closure must persist reusable knowledge in the Graph registry instead of leaving the lesson only in chat/output.",
       "enforcementStatus": "POLICY_CONTEXT"
+    },
+    {
+      "date": "2026-08-21",
+      "domain": "Release governance",
+      "id": "COMMITTED_RELEASE_STATE_RULE",
+      "rule": "Owner-gate eligibility must compare every release-critical task fact with the task file committed at HEAD; mutable working-tree task state cannot authorize production action.",
+      "enforcementStatus": "COMPILED",
+      "workerContext": false
+    },
+    {
+      "date": "2026-08-21",
+      "domain": "Release governance",
+      "id": "REMOTE_RELEASE_EVIDENCE_RULE",
+      "rule": "Owner-gate release facts come from exact-head remote PR, required-check, and deployment authority plus committed Git objects; mutable local certification files are not release authority.",
+      "enforcementStatus": "COMPILED",
+      "workerContext": false
     }
     ,{
       "date":"2026-08-21","domain":"Field Visit ERP observation","id":"FIELD_VISIT_ERP_IS_OBSERVATION_RULE","rule":"Field-visit ERP references canonical erp_systems but is a visit-time observation; it must not silently mutate Distributor Status, Pipeline or financial authority.","enforcementStatus":"COMPILED"
