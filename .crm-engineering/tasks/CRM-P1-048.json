@@ -18,8 +18,8 @@
     "branch": "feat/field-visit-erp-intelligence",
     "expectedBaseRef": "origin/main",
     "expectedBaseSha": "f181ce5b9028dc1d9da622505409ddabd9ba895f",
-    "observedHeadSha": "0b93195567ca877724c4035b3ca54b6d73989f66",
-    "dirtyBaselineHash": "585d759e556f222ce20e914a8caa8d108230a715386101a4eeb098840805cbdf"
+    "observedHeadSha": "62dcf2710a2d9dc2a7c1fd6317bfa962f987eb25",
+    "dirtyBaselineHash": "fe605eaec3b7f0051b5175105a6a5e3068581c3dd76bb0629e211184a3bb61a4"
   },
   "phase": "PRODUCTION_GATE",
   "allowedPaths": [
