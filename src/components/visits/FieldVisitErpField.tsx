@@ -20,7 +20,8 @@ export function FieldVisitErpField({ value, onChange }: { value: ErpObservation;
   })(); }, []);
   const options = useMemo<SearchableOption[]>(() => [{ value: "__none__", label: "None" }, ...systems.map((system) => ({ value: system.erp_name, label: system.erp_name, searchText: system.erp_name }))], [systems]);
   const display = value.usageState === "none" ? "__none__" : value.nameInput ?? "";
-  const normalized = value.nameInput ? systems.find((system) => key(system.erp_name) === key(value.nameInput)) : undefined;
+  const nameInput = value.nameInput ?? "";
+  const normalized = nameInput ? systems.find((system) => key(system.erp_name) === key(nameInput)) : undefined;
   return <div>
     <SearchableSelect label="ERP Used" required description="Select an existing ERP, type a new ERP name, or choose None." options={options} value={display} placeholder="Search or type ERP name" error={loadError || undefined} onChange={(next) => {
       if (next === "__none__" || key(next) === "none") { onChange({ usageState: "none", nameInput: null, erpId: null, erpName: null }); return; }
