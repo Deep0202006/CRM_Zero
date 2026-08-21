@@ -2,8 +2,8 @@
   "taskId": "CRM-P1-049",
   "acceptanceId": "P1-049-V01",
   "status": "PENDING",
-  "verifiedHead": "db545eda4079fe277b8b152ded9e927ccf188530",
-  "implementationCommittedAtVerifiedHead": false,
+  "verifiedHead": "0e2f6b5a5894db3a33ccf5cd0b34b784c9cc2424",
+  "implementationCommittedAtVerifiedHead": true,
   "productionContacted": false,
   "focusedRetry1": {
     "statusCommand": "npm.cmd run crm:status -- --task CRM-P1-049",

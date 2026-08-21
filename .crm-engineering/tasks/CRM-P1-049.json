@@ -17,8 +17,8 @@
     "branch": "feat/current-business-erp-baseline",
     "expectedBaseRef": "origin/main",
     "expectedBaseSha": "db545eda4079fe277b8b152ded9e927ccf188530",
-    "observedHeadSha": "db545eda4079fe277b8b152ded9e927ccf188530",
-    "dirtyBaselineHash": "a535c56ee4f1942d2a6cccf0ff4e6bce289c1b56408fc693ebbb4bc6e04ba4ff"
+    "observedHeadSha": "0e2f6b5a5894db3a33ccf5cd0b34b784c9cc2424",
+    "dirtyBaselineHash": "fe605eaec3b7f0051b5175105a6a5e3068581c3dd76bb0629e211184a3bb61a4"
   },
   "phase": "TARGETED_VERIFICATION",
   "allowedPaths": [
