@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { coreRemotePayload, optionalRemotePayload, resolveAttendanceId, validateLeadCompatibility, validateNewVisit, VisitConfirmationSchema } from "@/app/api/field-visits/confirm/route";
+import { coreRemotePayload, erpRemotePayload, optionalRemotePayload, resolveAttendanceId, validateLeadCompatibility, validateNewVisit, VisitConfirmationSchema } from "@/app/api/field-visits/confirm/route";
 import { getCurrentISTDate } from "@/lib/dateTime";
 
 const read = (relative: string) => fs.readFileSync(path.join(process.cwd(), relative), "utf8");
@@ -89,6 +89,7 @@ describe("final field visit recovery compatibility", () => {
     expect(Object.keys(optionalRemotePayload(parsed))).toEqual([
       "location_accuracy_m", "location_captured_at", "location_acquisition_mode", "location_quality", "selfie_captured_at", "selfie_capture_method", "selfie_storage_path",
     ]);
+    expect(erpRemotePayload(parsed)).toEqual({ erp_contract_version: undefined, erp_usage_state: undefined, erp_name_input: null, erp_id: null });
   });
 
   it("falls back to the core payload on optional schema mismatch using the same ID", () => {

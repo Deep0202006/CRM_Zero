@@ -15,6 +15,7 @@ import { getOutcomeLabel } from "@/lib/fieldVisits/contract";
 import { AnalyticsSkeleton } from "@/components/analytics/AnalyticsPanel";
 import { NumberTicker } from "@/components/analytics/NumberTicker";
 import { buildVisitAnalytics } from "@/lib/analytics/viewModels";
+import type { FieldVisitErpSegment } from "@/components/analytics/FieldVisitErpIntelligence";
 
 const VisitsIntelligence = dynamic(() => import("@/components/analytics/VisitsIntelligence"), {
   ssr: false,
@@ -72,7 +73,8 @@ export default function AdminVisitsPage() {
   const realtimeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [realtimeSubscribed, setRealtimeSubscribed] = useState(false);
   const [analyticsMode, setAnalyticsMode] = useState<"activity" | "erp">("activity");
-  const [erpSegments, setErpSegments] = useState<Record<string, { unique_businesses: number; coverage_percent: number; categories: Array<{ erp_name: string; count: number; share_percent: number }> }> | null>(null);
+  const [erpSegments, setErpSegments] = useState<Record<string, FieldVisitErpSegment> | null>(null);
+  const [erpError, setErpError] = useState("");
 
   const loadData = useCallback(async (targetPage = 1) => {
     if (!isAdmin) return;
@@ -117,7 +119,18 @@ export default function AdminVisitsPage() {
 
   const visitAnalytics = useMemo(() => buildVisitAnalytics(visits), [visits]);
 
-  useEffect(() => { if (!isAdmin || analyticsMode !== "erp" || erpSegments) return; void (async () => { const { data } = await supabase.auth.getSession(); const token = data.session?.access_token; if (!token) return; const response = await fetch("/api/admin/visits/erp-analytics", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }); const result = await response.json(); if (response.ok) setErpSegments(result.segments ?? {}); })(); }, [analyticsMode, erpSegments, isAdmin]);
+  const loadErpIntelligence = useCallback(async () => {
+    setErpError("");
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) { setErpError("Authentication required."); return; }
+    const response = await fetch("/api/admin/visits/erp-analytics", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+    const result = await response.json();
+    if (!response.ok) { setErpError("ERP intelligence is temporarily unavailable."); return; }
+    setErpSegments(result.segments ?? {});
+  }, []);
+
+  useEffect(() => { if (!isAdmin || analyticsMode !== "erp" || erpSegments || erpError) return; queueMicrotask(() => void loadErpIntelligence()); }, [analyticsMode, erpError, erpSegments, isAdmin, loadErpIntelligence]);
 
   useEffect(() => {
     queueMicrotask(() => void loadData(1));
@@ -127,6 +140,8 @@ export default function AdminVisitsPage() {
     if (!isAdmin) return;
     const scheduleRefresh = () => {
       if (realtimeTimer.current) clearTimeout(realtimeTimer.current);
+      setErpSegments(null);
+      setErpError("");
       realtimeTimer.current = setTimeout(() => void loadData(page), 350);
     };
     const channel = supabase.channel("admin-field-visits-authoritative")
@@ -199,7 +214,7 @@ export default function AdminVisitsPage() {
         <MetricCard label="Loaded rows" value={<NumberTicker value={visits.length} />} icon={<CheckCircle2 size={17} />} />
       </div>
       <div className="mb-3 flex gap-2" role="tablist" aria-label="Visit analytics"><Button size="sm" variant={analyticsMode === "activity" ? "primary" : "outline"} onClick={() => setAnalyticsMode("activity")}>Visit Activity</Button><Button size="sm" variant={analyticsMode === "erp" ? "primary" : "outline"} onClick={() => setAnalyticsMode("erp")}>ERP Intelligence</Button></div>
-      {loading && analyticsMode === "activity" ? <AnalyticsSkeleton label="Loading field activity intelligence" /> : !errorMessage && analyticsMode === "activity" ? <VisitsIntelligence model={visitAnalytics} matchedTotal={matchedTotal} page={page} /> : analyticsMode === "erp" && erpSegments ? <FieldVisitErpIntelligence segments={erpSegments} /> : analyticsMode === "erp" ? <AnalyticsSkeleton label="Loading ERP intelligence" /> : null}
+      {loading && analyticsMode === "activity" ? <AnalyticsSkeleton label="Loading field activity intelligence" /> : !errorMessage && analyticsMode === "activity" ? <VisitsIntelligence model={visitAnalytics} matchedTotal={matchedTotal} page={page} /> : analyticsMode === "erp" && erpSegments ? <FieldVisitErpIntelligence segments={erpSegments} /> : analyticsMode === "erp" && erpError ? <div role="alert" className="mb-4 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800">{erpError} <Button size="sm" variant="outline" onClick={() => void loadErpIntelligence()}>Retry</Button></div> : analyticsMode === "erp" ? <AnalyticsSkeleton label="Loading ERP intelligence" /> : null}
       <div className="mb-3 flex flex-wrap gap-2">
         <Button size="sm" variant={date ? "outline" : "primary"} onClick={() => { setPage(1); setDate(""); }}>All visits</Button>
         <Button size="sm" variant={date === getCurrentISTDate() ? "primary" : "outline"} onClick={() => { setPage(1); setDate(getCurrentISTDate()); }}>Today</Button>

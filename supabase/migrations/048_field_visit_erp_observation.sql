@@ -33,10 +33,10 @@ begin
     return jsonb_build_object('success',false,'code','ACCOUNT_INACTIVE');
   end if;
   select coalesce(array_agg(capability_code), array[]::text[]) into v_capabilities from public.user_capabilities where user_id=p_actor_id;
-  if not ('admin'=any(v_capabilities) or (v_segment='Retailer' and 'field_ret'=any(v_capabilities)) or (v_segment='Distributor' and 'field_dist'=any(v_capabilities))) then
+  if not coalesce('admin'=any(v_capabilities) or (v_segment='Retailer' and 'field_ret'=any(v_capabilities)) or (v_segment='Distributor' and 'field_dist'=any(v_capabilities)),false) then
     return jsonb_build_object('success',false,'code','CAPABILITY_MISMATCH');
   end if;
-  if v_usage not in ('erp','none') then return jsonb_build_object('success',false,'code','ERP_REQUIRED'); end if;
+  if v_usage is null or v_usage not in ('erp','none') then return jsonb_build_object('success',false,'code','ERP_REQUIRED'); end if;
   if v_usage='erp' then
     if lower(v_name)='none' or char_length(v_name) not between 1 and 160 then return jsonb_build_object('success',false,'code','ERP_INVALID'); end if;
     v_key:=public.erp_normalized_key_v1(v_name);

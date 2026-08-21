@@ -94,9 +94,7 @@ describe("CRM-P1-047 ERP authority and external-view contract", () => {
     expect(auth).toContain("if (!externalViewer && navigator.onLine)");
     expect(auth).toMatch(/if \(!externalViewer\)\s+pullDownSync\(\)/);
     expect(auth).toContain("!externalViewer");
-    expect(layout).toContain(
-      'pathname === "/login" ||\n      isErpPartnerViewer',
-    );
+    expect(layout).toMatch(/pathname === "\/login"\s*\|\|\s*isErpPartnerViewer/);
     expect(layout).toContain("!isErpPartnerViewer && (");
   });
 });

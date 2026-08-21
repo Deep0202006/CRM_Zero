@@ -431,6 +431,8 @@
       "date":"2026-08-21","domain":"Field Visit ERP observation","id":"OFFLINE_ENUM_EXTENSION_RULE","rule":"New Field Visit attributes must close local persistence → explicit sync whitelist → server validation → authoritative write → My Visits → Admin → Export while preserving the same visit ID.","enforcementStatus":"COMPILED"
     },{
       "date":"2026-08-21","domain":"Field Visit ERP observation","id":"CANONICAL_DIMENSION_CREATE_AT_WRITE_RULE","rule":"Free-typed canonical dimension values may be suggested client-side but are normalized/resolved/created only at the authoritative server/database write boundary.","enforcementStatus":"COMPILED"
+    },{
+      "date":"2026-08-21","domain":"Compatibility contracts","id":"EXACT_COMPATIBILITY_CONTRACT_NOT_OPTIONAL_RULE","rule":"An exact serialized compatibility whitelist remains exact. New contract fields use a dedicated versioned payload path instead of weakening the legacy fallback.","enforcementStatus":"COMPILED"
     }
   ]
 }

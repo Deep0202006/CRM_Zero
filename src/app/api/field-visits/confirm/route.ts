@@ -58,6 +58,9 @@ export const VisitConfirmationSchema = z.object({
   if (visit.visit_outcome === "payment_done" && visit.segment_type !== "Distributor") {
     ctx.addIssue({ code: "custom", path: ["visit_outcome"], message: "Payment done requires Distributor segment" });
   }
+  if (visit.erp_contract_version === 1 && visit.erp_usage_state === "erp" && !visit.erp_name_input?.trim() && !visit.erp_name?.trim()) {
+    ctx.addIssue({ code: "custom", path: ["erp_name_input"], message: "ERP name is required when ERP usage is selected" });
+  }
 });
 
 type VisitPayload = z.infer<typeof VisitConfirmationSchema>;
@@ -65,6 +68,7 @@ type ConfirmationMode = "new" | "recovery";
 type SafeCode =
   | "AUTH_REQUIRED" | "ACCOUNT_INACTIVE" | "CAPABILITY_MISMATCH"
   | "PINCODE_REQUIRED"
+  | "ERP_REQUIRED" | "ERP_INVALID" | "ERP_VISIT_CAPABILITY_MISSING"
   | "ATTENDANCE_NOT_CONFIRMED" | "ATTENDANCE_INTEGRITY_ERROR" | "VISIT_VALIDATION_FAILED"
   | "VISIT_INSERT_FAILED" | "VISIT_CONFIRMATION_FAILED" | "EVIDENCE_UPLOAD_FAILED"
   | "REFERENCE_CONSTRAINT_FAILED" | "VISIT_CONSTRAINT_FAILED" | "OPTIONAL_SCHEMA_MISMATCH"
@@ -162,6 +166,27 @@ export function optionalRemotePayload(visit: VisitPayload) {
     selfie_captured_at: visit.selfie_captured_at ?? null,
     selfie_capture_method: visit.selfie_capture_method ?? null,
     selfie_storage_path: null,
+  };
+}
+
+export function canonicalErpConfirmation(confirmed: {
+  erp_id?: unknown;
+  erp_usage_state?: unknown;
+  erp_systems?: unknown;
+}): { erp_id: string | null; erp_name: string | null; erp_usage_state: "erp" | "none" | null } {
+  const relation = Array.isArray(confirmed.erp_systems) ? confirmed.erp_systems[0] : confirmed.erp_systems;
+  const erpName = relation && typeof relation === "object" && "erp_name" in relation
+    && typeof relation.erp_name === "string" ? relation.erp_name : null;
+  return {
+    erp_id: typeof confirmed.erp_id === "string" ? confirmed.erp_id : null,
+    erp_name: erpName,
+    erp_usage_state: confirmed.erp_usage_state === "erp" || confirmed.erp_usage_state === "none"
+      ? confirmed.erp_usage_state : null,
+  };
+}
+
+export function erpRemotePayload(visit: VisitPayload) {
+  return {
     erp_contract_version: visit.erp_contract_version,
     erp_usage_state: visit.erp_usage_state,
     erp_name_input: visit.erp_name_input ?? visit.erp_name ?? null,
@@ -258,15 +283,18 @@ export async function POST(request: Request) {
   if (!alreadyConfirmed) {
     if (!leadCompatibility.allowed) return response(400, "VISIT_VALIDATION_FAILED", "The selected business reference conflicts with the current business segment.");
     if (visit.erp_contract_version === 1) {
-      if (visit.erp_usage_state !== "erp" && visit.erp_usage_state !== "none") return response(422, "VISIT_VALIDATION_FAILED", "ERP_REQUIRED");
+      if (visit.erp_usage_state !== "erp" && visit.erp_usage_state !== "none") return response(422, "ERP_REQUIRED", "ERP_REQUIRED");
       const { data: result, error: rpcError } = await admin.rpc("confirm_field_visit_erp_v1", {
         p_actor_id: auth.user.id,
-        p_visit: { ...coreRemotePayload(visit, resolvedAttendanceId), ...optionalRemotePayload(visit), erp_usage_state: visit.erp_usage_state, erp_name_input: visit.erp_name_input ?? visit.erp_name ?? null },
+        p_visit: { ...coreRemotePayload(visit, resolvedAttendanceId), ...optionalRemotePayload(visit), ...erpRemotePayload(visit) },
       });
       const rpcCode = typeof result?.code === "string" ? result.code : "";
       if (rpcError || !result?.success) {
-        const code = rpcCode === "ERP_REQUIRED" ? "VISIT_VALIDATION_FAILED" : rpcCode === "ERP_INVALID" ? "VISIT_VALIDATION_FAILED" : rpcCode === "VISIT_ID_OWNERSHIP_COLLISION" ? "VISIT_ID_OWNERSHIP_COLLISION" : rpcCode === "CAPABILITY_MISMATCH" ? "CAPABILITY_MISMATCH" : "VISIT_INSERT_FAILED";
-        return response(code === "CAPABILITY_MISMATCH" ? 403 : code === "VISIT_ID_OWNERSHIP_COLLISION" ? 409 : 500, code, rpcCode || "ERP_VISIT_CAPABILITY_MISSING");
+        const code: SafeCode = rpcCode === "ERP_REQUIRED" ? "ERP_REQUIRED" : rpcCode === "ERP_INVALID" ? "ERP_INVALID" : rpcCode === "VISIT_ID_OWNERSHIP_COLLISION" ? "VISIT_ID_OWNERSHIP_COLLISION" : rpcCode === "CAPABILITY_MISMATCH" ? "CAPABILITY_MISMATCH" : "ERP_VISIT_CAPABILITY_MISSING";
+        const status = code === "CAPABILITY_MISMATCH" ? 403
+          : code === "VISIT_ID_OWNERSHIP_COLLISION" ? 409
+            : code === "ERP_REQUIRED" || code === "ERP_INVALID" ? 422 : 503;
+        return response(status, code, code);
       }
       alreadyConfirmed = Boolean(result.already_confirmed);
     } else {
@@ -302,6 +330,7 @@ export async function POST(request: Request) {
   if (!confirmed || confirmed.visit_id !== visit.visit_id) return response(500, "VISIT_CONFIRMATION_FAILED", "The exact visit could not be confirmed.");
   if (confirmed.user_id !== auth.user.id) return response(409, "VISIT_ID_OWNERSHIP_COLLISION", "This visit ID belongs to another account.");
   if (confirmed.lead_id !== visit.lead_id || confirmed.segment_type !== visit.segment_type) warningCodes.push("BUSINESS_REFERENCE_WARNING");
+  const canonicalErp = canonicalErpConfirmation(confirmed);
 
   const selfie = form.get("selfie");
   if (!(selfie instanceof Blob) || selfie.size === 0 || warningCodes.includes("OPTIONAL_SCHEMA_MISMATCH")) {
@@ -311,11 +340,12 @@ export async function POST(request: Request) {
       message: evidenceConfirmed ? "Visit confirmed successfully." : "Visit confirmed. Selfie evidence will retry automatically.",
       visit_id: visit.visit_id, already_confirmed: alreadyConfirmed, evidence_confirmed: evidenceConfirmed,
       warning_codes: warningCodes,
+      ...canonicalErp,
       ...(evidenceConfirmed ? { selfie_storage_path: confirmed.selfie_storage_path } : {}),
     });
   }
   if (selfie.size > MAX_EVIDENCE_BYTES || !selfie.type.startsWith("image/")) {
-    return success({ code: "VISIT_CONFIRMED_EVIDENCE_PENDING", message: "Visit confirmed. Selfie evidence will retry automatically.", visit_id: visit.visit_id, already_confirmed: alreadyConfirmed, evidence_confirmed: false, warning_codes: warningCodes });
+    return success({ code: "VISIT_CONFIRMED_EVIDENCE_PENDING", message: "Visit confirmed. Selfie evidence will retry automatically.", visit_id: visit.visit_id, already_confirmed: alreadyConfirmed, evidence_confirmed: false, warning_codes: warningCodes, ...canonicalErp });
   }
 
   const evidencePath = generateEvidencePath(auth.user.id, visit.visit_date, visit.visit_id);
@@ -324,7 +354,7 @@ export async function POST(request: Request) {
     const duplicate = Number(upload.error.statusCode) === 409 || /already exists|duplicate/i.test(upload.error.message);
     if (!duplicate || !(await equalEvidence(admin, evidencePath, selfie))) {
       console.error("Field visit evidence upload failed", { code: upload.error.statusCode ?? "UNKNOWN" });
-      return success({ code: "VISIT_CONFIRMED_EVIDENCE_PENDING", message: "Visit confirmed. Selfie evidence will retry automatically.", visit_id: visit.visit_id, already_confirmed: alreadyConfirmed, evidence_confirmed: false, warning_codes: warningCodes });
+      return success({ code: "VISIT_CONFIRMED_EVIDENCE_PENDING", message: "Visit confirmed. Selfie evidence will retry automatically.", visit_id: visit.visit_id, already_confirmed: alreadyConfirmed, evidence_confirmed: false, warning_codes: warningCodes, ...canonicalErp });
     }
   }
 
@@ -333,7 +363,7 @@ export async function POST(request: Request) {
     .eq("visit_id", visit.visit_id).eq("user_id", auth.user.id).select("visit_id,selfie_storage_path").maybeSingle();
   if (updateError || updated?.visit_id !== visit.visit_id || updated.selfie_storage_path !== evidencePath) {
     console.error("Field visit evidence link failed", { code: updateError?.code ?? "CONFIRMATION_MISSING" });
-    return success({ code: "VISIT_CONFIRMED_EVIDENCE_PENDING", message: "Visit confirmed. Selfie evidence will retry automatically.", visit_id: visit.visit_id, already_confirmed: alreadyConfirmed, evidence_confirmed: false, warning_codes: warningCodes });
+    return success({ code: "VISIT_CONFIRMED_EVIDENCE_PENDING", message: "Visit confirmed. Selfie evidence will retry automatically.", visit_id: visit.visit_id, already_confirmed: alreadyConfirmed, evidence_confirmed: false, warning_codes: warningCodes, ...canonicalErp });
   }
-  return success({ code: "VISIT_CONFIRMED", message: "Visit confirmed successfully.", visit_id: visit.visit_id, already_confirmed: alreadyConfirmed, evidence_confirmed: true, selfie_storage_path: evidencePath, warning_codes: warningCodes });
+  return success({ code: "VISIT_CONFIRMED", message: "Visit confirmed successfully.", visit_id: visit.visit_id, already_confirmed: alreadyConfirmed, evidence_confirmed: true, selfie_storage_path: evidencePath, warning_codes: warningCodes, ...canonicalErp });
 }

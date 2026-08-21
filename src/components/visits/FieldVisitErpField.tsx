@@ -6,6 +6,8 @@ import { supabase } from "@/lib/supabaseClient";
 
 export type ErpObservation = { usageState: "erp" | "none" | null; nameInput: string | null; erpId: string | null; erpName: string | null };
 const key = (value: string) => value.normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleLowerCase("en-IN");
+export const isCompleteErpObservation = (value: ErpObservation) => value.usageState === "none"
+  || (value.usageState === "erp" && Boolean(value.nameInput?.trim()));
 
 export function FieldVisitErpField({ value, onChange }: { value: ErpObservation; onChange: (value: ErpObservation) => void }) {
   const [systems, setSystems] = useState<Array<{ erp_id: string; erp_name: string }>>([]);

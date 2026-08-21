@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "taskId": "CRM-P1-048",
+  "acceptanceId": "P1-048-A03",
+  "evidenceId": "CRM-P1-048-A03-FOCUSED-PASS",
+  "status": "PASS",
+  "productionContacted": false,
+  "gates": [
+    {
+      "kind": "focused-unit",
+      "result": "2 suites passed; 12 tests passed",
+      "scope": "Latest observation per segment and stable business identity, None versus Not captured, admin authority, separate Retailer/Distributor presentation, and ERP Intelligence workbook sheets."
+    },
+    {
+      "kind": "affected-lint",
+      "result": "PASS",
+      "scope": "Admin visits page, export route, ERP Intelligence component, and focused test produced zero ESLint errors or warnings."
+    },
+    {
+      "kind": "diff-check",
+      "result": "PASS",
+      "scope": "Working-tree changes pass git diff --check."
+    }
+  ]
+}

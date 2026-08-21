@@ -5,6 +5,7 @@ export type FieldVisitSafeCode =
   | "AUTH_REQUIRED" | "ACCOUNT_INACTIVE" | "CAPABILITY_MISMATCH"
   | "ADDRESS_REQUIRED"
   | "PINCODE_REQUIRED"
+  | "ERP_REQUIRED" | "ERP_INVALID" | "ERP_VISIT_CAPABILITY_MISSING"
   | "ATTENDANCE_NOT_CONFIRMED" | "ATTENDANCE_INTEGRITY_ERROR" | "VISIT_VALIDATION_FAILED"
   | "VISIT_INSERT_FAILED" | "VISIT_CONFIRMATION_FAILED"
   | "EVIDENCE_UPLOAD_FAILED" | "NETWORK_UNAVAILABLE" | "NETWORK_OR_SERVER_RESPONSE_FAILED"
@@ -23,7 +24,7 @@ export interface FieldVisitSyncSummary {
   failureCodes: FieldVisitSafeCode[];
 }
 
-interface ConfirmResponse {
+export interface ConfirmResponse {
   ok: boolean;
   code: "VISIT_CONFIRMED" | "VISIT_CONFIRMED_EVIDENCE_PENDING" | FieldVisitSafeCode;
   message?: string;
@@ -32,12 +33,18 @@ interface ConfirmResponse {
   evidence_confirmed?: boolean;
   selfie_storage_path?: string;
   warning_codes?: FieldVisitSafeCode[];
+  erp_id?: string | null;
+  erp_name?: string | null;
+  erp_usage_state?: "erp" | "none" | null;
 }
 
 const SAFE_MESSAGES: Record<FieldVisitSafeCode, string> = {
   AUTH_REQUIRED: "Sign in again before retrying this visit.",
   ADDRESS_REQUIRED: "Address required before this queued visit can sync.",
   PINCODE_REQUIRED: "Pincode required before this current-contract visit can sync.",
+  ERP_REQUIRED: "Select an ERP or explicit None before retrying this visit.",
+  ERP_INVALID: "Enter a valid ERP name before retrying this visit.",
+  ERP_VISIT_CAPABILITY_MISSING: "ERP visit confirmation is temporarily unavailable. This visit remains safely local.",
   ACCOUNT_INACTIVE: "Your account is inactive. Contact an administrator.",
   CAPABILITY_MISMATCH: "Your account is not permitted to confirm this visit.",
   ATTENDANCE_NOT_CONFIRMED: "Attendance is not yet confirmed. Retry synchronization.",
@@ -155,6 +162,16 @@ export function resolveVisitConfirmationMode(visit: LocalFieldVisit, requestedMo
   return requestedMode;
 }
 
+export function canonicalErpReconciliation(visit: LocalFieldVisit, result: ConfirmResponse): Partial<LocalFieldVisit> {
+  if (visit.erp_contract_version !== 1 || (result.erp_usage_state !== "erp" && result.erp_usage_state !== "none")) return {};
+  return {
+    erp_usage_state: result.erp_usage_state,
+    erp_id: result.erp_id ?? null,
+    erp_name: result.erp_name ?? null,
+    erp_name_input: result.erp_usage_state === "none" ? null : result.erp_name ?? visit.erp_name_input ?? null,
+  };
+}
+
 export async function syncFieldVisits(onlyVisitId?: string, ownerUserId?: string, mode: "new" | "recovery" = "recovery"): Promise<FieldVisitSyncSummary> {
   const result = new Promise<FieldVisitSyncSummary>((resolve, reject) => {
     const duplicate = [activeRequest, ...syncRequests].find((request) => request && (onlyVisitId ? request.onlyVisitId === onlyVisitId : !request.onlyVisitId && request.ownerUserId === ownerUserId));
@@ -260,6 +277,7 @@ async function runSyncCycle(onlyVisitId?: string, ownerUserId?: string, mode: "n
           selfie_storage_path: result.selfie_storage_path ?? visit.selfie_storage_path,
           sync_error_code: retainedWarning,
           sync_error_message: retainedWarning ? SAFE_MESSAGES[retainedWarning] : undefined,
+          ...canonicalErpReconciliation(visit, result),
         });
         if (result.already_confirmed) summary.alreadyConfirmed++;
         else summary.confirmed++;
@@ -269,6 +287,7 @@ async function runSyncCycle(onlyVisitId?: string, ownerUserId?: string, mode: "n
               confirmation_mode: "recovery",
           sync_error_code: "EVIDENCE_UPLOAD_FAILED",
           sync_error_message: SAFE_MESSAGES.EVIDENCE_UPLOAD_FAILED,
+          ...canonicalErpReconciliation(visit, result),
         });
         summary.evidencePending++;
         summary.failureCodes = [...new Set([...summary.failureCodes, "EVIDENCE_UPLOAD_FAILED"])] as FieldVisitSafeCode[];

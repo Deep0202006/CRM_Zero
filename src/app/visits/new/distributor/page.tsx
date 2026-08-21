@@ -13,7 +13,7 @@ import Link from "next/link";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { CheckInGate } from "@/components/CheckInGate";
 import SelfieCapture from "@/components/visits/SelfieCapture";
-import { FieldVisitErpField, type ErpObservation } from "@/components/visits/FieldVisitErpField";
+import { FieldVisitErpField, isCompleteErpObservation, type ErpObservation } from "@/components/visits/FieldVisitErpField";
 
 export default function NewDistributorVisitPage() {
   const { currentUser, capabilities } = useAuth();
@@ -118,7 +118,7 @@ export default function NewDistributorVisitPage() {
     e.preventDefault();
     if (!currentUser) return;
     
-    if (!selectedLeadId || !outcome || !personMet || !address.trim() || !pincode.trim() || !photoBlob || !erp.usageState) {
+    if (!selectedLeadId || !outcome || !personMet || !address.trim() || !pincode.trim() || !photoBlob || !isCompleteErpObservation(erp)) {
       setError("Please fill out required fields including selfie.");
       return;
     }
@@ -319,7 +319,7 @@ export default function NewDistributorVisitPage() {
 
             <div className="flex justify-end gap-2 border-t border-[var(--border-subtle)] pt-5">
               {offlineAcknowledgementRequired && <Button type="button" variant="outline" onClick={() => { window.location.href = "/visits"; }}>I understand — open My Visits</Button>}
-              {!offlineAcknowledgementRequired && <Button type="submit" isLoading={submitting} icon={<CheckCircle2 size={15} />} disabled={!selectedLeadId || !outcome || !personMet || !address.trim() || !pincode.trim() || !photoBlob || !lat || !lng || !erp.usageState}>{pendingVisitId ? "Retry confirmation" : "Save Visit"}</Button>}
+              {!offlineAcknowledgementRequired && <Button type="submit" isLoading={submitting} icon={<CheckCircle2 size={15} />} disabled={!selectedLeadId || !outcome || !personMet || !address.trim() || !pincode.trim() || !photoBlob || !lat || !lng || !isCompleteErpObservation(erp)}>{pendingVisitId ? "Retry confirmation" : "Save Visit"}</Button>}
             </div>
           </form>
         </section>
