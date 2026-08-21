@@ -1,0 +1,138 @@
+{
+  "schemaVersion": 2,
+  "graphSchemaVersion": 1,
+  "flowVersion": "1.3.0",
+  "taskId": "CRM-GRAPH-REL-13",
+  "objective": "Make Graph mechanically authoritative for product/schema pull requests and keep the Owner production gate unreachable until exact remote certification exists.",
+  "risk": "R2",
+  "domains": [
+    "engineering-graph",
+    "release-governance",
+    "ci"
+  ],
+  "repository": {
+    "canonicalRoot": "C:\\Users\\dcp69\\Desktop\\CRM_Zero",
+    "worktreePath": "C:\\Users\\dcp69\\Desktop\\CRM_Zero\\.worktrees\\crm-graph-release-firewall",
+    "branch": "fix/graph-release-firewall-v13",
+    "expectedBaseRef": "origin/main",
+    "expectedBaseSha": "4467a8bcb209a4920f89df507127fb44eb2f4fe5",
+    "observedHeadSha": "8f2c8c4bbcd23482f167b475d1b3d3a92fa08db0",
+    "dirtyBaselineHash": "fe605eaec3b7f0051b5175105a6a5e3068581c3dd76bb0629e211184a3bb61a4"
+  },
+  "phase": "TARGETED_VERIFICATION",
+  "allowedPaths": [
+    ".crm-engineering/**",
+    ".github/workflows/harness.yml",
+    "docs/engineering-graph/**",
+    "tools/crm-graph/**",
+    "src/lib/__tests__/employeesDirectory.test.ts",
+    "jest.config.js",
+    "package.json"
+  ],
+  "protectedDomains": [
+    "product-runtime",
+    "production-data",
+    "migrations"
+  ],
+  "productionDataMutation": false,
+  "schemaChange": false,
+  "acceptance": [
+    {
+      "id": "REL13-A01",
+      "description": "Product/schema PRs require a coherent changed authoritative Graph task whose base and allowed paths cover the diff.",
+      "stage": "IMPLEMENTATION",
+      "status": "PASS",
+      "required": true,
+      "evidenceIds": [
+        "focused:ci-scope-tests:5-pass",
+        "focused:crm-graph-typecheck:pass",
+        "focused:git-diff-check:pass"
+      ]
+    },
+    {
+      "id": "REL13-A02",
+      "description": "Only the controller can authorize and emit the canonical Owner migration readiness phrase.",
+      "stage": "IMPLEMENTATION",
+      "status": "PASS",
+      "required": true,
+      "evidenceIds": [
+        "focused:owner-gate-tests:2-pass",
+        "focused:graph-lifecycle-tests:12-pass",
+        "focused:crm-graph-typecheck:pass",
+        "focused:git-diff-check:pass"
+      ]
+    },
+    {
+      "id": "REL13-A03",
+      "description": "Production gate requires exact remote PR head, required green checks, Vercel success, migration proof integrity, immutable applied migrations, and a committed task.",
+      "stage": "IMPLEMENTATION",
+      "status": "PASS",
+      "required": true,
+      "evidenceIds": [
+        "focused:owner-gate-certification-tests:3-pass",
+        "focused:owner-gate-lifecycle-tests:3-pass",
+        "focused:crm-graph-typecheck:pass",
+        "focused:git-diff-check:pass"
+      ]
+    },
+    {
+      "id": "REL13-A04",
+      "description": "Failure ablation replays failing suites against the exact base and classifies HEAD_REGRESSION versus BASELINE_FAILURE.",
+      "stage": "IMPLEMENTATION",
+      "status": "PASS",
+      "required": true,
+      "evidenceIds": [
+        "focused:failure-ablation-tests:4-pass",
+        "focused:crm-graph-typecheck:pass",
+        "focused:git-diff-check:pass"
+      ]
+    },
+    {
+      "id": "REL13-A05",
+      "description": "Time-dependent employee directory coverage freezes its business clock and compiles TIME_DEPENDENT_TEST_CLOCK_RULE.",
+      "stage": "IMPLEMENTATION",
+      "status": "PASS",
+      "required": true,
+      "evidenceIds": [
+        "focused:employee-directory-clock-tests:11-pass",
+        "focused:time-dependent-clock-rule:compiled",
+        "focused:product-typecheck:pass",
+        "focused:git-diff-check:pass",
+        "github:32461420195:lint:HEAD_REGRESSION:employeesDirectory.test.ts:18"
+      ]
+    },
+    {
+      "id": "REL13-A06",
+      "description": "CI orders Graph/task/typecheck/affected checks before expensive suites without weakening full verification.",
+      "stage": "IMPLEMENTATION",
+      "status": "PASS",
+      "required": true,
+      "evidenceIds": [
+        "focused:ci-scope-ordering-tests:6-pass",
+        "focused:crm-graph-typecheck:pass",
+        "focused:git-diff-check:pass"
+      ]
+    },
+    {
+      "id": "REL13-V01",
+      "description": "Focused regression tests and one exact-head GitHub CI run certify the release firewall.",
+      "stage": "VERIFICATION",
+      "status": "PENDING",
+      "required": true,
+      "evidenceIds": [
+        "focused:crm-graph-tests:94-pass",
+        "focused:employee-directory-tests:11-pass",
+        "focused:product-typecheck:pass",
+        "focused:git-diff-check:pass",
+        ".crm-engineering/proofs/CRM-GRAPH-REL-13/rel13-focused-verification.json",
+        "focused:employee-directory-clock-tests:11-pass",
+        "git-head:8f2c8c4bbcd23482f167b475d1b3d3a92fa08db0"
+      ]
+    }
+  ],
+  "blocker": {
+    "type": "EXTERNAL_DEPENDENCY",
+    "external": true,
+    "reason": "Strategy change exhausted local verification: the remaining requirement is an exact-head GitHub CI run, but the verified Jest repair is not committed. This sandbox has read-only Git metadata and the bounded VERIFY role cannot create/push the final commit or initiate release-candidate CI. An authorized repository actor must commit jest.config.js, package.json, and removal of tools/crm-graph/scripts/jest-all-tests.config.cjs, then run required CI on that exact SHA."
+  }
+}

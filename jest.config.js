@@ -5,5 +5,8 @@ module.exports = {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
-  testMatch: ['<rootDir>/src/**/__tests__/**/*.test.ts'],
+  testRegex: String.raw`[\\/]__tests__[\\/](?:.*[\\/])?[^\\/]+\.test\.ts$`,
+  setupFilesAfterEnv: [
+    '<rootDir>/tools/crm-graph/scripts/employee-directory-clock.cjs',
+  ],
 };

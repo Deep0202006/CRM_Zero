@@ -7,6 +7,7 @@ import { compileWorkerContext } from "./context.js";
 import { loadTask, saveTask } from "./loader.js";
 import { appliedMigrationDiffs, completionFlags, newlyChangedPaths, outOfScopePaths, requiresOwnerProductionGate, validateWorktree } from "./guards.js";
 import { validateWorkerResult, type WorkerSessionLike } from "./worker.js";
+import { authorizeOwnerMigrationReadiness, rejectWorkerOwnerMigrationReadiness } from "./owner-gate.js";
 
 function taskFromState(state:EngineeringStateType) { return loadTask(state.graphRoot, state.taskId); }
 function incomplete(state:EngineeringStateType, stage:"IMPLEMENTATION"|"VERIFICATION") {
@@ -79,6 +80,8 @@ export function buildGraph(checkpointer:any, workerSession:WorkerSessionLike) {
         previousError:state.lastWorkerError,
         strategyGuidance:state.workerStrategyGuidance
       });
+      rejectWorkerOwnerMigrationReadiness(worker.raw);
+      rejectWorkerOwnerMigrationReadiness(worker.result);
       validateWorkerResult(task,worker.result,acceptance,state.workerIntent);
       for (const update of worker.result.acceptanceUpdates) {
         const target = task.acceptance.find(item => item.id === update.id);
@@ -143,8 +146,13 @@ export function buildGraph(checkpointer:any, workerSession:WorkerSessionLike) {
   };
   const reviewNode:GraphNode<typeof EngineeringState> = state => ({ currentNode:"review", phase:"REVIEW", nextLegalAction:"REVIEW" });
   const productionGate:GraphNode<typeof EngineeringState> = state => {
-    const answer:any = interrupt({ type:"OWNER_PRODUCTION_GATE", taskId:state.taskId, instruction:"Owner must manually apply reviewed production SQL, then provide durable read-only postcheck evidence IDs." });
     const task = taskFromState(state);
+    const readinessPhrase = authorizeOwnerMigrationReadiness(state.graphRoot,task);
+    const answer:any = interrupt({
+      type:"OWNER_PRODUCTION_GATE", taskId:state.taskId,
+      instruction:readinessPhrase,
+      nextRequiredAction:"After the manual action, provide durable read-only postcheck evidence IDs."
+    });
     const release = task.acceptance.find(item => item.required && item.stage === "RELEASE" && item.status !== "PASS");
     const evidenceIds = Array.isArray(answer?.evidenceIds) ? answer.evidenceIds.filter((id:any) => typeof id === "string" && id.trim()) : [];
     const durable = evidenceIds.every((id:string) => !id.startsWith(".crm-engineering/") || fs.existsSync(path.join(state.worktreePath,id)));
