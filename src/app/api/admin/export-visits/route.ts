@@ -8,6 +8,22 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const EXPORT_PAGE_SIZE = 500;
 
+type ErpCategory = { erp_name: string; count: number; share_percent: number };
+type ErpSegment = { unique_businesses: number; observed_count: number; erp_using_count: number; none_count: number; not_captured_count: number; coverage_percent: number; categories: ErpCategory[] };
+
+export function buildErpIntelligenceExportRows(segment: "Retailer" | "Distributor", value?: ErpSegment) {
+  const summary = value ?? { unique_businesses: 0, observed_count: 0, erp_using_count: 0, none_count: 0, not_captured_count: 0, coverage_percent: 0, categories: [] };
+  return [
+    { Segment: segment, Section: "Summary", Metric: "Unique businesses", Value: summary.unique_businesses, Category: "", Businesses: "", "Share %": "" },
+    { Segment: segment, Section: "Summary", Metric: "Observed businesses", Value: summary.observed_count, Category: "", Businesses: "", "Share %": "" },
+    { Segment: segment, Section: "Summary", Metric: "ERP using", Value: summary.erp_using_count, Category: "", Businesses: "", "Share %": "" },
+    { Segment: segment, Section: "Summary", Metric: "Explicit None", Value: summary.none_count, Category: "", Businesses: "", "Share %": "" },
+    { Segment: segment, Section: "Summary", Metric: "Not captured", Value: summary.not_captured_count, Category: "", Businesses: "", "Share %": "" },
+    { Segment: segment, Section: "Summary", Metric: "Coverage %", Value: summary.coverage_percent, Category: "", Businesses: "", "Share %": "" },
+    ...summary.categories.map((category) => ({ Segment: segment, Section: "Latest unique business category", Metric: "", Value: "", Category: category.erp_name, Businesses: category.count, "Share %": category.share_percent })),
+  ];
+}
+
 function jsonError(status: number, error: string) {
   return NextResponse.json({ error }, { status, headers: { "Cache-Control": "no-store" } });
 }
@@ -61,7 +77,7 @@ export async function GET(request: Request) {
   const visits: Array<Record<string, unknown> & { visit_id: string; user_id: string; lead_id: string }> = [];
   for (let from = 0; ; from += EXPORT_PAGE_SIZE) {
     let query = admin.from("field_visits")
-      .select("visit_id,user_id,lead_id,visit_date,check_in_time,check_in_lat,check_in_lng,address,pincode,segment_type,person_met,visit_outcome,visit_notes,follow_up_date,selfie_storage_path,selfie_purged_at,created_at")
+      .select("visit_id,user_id,lead_id,visit_date,check_in_time,check_in_lat,check_in_lng,address,pincode,segment_type,person_met,visit_outcome,visit_notes,follow_up_date,selfie_storage_path,selfie_purged_at,created_at,erp_id,erp_usage_state,erp_systems(erp_name)")
       .order("created_at", { ascending: false })
       .order("visit_id", { ascending: false })
       .range(from, from + EXPORT_PAGE_SIZE - 1);
@@ -115,14 +131,21 @@ export async function GET(request: Request) {
       Latitude: visit.check_in_lat ?? "",
       Longitude: visit.check_in_lng ?? "",
       Outcome: getOutcomeLabel(String(visit.visit_outcome)),
+      ERP: visit.erp_usage_state === "erp" ? ((visit.erp_systems as { erp_name?: string } | null)?.erp_name ?? "Not captured") : visit.erp_usage_state === "none" ? "None" : "Not captured",
+      "ERP Capture State": visit.erp_usage_state === "erp" ? "ERP" : visit.erp_usage_state === "none" ? "None" : "Not captured",
       "Follow-up date": visit.follow_up_date ?? "",
       Notes: visit.visit_notes ?? "",
       "Selfie status": visit.selfie_purged_at ? "Expired after 5-day retention" : visit.selfie_storage_path ? "Available" : "Pending",
     };
   });
+  const { data: erpIntelligence, error: erpIntelligenceError } = await admin.rpc("field_visit_erp_intelligence_v1");
+  if (erpIntelligenceError) return jsonError(500, "Unable to export ERP intelligence.");
+  const segments = (erpIntelligence ?? {}) as Partial<Record<"Retailer" | "Distributor", ErpSegment>>;
   const worksheet = xlsx.utils.json_to_sheet(rows);
   const workbook = xlsx.utils.book_new();
   xlsx.utils.book_append_sheet(workbook, worksheet, "Field Visits");
+  xlsx.utils.book_append_sheet(workbook, xlsx.utils.json_to_sheet(buildErpIntelligenceExportRows("Retailer", segments.Retailer)), "Retailer ERP");
+  xlsx.utils.book_append_sheet(workbook, xlsx.utils.json_to_sheet(buildErpIntelligenceExportRows("Distributor", segments.Distributor)), "Distributor ERP");
   const buffer = xlsx.write(workbook, { type: "buffer", bookType: "xlsx" });
   return new NextResponse(buffer, {
     headers: {

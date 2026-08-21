@@ -92,6 +92,17 @@
         "attendance"
       ],
       "reuse": "required"
+    },
+    {
+      "id": "field-visit-erp-intelligence",
+      "status": "IMPLEMENTED_PENDING_OWNER_CERTIFICATION",
+      "authorityRefs": ["field_visit", "erp_system", "field_visit_erp_observation"],
+      "reuse": "required",
+      "notes": [
+        "ERP options require an active field_ret, field_dist, or admin capability; confirmation revalidates the exact segment capability.",
+        "Browser clients cannot mutate the ERP registry or execute the confirmation and intelligence database functions.",
+        "Pre-contract queued visits remain recoverable without rewriting historical NULL observations as None."
+      ]
     }
   ]
 }

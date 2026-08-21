@@ -77,6 +77,8 @@ jobs:
         run: bash scripts/receivables-db/run-integration.sh
       - name: Fresh-apply Field Visits lifecycle migration and prove historic compatibility
         run: createdb field_visits_test && PGDATABASE=field_visits_test bash scripts/field-visits-db/run-integration.sh
+      - name: Fresh-apply Migration 048 and prove Field Visit ERP observation invariants
+        run: createdb field_visit_erp_test && PGDATABASE=field_visit_erp_test bash scripts/field-visit-erp-db/run-integration.sh
       - name: Prove Attendance uniqueness and permanent-row evidence lifecycle
         run: createdb attendance_test && PGDATABASE=attendance_test bash scripts/attendance-db/run-integration.sh
       - name: Fresh-apply Pipeline authority migrations and prove isolation

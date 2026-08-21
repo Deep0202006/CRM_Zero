@@ -79,6 +79,89 @@ test("Retailer form labels address authority as Area, requires pincode, and neve
   await expect(page.getByRole("option", { name: "Payment done" })).toHaveCount(0);
 });
 
+test("ERP observation control supports canonical, custom, and explicit None in both visit forms", async ({ page, context }) => {
+  await mockSupabase(page); await seed(page, "employee");
+  await page.route("**/api/field-visits/erp-options", route => route.fulfill({ json: {
+    rows: [{ erp_id: "60000000-0000-4000-a000-000000000001", erp_name: "MARG" }],
+  } }));
+  await context.grantPermissions(["geolocation"], { origin: "http://127.0.0.1:3111" });
+  await context.setGeolocation({ latitude: 18.52, longitude: 73.85, accuracy: 15 });
+  for (const formPath of ["/visits/new/retailer", "/visits/new/distributor"] as const) {
+    const navigation = await page.goto(formPath);
+    expect(navigation?.status()).toBe(200);
+    const erp = page.getByLabel("ERP Used");
+    await expect(erp).toBeVisible();
+    await erp.fill("MARG");
+    await page.getByRole("option", { name: "MARG" }).click();
+    await expect(erp).toHaveValue("MARG");
+    await erp.fill("Acme Custom ERP");
+    await expect(page.getByText(/New ERP:.*Acme Custom ERP/)).toBeVisible();
+    await erp.fill("");
+    await page.getByRole("option", { name: "None" }).click();
+    await expect(erp).toHaveValue("None");
+  }
+});
+
+test("ERP offline retry preserves visit identity and reconciles the canonical response", async ({ page }) => {
+  await mockSupabase(page); await seed(page, "employee");
+  const visitId = "70000000-0000-4000-a000-000000000001";
+  const canonicalId = "60000000-0000-4000-a000-000000000001";
+  await page.route("**/api/field-visits/confirm", route => route.fulfill({ json: {
+    ok: true, code: "VISIT_CONFIRMED_EVIDENCE_PENDING", visit_id: visitId,
+    evidence_confirmed: false, erp_usage_state: "erp", erp_id: canonicalId, erp_name: "Canonical Acme ERP",
+  } }));
+  await page.goto("/visits");
+  await page.evaluate(async ({ visitId, employeeId, leadId, today }) => {
+    const request = indexedDB.open("CRMDatabase");
+    const database = await new Promise<IDBDatabase>((resolve, reject) => { request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });
+    const tx = database.transaction("field_visits", "readwrite");
+    tx.objectStore("field_visits").put({
+      visit_id: visitId, lead_id: leadId, user_id: employeeId, visit_date: today,
+      check_in_time: new Date().toISOString(), check_in_lat: 18.52, check_in_lng: 73.85,
+      check_in_photo_url: null, visit_outcome: "interested", visit_notes: null,
+      address: "Main Road", pincode: "110001", pincode_contract_version: 1,
+      erp_contract_version: 1, erp_usage_state: "erp", erp_name_input: "acme custom", erp_id: null, erp_name: null,
+      segment_type: "Retailer", created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+      sync_status: "pending_sync", sync_stage: "pending_visit", confirmation_mode: "new",
+    });
+    await new Promise<void>((resolve, reject) => { tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); });
+    database.close();
+    window.dispatchEvent(new Event("online"));
+  }, { visitId, employeeId, leadId, today });
+  await expect.poll(async () => page.evaluate(async (id) => {
+    const request = indexedDB.open("CRMDatabase");
+    const database = await new Promise<IDBDatabase>((resolve, reject) => { request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });
+    const tx = database.transaction("field_visits", "readonly");
+    return await new Promise<Record<string, unknown>>((resolve) => { const get = tx.objectStore("field_visits").get(id); get.onsuccess = () => resolve(get.result as Record<string, unknown>); });
+  }, visitId)).toMatchObject({ visit_id: visitId, erp_id: canonicalId, erp_name: "Canonical Acme ERP", erp_usage_state: "erp", sync_stage: "visit_confirmed_evidence_pending" });
+});
+
+test("Admin ERP intelligence retries independently and export remains available", async ({ page }) => {
+  await mockSupabase(page, adminId); await seed(page, "admin");
+  let analyticsAttempts = 0;
+  await page.route("**/api/admin/visits/erp-analytics**", route => {
+    analyticsAttempts++;
+    return analyticsAttempts === 1
+      ? route.fulfill({ status: 503, json: { error: "temporary" } })
+      : route.fulfill({ json: { segments: {
+        Retailer: { unique_businesses: 1, observed_count: 1, erp_using_count: 0, none_count: 1, not_captured_count: 0, coverage_percent: 100, categories: [{ erp_name: "None", count: 1, share_percent: 100 }] },
+        Distributor: { unique_businesses: 1, observed_count: 1, erp_using_count: 1, none_count: 0, not_captured_count: 0, coverage_percent: 100, categories: [{ erp_name: "MARG", count: 1, share_percent: 100 }] },
+      } } });
+  });
+  await page.route("**/api/admin/visits**", route => {
+    if (new URL(route.request().url()).pathname !== "/api/admin/visits") return route.fallback();
+    return route.fulfill({ json: { visits: [], page: 1, page_size: 50, total: 0, all_time_total: 0, today_total: 0, has_more: false, representatives: [] } });
+  });
+  await page.route("**/api/admin/export-visits**", route => route.fulfill({ status: 200, contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", body: "export" }));
+  await page.goto("/admin/visits");
+  await page.getByRole("button", { name: "ERP Intelligence" }).click();
+  await expect(page.getByRole("alert").filter({ hasText: "ERP intelligence is temporarily unavailable" })).toContainText("Retry");
+  await page.getByRole("button", { name: "Retry" }).click();
+  await expect(page.getByText("Retailer ERP Footprint")).toBeVisible();
+  await expect(page.getByText("Distributor ERP Footprint")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Export to Excel" })).toBeEnabled();
+});
+
 test("offline attendance stores a Blob outbox with no embedded row payload and later confirms same ID", async ({ page, context }) => {
   await mockSupabase(page, employeeId, false);
   await context.grantPermissions(["geolocation"], { origin: "http://127.0.0.1:3111" });

@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "taskId": "CRM-P1-048",
+  "acceptanceId": "P1-048-A01",
+  "evidenceId": "CRM-P1-048-A01-FOCUSED-IMPLEMENTATION",
+  "status": "PASS",
+  "productionContacted": false,
+  "localPostgresqlUsed": false,
+  "migration048Sha256": "01A9EF40E6DD87704ED5F17642B94E979C67595BF30228462795A18639867B1E",
+  "gates": [
+    {
+      "kind": "implementation-audit",
+      "result": "PASS",
+      "scope": "Nullable legacy observation columns preserve zero backfill; the constrained new confirmation boundary requires explicit erp or none; canonical ERP resolution and visit insertion share one transaction."
+    },
+    {
+      "kind": "focused-proof-contract",
+      "result": "PASS",
+      "scope": "Disposable PostgreSQL proof visibly asserts the complete invariant matrix: historical NULL preservation; MARG/Marg/space normalization to one identity; explicit None creates no ERP; one custom ERP; same-ID idempotency without duplicate visit or ERP; failed-visit ERP rollback; field_ret and field_dist segment isolation; erp_partner_viewer denial; authenticated RPC denial; latest unique-business latest-wins analytics; separate Retailer/Distributor totals; None distinct from Not captured; reconciled category counts/shares; and sentinel non-mutation of Distributor, Pipeline, Call, Receivable, and Payment authorities."
+    },
+    {
+      "kind": "owner-handoff-integrity",
+      "result": "PASS",
+      "scope": "Owner handoff names SHA-256 01A9EF40E6DD87704ED5F17642B94E979C67595BF30228462795A18639867B1E, invalidates older proof, documents zero backfill, service-only grants, no Distributor Status or financial mutation, and forward-only Migration 049 repair."
+    },
+    {
+      "kind": "static-matrix-audit",
+      "result": "PASS",
+      "scope": "Focused static audit found all 13 named failure assertions and matched the handoff SHA-256 to the unchanged Migration 048 file."
+    },
+    {
+      "kind": "diff-check",
+      "result": "PASS",
+      "scope": "Changed A01 files pass git diff --check."
+    }
+  ],
+  "deferredToAuthoritativeCi": [
+    "Execute the focused disposable PostgreSQL integration proof; no approved local PostgreSQL toolchain is present."
+  ]
+}

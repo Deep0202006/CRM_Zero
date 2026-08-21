@@ -13,6 +13,7 @@ import Link from "next/link";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { CheckInGate } from "@/components/CheckInGate";
 import SelfieCapture from "@/components/visits/SelfieCapture";
+import { FieldVisitErpField, isCompleteErpObservation, type ErpObservation } from "@/components/visits/FieldVisitErpField";
 
 export default function NewDistributorVisitPage() {
   const { currentUser, capabilities } = useAuth();
@@ -25,6 +26,7 @@ export default function NewDistributorVisitPage() {
   const [outcome, setOutcome] = useState("");
   const [notes, setNotes] = useState("");
   const [followUpDate, setFollowUpDate] = useState("");
+  const [erp, setErp] = useState<ErpObservation>({ usageState: null, nameInput: null, erpId: null, erpName: null });
   const [photoBlob, setPhotoBlob] = useState<Blob | null>(null);
   
   const [locationError, setLocationError] = useState<string | null>(null);
@@ -116,7 +118,7 @@ export default function NewDistributorVisitPage() {
     e.preventDefault();
     if (!currentUser) return;
     
-    if (!selectedLeadId || !outcome || !personMet || !address.trim() || !pincode.trim() || !photoBlob) {
+    if (!selectedLeadId || !outcome || !personMet || !address.trim() || !pincode.trim() || !photoBlob || !isCompleteErpObservation(erp)) {
       setError("Please fill out required fields including selfie.");
       return;
     }
@@ -170,6 +172,11 @@ export default function NewDistributorVisitPage() {
         address: address.trim(),
         pincode: pincode.trim(),
         pincode_contract_version: 1 as const,
+        erp_contract_version: 1 as const,
+        erp_usage_state: erp.usageState,
+        erp_name_input: erp.nameInput,
+        erp_id: erp.erpId,
+        erp_name: erp.erpName,
         segment_type: "Distributor",
         follow_up_date: outcome === "follow_up" || outcome === "payment_follow_up" ? followUpDate || null : null,
         attendance_id: attendanceRec?.attendance_id || null,
@@ -278,6 +285,8 @@ export default function NewDistributorVisitPage() {
               </select>
             </div>
 
+            <FieldVisitErpField value={erp} onChange={setErp} />
+
             {(outcome === "follow_up" || outcome === "payment_follow_up") && (
                <div>
                  <label htmlFor="follow-up" className="field-label">{outcome === "payment_follow_up" ? "Payment Follow-up Date" : "Follow-up Date"} <span className="text-[var(--status-danger)]">*</span></label>
@@ -310,7 +319,7 @@ export default function NewDistributorVisitPage() {
 
             <div className="flex justify-end gap-2 border-t border-[var(--border-subtle)] pt-5">
               {offlineAcknowledgementRequired && <Button type="button" variant="outline" onClick={() => { window.location.href = "/visits"; }}>I understand — open My Visits</Button>}
-              {!offlineAcknowledgementRequired && <Button type="submit" isLoading={submitting} icon={<CheckCircle2 size={15} />} disabled={!selectedLeadId || !outcome || !personMet || !address.trim() || !pincode.trim() || !photoBlob || !lat || !lng}>{pendingVisitId ? "Retry confirmation" : "Save Visit"}</Button>}
+              {!offlineAcknowledgementRequired && <Button type="submit" isLoading={submitting} icon={<CheckCircle2 size={15} />} disabled={!selectedLeadId || !outcome || !personMet || !address.trim() || !pincode.trim() || !photoBlob || !lat || !lng || !isCompleteErpObservation(erp)}>{pendingVisitId ? "Retry confirmation" : "Save Visit"}</Button>}
             </div>
           </form>
         </section>

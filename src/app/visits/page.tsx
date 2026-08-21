@@ -232,6 +232,7 @@ export default function FieldVisitsPage() {
                     {visit.person_met && <span className="break-words">Met: {visit.person_met}</span>}
                   </div>
                   {visit.follow_up_date && <p className="mt-1 text-[12px] text-[var(--text-secondary)]">Follow-up: {visit.follow_up_date}</p>}
+                  <p className="mt-1 text-[12px] text-[var(--text-secondary)]">ERP: {visit.erp_usage_state === "erp" ? visit.erp_name || visit.erp_name_input || "Not captured" : visit.erp_usage_state === "none" ? "None" : "Not captured"}</p>
                   <p className="mt-1 text-[12px] text-[var(--text-secondary)]">{visit.segment_type === "Retailer" ? "Area" : "Address"}: {visit.address?.trim() || "—"}</p>
                   <p className="mt-1 text-[12px] text-[var(--text-secondary)]">Pincode: {visit.pincode?.trim() || "—"}</p>
                   {visit.visit_notes && <p className="mt-2 whitespace-normal break-words rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-2.5 text-[12px] leading-5 text-[var(--text-secondary)]">{visit.visit_notes}</p>}

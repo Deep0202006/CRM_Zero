@@ -145,6 +145,20 @@
       ]
     },
     {
+      "id": "field_visit_erp_observation",
+      "authority": "public.field_visits(erp_usage_state, erp_id)",
+      "identity": ["visit_id"],
+      "owns": ["ERP observed during that exact Field Visit"],
+      "writer": "service-only public.confirm_field_visit_erp_v1 transaction",
+      "readers": ["My Visits", "Admin Visits", "Field Visit export", "Field Visit ERP Intelligence"],
+      "rules": [
+        "New ERP-contract visits require explicit erp or none.",
+        "Historical and pre-contract queued visits retain NULL as Not captured without backfill.",
+        "Retries preserve visit_id and cannot create a second Field Visit authority row."
+      ],
+      "mustNotOwn": ["Distributor canonical ERP assignment", "Pipeline/Lead ERP authority", "financial facts", "renewal facts"]
+    },
+    {
       "id": "distributor_receivable_link",
       "status": "PRODUCTION_CERTIFIED",
       "authority": "public.receivables.distributor_id -> public.distributor_accounts.distributor_id",

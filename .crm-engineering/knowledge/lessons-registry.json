@@ -437,5 +437,18 @@
       "enforcementStatus": "COMPILED",
       "workerContext": false
     }
+    ,{
+      "date":"2026-08-21","domain":"Field Visit ERP observation","id":"FIELD_VISIT_ERP_IS_OBSERVATION_RULE","rule":"Field-visit ERP references canonical erp_systems but is a visit-time observation; it must not silently mutate Distributor Status, Pipeline or financial authority.","enforcementStatus":"COMPILED"
+    },{
+      "date":"2026-08-21","domain":"Field Visit ERP observation","id":"EXPLICIT_NONE_VS_UNKNOWN_RULE","rule":"Explicit None is a captured business observation. Historical missing data is Unknown/Not captured. Never collapse legacy NULL into None.","enforcementStatus":"COMPILED"
+    },{
+      "date":"2026-08-21","domain":"Field Visit ERP observation","id":"LATEST_BUSINESS_OBSERVATION_RULE","rule":"Current field intelligence counts each stable business identity once using its latest confirmed observation; visit frequency must not inflate business counts.","enforcementStatus":"COMPILED"
+    },{
+      "date":"2026-08-21","domain":"Field Visit ERP observation","id":"OFFLINE_ENUM_EXTENSION_RULE","rule":"New Field Visit attributes must close local persistence → explicit sync whitelist → server validation → authoritative write → My Visits → Admin → Export while preserving the same visit ID.","enforcementStatus":"COMPILED"
+    },{
+      "date":"2026-08-21","domain":"Field Visit ERP observation","id":"CANONICAL_DIMENSION_CREATE_AT_WRITE_RULE","rule":"Free-typed canonical dimension values may be suggested client-side but are normalized/resolved/created only at the authoritative server/database write boundary.","enforcementStatus":"COMPILED"
+    },{
+      "date":"2026-08-21","domain":"Compatibility contracts","id":"EXACT_COMPATIBILITY_CONTRACT_NOT_OPTIONAL_RULE","rule":"An exact serialized compatibility whitelist remains exact. New contract fields use a dedicated versioned payload path instead of weakening the legacy fallback.","enforcementStatus":"COMPILED"
+    }
   ]
 }
