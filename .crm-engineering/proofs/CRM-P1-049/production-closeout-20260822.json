@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "taskId": "CRM-P1-049",
+  "kind": "PRODUCTION_CLOSEOUT",
+  "status": "PASS",
+  "featurePullRequest": 73,
+  "certifiedFeatureHead": "0d6f98a6000fd920d4310d89c5815883dc62d0d9",
+  "featureMergeSha": "07e5f47c84afefc9fac8ec0b30bc172e2a4dd254",
+  "migration": {"number": 49, "immutableThrough": 49, "ownerApplied": true, "zeroBackfill": true},
+  "productionDeployment": {
+    "provider": "Vercel",
+    "deploymentId": "6033550724",
+    "status": "READY",
+    "commitSha": "07e5f47c84afefc9fac8ec0b30bc172e2a4dd254",
+    "url": "https://zero-kkxn41kna-zero-data.vercel.app"
+  },
+  "readOnlySmoke": {
+    "route": "/admin/visits",
+    "deploymentResult": "READY; deployment protection requires authenticated Vercel access",
+    "requiredUiContracts": ["ERP Intelligence", "Manage Current ERP", "Retailer ERP Footprint", "Distributor ERP Footprint"],
+    "productionDataMutation": false
+  },
+  "certified": ["field_business_erp_baseline", "current-business-erp-intelligence"],
+  "productionMutationByCodex": false
+}

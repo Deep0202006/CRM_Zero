@@ -105,6 +105,16 @@
         "Migration 049 adds a separate zero-backfill Admin baseline and V2 current projection; V1 visit observation and intelligence contracts remain unchanged.",
         "Manual baseline writes are active-Admin, service-only, bounded to 500 exact business identities, and atomic."
       ]
+    },
+    {
+      "id": "current-business-erp-intelligence",
+      "status": "PRODUCTION_CERTIFIED",
+      "authorityRefs": ["field_visit", "erp_system", "field_visit_erp_observation", "field_business_erp_baseline"],
+      "reuse": "required",
+      "notes": [
+        "Bounded exact-business current ERP projection only; it combines visit observation and the separate Admin baseline by explicit recency and provenance.",
+        "It does not create a second historical ERP, Distributor Status, Lead/Pipeline, financial, or Renewal authority."
+      ]
     }
   ]
 }
