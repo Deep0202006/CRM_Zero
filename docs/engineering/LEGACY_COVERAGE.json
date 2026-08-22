@@ -427,17 +427,17 @@
         {
           "legacyId": "GRAPH_WORKER_BOUNDED_TERMINATION_RULE",
           "resolution": {
-            "type": "lesson",
+            "type": "obsolete",
             "ref": "NO_AUTONOMOUS_SELF_HOSTING",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+            "reason": "The autonomous child-worker runtime was retired; direct Codex work has no worker termination loop."
           }
         },
         {
           "legacyId": "GRAPH_THREAD_RESUME_RULE",
           "resolution": {
-            "type": "lesson",
+            "type": "obsolete",
             "ref": "NO_AUTONOMOUS_SELF_HOSTING",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+            "reason": "The nested App Server checkpoint runtime was retired; direct Codex work has no resumable controller thread."
           }
         },
         {
@@ -483,17 +483,17 @@
         {
           "legacyId": "GRAPH_LEARNING_CLOSURE_RULE",
           "resolution": {
-            "type": "lesson",
-            "ref": "NO_AUTONOMOUS_SELF_HOSTING",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+            "type": "obsolete",
+            "ref": "LESSONS.json",
+            "reason": "Graph task-state learning closure was retired; durable reusable lessons now live in the canonical registry without task checkpoints."
           }
         },
         {
           "legacyId": "COMMITTED_RELEASE_STATE_RULE",
           "resolution": {
-            "type": "lesson",
-            "ref": "NO_AUTONOMOUS_SELF_HOSTING",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+            "type": "obsolete",
+            "ref": "EXACT_HEAD_RELEASE",
+            "reason": "Graph task-state authority was retired; exact-head Git and CI release proof survives in the current workflow."
           }
         },
         {
