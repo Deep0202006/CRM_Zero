@@ -1,8 +1,8 @@
 {
   "taskId": "CRM-P1-049",
   "acceptanceId": "P1-049-V01",
-  "status": "PENDING",
-  "verifiedHead": "0e2f6b5a5894db3a33ccf5cd0b34b784c9cc2424",
+  "status": "PASS",
+  "verifiedHead": "467c01c41b3584d313efce8126bfb261df68bdb1",
   "implementationCommittedAtVerifiedHead": true,
   "productionContacted": false,
   "focusedRetry1": {
@@ -122,10 +122,38 @@
     "retentionDays": 30,
     "productionContacted": false
   },
-  "pendingRequirements": [
-    "The complete required field-visits E2E job must pass in exact-head GitHub CI; the task-specific ERP editor scenario passes locally.",
-    "Graph v1.3.1 GitHub CI must pass on the exact committed implementation head.",
-    "Disposable PostgreSQL 17 Migration 049 verification must pass in that exact-head CI run.",
-    "Vercel preview must pass for that exact head."
-  ]
+  "exactHeadRemoteCertification": {
+    "head": "467c01c41b3584d313efce8126bfb261df68bdb1",
+    "localHead": "467c01c41b3584d313efce8126bfb261df68bdb1",
+    "cachedOriginHead": "467c01c41b3584d313efce8126bfb261df68bdb1",
+    "pullRequest": {
+      "number": 73,
+      "url": "https://github.com/Deep0202006/CRM_Zero/pull/73",
+      "state": "OPEN",
+      "mergeable": true
+    },
+    "githubActions": {
+      "runId": 32552673085,
+      "url": "https://github.com/Deep0202006/CRM_Zero/actions/runs/32552673085",
+      "conclusion": "SUCCESS",
+      "graphFlowVersion": "1.3.1",
+      "passed": [
+        "classify",
+        "preflight",
+        "full verify/test/lint/build",
+        "PostgreSQL 17 Migration 049 matrix",
+        "durable Migration 049 proof upload",
+        "required E2E"
+      ],
+      "postgresArtifact": "crm-p1-049-postgres17-467c01c41b3584d313efce8126bfb261df68bdb1"
+    },
+    "vercelPreview": {
+      "url": "https://vercel.com/zero-data/zero_crm/4HCEzZjTWNSaksJUpw5wpf4XUL9M",
+      "state": "READY",
+      "conclusion": "SUCCESS"
+    },
+    "source": "Controller-supplied exact-head remote evidence, corroborated by local HEAD and cached origin ref",
+    "productionContacted": false
+  },
+  "pendingRequirements": []
 }

@@ -115,11 +115,16 @@
       "id": "P1-049-V01",
       "description": "Focused high-value proof plus exact-head Graph v1.3.1 GitHub CI, disposable PostgreSQL 17 Migration 049 verification, required E2E, and Vercel preview pass. The focused editor E2E passes with output outside the worktree. The disposable DB matrix must explicitly prove existing ERP, custom ERP, None, clear, non-admin and ERP Partner denial, direct authenticated denial, batch max, invalid all-or-nothing, both recency directions, None vs Not captured, repeat-business uniqueness, segment separation, reconciliation, and no cross-authority mutation.",
       "stage": "VERIFICATION",
-      "status": "PENDING",
+      "status": "PASS",
       "required": true,
       "evidenceIds": [
         ".crm-engineering/proofs/CRM-P1-049/v01-local-verification.json",
-        "20a9b6848ca9ca69c6e97b131a10c6d79b9b72f8"
+        "20a9b6848ca9ca69c6e97b131a10c6d79b9b72f8",
+        "467c01c41b3584d313efce8126bfb261df68bdb1",
+        "https://github.com/Deep0202006/CRM_Zero/pull/73",
+        "https://github.com/Deep0202006/CRM_Zero/actions/runs/32552673085",
+        "crm-p1-049-postgres17-467c01c41b3584d313efce8126bfb261df68bdb1",
+        "https://vercel.com/zero-data/zero_crm/4HCEzZjTWNSaksJUpw5wpf4XUL9M"
       ]
     },
     {
