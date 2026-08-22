@@ -37,14 +37,15 @@ describe("Field Visit ERP compatibility, security, and engineering knowledge", (
   it("records one authority, its reusable capability, and durable lessons", () => {
     const authorities = json<{ facts: Array<Record<string, unknown>> }>("docs/engineering/AUTHORITIES.json").facts;
     const capabilities = json<{ capabilities: Array<Record<string, unknown>> }>("docs/engineering/CAPABILITIES.json").capabilities;
-    const lessons = read("docs/engineering/LESSONS.md");
+    const lessons = json<{ lessons: Array<{ id: string; rule: string }> }>("docs/engineering/LESSONS.json").lessons;
     const authority = authorities.filter((fact) => fact.id === "field_visit_erp_observation");
     expect(authority).toHaveLength(1);
     expect(authority[0]).toMatchObject({ authority: "public.field_visits(erp_usage_state, erp_id)", writer: "service-only public.confirm_field_visit_erp_v1 transaction" });
     expect(capabilities.filter((capability) => capability.id === "field-visit-erp-intelligence")).toHaveLength(1);
-    expect(lessons).toContain("Field Visit ERP is an exact visit-time observation only.");
-    expect(lessons).toContain("Explicit `None` is distinct from `Not captured`.");
-    expect(lessons).toContain("Extend or version new payloads instead of weakening an old fallback.");
+    expect(lessons).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "ERP_AUTHORITIES", rule: expect.stringContaining("None is not Not captured") }),
+      expect.objectContaining({ id: "OFFLINE_COMPATIBILITY" }),
+    ]));
   });
 
   it("does not introduce protected-domain mutation statements", () => {
