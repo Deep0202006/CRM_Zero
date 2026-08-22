@@ -50,6 +50,9 @@ begin
     return jsonb_build_object('success',false,'code','BATCH_SIZE_INVALID');
   end if;
 
+  -- ON COMMIT DROP does not run between repeated RPC calls made inside the
+  -- same transaction, so discard only this session-local staging table first.
+  drop table if exists pg_temp.field_business_erp_batch;
   create temporary table field_business_erp_batch (
     ordinal integer not null,
     segment_type text,

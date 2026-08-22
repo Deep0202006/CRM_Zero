@@ -9,6 +9,11 @@ describe("Migration 049 nullable unknown and captured-fact recency repair", () =
     expect(migration).not.toContain("p_operations");
   });
 
+  it("supports repeated RPC calls inside one transaction", () => {
+    expect(migration).toContain("drop table if exists pg_temp.field_business_erp_batch");
+    expect(migration).toMatch(/drop table if exists pg_temp\.field_business_erp_batch;\s*create temporary table field_business_erp_batch/);
+  });
+
   it("permits only the compatible NULL/NULL unknown pair", () => {
     expect(migration).toContain("erp_usage_state text null check (erp_usage_state is null or erp_usage_state in ('erp','none'))");
     expect(migration).toContain("(erp_usage_state is null and erp_id is null)");
