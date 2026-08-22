@@ -37,6 +37,7 @@
     "src/lib/__tests__/currentErpFootprint.test.ts",
     "src/lib/__tests__/currentErpMigrationRepair.test.ts",
     "src/lib/__tests__/currentErpDbMatrix.test.ts",
+    "src/lib/__tests__/currentErpAuthority.test.ts",
     "src/lib/__tests__/**fieldVisit*",
     "e2e/field-visits/**",
     "supabase/migrations/049_field_business_erp_baseline.sql"
@@ -117,7 +118,8 @@
       "status": "PENDING",
       "required": true,
       "evidenceIds": [
-        ".crm-engineering/proofs/CRM-P1-049/v01-local-verification.json"
+        ".crm-engineering/proofs/CRM-P1-049/v01-local-verification.json",
+        "20a9b6848ca9ca69c6e97b131a10c6d79b9b72f8"
       ]
     },
     {
