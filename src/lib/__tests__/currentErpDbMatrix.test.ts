@@ -26,14 +26,10 @@ describe("Migration 049 disposable PostgreSQL matrix", () => {
     expect(matrix).toContain("jsonb_array_elements(v2->'Retailer'->'categories')");
   });
 
-  it("emits a durable exact-head PostgreSQL 17 artifact only after the matrix passes", () => {
+  it("runs the PostgreSQL 17 matrix before declaring the integration result", () => {
     expect(runner.indexOf("verify.sql")).toBeLessThan(runner.indexOf("result=PASS"));
-    expect(runner).toContain("GITHUB_SHA");
-    expect(runner).toContain("migration049_sha256");
-    expect(runner).toContain("matrix_sha256");
-    expect(workflow).toContain("CRM_P1_049_PROOF_PATH");
-    expect(workflow).toContain("actions/upload-artifact@v4");
-    expect(workflow).toContain("crm-p1-049-postgres17-${{ github.event.pull_request.head.sha }}");
-    expect(workflow).toContain("if-no-files-found: error");
+    expect(workflow).toContain("Fresh-apply Migration 049 and prove current ERP baseline invariants");
+    expect(workflow).toContain("scripts/field-business-erp-db/run-integration.sh");
+    expect(workflow).not.toContain("actions/upload-artifact@v4");
   });
 });

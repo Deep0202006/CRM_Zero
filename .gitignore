@@ -43,9 +43,7 @@ next-env.d.ts
 # repository-local engineering harness runtime state
 /.harness/*
 !/.harness/.gitkeep
-.crm-engineering/runtime/
-.crm-engineering/generated/
 .worktrees/
 .archive/
-tools/crm-graph/node_modules/
-tools/crm-graph/.crm-engineering/
+graphify-out/
+.graphify-venv/

@@ -24,15 +24,7 @@
     "harness:self-test": "node --test scripts/harness/__tests__/*.test.mjs",
     "harness:verify": "node scripts/harness/verify.mjs",
     "harness:full": "npm run harness:self-test && npm run typecheck && npm test -- --runInBand && npm run lint && npm run build && npm run harness:guard && npm run harness:docs",
-    "vercel-build": "npm run test && next build",
-    "crm:status": "npm --prefix tools/crm-graph run status --",
-    "crm:context": "npm --prefix tools/crm-graph run context --",
-    "crm:index": "npm --prefix tools/crm-graph run index --",
-    "crm:bind": "npm --prefix tools/crm-graph run bind --",
-    "crm:shadow": "npm --prefix tools/crm-graph run shadow --",
-    "crm:run": "npm --prefix tools/crm-graph run run --",
-    "crm:graph:test": "npm --prefix tools/crm-graph test",
-    "crm:graph:typecheck": "npm --prefix tools/crm-graph run typecheck"
+    "vercel-build": "npm run test && next build"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.0",

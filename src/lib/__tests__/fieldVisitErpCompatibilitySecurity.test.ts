@@ -6,7 +6,7 @@ import { buildFieldVisitConfirmPayload } from "@/lib/fieldVisits/sync";
 const read = (relative: string) => fs.readFileSync(path.join(process.cwd(), relative), "utf8");
 const json = <T>(relative: string) => JSON.parse(read(relative)) as T;
 
-describe("Field Visit ERP compatibility, security, and Graph knowledge", () => {
+describe("Field Visit ERP compatibility, security, and engineering knowledge", () => {
   it("preserves the pre-contract queued shape and same visit identity", () => {
     const legacy: LocalFieldVisit = {
       visit_id: "00000000-0000-4000-8000-000000000010", lead_id: "legacy-business", user_id: "00000000-0000-4000-8000-000000000001",
@@ -34,17 +34,17 @@ describe("Field Visit ERP compatibility, security, and Graph knowledge", () => {
     expect(migration).not.toMatch(/grant execute on function public\.(confirm_field_visit_erp_v1|field_visit_erp_intelligence_v1)[^;]+authenticated/i);
   });
 
-  it("records one Graph authority, its reusable capability, and the required lessons", () => {
-    const authorities = json<{ facts: Array<Record<string, unknown>> }>(".crm-engineering/knowledge/authority-registry.json").facts;
-    const capabilities = json<{ capabilities: Array<Record<string, unknown>> }>(".crm-engineering/knowledge/capability-registry.json").capabilities;
-    const lessons = json<{ lessons: Array<{ id: string }> }>(".crm-engineering/knowledge/lessons-registry.json").lessons;
+  it("records one authority, its reusable capability, and durable lessons", () => {
+    const authorities = json<{ facts: Array<Record<string, unknown>> }>("docs/engineering/AUTHORITIES.json").facts;
+    const capabilities = json<{ capabilities: Array<Record<string, unknown>> }>("docs/engineering/CAPABILITIES.json").capabilities;
+    const lessons = read("docs/engineering/LESSONS.md");
     const authority = authorities.filter((fact) => fact.id === "field_visit_erp_observation");
     expect(authority).toHaveLength(1);
     expect(authority[0]).toMatchObject({ authority: "public.field_visits(erp_usage_state, erp_id)", writer: "service-only public.confirm_field_visit_erp_v1 transaction" });
     expect(capabilities.filter((capability) => capability.id === "field-visit-erp-intelligence")).toHaveLength(1);
-    for (const id of ["FIELD_VISIT_ERP_IS_OBSERVATION_RULE", "EXPLICIT_NONE_VS_UNKNOWN_RULE", "LATEST_BUSINESS_OBSERVATION_RULE", "OFFLINE_ENUM_EXTENSION_RULE", "CANONICAL_DIMENSION_CREATE_AT_WRITE_RULE"]) {
-      expect(lessons.filter((lesson) => lesson.id === id)).toHaveLength(1);
-    }
+    expect(lessons).toContain("Field Visit ERP is an exact visit-time observation only.");
+    expect(lessons).toContain("Explicit `None` is distinct from `Not captured`.");
+    expect(lessons).toContain("Extend or version new payloads instead of weakening an old fallback.");
   });
 
   it("does not introduce protected-domain mutation statements", () => {

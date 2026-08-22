@@ -4,9 +4,9 @@ import path from "path";
 const read = (relative: string) => fs.readFileSync(path.join(process.cwd(), relative), "utf8");
 const json = <T>(relative: string) => JSON.parse(read(relative)) as T;
 
-describe("Current business ERP Graph authority and compatibility", () => {
+describe("Current business ERP authority and compatibility", () => {
   it("registers exactly one separate manual-baseline authority", () => {
-    const facts = json<{ facts: Array<Record<string, unknown>> }>(".crm-engineering/knowledge/authority-registry.json").facts;
+    const facts = json<{ facts: Array<Record<string, unknown>> }>("docs/engineering/AUTHORITIES.json").facts;
     const baseline = facts.filter((fact) => fact.id === "field_business_erp_baseline");
     expect(baseline).toHaveLength(1);
     expect(baseline[0]).toMatchObject({
@@ -20,20 +20,14 @@ describe("Current business ERP Graph authority and compatibility", () => {
     ]));
   });
 
-  it("compiles MANUAL_BASELINE_NOT_HISTORY_RULE without increasing worker context", () => {
-    const lessons = json<{ lessons: Array<Record<string, unknown>> }>(".crm-engineering/knowledge/lessons-registry.json").lessons;
-    expect(lessons.filter((lesson) => lesson.id === "MANUAL_BASELINE_NOT_HISTORY_RULE")).toEqual([
-      expect.objectContaining({ enforcementStatus: "COMPILED" }),
-    ]);
-    const policy = json<{ workerContext: { maxLessons: number } }>(".crm-engineering/policy/context-policy.json");
-    expect(policy.workerContext.maxLessons).toBe(14);
-    const compiler = read("tools/crm-graph/src/context.ts");
-    expect(compiler).toContain(".slice(0,policy.maxLessons)");
-    expect(compiler).not.toContain("MANUAL_BASELINE_NOT_HISTORY_RULE");
+  it("keeps manual baseline separate from historical observation", () => {
+    const lessons = read("docs/engineering/LESSONS.md");
+    expect(lessons).toContain("Admin baseline must never rewrite historical visits.");
+    expect(lessons).toContain("Explicit `None` is distinct from `Not captured`.");
   });
 
   it("binds the reusable ERP capability to both observation and baseline authorities", () => {
-    const capabilities = json<{ capabilities: Array<Record<string, unknown>> }>(".crm-engineering/knowledge/capability-registry.json").capabilities;
+    const capabilities = json<{ capabilities: Array<Record<string, unknown>> }>("docs/engineering/CAPABILITIES.json").capabilities;
     const capability = capabilities.find((item) => item.id === "field-visit-erp-intelligence");
     expect(capability?.authorityRefs).toEqual(expect.arrayContaining([
       "erp_system", "field_visit_erp_observation", "field_business_erp_baseline",
