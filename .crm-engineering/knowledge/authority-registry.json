@@ -161,7 +161,7 @@
     },
     {
       "id": "field_business_erp_baseline",
-      "status": "IMPLEMENTED",
+      "status": "PRODUCTION_CERTIFIED",
       "authority": "public.field_business_erp_baselines",
       "identity": ["segment_type", "business_ref"],
       "owns": ["Admin-supplied current ERP enrichment for an exact visited business identity"],
