@@ -20,7 +20,7 @@ import { DistributorImportModal } from "@/components/distributors/DistributorImp
 import { DistributorMasterImportModal } from "@/components/distributors/DistributorMasterImportModal";
 import { ReceivablesCreateModal } from "@/components/receivables/ReceivablesCreateModal";
 import { AdminReceivableActionModal } from "@/components/receivables/AdminReceivableActionModal";
-import { ErpDistributionDonut, type ErpDistributionCategory } from "@/components/analytics/ErpDistributionDonut";
+import { ErpDistributionDonut, erpDistributionReconciles, type ErpDistributionCategory } from "@/components/analytics/ErpDistributionDonut";
 
 const metricFilters = [
   ["Total Distributors", "total", {}],
@@ -386,7 +386,7 @@ export default function DistributorStatusPage() {
         total={metrics.total}
         totalLabel="Distributors"
         categories={metrics.erp_distribution.map((category): ErpDistributionCategory => category.erp_id === null ? { ...category, state: "unset" } : { ...category, state: "erp" })}
-        reconciled={metrics.erp_distribution.reduce((sum, category) => sum + category.count, 0) === metrics.total}
+        reconciled={erpDistributionReconciles(metrics.erp_distribution, metrics.total)}
         emptyTitle="No Distributor accounts"
         emptyDescription="Official ERP assignment footprint will appear after Distributor Status accounts exist."
       />}

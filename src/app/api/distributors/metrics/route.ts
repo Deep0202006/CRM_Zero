@@ -15,6 +15,8 @@ export async function GET(request: Request) {
     context.isAdmin ? listErpSystems(context.service) : Promise.resolve([]),
   ]);
   if (metrics.error) return distributorReadError(metrics.error, "Distributor metrics could not be loaded.");
+  if (!metrics.data || typeof metrics.data !== "object" || !Array.isArray((metrics.data as { erp_distribution?: unknown }).erp_distribution))
+    return apiError(503, "DISTRIBUTOR_CAPABILITY_MISSING", "Distributor ERP footprint requires the reviewed Owner Migration 050.");
   if (directory.error) return apiError(503, "EMPLOYEE_DIRECTORY_UNAVAILABLE", "Eligible employees could not be loaded.");
   return Response.json({ metrics: metrics.data, assignees: directory.employees, erps });
 }
