@@ -5,7 +5,7 @@ const read = (name: string) => fs.readFileSync(path.join(process.cwd(), "scripts
 const fixture = read("pre-049.sql");
 const matrix = read("verify.sql");
 const runner = read("run-integration.sh");
-const workflow = fs.readFileSync(path.join(process.cwd(), ".github/workflows/harness.yml"), "utf8");
+const workflow = fs.readFileSync(path.join(process.cwd(), ".github/workflows/product-verification.yml"), "utf8");
 
 describe("Migration 049 disposable PostgreSQL matrix", () => {
   it("fixtures repeat identities, segment overlap, canonical ERP, and protected sentinels", () => {

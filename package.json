@@ -17,6 +17,8 @@
     "typecheck": "tsc --noEmit",
     "quality:invariants": "node scripts/quality/invariants.mjs",
     "quality:knowledge": "node scripts/quality/knowledge-check.mjs",
+    "context:resolve": "node scripts/engineering/context.mjs",
+    "context:test": "node scripts/engineering/context.test.mjs",
     "vercel-build": "npm run test && next build"
   },
   "dependencies": {

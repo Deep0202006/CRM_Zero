@@ -1,0 +1,42 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
+const root = resolve(import.meta.dirname, "../..");
+const json = (file) => JSON.parse(readFileSync(resolve(root, file), "utf8"));
+const map = json("docs/engineering/DOMAIN_MAP.json");
+const authorities = json("docs/engineering/AUTHORITIES.json").facts;
+const capabilities = json("docs/engineering/CAPABILITIES.json").capabilities;
+const lessons = json("docs/engineering/LESSONS.json").lessons;
+const effects = new Set(["UI", "API", "DATABASE", "AUTHORIZATION", "OFFLINE", "IMPORT", "ANALYTICS", "EXPORT", "SECURITY"]);
+const args = process.argv.slice(2);
+const values = (name) => args.flatMap((arg, index) => arg === name && args[index + 1] ? [args[index + 1]] : []);
+const domainsArg = values("--domain"); const paths = values("--path"); const requestedEffects = values("--effect");
+const stop = (code) => { console.error(code); process.exit(2); };
+if (requestedEffects.some((effect) => !effects.has(effect))) stop("INVALID_EFFECT");
+const byId = new Map(map.domains.map((domain) => [domain.id, domain]));
+const selected = new Set(domainsArg);
+for (const id of selected) if (!byId.has(id)) stop("UNMAPPED_PATH");
+for (const path of paths) {
+  const matches = map.domains.filter((domain) => ["surfacePaths", "codeRoots", "serverBoundaries"].some((key) => (domain[key] ?? []).some((prefix) => path === prefix || path.startsWith(`${prefix}/`))));
+  if (!matches.length) stop("UNMAPPED_PATH");
+  matches.forEach((domain) => selected.add(domain.id));
+}
+if (!selected.size) stop("UNMAPPED_PATH");
+if (selected.size > 3) stop("AMBIGUOUS_DOMAIN");
+const domains = [...selected].map((id) => byId.get(id));
+const rank = { R0: 0, R1: 1, R2: 2, R3: 3 };
+let risk = domains.reduce((current, domain) => rank[domain.riskFloor] > rank[current] ? domain.riskFloor : current, "R0");
+if (requestedEffects.some((effect) => ["DATABASE", "AUTHORIZATION", "SECURITY"].includes(effect))) risk = "R3";
+const ids = (key) => [...new Set(domains.flatMap((domain) => domain[key] ?? []))];
+const authorityIds = ids("authorityRefs");
+if (requestedEffects.some((effect) => ["DATABASE", "AUTHORIZATION"].includes(effect)) && !authorityIds.length) stop("AUTHORITY_UNRESOLVED");
+const contracts = ids("contractPaths");
+if (contracts.length > 2 && domains.length === 1) stop("CONTEXT_TOO_BROAD");
+const selectedLessons = lessons.filter((lesson) => lesson.loadByDefault || lesson.domains.includes("all") || lesson.domains.some((domain) => selected.has(domain))).slice(0, 8);
+const briefAuthority = (item) => ({ id: item.id, authority: item.authority, owns: item.owns, mustNotOwn: item.mustNotOwn });
+const briefCapability = (item) => ({ id: item.id, reuse: item.reuse, implementationPaths: item.implementationPaths, testPaths: item.testPaths });
+const briefLesson = (item) => ({ id: item.id, rule: item.rule });
+const pack = { domains: domains.map((domain) => domain.id), risk, contracts, authorities: authorities.filter((item) => authorityIds.includes(item.id)).map(briefAuthority), capabilities: capabilities.filter((item) => ids("capabilityRefs").includes(item.id)).map(briefCapability), lessons: selectedLessons.map(briefLesson), mustNotWriteAuthorities: ids("mustNotWriteAuthorityRefs"), criticalTests: ids("criticalTests"), serverBoundaries: ids("serverBoundaries") };
+const estimatedTokens = Math.ceil(JSON.stringify(pack).length / 4);
+if (estimatedTokens > 1500) stop("CONTEXT_TOO_BROAD");
+console.log(JSON.stringify({ ...pack, estimatedTokens }, null, 2));

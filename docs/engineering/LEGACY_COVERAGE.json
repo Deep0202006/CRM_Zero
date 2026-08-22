@@ -1,0 +1,18 @@
+{"schemaVersion":1,"sources":[
+ {"sha":"ae7db36287a1f1fd2e70e7dbd36ed463a0f52ef6","kind":"retired-graph","items":[
+  {"legacyId":"authority-one-fact","resolution":{"type":"lesson","ref":"ONE_FACT_ONE_AUTHORITY"}},
+  {"legacyId":"erp-observation-and-baseline","resolution":{"type":"lesson","ref":"ERP_AUTHORITIES"}},
+  {"legacyId":"exact-head-release","resolution":{"type":"lesson","ref":"EXACT_HEAD_RELEASE"}},
+  {"legacyId":"manual-baseline-not-history","resolution":{"type":"lesson","ref":"NO_FABRICATED_BACKFILL"}},
+  {"legacyId":"nested-agent-runtime","resolution":{"type":"obsolete","ref":"nested Codex runtime retired"}},
+  {"legacyId":"graph-query-controller","resolution":{"type":"obsolete","ref":"autonomous controller retired; Graphify remains navigation only"}}
+ ]},
+ {"sha":"f8d5d5c7bca84cb16d2d378aa1c0bab685f79f4b","kind":"retired-harness","items":[
+  {"legacyId":"golden-principles","resolution":{"type":"invariant","ref":"docs/engineering/INVARIANTS.md"}},
+  {"legacyId":"change-release-risk","resolution":{"type":"contract","ref":"docs/engineering/WORKFLOW.md"}},
+  {"legacyId":"offline-recovery","resolution":{"type":"lesson","ref":"OFFLINE_COMPATIBILITY"}},
+  {"legacyId":"financial-authority","resolution":{"type":"lesson","ref":"MONEY_TRUTH"}},
+  {"legacyId":"harness-static-guards","resolution":{"type":"invariant","ref":"scripts/quality/invariants.mjs"}},
+  {"legacyId":"task-manifest","resolution":{"type":"obsolete","ref":"task-state runtime retired"}}
+ ]}
+]}
