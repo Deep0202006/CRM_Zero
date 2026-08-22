@@ -1,0 +1,26 @@
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { execFileSync } from "node:child_process";
+
+const root = resolve(import.meta.dirname, "../..");
+const readJson = (file) => JSON.parse(readFileSync(resolve(root, file), "utf8"));
+const fail = (message) => { console.error(`knowledge: ${message}`); process.exitCode = 1; };
+const authorities = readJson("docs/engineering/AUTHORITIES.json").facts ?? [];
+const capabilities = readJson("docs/engineering/CAPABILITIES.json").capabilities ?? [];
+const map = readJson("docs/engineering/DOMAIN_MAP.json").domains ?? [];
+const lessons = readJson("docs/engineering/LESSONS.json").lessons ?? [];
+const migrations = readJson("supabase/migrations/APPLIED_OWNER_MIGRATIONS.json");
+const authorityIds = new Set(authorities.map((item) => item.id));
+const capabilityIds = new Set(capabilities.map((item) => item.id));
+for (const domain of map) for (const key of ["contractPaths", "codeRoots", "serverBoundaries", "criticalTests"]) for (const file of domain[key] ?? []) if (!existsSync(resolve(root, file))) fail(`${domain.id} missing ${key}: ${file}`);
+for (const domain of map) for (const id of domain.authorityRefs ?? []) if (!authorityIds.has(id)) fail(`${domain.id} unknown authority: ${id}`);
+for (const domain of map) for (const id of domain.capabilityRefs ?? []) if (!capabilityIds.has(id)) fail(`${domain.id} unknown capability: ${id}`);
+for (const lesson of lessons) for (const evidence of lesson.evidence ?? []) if (!evidence.startsWith("public.") && !existsSync(resolve(root, evidence))) fail(`${lesson.id} missing evidence: ${evidence}`);
+if (migrations.lastAppliedOwnerMigration !== 49 || migrations.immutableThrough !== 49 || migrations.lastAppliedOwnerMigration !== migrations.immutableThrough) fail("migration boundary must remain 49");
+const changed = execFileSync("git", ["diff", "--name-only", "origin/main...HEAD", "--", "supabase/migrations"], { cwd: root, encoding: "utf8" });
+for (const file of changed.trim().split(/\r?\n/).filter(Boolean)) if (/\/0(?:0[1-9]|[1-3][0-9]|4[0-9])_.*\.sql$/.test(file.replaceAll("\\", "/"))) fail(`immutable migration changed: ${file}`);
+for (const path of [".crm-engineering", "tools/crm-graph", "docs/engineering-graph", "docs/os", ".agents", ".harness", "scripts/harness", "docs/generated", "docs/exec-plans", "docs/field-visits-hardening"]) if (existsSync(resolve(root, path))) fail(`retired path exists: ${path}`);
+const banned = /\.crm-engineering|tools\/crm-graph|CRM_CONTEXT|docs\/os|scripts\/harness|harness:|gstack|autoplan|Graph OS|LangGraph controller|crm:run|crm:status/i;
+for (const file of ["AGENTS.md", "docs/engineering/INDEX.md", "docs/engineering/INVARIANTS.md", "docs/engineering/WORKFLOW.md"]) if (banned.test(readFileSync(resolve(root, file), "utf8"))) fail(`canonical doc references retired workflow: ${file}`);
+if (process.exitCode) process.exit(process.exitCode);
+console.log(`Knowledge checks passed (${map.length} domains, ${lessons.length} lessons).`);

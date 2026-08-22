@@ -1,8 +1,0 @@
-phase: 1
-status: planning
-completed_steps: []
-current_step: "Audit existing codebase and plan rebuild."
-next_steps:
-  - "Refactor Login Page for 320px constraint."
-  - "Split Field Visits into Retailer and Distributor."
-  - "Implement strict unified Evidence capturing."

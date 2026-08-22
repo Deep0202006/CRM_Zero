@@ -15,15 +15,8 @@
     "test:e2e:attendance": "playwright test e2e/attendance",
     "test:e2e:distributors": "playwright test e2e/distributors",
     "typecheck": "tsc --noEmit",
-    "harness:preflight": "node scripts/harness/preflight.mjs",
-    "harness:scope": "node scripts/harness/scope-guard.mjs",
-    "harness:guard": "node scripts/harness/invariant-guard.mjs",
-    "harness:docs": "node scripts/harness/docs-check.mjs",
-    "harness:related": "node scripts/harness/related-tests.mjs",
-    "harness:repo-map": "node scripts/harness/repo-map.mjs",
-    "harness:self-test": "node --test scripts/harness/__tests__/*.test.mjs",
-    "harness:verify": "node scripts/harness/verify.mjs",
-    "harness:full": "npm run harness:self-test && npm run typecheck && npm test -- --runInBand && npm run lint && npm run build && npm run harness:guard && npm run harness:docs",
+    "quality:invariants": "node scripts/quality/invariants.mjs",
+    "quality:knowledge": "node scripts/quality/knowledge-check.mjs",
     "vercel-build": "npm run test && next build"
   },
   "dependencies": {

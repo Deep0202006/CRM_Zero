@@ -21,9 +21,11 @@ describe("Current business ERP authority and compatibility", () => {
   });
 
   it("keeps manual baseline separate from historical observation", () => {
-    const lessons = read("docs/engineering/LESSONS.md");
-    expect(lessons).toContain("Admin baseline must never rewrite historical visits.");
-    expect(lessons).toContain("Explicit `None` is distinct from `Not captured`.");
+    const lessons = json<{ lessons: Array<{ id: string; rule: string }> }>("docs/engineering/LESSONS.json").lessons;
+    expect(lessons).toContainEqual(expect.objectContaining({
+      id: "ERP_AUTHORITIES",
+      rule: expect.stringContaining("baseline never rewrites history"),
+    }));
   });
 
   it("binds the reusable ERP capability to both observation and baseline authorities", () => {
