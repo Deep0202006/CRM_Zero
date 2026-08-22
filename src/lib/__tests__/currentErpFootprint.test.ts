@@ -35,15 +35,16 @@ describe("Current ERP footprint donuts", () => {
 
   it("renders separate accessible Retailer and Distributor donuts from V2 current intelligence", () => {
     const panel = read("src/components/analytics/FieldVisitErpIntelligence.tsx");
+    const shared = read("src/components/analytics/ErpDistributionDonut.tsx");
     const route = read("src/app/api/admin/visits/erp-analytics/route.ts");
     expect(route).toContain('admin.rpc("field_visit_erp_intelligence_v2")');
     expect(panel).toContain('<ErpFootprintDonut name="Retailer"');
     expect(panel).toContain('<ErpFootprintDonut name="Distributor"');
-    expect(panel).toContain("<PieChart accessibilityLayer>");
-    expect(panel).toContain("rootTabIndex={0}");
-    expect(panel).toContain('className="sr-only"');
-    expect(panel).toContain("the donut is hidden instead of presenting misleading intelligence");
-    expect(panel).toContain('{name === "Retailer" ? "Retailers" : "Distributors"}');
+    expect(shared).toContain("<PieChart accessibilityLayer>");
+    expect(shared).toContain("rootTabIndex={0}");
+    expect(shared).toContain('className="sr-only"');
+    expect(shared).toContain("the donut is hidden instead of presenting misleading intelligence");
+    expect(panel).toContain('totalLabel={name === "Retailer" ? "Retailers" : "Distributors"}');
     expect(panel).not.toContain(">Unique businesses</span>");
   });
 });

@@ -39,7 +39,7 @@ Admin may read all and perform manual, import, reassignment, mapping, lifecycle,
 
 ## READ, WRITE, AND FAILURE BUDGET
 
-Initial Admin load is one aggregate request for all eight cards and one explicit-column list request of at most 50 rows. One bounded canonical employee-directory read is shared with Payment Collection. There is no polling, full-table hydration, N+1 owner lookup, Realtime subscription, binary evidence, or hot `select('*')`.
+Initial Admin load is one aggregate request for all eight cards, the global Distributor ERP footprint, and one explicit-column list request of at most 50 rows. The footprint reads only `distributor_accounts.erp_id` joined by exact FK to `erp_systems`: each distributor counts once, and a NULL official assignment is `ERP Not Set`; no Field Visit or current-baseline authority participates. One bounded canonical employee-directory read is shared with Payment Collection. There is no polling, full-table hydration, N+1 owner lookup, Realtime subscription, binary evidence, or hot `select('*')`.
 
 The Renewals screen has a separate frozen budget: one metrics request plus one server-filtered list request of at most 50 explicit rows. A card changes the list filter without repeating metrics. The list joins the assigned employee name in the bounded server read.
 

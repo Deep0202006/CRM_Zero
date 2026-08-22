@@ -367,6 +367,9 @@ async function mock(page: Page) {
           active: 1,
           inactive: 0,
           billed: 1,
+          erp_distribution: [
+            { erp_id: row.erp_id, erp_name: "MARG", count: 1 },
+          ],
         },
         assignees: [
           {
@@ -517,6 +520,38 @@ test("multiple outstanding invoices require exact selection before payment", asy
       expected_version: 7,
     },
   });
+});
+
+test("Admin Distributor Status renders the canonical ERP footprint from its existing metrics response", async ({ page }) => {
+  await mock(page);
+  await page.unroute("**/api/distributors/metrics");
+  await page.route("**/api/distributors/metrics", (route) => route.fulfill({
+    json: {
+      metrics: {
+        total: 4, installation_pending: 1, training_pending: 0, installation_training_done: 3,
+        mapped: 2, active: 2, inactive: 1, billed: 1,
+        erp_distribution: [
+          { erp_id: "11111111-1111-4111-a111-111111111111", erp_name: "MARG", count: 2 },
+          { erp_id: "22222222-2222-4222-a222-222222222222", erp_name: "PHARMA ORDERS", count: 1 },
+          { erp_id: null, erp_name: null, count: 1 },
+        ],
+      }, assignees: [], erps: [],
+    },
+  }));
+  await seed(page, admin, true);
+  await page.goto("/admin/payments/distributors");
+  const footprint = page.getByRole("region", { name: "Distributor ERP Footprint" });
+  await expect(footprint).toBeVisible();
+  await expect(footprint).toContainText("Official ERP assignment from Distributor Status.");
+  await expect(footprint).toContainText("4");
+  await expect(footprint).toContainText("Distributors");
+  await expect(footprint).toContainText("MARG");
+  await expect(footprint).toContainText("2 · 50.0%");
+  await expect(footprint).toContainText("PHARMA ORDERS");
+  await expect(footprint).toContainText("1 · 25.0%");
+  await expect(footprint).toContainText("ERP Not Set");
+  await expect(footprint).not.toContainText("latest authoritative visit or Admin baseline");
+  await expect(footprint.getByLabel("Distributor ERP Footprint legend")).toBeVisible();
 });
 
 async function mockRenewals(page: Page, renewalRows = [row]) {
