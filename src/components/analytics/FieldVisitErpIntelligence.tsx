@@ -31,7 +31,7 @@ export function buildErpDonutModel(segment: FieldVisitErpSegment | undefined): {
 
 function ErpFootprintDonut({ name, value }: { name: "Retailer" | "Distributor"; value?: FieldVisitErpSegment }) {
   const model = buildErpDonutModel(value);
-  return <ErpDistributionDonut title={`${name} ERP Footprint`} description="Current ERP per exact business identity using the latest authoritative visit or Admin baseline. Each business is counted once; repeat visits do not inflate totals." labelledBy={`${name.toLowerCase()}-erp-footprint`} total={value?.unique_businesses ?? 0} totalLabel={name === "Retailer" ? "Retailers" : "Distributors"} categories={model.slices} reconciled={model.reconciled} emptyTitle="No visited businesses" emptyDescription="Current ERP intelligence will appear after a confirmed visit creates a stable business identity." />;
+  return <ErpDistributionDonut title={`${name} ERP Footprint`} description="Current ERP per exact business identity using the latest authoritative visit or Admin baseline. Each business is counted once; repeat visits do not inflate totals." labelledBy={`${name.toLowerCase()}-erp-footprint`} ariaLabel={`${name} current ERP footprint: ${value?.unique_businesses ?? 0} unique businesses`} total={value?.unique_businesses ?? 0} totalLabel={name === "Retailer" ? "Retailers" : "Distributors"} categories={model.slices} reconciled={model.reconciled} emptyTitle="No visited businesses" emptyDescription="Current ERP intelligence will appear after a confirmed visit creates a stable business identity." />;
 }
 
 export default function FieldVisitErpIntelligence({ segments }: { segments: Record<string, FieldVisitErpSegment> }) {
