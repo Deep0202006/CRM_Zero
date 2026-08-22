@@ -18,6 +18,16 @@ const cases = [
  ["Tasks", ["--path","src/app/api/task-upload/route.ts"], "task-allocation"]
 ];
 for (const [name, args, domain] of cases) { const pack = parsed(...args); if (!pack.domains.includes(domain) || pack.estimatedTokens > 1500) throw new Error(`${name} context failed`); }
+const includes = (pack, id, key = "id") => pack[key].some((item) => (typeof item === "string" ? item : item.id) === id);
+const assert = (path, capability, lessons) => { const pack = parsed("--path", path); if (!includes(pack, capability, "capabilities") || lessons.some((id) => !includes(pack, id, "lessons"))) throw new Error(`knowledge retrieval failed: ${path}`); };
+assert("src/app/api/call-logs/confirm/route.ts", "canonical-call-confirmation", ["WRITE_READ_CLOSURE", "OFFLINE_COMPATIBILITY"]);
+assert("src/app/mappings/page.tsx", "mapping-standalone-persistence", ["ONE_FACT_ONE_AUTHORITY"]);
+assert("src/components/visits/CurrentErpBaselineEditor.tsx", "current-business-erp-intelligence", ["ERP_AUTHORITIES", "NO_FABRICATED_BACKFILL", "TRANSACTION_STAGING"]);
+assert("src/app/api/distributors/master-import/route.ts", "unified-distributor-master-import", ["ATOMIC_BATCH", "SPREADSHEET_COMMIT", "RESOLVED_PLAN_REVALIDATION"]);
+assert("src/app/api/receivables/commands/route.ts", "receivables-command-boundary", ["MONEY_TRUTH", "POSTGRES_WIRE_NORMALIZATION"]);
+assert("src/app/api/pipeline/create/route.ts", "pipeline-create-lead-boundary", ["SERVER_AUTHORIZATION"]);
+assert("src/app/api/chat/messages/route.ts", "team-chat-boundary", ["SERVER_AUTHORIZATION"]);
+assert("src/app/api/task-upload/route.ts", "task-allocation-batch-rpc", ["ATOMIC_BATCH"]);
 for (const effect of ["DATABASE","AUTHORIZATION"]) if (parsed("--domain","erp","--effect",effect).risk !== "R3") throw new Error(`${effect} did not escalate`);
 if (parsed("--domain","shared-ui","--effect","UI").risk === "R3") throw new Error("UI-only context escalated to R3");
 const cross = parsed("--path","src/components/visits/CurrentErpBaselineEditor.tsx"); if (!cross.domains.includes("erp") || !cross.domains.includes("field-visits")) throw new Error("deterministic multi-domain context failed");

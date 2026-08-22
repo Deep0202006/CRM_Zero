@@ -25,6 +25,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run quality:knowledge
+      - run: npm run quality:legacy
       - run: npm run quality:invariants
       - run: npm run context:test
       - name: Check changed diff integrity

@@ -1,18 +1,1585 @@
-{"schemaVersion":1,"sources":[
- {"sha":"ae7db36287a1f1fd2e70e7dbd36ed463a0f52ef6","kind":"retired-graph","items":[
-  {"legacyId":"authority-one-fact","resolution":{"type":"lesson","ref":"ONE_FACT_ONE_AUTHORITY"}},
-  {"legacyId":"erp-observation-and-baseline","resolution":{"type":"lesson","ref":"ERP_AUTHORITIES"}},
-  {"legacyId":"exact-head-release","resolution":{"type":"lesson","ref":"EXACT_HEAD_RELEASE"}},
-  {"legacyId":"manual-baseline-not-history","resolution":{"type":"lesson","ref":"NO_FABRICATED_BACKFILL"}},
-  {"legacyId":"nested-agent-runtime","resolution":{"type":"obsolete","ref":"nested Codex runtime retired"}},
-  {"legacyId":"graph-query-controller","resolution":{"type":"obsolete","ref":"autonomous controller retired; Graphify remains navigation only"}}
- ]},
- {"sha":"f8d5d5c7bca84cb16d2d378aa1c0bab685f79f4b","kind":"retired-harness","items":[
-  {"legacyId":"golden-principles","resolution":{"type":"invariant","ref":"docs/engineering/INVARIANTS.md"}},
-  {"legacyId":"change-release-risk","resolution":{"type":"contract","ref":"docs/engineering/WORKFLOW.md"}},
-  {"legacyId":"offline-recovery","resolution":{"type":"lesson","ref":"OFFLINE_COMPATIBILITY"}},
-  {"legacyId":"financial-authority","resolution":{"type":"lesson","ref":"MONEY_TRUTH"}},
-  {"legacyId":"harness-static-guards","resolution":{"type":"invariant","ref":"scripts/quality/invariants.mjs"}},
-  {"legacyId":"task-manifest","resolution":{"type":"obsolete","ref":"task-state runtime retired"}}
- ]}
-]}
+{
+  "schemaVersion": 2,
+  "sources": [
+    {
+      "sourceId": "graph-lessons",
+      "commit": "ae7db36287a1f1fd2e70e7dbd36ed463a0f52ef6",
+      "path": ".crm-engineering/knowledge/lessons-registry.json",
+      "sourceType": "lesson",
+      "sourceHash": "22aa696f6337583ef88abed1f8a5349daa9ce0aa",
+      "items": [
+        {
+          "legacyId": "ERP_DIMENSION_AUTHORITY_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "ERP_AUTHORITIES",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "SERVER_SCOPE_NOT_UI_FILTER_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "WRITE_READ_CLOSURE",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "EXTERNAL_ACCOUNT_NOT_EMPLOYEE_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "ATOMIC_BATCH",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "SINGLE_IMPORT_PROPAGATION_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "ATOMIC_BATCH",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "EXTERNAL_VIEW_DATA_MINIMIZATION_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "ATOMIC_BATCH",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "IMPORT_TEMPLATE_VERSION_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "ATOMIC_BATCH",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "LOCAL_EPHEMERAL_DB_TOOLCHAIN_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "DIRECT_ENGINEERING",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "REDUNDANT_LOCAL_TOOLCHAIN_DENY_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "DIRECT_ENGINEERING",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "MASTER_WORKBOOK_IS_ORCHESTRATOR_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "ATOMIC_BATCH",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "CROSS_AUTHORITY_ATOMIC_IMPORT_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "ATOMIC_BATCH",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "STABLE_EXTERNAL_IMPORT_KEY_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "ATOMIC_BATCH",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "PAYMENT_IMPORT_IDEMPOTENCY_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "ATOMIC_BATCH",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "DERIVED_FINANCIAL_STATE_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "EXACT_HEAD_RELEASE",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "PREVIEW_RESOLVED_PLAN_HASH_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "ATOMIC_BATCH",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "PATCH_BLANK_SEMANTICS_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "ATOMIC_BATCH",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "MULTI_PAYMENT_HISTORY_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "ATOMIC_BATCH",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "POSTGRES_NUMERIC_WIRE_CONTRACT_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "POSTGRES_WIRE_NORMALIZATION",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "WIRE_MOCK_REALISM_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "POSTGRES_WIRE_NORMALIZATION",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "TIME_DEPENDENT_TEST_CLOCK_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "DIRECT_ENGINEERING",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "EXECUTION_BUDGET_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "DIRECT_ENGINEERING",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "ZERO_DATA_MIGRATION_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "PRODUCTION_DISCIPLINE",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "REFLECTION_IS_NOT_MUTATION",
+          "resolution": {
+            "type": "lesson",
+            "ref": "DIRECT_ENGINEERING",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "BILLED_IS_NOT_UNPAID",
+          "resolution": {
+            "type": "lesson",
+            "ref": "MONEY_TRUTH",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "EXACT_PAYMENT_TARGET_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "ATOMIC_BATCH",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "CANONICAL_IDENTITY_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "DIRECT_ENGINEERING",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "ONE_MONEY_AUTHORITY",
+          "resolution": {
+            "type": "lesson",
+            "ref": "MONEY_TRUTH",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "WORKTREE_AUTHORITY_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "EXACT_HEAD_RELEASE",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "DIRTY_TREE_ISOLATION_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "EXACT_HEAD_RELEASE",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "STALE_BASE_PENALTY",
+          "resolution": {
+            "type": "lesson",
+            "ref": "DIRECT_ENGINEERING",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "TEST_REALISM_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "DIRECT_ENGINEERING",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "PREEXISTING_FAILURE_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "DIRECT_ENGINEERING",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "WRITE_READ_ADMIN_EXPORT",
+          "resolution": {
+            "type": "lesson",
+            "ref": "WRITE_READ_CLOSURE",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "SINGLE_SERVER_ENTRY_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "WRITE_READ_CLOSURE",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "TERMINAL_4XX_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "OFFLINE_COMPATIBILITY",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "WRITE_READ_CLOSURE_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "WRITE_READ_CLOSURE",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "ROUTE_MATRIX_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "WRITE_READ_CLOSURE",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "MAIN_BASELINE_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "ERP_AUTHORITIES",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "OWNER_SQL_PURE_POSTGRESQL",
+          "resolution": {
+            "type": "lesson",
+            "ref": "PRODUCTION_DISCIPLINE",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "BOUNDED_READ_SIDE_EFFECT_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "WRITE_READ_CLOSURE",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "SEMANTIC_CONTRACT_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "DIRECT_ENGINEERING",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "NO_PRODUCTION_DUMMY_DATA",
+          "resolution": {
+            "type": "lesson",
+            "ref": "PRODUCTION_DISCIPLINE",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "OPTIONAL_METRIC_FAILURE_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "DIRECT_ENGINEERING",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "DURABLE_TRANSITION_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "OFFLINE_COMPATIBILITY",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "REAL_ROUTE_MAP_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "WRITE_READ_CLOSURE",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "LOCAL_TO_SERVER_CONVERGENCE_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "OFFLINE_COMPATIBILITY",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "TOTAL_VS_PAGE_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "DIRECT_ENGINEERING",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "ATOMIC_BATCH_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "DIRECT_ENGINEERING",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "RUNTIME_DB_PROOF_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "DIRECT_ENGINEERING",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "SEMANTIC_RETRY_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "OFFLINE_COMPATIBILITY",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "BOUNDED_IS_NOT_LINEARITY_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "DIRECT_ENGINEERING",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "SPREADSHEET_FORMULA_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "WRITE_READ_CLOSURE",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "MEDIA_LIFECYCLE_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "MEDIA_LIFECYCLE",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "GRAPH_WORKER_BOUNDED_TERMINATION_RULE",
+          "resolution": {
+            "type": "obsolete",
+            "ref": "NO_AUTONOMOUS_SELF_HOSTING",
+            "reason": "The autonomous child-worker runtime was retired; direct Codex work has no worker termination loop."
+          }
+        },
+        {
+          "legacyId": "GRAPH_THREAD_RESUME_RULE",
+          "resolution": {
+            "type": "obsolete",
+            "ref": "NO_AUTONOMOUS_SELF_HOSTING",
+            "reason": "The nested App Server checkpoint runtime was retired; direct Codex work has no resumable controller thread."
+          }
+        },
+        {
+          "legacyId": "CONTENT_SENSITIVE_WORKTREE_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "EXACT_HEAD_RELEASE",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "HUMAN_GATE_EVIDENCE_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "PRODUCTION_DISCIPLINE",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "EXACT_HEAD_PROOF_REUSE_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "EXACT_HEAD_RELEASE",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "CI_HOT_PATH_TOOLCHAIN_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "EXACT_HEAD_RELEASE",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "OWNER_MIGRATION_CLOSURE_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "PRODUCTION_DISCIPLINE",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "GRAPH_LEARNING_CLOSURE_RULE",
+          "resolution": {
+            "type": "obsolete",
+            "ref": "LESSONS.json",
+            "reason": "Graph task-state learning closure was retired; durable reusable lessons now live in the canonical registry without task checkpoints."
+          }
+        },
+        {
+          "legacyId": "COMMITTED_RELEASE_STATE_RULE",
+          "resolution": {
+            "type": "obsolete",
+            "ref": "EXACT_HEAD_RELEASE",
+            "reason": "Graph task-state authority was retired; exact-head Git and CI release proof survives in the current workflow."
+          }
+        },
+        {
+          "legacyId": "REMOTE_RELEASE_EVIDENCE_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "EXACT_HEAD_RELEASE",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "FIELD_VISIT_ERP_IS_OBSERVATION_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "ERP_AUTHORITIES",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "EXPLICIT_NONE_VS_UNKNOWN_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "ERP_AUTHORITIES",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "LATEST_BUSINESS_OBSERVATION_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "DIRECT_ENGINEERING",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "OFFLINE_ENUM_EXTENSION_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "OFFLINE_COMPATIBILITY",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "CANONICAL_DIMENSION_CREATE_AT_WRITE_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "ERP_AUTHORITIES",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "EXACT_COMPATIBILITY_CONTRACT_NOT_OPTIONAL_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "DIRECT_ENGINEERING",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "MANUAL_BASELINE_NOT_HISTORY_RULE",
+          "resolution": {
+            "type": "lesson",
+            "ref": "ERP_AUTHORITIES",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        }
+      ]
+    },
+    {
+      "sourceId": "graph-rules",
+      "commit": "ae7db36287a1f1fd2e70e7dbd36ed463a0f52ef6",
+      "path": ".crm-engineering/policy/rules.json",
+      "sourceType": "rule",
+      "sourceHash": "01fdc3c616a3c7a7c67c3330d0263b4e34ad882d",
+      "items": [
+        {
+          "legacyId": "G-END-001",
+          "resolution": {
+            "type": "lesson",
+            "ref": "DIRECT_ENGINEERING",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "G-BLOCK-001",
+          "resolution": {
+            "type": "lesson",
+            "ref": "DIRECT_ENGINEERING",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "G-VERIFY-001",
+          "resolution": {
+            "type": "lesson",
+            "ref": "DIRECT_ENGINEERING",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "G-STALL-001",
+          "resolution": {
+            "type": "lesson",
+            "ref": "DIRECT_ENGINEERING",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "G-REPO-001",
+          "resolution": {
+            "type": "lesson",
+            "ref": "DIRECT_ENGINEERING",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "G-REPO-002",
+          "resolution": {
+            "type": "lesson",
+            "ref": "DIRECT_ENGINEERING",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "G-MIG-001",
+          "resolution": {
+            "type": "lesson",
+            "ref": "DIRECT_ENGINEERING",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "G-PROD-001",
+          "resolution": {
+            "type": "lesson",
+            "ref": "DIRECT_ENGINEERING",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "G-PROD-002",
+          "resolution": {
+            "type": "lesson",
+            "ref": "DIRECT_ENGINEERING",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "G-AUTH-001",
+          "resolution": {
+            "type": "lesson",
+            "ref": "DIRECT_ENGINEERING",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "G-RELEASE-001",
+          "resolution": {
+            "type": "lesson",
+            "ref": "EXACT_HEAD_RELEASE",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "G-CONTEXT-001",
+          "resolution": {
+            "type": "lesson",
+            "ref": "DIRECT_ENGINEERING",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "G-PROOF-001",
+          "resolution": {
+            "type": "lesson",
+            "ref": "DIRECT_ENGINEERING",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "G-LEARN-001",
+          "resolution": {
+            "type": "lesson",
+            "ref": "DIRECT_ENGINEERING",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "G-PROD-003",
+          "resolution": {
+            "type": "lesson",
+            "ref": "DIRECT_ENGINEERING",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "G-TOOLCHAIN-001",
+          "resolution": {
+            "type": "lesson",
+            "ref": "DIRECT_ENGINEERING",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        }
+      ]
+    },
+    {
+      "sourceId": "graph-authorities",
+      "commit": "ae7db36287a1f1fd2e70e7dbd36ed463a0f52ef6",
+      "path": ".crm-engineering/knowledge/authority-registry.json",
+      "sourceType": "authority",
+      "sourceHash": "b89ed8ed2cb8ecf73fa49f1cda76cbd279a7b87e",
+      "items": [
+        {
+          "legacyId": "erp_system",
+          "resolution": {
+            "type": "authority",
+            "ref": "erp_system",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "distributor_erp_assignment",
+          "resolution": {
+            "type": "authority",
+            "ref": "distributor_erp_assignment",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "erp_partner_scope",
+          "resolution": {
+            "type": "authority",
+            "ref": "erp_partner_scope",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "employee_identity",
+          "resolution": {
+            "type": "authority",
+            "ref": "employee_identity",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "attendance",
+          "resolution": {
+            "type": "authority",
+            "ref": "attendance",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "distributor_account",
+          "resolution": {
+            "type": "authority",
+            "ref": "distributor_account",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "receivable",
+          "resolution": {
+            "type": "authority",
+            "ref": "receivable",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "payment",
+          "resolution": {
+            "type": "authority",
+            "ref": "payment",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "renewal",
+          "resolution": {
+            "type": "authority",
+            "ref": "renewal",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "pipeline_lead",
+          "resolution": {
+            "type": "authority",
+            "ref": "pipeline_lead",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "pipeline_stage",
+          "resolution": {
+            "type": "authority",
+            "ref": "pipeline_stage",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "call_history",
+          "resolution": {
+            "type": "authority",
+            "ref": "call_history",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "field_visit",
+          "resolution": {
+            "type": "authority",
+            "ref": "field_visit",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "field_visit_erp_observation",
+          "resolution": {
+            "type": "authority",
+            "ref": "field_visit_erp_observation",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "field_business_erp_baseline",
+          "resolution": {
+            "type": "authority",
+            "ref": "field_business_erp_baseline",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "distributor_receivable_link",
+          "resolution": {
+            "type": "authority",
+            "ref": "distributor_receivable_link",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "unified_distributor_master_import_orchestration",
+          "resolution": {
+            "type": "authority",
+            "ref": "unified_distributor_master_import_orchestration",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        }
+      ]
+    },
+    {
+      "sourceId": "graph-capabilities",
+      "commit": "ae7db36287a1f1fd2e70e7dbd36ed463a0f52ef6",
+      "path": ".crm-engineering/knowledge/capability-registry.json",
+      "sourceType": "capability",
+      "sourceHash": "ddf86ca22b17ff8d512b8933818f55a6d529d5fe",
+      "items": [
+        {
+          "legacyId": "erp-partner-visibility",
+          "resolution": {
+            "type": "capability",
+            "ref": "erp-partner-visibility",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "employee-import-identity",
+          "resolution": {
+            "type": "capability",
+            "ref": "employee-import-identity",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "receivables-money",
+          "resolution": {
+            "type": "capability",
+            "ref": "receivables-money",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "distributor-renewal",
+          "resolution": {
+            "type": "capability",
+            "ref": "distributor-renewal",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "canonical-distributor-receivables",
+          "resolution": {
+            "type": "capability",
+            "ref": "canonical-distributor-receivables",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "unified-distributor-master-import",
+          "resolution": {
+            "type": "capability",
+            "ref": "unified-distributor-master-import",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "pipeline-authoritative-transition",
+          "resolution": {
+            "type": "capability",
+            "ref": "pipeline-authoritative-transition",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "attendance-write-read-closure",
+          "resolution": {
+            "type": "capability",
+            "ref": "attendance-write-read-closure",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "field-visit-erp-intelligence",
+          "resolution": {
+            "type": "capability",
+            "ref": "field-visit-erp-intelligence",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        },
+        {
+          "legacyId": "current-business-erp-intelligence",
+          "resolution": {
+            "type": "capability",
+            "ref": "current-business-erp-intelligence",
+            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
+          }
+        }
+      ]
+    },
+    {
+      "sourceId": "os-ledger",
+      "commit": "f8d5d5c7bca84cb16d2d378aa1c0bab685f79f4b",
+      "path": "docs/os/LESSONS_LEDGER.md",
+      "sourceType": "ledger",
+      "sourceHash": "55a4c0b8a3cbb0d85510271387afd670edf28173",
+      "items": [
+        {
+          "legacyId": "32d25b5453a5d0ea",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "3b082a0f4387d463",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "7f0b2413261b7cfb",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "296c980d680eba20",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "cfacc748e1efdd28",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "d0ab2c400d9e46d7",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "eb70a5e0f8832253",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "9d9271c79499ca70",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "4a2611813e1e8706",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "28620e0d8bd3957b",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "89a022a66c1e8f4d",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "a7c85eaf985bf437",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "95fad84ccd6e729a",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "f17fa34fcb502157",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "3bd576e79a632aa6",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "ca04e1c797485436",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "0f969d5b9c08c162",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "d4695baa3431b867",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "65a3384174327f6c",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "f8b075c4fb1dd51f",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "a6b9acd9f6001755",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "8d2cd7cf8f8c8eb3",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        }
+      ]
+    },
+    {
+      "sourceId": "golden-principles",
+      "commit": "f8d5d5c7bca84cb16d2d378aa1c0bab685f79f4b",
+      "path": "docs/quality/GOLDEN_PRINCIPLES.md",
+      "sourceType": "principle",
+      "sourceHash": "1b41385075a9ad6a558ff4ac8d3e6d55b4bbde7b",
+      "items": [
+        {
+          "legacyId": "543deb5e68e6d83f",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "972952c0169bb08f",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "44120efc5b4d0f11",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "44efed7d7424d5fc",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "d21870c6caacb05d",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "da6367a407b620fd",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "4e8abc30f96eedae",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "bec6029b85dd0195",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "21962bebf3c0421e",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "0dafccfdb06cb8de",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "b80dd8fbed2484bc",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "24dcd84fd15aeed7",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "f3bd626c1c51c5ae",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "a33744358328ab7a",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "3aa22ea742a5a04a",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "b3f7b5e601dfdd4c",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "5c8e72f055d1536f",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "a82af7b298135587",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "6ab974b538ee3cb1",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "2d8a296719a05b04",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "9f7307ed41d149e0",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "9c92429627a262ae",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "7f5d7f7490cc822b",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "da119d7a9da6cbb2",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "a484a812abe5b955",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "fa59b1ed3d2d6aab",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "f3e249bb7ade4f8d",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "9b5477090b5ec9b5",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "863713a8decd4667",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "6bdb8fa85565cb22",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "1e1121ae9acc9730",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "b44cba8555aea809",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "4446ff63586fd9e4",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "93a4a0d60be91b6d",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "7f7ec85fadd7f364",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "3b8ef8906c74e989",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "07465aa1260646dd",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "8fdb8fc9b3a07371",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "14e25236eff1f4d3",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "b71a3c6509144e51",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "402e49a0f2b8f3c1",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "a99e45d0052b1523",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "4df21fb98f665b2d",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        },
+        {
+          "legacyId": "10e780d8eeca0bf8",
+          "resolution": {
+            "type": "invariant",
+            "ref": "docs/engineering/INVARIANTS.md",
+            "reason": "Consolidated current non-negotiable invariant."
+          }
+        }
+      ]
+    },
+    {
+      "sourceId": "operating-model",
+      "commit": "f8d5d5c7bca84cb16d2d378aa1c0bab685f79f4b",
+      "path": "docs/os/OPERATING_MODEL.md",
+      "sourceType": "policy",
+      "sourceHash": "3aa1c2839ebc4a2b30a0921f36d73354520950ea",
+      "items": [
+        {
+          "legacyId": "operating-model",
+          "resolution": {
+            "type": "contract",
+            "ref": "docs/engineering/WORKFLOW.md",
+            "reason": "Direct single-agent workflow supersedes retired operating model."
+          }
+        }
+      ]
+    },
+    {
+      "sourceId": "change-protocol",
+      "commit": "f8d5d5c7bca84cb16d2d378aa1c0bab685f79f4b",
+      "path": "docs/os/CHANGE_PROTOCOL.md",
+      "sourceType": "policy",
+      "sourceHash": "3d3eefc55188f8cb4693f989dea2848496e4a687",
+      "items": [
+        {
+          "legacyId": "change-protocol",
+          "resolution": {
+            "type": "contract",
+            "ref": "docs/engineering/WORKFLOW.md",
+            "reason": "Current workflow preserves change discipline."
+          }
+        }
+      ]
+    },
+    {
+      "sourceId": "release-protocol",
+      "commit": "f8d5d5c7bca84cb16d2d378aa1c0bab685f79f4b",
+      "path": "docs/os/RELEASE_PROTOCOL.md",
+      "sourceType": "policy",
+      "sourceHash": "a6a70d481c70ee3313a0c6f97293f6ddfc74bb30",
+      "items": [
+        {
+          "legacyId": "release-protocol",
+          "resolution": {
+            "type": "contract",
+            "ref": "docs/engineering/WORKFLOW.md",
+            "reason": "Current workflow preserves exact-head release proof."
+          }
+        }
+      ]
+    },
+    {
+      "sourceId": "risk-model",
+      "commit": "f8d5d5c7bca84cb16d2d378aa1c0bab685f79f4b",
+      "path": "docs/os/RISK_MODEL.md",
+      "sourceType": "policy",
+      "sourceHash": "339a4cac9d69a10be5a70caa8ad7b9df546d3981",
+      "items": [
+        {
+          "legacyId": "risk-model",
+          "resolution": {
+            "type": "contract",
+            "ref": "docs/engineering/WORKFLOW.md",
+            "reason": "Current workflow retains risk classification."
+          }
+        }
+      ]
+    },
+    {
+      "sourceId": "prompting",
+      "commit": "f8d5d5c7bca84cb16d2d378aa1c0bab685f79f4b",
+      "path": "docs/os/PROMPTING.md",
+      "sourceType": "policy",
+      "sourceHash": "2ff7fc2443c14e901daed0b50448a32804466112",
+      "items": [
+        {
+          "legacyId": "prompting",
+          "resolution": {
+            "type": "contract",
+            "ref": "AGENTS.md",
+            "reason": "Root bootloader defines progressive context."
+          }
+        }
+      ]
+    },
+    {
+      "sourceId": "production-baseline",
+      "commit": "ae7db36287a1f1fd2e70e7dbd36ed463a0f52ef6",
+      "path": ".crm-engineering/knowledge/current-production-baseline.json",
+      "sourceType": "snapshot",
+      "sourceHash": "41ebbb2d7954f9b0cb16cc42076fdc5a1193a07a",
+      "items": [
+        {
+          "legacyId": "production-baseline",
+          "resolution": {
+            "type": "lesson",
+            "ref": "STATIC_SNAPSHOT_NOT_CURRENT_AUTHORITY",
+            "reason": "Historical snapshot is not current production truth."
+          }
+        }
+      ]
+    }
+  ]
+}

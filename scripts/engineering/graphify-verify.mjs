@@ -1,0 +1,15 @@
+import { existsSync, readFileSync } from "node:fs";
+import { resolve, extname } from "node:path";
+const root = resolve(import.meta.dirname, "../..");
+const graphPath = resolve(root, "graphify-out/graph.json");
+if (!existsSync(graphPath)) throw new Error("GRAPHIFY_GRAPH_MISSING");
+const graph = JSON.parse(readFileSync(graphPath, "utf8"));
+const nodes = graph.nodes ?? []; const links = graph.links ?? graph.edges ?? [];
+if (!nodes.length || !links.length) throw new Error("GRAPHIFY_GRAPH_INTEGRITY_FAIL");
+const forbidden = new Set([".md", ".mdx", ".qmd", ".skill", ".txt", ".rst", ".html", ".yaml", ".yml", ".pdf", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".docx", ".xlsx", ".mp4", ".mov", ".webm", ".mkv", ".avi", ".mp3", ".wav", ".m4a", ".ogg", ".zip"]);
+const source = (node) => String(node.source_file ?? node.source ?? node.file ?? node.path ?? "").replaceAll("\\", "/");
+const bad = nodes.map(source).filter((file) => file && (file.startsWith("docs/") || ["AGENTS.md", "CLAUDE.md", "README.md", "supabase/migrations/APPLIED_OWNER_MIGRATIONS.json"].includes(file) || forbidden.has(extname(file).toLowerCase())));
+if (bad.length) throw new Error(`GRAPHIFY_NON_CODE_SOURCE:${bad.slice(0, 3).join(",")}`);
+const text = JSON.stringify(nodes);
+for (const canary of ["pipeline/create/route.ts", "pipeline/transition/route.ts", "field-visits/confirm/route.ts", "receivables/commands/route.ts", "CurrentErpBaselineEditor.tsx"]) if (!text.includes(canary)) throw new Error(`GRAPHIFY_CANARY_MISSING:${canary}`);
+console.log(`Graphify verification passed (${nodes.length} nodes, ${links.length} links, 0 non-code sources).`);

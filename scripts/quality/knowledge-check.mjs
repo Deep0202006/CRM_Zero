@@ -33,6 +33,13 @@ for (const capability of capabilities) {
   for (const id of capability.authorityRefs ?? []) if (!authorityIds.has(id)) fail(`${capability.id} unknown authority: ${id}`);
   for (const key of ["implementationPaths", "testPaths"]) for (const path of capability[key] ?? []) if (!pathExists(path)) fail(`${capability.id} missing ${key}: ${path}`);
 }
+for (const capability of capabilities.filter((item) => item.reuse === "required")) {
+  const users = domains.filter((domain) => (domain.capabilityRefs ?? []).includes(capability.id));
+  if (!users.length) fail(`orphan required capability: ${capability.id}`);
+  if ((capability.implementationPaths ?? []).length && !users.some((domain) => (capability.implementationPaths ?? []).some((path) => [...(domain.surfacePaths ?? []), ...(domain.codeRoots ?? []), ...(domain.serverBoundaries ?? [])].some((rootPath) => path === rootPath || path.startsWith(`${rootPath}/`) || rootPath.startsWith(`${path}/`))))) fail(`capability has no intersecting domain: ${capability.id}`);
+}
+for (const domain of domains) if (["R2", "R3"].includes(domain.riskFloor) && !(domain.lessonRefs ?? []).length) fail(`high-risk domain has no lessons: ${domain.id}`);
+for (const domain of domains) for (const test of domain.criticalTests ?? []) if (["src/lib/__tests__", "src/lib/__tests__/receivables", "src/lib/__tests__/distributors", "src/lib/__tests__/distributorMaster"].includes(test)) fail(`broad critical-test locator: ${domain.id}`);
 for (const lesson of lessons) {
   for (const domain of lesson.domains ?? []) if (domain !== "all" && !domainIds.has(domain)) fail(`${lesson.id} unknown lesson domain: ${domain}`);
   for (const evidence of lesson.evidence ?? []) if (!evidence.startsWith("public.") && !pathExists(evidence)) fail(`${lesson.id} missing evidence: ${evidence}`);
