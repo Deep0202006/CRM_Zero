@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@supabase/supabase-js";
+import { canonicalErpIdSchema } from "@/lib/erp/validation";
 
-const UpdateSchema = z.object({
+export const UpdateSchema = z.object({
   user_id: z.string().uuid(),
-  erp_scope_ids: z.array(z.string().uuid()).min(1).max(100),
+  erp_scope_ids: z.array(canonicalErpIdSchema).min(1).max(100),
 });
 
 async function authorize(request: NextRequest) {

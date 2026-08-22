@@ -1,12 +1,13 @@
 import { z } from "zod";
 import { apiError, contextFor } from "@/lib/receivables/server";
+import { optionalCanonicalErpIdSchema } from "@/lib/erp/validation";
 
-const querySchema = z
+export const querySchema = z
   .object({
     page: z.coerce.number().int().min(1).default(1),
     pageSize: z.coerce.number().int().min(1).max(50).default(50),
     search: z.string().trim().max(100).default(""),
-    erp: z.union([z.string().uuid(), z.literal("")]).default(""),
+    erp: optionalCanonicalErpIdSchema.default(""),
   })
   .strict();
 export const dynamic = "force-dynamic";

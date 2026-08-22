@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { canonicalErpIdSchema } from "@/lib/erp/validation";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co",
@@ -20,7 +21,7 @@ const VALID_CAPABILITIES = [
   "erp_partner_viewer",
 ] as const;
 
-const CreateUserSchema = z
+export const CreateUserSchema = z
   .object({
     account_type: z.enum(["internal", "erp_partner"]),
     email: z.string().min(3, "Email/Username is required"),
@@ -33,7 +34,7 @@ const CreateUserSchema = z
     capabilities: z
       .array(z.enum(VALID_CAPABILITIES))
       .min(1, "Select at least one role"),
-    erp_scope_ids: z.array(z.string().uuid()).max(100).default([]),
+    erp_scope_ids: z.array(canonicalErpIdSchema).max(100).default([]),
     manager_id: z.string().uuid().nullable().optional(),
   })
   .superRefine((value, context) => {

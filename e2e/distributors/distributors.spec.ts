@@ -75,7 +75,7 @@ const row = {
   distributor_id: distributorId,
   distributor_name: "Alpha Distributor",
   distributor_reference: "ALPHA-1",
-  erp_id: "60000000-0000-4000-a000-000000000001",
+  erp_id: "e22cbcaa-be77-09f4-1594-e44687e1e46b",
   erp_name: "MARG",
   lead_id: null,
   phone: null,
@@ -411,6 +411,29 @@ async function mock(page: Page) {
     }),
   );
 }
+
+test("Admin Distributor Status sends the exact canonical ERP GUID and preserves ERP Not Set", async ({ page }) => {
+  const listRequests: URL[] = [];
+  await mock(page);
+  await page.route("**/api/distributors?**", (route) => {
+    listRequests.push(new URL(route.request().url()));
+    return route.fulfill({ json: { rows: [numericProjectionRow], page: 1, pageSize: 50, total: 1 } });
+  });
+  await seed(page, admin, true);
+  await page.goto("/admin/payments/distributors");
+  const erp = page.getByLabel("ERP", { exact: true });
+  await erp.selectOption({ label: "MARG" });
+  await expect.poll(() => listRequests.some((url) => url.searchParams.get("erp") === row.erp_id)).toBe(true);
+  await expect(page.getByText("Alpha Distributor")).toBeVisible();
+  await expect(page.getByText("Invalid UUID")).toHaveCount(0);
+  await expect(page.getByText("INVALID_FILTERS")).toHaveCount(0);
+  await expect(erp).toHaveValue(row.erp_id);
+
+  await erp.selectOption("__unset");
+  await expect.poll(() => listRequests.some((url) => url.searchParams.get("erpUnset") === "true" && url.searchParams.get("erp") === "")).toBe(true);
+  await expect(erp).toHaveValue("__unset");
+  await expect(page.getByText("Alpha Distributor")).toBeVisible();
+});
 
 test("Distributor Collections exposes read-only money and reuses exact Receivables commands", async ({
   page,

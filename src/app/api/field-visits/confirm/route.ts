@@ -2,6 +2,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { FIELD_VISIT_OUTCOMES, FIELD_VISIT_SEGMENTS, PincodeSchema, generateEvidencePath } from "@/lib/fieldVisits/contract";
 import { getCurrentISTDate, getISTDateKey, isValidISTDateKey } from "@/lib/dateTime";
+import { canonicalErpIdSchema } from "@/lib/erp/validation";
 
 export const runtime = "nodejs";
 
@@ -36,7 +37,7 @@ export const VisitConfirmationSchema = z.object({
   erp_contract_version: z.literal(1).optional(),
   erp_usage_state: z.enum(["erp", "none"]).nullable().optional(),
   erp_name_input: z.string().trim().max(160).nullable().optional(),
-  erp_id: uuid.nullable().optional(),
+  erp_id: canonicalErpIdSchema.nullable().optional(),
   erp_name: z.string().trim().max(160).nullable().optional(),
   segment_type: z.enum(FIELD_VISIT_SEGMENTS),
   follow_up_date: z.string().refine(isValidISTDateKey).nullable().optional(),

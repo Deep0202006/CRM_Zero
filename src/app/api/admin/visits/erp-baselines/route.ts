@@ -1,13 +1,14 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { listErpSystems } from "@/lib/erp/server";
+import { canonicalErpIdSchema } from "@/lib/erp/validation";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const segmentSchema = z.enum(["Retailer", "Distributor"]);
 const stateSchema = z.enum(["erp", "none", "not_captured"]);
-const erpIdSchema = z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+export const erpIdSchema = canonicalErpIdSchema;
 const operationSchema = z.union([
   z.object({ operation: z.literal("set"), segment_type: segmentSchema, business_ref: z.string().trim().min(1).max(256), erp_id: erpIdSchema }).strict(),
   z.object({ operation: z.literal("set"), segment_type: segmentSchema, business_ref: z.string().trim().min(1).max(256), erp_name: z.string().trim().min(1).max(160) }).strict(),
