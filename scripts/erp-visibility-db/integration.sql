@@ -114,4 +114,39 @@ begin
      or has_table_privilege('authenticated','public.erp_systems','select') then raise exception 'ERP_TABLE_BROWSER_ACCESS_ALLOWED'; end if;
 end $$;
 
+do $$
+declare
+  v_actor constant uuid := '91000000-0000-4000-a000-000000000001';
+  v_employee constant uuid := '92000000-0000-4000-a000-000000000001';
+  v_marg uuid := md5('erp:marg')::uuid;
+  v_tally uuid := md5('erp:tally prime')::uuid;
+  v_metrics jsonb;
+  v_total bigint;
+  v_before bigint;
+  v_after bigint;
+begin
+  insert into public.distributor_accounts(
+    distributor_id,erp_id,distributor_name,distributor_reference,identity_key,assigned_to,
+    installation_status,training_status,mapping_status,activity_status,billing_status,renewal_date,created_by
+  ) values(
+    '96000000-0000-4000-a000-000000000003',null,'ERP Unset','ERP-UNSET','code:erp-unset',v_employee,
+    'pending','pending','pending','not_applicable','not_billed',current_date+1,v_actor
+  );
+  select count(*) into v_before from public.distributor_accounts;
+  select public.distributor_status_metrics_v1(v_actor,true) into v_metrics;
+  select count(*) into v_after from public.distributor_accounts;
+  if v_before<>v_after then raise exception 'ERP_METRICS_MUTATED_DISTRIBUTOR_ACCOUNTS'; end if;
+  select count(*) into v_total from public.distributor_accounts;
+  if (v_metrics->>'total')::bigint<>v_total then raise exception 'ERP_METRICS_TOTAL_MISMATCH: %',v_metrics; end if;
+  if not (v_metrics ?& array['total','installation_pending','training_pending','installation_training_done','mapped','active','inactive','billed']) then raise exception 'ERP_METRICS_LEGACY_KEYS_MISSING: %',v_metrics; end if;
+  if (select coalesce(sum((value->>'count')::bigint),0) from jsonb_array_elements(v_metrics->'erp_distribution'))<>v_total then raise exception 'ERP_DISTRIBUTION_NOT_RECONCILED: %',v_metrics; end if;
+  if coalesce((select (value->>'count')::bigint from jsonb_array_elements(v_metrics->'erp_distribution') where value->>'erp_id'=v_marg::text),0)<>(select count(*) from public.distributor_accounts where erp_id=v_marg) then raise exception 'ERP_MARG_COUNT_MISMATCH: %',v_metrics; end if;
+  if coalesce((select (value->>'count')::bigint from jsonb_array_elements(v_metrics->'erp_distribution') where value->>'erp_id'=v_tally::text),0)<>(select count(*) from public.distributor_accounts where erp_id=v_tally) then raise exception 'ERP_TALLY_COUNT_MISMATCH: %',v_metrics; end if;
+  if coalesce((select (value->>'count')::bigint from jsonb_array_elements(v_metrics->'erp_distribution') where value->>'erp_id' is null),0)<>(select count(*) from public.distributor_accounts where erp_id is null) then raise exception 'ERP_UNSET_COUNT_MISMATCH: %',v_metrics; end if;
+  select public.distributor_status_metrics_v1(v_employee,false) into v_metrics;
+  if (v_metrics->>'total')::bigint<>(select count(*) from public.distributor_accounts where assigned_to=v_employee) then raise exception 'ERP_METRICS_EMPLOYEE_SCOPE_CHANGED: %',v_metrics; end if;
+  select public.distributor_status_metrics_v1(v_employee,true) into v_metrics;
+  if (v_metrics->>'total')::bigint<>0 then raise exception 'ERP_METRICS_NONADMIN_ADMIN_SCOPE_ALLOWED: %',v_metrics; end if;
+end $$;
+
 select 'Migration 047 ERP visibility integration passed' as result;

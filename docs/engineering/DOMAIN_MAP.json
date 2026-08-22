@@ -361,14 +361,19 @@
                         "surfacePaths":  [
                                              "src/app/payments/distributors",
                                              "src/app/admin/payments/distributors",
-                                             "src/app/api/distributors"
+                                             "src/app/api/distributors/route.ts",
+                                             "src/app/api/distributors/[id]",
+                                             "src/app/api/distributors/commands",
+                                             "src/app/api/distributors/metrics"
                                          ],
                         "codeRoots":  [
                                           "src/lib/distributors",
-                                          "src/components/distributors"
+                                          "src/components/distributors",
+                                          "src/components/analytics/ErpDistributionDonut.tsx"
                                       ],
                         "serverBoundaries":  [
-                                                 "src/app/api/distributors/commands/route.ts"
+                                                 "src/app/api/distributors/commands/route.ts",
+                                                 "src/app/api/distributors/metrics/route.ts"
                                              ],
                         "contractPaths":  [
                                               "docs/contracts/distributor-status.md",
@@ -376,14 +381,18 @@
                                           ],
                         "authorityRefs":  [
                                               "distributor_account",
-                                              "distributor_erp_assignment"
+                                              "distributor_erp_assignment",
+                                              "erp_system"
                                           ],
                         "capabilityRefs":  [
                                                "distributor-command-boundary",
-                                               "distributor-renewal"
+                                               "distributor-renewal",
+                                               "distributor-erp-footprint"
                                            ],
                         "lessonRefs":  [
                                            "ONE_FACT_ONE_AUTHORITY",
+                                           "ERP_AUTHORITIES",
+                                           "HONEST_VISUALIZATION",
                                            "RESOURCE_BOUNDS"
                                        ],
                         "criticalTests":  [
@@ -404,13 +413,12 @@
 
                                            ],
                         "surfacePaths":  [
-                                             "src/app/payments",
-                                             "src/app/admin/payments",
+                         "src/app/payments/page.tsx",
+                         "src/app/admin/payments/page.tsx",
                                              "src/app/api/receivables"
                                          ],
                         "codeRoots":  [
-                                          "src/lib/receivables",
-                                          "src/app/payments"
+                      "src/lib/receivables"
                                       ],
                         "serverBoundaries":  [
                                                  "src/app/api/receivables/commands/route.ts"

@@ -46,7 +46,12 @@ export interface DistributorMetrics {
   active: number;
   inactive: number;
   billed: number;
+  erp_distribution: DistributorErpDistributionCategory[];
 }
+
+export type DistributorErpDistributionCategory =
+  | { erp_id: string; erp_name: string; count: number }
+  | { erp_id: null; erp_name: null; count: number };
 
 export type RenewalFilter = "all" | "overdue" | "today" | "tomorrow" | "in_two_days" | "upcoming" | "not_set";
 

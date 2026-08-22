@@ -20,6 +20,7 @@ import { DistributorImportModal } from "@/components/distributors/DistributorImp
 import { DistributorMasterImportModal } from "@/components/distributors/DistributorMasterImportModal";
 import { ReceivablesCreateModal } from "@/components/receivables/ReceivablesCreateModal";
 import { AdminReceivableActionModal } from "@/components/receivables/AdminReceivableActionModal";
+import { ErpDistributionDonut, erpDistributionReconciles, type ErpDistributionCategory } from "@/components/analytics/ErpDistributionDonut";
 
 const metricFilters = [
   ["Total Distributors", "total", {}],
@@ -378,6 +379,17 @@ export default function DistributorStatusPage() {
           </button>
         ))}
       </div>
+      {metrics && <ErpDistributionDonut
+        title="Distributor ERP Footprint"
+        description="Official ERP assignment from Distributor Status. Each Distributor account is counted once."
+        labelledBy="distributor-erp-footprint"
+        total={metrics.total}
+        totalLabel="Distributors"
+        categories={metrics.erp_distribution.map((category): ErpDistributionCategory => category.erp_id === null ? { ...category, state: "unset" } : { ...category, state: "erp" })}
+        reconciled={erpDistributionReconciles(metrics.erp_distribution, metrics.total)}
+        emptyTitle="No Distributor accounts"
+        emptyDescription="Official ERP assignment footprint will appear after Distributor Status accounts exist."
+      />}
       {metrics?.total === 0 && !message && !listError && !metricsError && (
         <div className="alert-panel alert-panel--info">
           Distributor Status is active. No distributors have been created.
