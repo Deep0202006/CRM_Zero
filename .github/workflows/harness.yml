@@ -1,4 +1,4 @@
-name: CRM Engineering Graph + Product Verification
+name: CRM Product Verification
 
 on:
   pull_request:
@@ -8,33 +8,69 @@ permissions:
   contents: read
 
 jobs:
-  classify:
+  preflight:
     runs-on: ubuntu-latest
-    outputs:
-      graph_only: ${{ steps.scope.outputs.graph_only }}
-      classification: ${{ steps.scope.outputs.classification }}
+    timeout-minutes: 20
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://e2e.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: e2e-anon-key
+      SUPABASE_SERVICE_ROLE_KEY: BUILD_TIME_PLACEHOLDER_KEY
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - id: scope
-        name: Classify pull request scope fail-safe
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.13.0
+          cache: npm
+      - run: npm ci
+      - name: Check changed diff integrity
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: git diff --check "$BASE_SHA" "$HEAD_SHA"
+      - run: npm run typecheck
+      - name: Run related Jest tests for changed source
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          classification="$(node tools/crm-graph/scripts/classify-ci-scope.mjs --base "$BASE_SHA" --head "$HEAD_SHA")"
-          echo "classification=$classification"
-          echo "classification=$classification" >> "$GITHUB_OUTPUT"
-          if [ "$classification" = "graph_only" ]; then
-            echo "graph_only=true" >> "$GITHUB_OUTPUT"
+          mapfile -d '' changed_source < <(git diff --name-only -z "$BASE_SHA" "$HEAD_SHA" -- src)
+          affected=()
+          for candidate in "${changed_source[@]}"; do
+            case "$candidate" in
+              *.ts|*.tsx|*.js|*.jsx) affected+=("$candidate") ;;
+            esac
+          done
+          if [ "${#affected[@]}" -eq 0 ]; then
+            echo "No Jest-related source changes."
           else
-            echo "graph_only=false" >> "$GITHUB_OUTPUT"
+            npm test -- --runInBand --findRelatedTests "${affected[@]}"
           fi
 
+  verify:
+    needs: preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://e2e.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: e2e-anon-key
+      SUPABASE_SERVICE_ROLE_KEY: BUILD_TIME_PLACEHOLDER_KEY
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.13.0
+          cache: npm
+      - run: npm ci
+      - run: npm test -- --runInBand
+      - run: npm run lint
+      - run: npm run build
+
   receivables-postgres:
-    needs: [classify, preflight]
-    if: needs.classify.outputs.graph_only != 'true'
+    needs: preflight
     runs-on: ubuntu-latest
     timeout-minutes: 20
     services:
@@ -80,14 +116,7 @@ jobs:
       - name: Fresh-apply Migration 048 and prove Field Visit ERP observation invariants
         run: createdb field_visit_erp_test && PGDATABASE=field_visit_erp_test bash scripts/field-visit-erp-db/run-integration.sh
       - name: Fresh-apply Migration 049 and prove current ERP baseline invariants
-        run: createdb field_business_erp_test && PGDATABASE=field_business_erp_test CRM_P1_049_PROOF_PATH="$RUNNER_TEMP/crm-p1-049-postgres17.txt" bash scripts/field-business-erp-db/run-integration.sh
-      - name: Upload exact-head Migration 049 PostgreSQL 17 proof
-        uses: actions/upload-artifact@v4
-        with:
-          name: crm-p1-049-postgres17-${{ github.event.pull_request.head.sha }}
-          path: ${{ runner.temp }}/crm-p1-049-postgres17.txt
-          if-no-files-found: error
-          retention-days: 30
+        run: createdb field_business_erp_test && PGDATABASE=field_business_erp_test bash scripts/field-business-erp-db/run-integration.sh
       - name: Prove Attendance uniqueness and permanent-row evidence lifecycle
         run: createdb attendance_test && PGDATABASE=attendance_test bash scripts/attendance-db/run-integration.sh
       - name: Fresh-apply Pipeline authority migrations and prove isolation
@@ -97,118 +126,8 @@ jobs:
       - name: Fresh-apply Migrations 046-047 and prove master-import, ERP scope, and financial isolation
         run: createdb distributor_master_test && CRM_MASTER_DB_DISPOSABLE=1 PGDATABASE=distributor_master_test bash scripts/distributor-master-db/run-integration.sh
 
-  preflight:
-    needs: classify
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    env:
-      NEXT_PUBLIC_SUPABASE_URL: https://e2e.supabase.co
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: e2e-anon-key
-      SUPABASE_SERVICE_ROLE_KEY: BUILD_TIME_PLACEHOLDER_KEY
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24.13.0
-          cache: npm
-      - name: Install CRM Engineering Graph dependencies
-        run: npm ci --prefix tools/crm-graph
-
-      - name: Typecheck CRM Engineering Graph
-        run: npm run crm:graph:typecheck
-
-      - name: Test CRM Engineering Graph
-        run: npm run crm:graph:test
-
-      - name: Require coherent Graph task authority for product/schema diff
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: node tools/crm-graph/scripts/check-pr-task-authority.mjs --base "$BASE_SHA" --head "$HEAD_SHA"
-
-      - name: Load changed authoritative Graph task state
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          mapfile -d '' changed_tasks < <(git diff --name-only -z "$BASE_SHA" "$HEAD_SHA" -- '.crm-engineering/tasks/*.json')
-          if [ "${#changed_tasks[@]}" -eq 0 ]; then
-            echo "No changed Graph tasks; continuing."
-          else
-            for task_file in "${changed_tasks[@]}"; do
-              test -f "$task_file"
-              task_id="$(node -e 'const fs=require("fs"); const task=JSON.parse(fs.readFileSync(process.argv[1],"utf8")); if(!task.taskId) process.exit(2); process.stdout.write(task.taskId);' "$task_file")"
-              npm run crm:status -- --task "$task_id"
-            done
-          fi
-
-      - name: Check changed diff integrity
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: git diff --check "$BASE_SHA" "$HEAD_SHA"
-
-      - name: Install product dependencies for affected verification
-        if: needs.classify.outputs.graph_only != 'true'
-        run: npm ci
-
-      - name: Typecheck product with exact-base failure ablation
-        if: needs.classify.outputs.graph_only != 'true'
-        run: node tools/crm-graph/scripts/run-failure-ablation.mjs --base "${{ github.event.pull_request.base.sha }}" --suite typecheck --prepare-json '["npm","ci"]' --command-json '["npm","run","typecheck"]'
-
-      - name: Run affected product tests before expensive suites
-        if: needs.classify.outputs.graph_only != 'true'
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          mapfile -d '' changed_source < <(git diff --name-only -z "$BASE_SHA" "$HEAD_SHA" -- src)
-          affected=()
-          for candidate in "${changed_source[@]}"; do
-            case "$candidate" in
-              *.ts|*.tsx|*.js|*.jsx) affected+=("$candidate") ;;
-            esac
-          done
-          if [ "${#affected[@]}" -eq 0 ]; then
-            echo "No Jest-related source changes."
-          else
-            npm test -- --runInBand --findRelatedTests "${affected[@]}"
-          fi
-
-  verify:
-    needs: [classify, preflight]
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    env:
-      NEXT_PUBLIC_SUPABASE_URL: https://e2e.supabase.co
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: e2e-anon-key
-      SUPABASE_SERVICE_ROLE_KEY: BUILD_TIME_PLACEHOLDER_KEY
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24.13.0
-          cache: npm
-      - name: Install product dependencies for full verification
-        if: needs.classify.outputs.graph_only != 'true'
-        run: npm ci
-      - name: Test product with exact-base failure ablation
-        if: needs.classify.outputs.graph_only != 'true'
-        run: node tools/crm-graph/scripts/run-failure-ablation.mjs --base "${{ github.event.pull_request.base.sha }}" --suite unit --prepare-json '["npm","ci"]' --command-json '["npm","test","--","--runInBand"]'
-      - name: Lint product with exact-base failure ablation
-        if: needs.classify.outputs.graph_only != 'true'
-        run: node tools/crm-graph/scripts/run-failure-ablation.mjs --base "${{ github.event.pull_request.base.sha }}" --suite lint --prepare-json '["npm","ci"]' --command-json '["npm","run","lint"]'
-      - name: Build product with exact-base failure ablation
-        if: needs.classify.outputs.graph_only != 'true'
-        run: node tools/crm-graph/scripts/run-failure-ablation.mjs --base "${{ github.event.pull_request.base.sha }}" --suite build --prepare-json '["npm","ci"]' --command-json '["npm","run","build"]'
-
   e2e:
-    needs: [classify, preflight, verify]
-    if: needs.classify.outputs.graph_only != 'true'
+    needs: [preflight, verify]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     container:

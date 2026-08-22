@@ -1,6 +1,7 @@
 import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
+import reactHooks from "eslint-plugin-react-hooks";
 
 const eslintConfig = defineConfig([
   ...nextVitals,
@@ -14,10 +15,6 @@ const eslintConfig = defineConfig([
     "next-env.d.ts", ".agents/**", ".codex-artifacts/**", "coverage/**",
     "temp_redesign/**",
 
-    // CRM Engineering Graph is an independent engineering control-plane package.
-    // It is typechecked/tested through tools/crm-graph, not as Next.js product code.
-    "tools/crm-graph/**",
-
     // Local repository control/recovery trees are never product source.
     ".worktrees/**",
     ".archive/**",
@@ -29,6 +26,9 @@ const eslintConfig = defineConfig([
   // These rules flag valid setState-before-async and manual useMemo patterns
   // that are intentional in the approved redesign.
   {
+    plugins: {
+      "react-hooks": reactHooks,
+    },
     rules: {
       "react-hooks/set-state-in-effect": "warn",
       "react-hooks/preserve-manual-memoization": "warn",

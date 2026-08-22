@@ -7,6 +7,6 @@ module.exports = {
   },
   testRegex: String.raw`[\\/]__tests__[\\/](?:.*[\\/])?[^\\/]+\.test\.ts$`,
   setupFilesAfterEnv: [
-    '<rootDir>/tools/crm-graph/scripts/employee-directory-clock.cjs',
+    '<rootDir>/scripts/harness/employee-directory-clock.cjs',
   ],
 };
