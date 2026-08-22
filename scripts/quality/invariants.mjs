@@ -11,8 +11,8 @@ const strip = (text) => text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\
 const fail = (message) => { console.error(`invariant: ${message}`); process.exitCode = 1; };
 for (const absolute of sourceFiles(join(root, "src"))) {
   const relative = absolute.slice(root.length + 1).replaceAll("\\", "/");
-  if (relative.includes("/__tests__/")) continue;
   const text = strip(readFileSync(absolute, "utf8"));
+  if (relative.includes("/__tests__/") && !/(?:SUPABASE_SERVICE_ROLE_KEY|PRODUCTION_SUPABASE|\.env\.production)/i.test(text)) continue;
   const client = /^\s*["']use client["']/m.test(text) || (relative.endsWith(".tsx") && !relative.startsWith("src/app/api/"));
   if (/(?:delete\s+from\s+(?:public\.)?(?:call_logs|field_visits|receivables|receivable_payments)|\.from\(["'](?:call_logs|field_visits|receivables|receivable_payments)["']\)[\s\S]{0,240}?\.delete\s*\()/i.test(text)) fail(`${relative} deletes protected history`);
   if (/\b(?:localStorage\.clear|indexedDB\.deleteDatabase|(?:db\.)?(?:call_logs|field_visits|field_visit_media)\.clear)\s*\(/i.test(text)) fail(`${relative} clears durable recovery state`);
@@ -30,6 +30,12 @@ if (/\.from\(["']leads["']\)[\s\S]{0,300}?\.(?:insert|upsert)\s*\(/i.test(read("
 const mapping = read("src/app/mappings/page.tsx");
 if (/transactionalMutation\(\s*["'`]leads|\.from\(["']leads["']\)[\s\S]{0,300}?\.(?:insert|upsert|update)/i.test(mapping)) fail("Mapping cannot mutate Leads");
 for (const file of ["src/app/api/field-visits/mine/route.ts", "src/app/api/admin/visits/route.ts", "src/app/api/admin/export-visits/route.ts"]) if (!existsSync(join(root, file))) fail(`Field Visit read closure missing: ${file}`);
-for (const file of ["owner-041.sql", "owner-042.sql", "owner-043.sql", "owner-044.sql"]) if (existsSync(join(root, file)) && /^\s*\\/m.test(read(file))) fail(`${file} is not pure PostgreSQL`);
+for (const file of readdirSync(root).filter((name) => /^owner-.*\.sql$/i.test(name))) if (/^\s*\\/m.test(read(file))) fail(`${file} is not pure PostgreSQL`);
+for (const absolute of sourceFiles(join(root, "src"))) {
+  const relative = absolute.slice(root.length + 1).replaceAll("\\", "/");
+  if (relative.includes("/__tests__/")) continue;
+  const source = strip(readFileSync(absolute, "utf8"));
+  if (/\.from\(["']leads["']\)[\s\S]{0,300}?\.(?:insert|upsert)\s*\(/i.test(source) && relative !== "src/app/api/pipeline/create/route.ts") fail(`${relative} bypasses canonical Lead creation`);
+}
 if (process.exitCode) process.exit(process.exitCode);
 console.log("Invariant checks passed.");

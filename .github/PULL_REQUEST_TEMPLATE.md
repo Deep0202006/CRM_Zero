@@ -1,19 +1,21 @@
-## Task
+## Outcome
 
-## Risk
+## Expected user flow
 
-## Domains
+## Domain(s) / effect(s) / risk
 
-## Scope
+## Canonical authority
 
-## Data/schema effects
+## Must not change
 
-## Invariants checked
+## Graphify/path evidence
+
+## Existing capability reused
 
 ## Tests
 
-## Preview
+## Schema / production effect
 
-## Rollback
+## Preview
 
 ## Known limitations
