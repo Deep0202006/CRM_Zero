@@ -32,7 +32,14 @@ const authorityIds = ids("authorityRefs");
 if (requestedEffects.some((effect) => ["DATABASE", "AUTHORIZATION"].includes(effect)) && !authorityIds.length) stop("AUTHORITY_UNRESOLVED");
 const contracts = ids("contractPaths");
 if (contracts.length > 2 && domains.length === 1) stop("CONTEXT_TOO_BROAD");
-const selectedLessons = lessons.filter((lesson) => lesson.loadByDefault || lesson.domains.includes("all") || lesson.domains.some((domain) => selected.has(domain))).slice(0, 8);
+const lessonById = new Map(lessons.map((lesson) => [lesson.id, lesson]));
+const lessonIds = [...new Set([
+  ...lessons.filter((lesson) => lesson.loadByDefault).map((lesson) => lesson.id),
+  ...ids("lessonRefs"),
+  ...requestedEffects.flatMap((effect) => map.effectLessonRefs?.[effect] ?? [])
+])];
+if (lessonIds.length > 8) stop("CONTEXT_TOO_BROAD");
+const selectedLessons = lessonIds.map((id) => lessonById.get(id)).filter(Boolean);
 const briefAuthority = (item) => ({ id: item.id, authority: item.authority, owns: item.owns, mustNotOwn: item.mustNotOwn });
 const briefCapability = (item) => ({ id: item.id, reuse: item.reuse, implementationPaths: item.implementationPaths, testPaths: item.testPaths });
 const briefLesson = (item) => ({ id: item.id, rule: item.rule });

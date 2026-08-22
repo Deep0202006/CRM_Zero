@@ -34,7 +34,8 @@
                                                "employee-import-identity"
                                            ],
                         "lessonRefs":  [
-
+                                           "AUTH_PROFILE_IDENTITY",
+                                           "SERVER_AUTHORIZATION"
                                        ],
                         "criticalTests":  [
 
@@ -74,7 +75,9 @@
                                                "attendance-write-read-closure"
                                            ],
                         "lessonRefs":  [
-
+                                           "WRITE_READ_CLOSURE",
+                                           "OFFLINE_COMPATIBILITY",
+                                           "MEDIA_LIFECYCLE"
                                        ],
                         "criticalTests":  [
                                               "src/lib/__tests__/attendanceAuthority.test.ts",
@@ -111,10 +114,12 @@
                                               "call_history"
                                           ],
                         "capabilityRefs":  [
-
+                                               "canonical-call-confirmation"
                                            ],
                         "lessonRefs":  [
-
+                                           "WRITE_READ_CLOSURE",
+                                           "OFFLINE_COMPATIBILITY",
+                                           "OPTIONAL_FAILURE_ISOLATION"
                                        ],
                         "criticalTests":  [
                                               "src/lib/__tests__/callLogContract.test.ts"
@@ -157,11 +162,16 @@
                                               "field_business_erp_baseline"
                                           ],
                         "capabilityRefs":  [
+                                               "canonical-field-visit-confirmation",
                                                "field-visit-erp-intelligence",
                                                "current-business-erp-intelligence"
                                            ],
                         "lessonRefs":  [
-
+                                           "ERP_AUTHORITIES",
+                                           "EXACT_COMPATIBILITY_CONTRACT",
+                                           "OFFLINE_COMPATIBILITY",
+                                           "MEDIA_LIFECYCLE",
+                                           "NO_FABRICATED_BACKFILL"
                                        ],
                         "criticalTests":  [
                                               "src/lib/__tests__/fieldVisitZeroLossContract.test.ts",
@@ -184,7 +194,8 @@
                                              "src/app/mappings"
                                          ],
                         "codeRoots":  [
-                                          "src/app/mappings/page.tsx"
+                                          "src/app/mappings/page.tsx",
+                                          "src/lib/clientOptions.ts"
                                       ],
                         "serverBoundaries":  [
 
@@ -196,10 +207,12 @@
 
                                           ],
                         "capabilityRefs":  [
-
+                                               "mapping-standalone-persistence",
+                                               "canonical-client-suggestion-provider"
                                            ],
                         "lessonRefs":  [
-
+                                           "ONE_FACT_ONE_AUTHORITY",
+                                           "LABEL_NOT_AUTHORITY"
                                        ],
                         "criticalTests":  [
                                               "src/lib/__tests__/mappingStandaloneContract.test.ts",
@@ -238,10 +251,13 @@
                                               "pipeline_stage"
                                           ],
                         "capabilityRefs":  [
+                                               "pipeline-create-lead-boundary",
                                                "pipeline-authoritative-transition"
                                            ],
                         "lessonRefs":  [
-
+                                           "SERVER_AUTHORIZATION",
+                                           "ROOT_CAUSE_SHARED_FIX",
+                                           "RESOURCE_BOUNDS"
                                        ],
                         "criticalTests":  [
                                               "src/lib/__tests__/pipeline/pipelineAuthority.test.ts",
@@ -280,10 +296,11 @@
                                               "field_visit"
                                           ],
                         "capabilityRefs":  [
-
+                                               "team-kpi-server-projection"
                                            ],
                         "lessonRefs":  [
-
+                                           "HONEST_VISUALIZATION",
+                                           "WRITE_READ_CLOSURE"
                                        ],
                         "criticalTests":  [
                                               "src/lib/__tests__/teamKpiContract.test.ts"
@@ -319,10 +336,11 @@
 
                                           ],
                         "capabilityRefs":  [
-
+                                               "team-chat-boundary"
                                            ],
                         "lessonRefs":  [
-
+                                           "SERVER_AUTHORIZATION",
+                                           "MINIMUM_EXTERNAL_PROJECTION"
                                        ],
                         "criticalTests":  [
                                               "src/lib/__tests__/teamChatContract.test.ts"
@@ -361,13 +379,15 @@
                                               "distributor_erp_assignment"
                                           ],
                         "capabilityRefs":  [
+                                               "distributor-command-boundary",
                                                "distributor-renewal"
                                            ],
                         "lessonRefs":  [
-
+                                           "ONE_FACT_ONE_AUTHORITY",
+                                           "RESOURCE_BOUNDS"
                                        ],
                         "criticalTests":  [
-                                              "src/lib/__tests__/distributors",
+                                              "src/lib/__tests__/distributors/routeMatrix.test.ts",
                                               "e2e/distributors"
                                           ],
                         "mustNotWriteAuthorityRefs":  [
@@ -405,14 +425,17 @@
                                               "distributor_receivable_link"
                                           ],
                         "capabilityRefs":  [
+                                               "receivables-command-boundary",
                                                "receivables-money",
                                                "canonical-distributor-receivables"
                                            ],
                         "lessonRefs":  [
-
+                                           "MONEY_TRUTH",
+                                           "POSTGRES_WIRE_NORMALIZATION",
+                                           "ATOMIC_BATCH"
                                        ],
                         "criticalTests":  [
-                                              "src/lib/__tests__/receivables",
+                                              "src/lib/__tests__/receivables/financialSqlContract.test.ts",
                                               "e2e/receivables"
                                           ],
                         "mustNotWriteAuthorityRefs":  [
@@ -455,11 +478,15 @@
                                               "field_business_erp_baseline"
                                           ],
                         "capabilityRefs":  [
+                                               "erp-canonical-write-boundary",
                                                "field-visit-erp-intelligence",
                                                "current-business-erp-intelligence"
                                            ],
                         "lessonRefs":  [
-
+                                           "ERP_AUTHORITIES",
+                                           "ERP_CANONICAL_WRITE",
+                                           "NO_FABRICATED_BACKFILL",
+                                           "TRANSACTION_STAGING"
                                        ],
                         "criticalTests":  [
                                               "src/lib/__tests__/fieldVisitErpIntelligence.test.ts"
@@ -501,7 +528,9 @@
                                                "erp-partner-visibility"
                                            ],
                         "lessonRefs":  [
-
+                                           "SERVER_AUTHORIZATION",
+                                           "MINIMUM_EXTERNAL_PROJECTION",
+                                           "ERP_AUTHORITIES"
                                        ],
                         "criticalTests":  [
                                               "src/lib/__tests__/erpVisibilityContract.test.ts"
@@ -543,10 +572,14 @@
                                                "employee-import-identity"
                                            ],
                         "lessonRefs":  [
-
+                                           "ATOMIC_BATCH",
+                                           "SPREADSHEET_COMMIT",
+                                           "RESOLVED_PLAN_REVALIDATION",
+                                           "STABLE_IDENTITY",
+                                           "IMPORT_TEMPLATE_VERSION"
                                        ],
                         "criticalTests":  [
-                                              "src/lib/__tests__/distributorMaster",
+                                              "src/lib/__tests__/distributorMaster/confirmation.test.ts",
                                               "scripts/distributor-master-db/run-integration.sh"
                                           ],
                         "mustNotWriteAuthorityRefs":  [
@@ -587,7 +620,8 @@
                                                "distributor-renewal"
                                            ],
                         "lessonRefs":  [
-
+                                           "ONE_FACT_ONE_AUTHORITY",
+                                           "RESOURCE_BOUNDS"
                                        ],
                         "criticalTests":  [
                                               "src/lib/__tests__/distributors/routeMatrix.test.ts"
@@ -625,7 +659,8 @@
                                                "derived-followups"
                                            ],
                         "lessonRefs":  [
-                                           "ONE_FACT_ONE_AUTHORITY"
+                                           "ONE_FACT_ONE_AUTHORITY",
+                                           "WRITE_READ_CLOSURE"
                                        ],
                         "criticalTests":  [
                                               "src/lib/__tests__/followUpContract.test.ts"
@@ -665,7 +700,8 @@
                                                "query-resolution-export"
                                            ],
                         "lessonRefs":  [
-                                           "WRITE_READ_CLOSURE"
+                                           "WRITE_READ_CLOSURE",
+                                           "SERVER_AUTHORIZATION"
                                        ],
                         "criticalTests":  [
                                               "src/lib/__tests__/teamKpiLiveAggregation.test.ts"
@@ -705,7 +741,8 @@
                                                "task-allocation-batch-rpc"
                                            ],
                         "lessonRefs":  [
-                                           "ATOMIC_BATCH"
+                                           "ATOMIC_BATCH",
+                                           "STABLE_IDENTITY"
                                        ],
                         "criticalTests":  [
                                               "src/lib/__tests__/taskAllocationValidation.test.ts"
@@ -744,7 +781,8 @@
                                                "my-day-projection"
                                            ],
                         "lessonRefs":  [
-                                           "ONE_FACT_ONE_AUTHORITY"
+                                           "ONE_FACT_ONE_AUTHORITY",
+                                           "WRITE_READ_CLOSURE"
                                        ],
                         "criticalTests":  [
                                               "src/lib/__tests__/followUpContract.test.ts"
@@ -770,7 +808,6 @@
                                              "src/app/admin/visits/page.tsx"
                                          ],
                         "codeRoots":  [
-                                          "src/components",
                                           "src/app/globals.css",
                                           "src/app/layout.tsx"
                                       ],
@@ -796,5 +833,36 @@
 
                                                       ]
                     }
-                ]
+                ],
+    "effectLessonRefs":  {
+                             "UI":  [
+                                        "LABEL_NOT_AUTHORITY"
+                                    ],
+                             "API":  [
+                                         "WRITE_READ_CLOSURE"
+                                     ],
+                             "DATABASE":  [
+                                              "MIGRATION_IMMUTABILITY",
+                                              "R3_RUNTIME_PROOF"
+                                          ],
+                             "AUTHORIZATION":  [
+                                                   "SERVER_AUTHORIZATION"
+                                               ],
+                             "OFFLINE":  [
+                                             "OFFLINE_COMPATIBILITY"
+                                         ],
+                             "IMPORT":  [
+                                            "ATOMIC_BATCH",
+                                            "SPREADSHEET_COMMIT"
+                                        ],
+                             "ANALYTICS":  [
+                                               "HONEST_VISUALIZATION"
+                                           ],
+                             "EXPORT":  [
+                                            "SPREADSHEET_COMMIT"
+                                        ],
+                             "SECURITY":  [
+                                              "SERVER_AUTHORIZATION"
+                                          ]
+                         }
 }
