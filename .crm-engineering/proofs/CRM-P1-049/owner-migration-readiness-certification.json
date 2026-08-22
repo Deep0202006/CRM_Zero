@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "kind": "OWNER_MIGRATION_READINESS_CERTIFICATION",
+  "taskId": "CRM-P1-049",
+  "repository": {
+    "remotePrHead": "cb2628142a78ddaed40f62e8b9df719ffd56a5f3",
+    "certifiedHead": "cb2628142a78ddaed40f62e8b9df719ffd56a5f3",
+    "baseSha": "db545eda4079fe277b8b152ded9e927ccf188530"
+  },
+  "requiredChecks": [
+    { "name": "verify", "status": "pass" },
+    { "name": "receivables-postgres", "status": "pass" },
+    { "name": "e2e", "status": "pass" }
+  ],
+  "vercel": {
+    "status": "pass",
+    "head": "cb2628142a78ddaed40f62e8b9df719ffd56a5f3"
+  },
+  "migration": {
+    "path": "supabase/migrations/049_field_business_erp_baseline.sql",
+    "number": 49,
+    "sha256": "5aeebba546839c380ff8ca24defd899099000f81bcd0238655bb5f59dc530afd"
+  },
+  "immutablePolicy": {
+    "immutableThrough": 48
+  }
+}

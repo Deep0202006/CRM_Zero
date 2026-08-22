@@ -22,6 +22,7 @@ const VisitsIntelligence = dynamic(() => import("@/components/analytics/VisitsIn
   loading: () => <AnalyticsSkeleton label="Loading field activity intelligence" />,
 });
 const FieldVisitErpIntelligence = dynamic(() => import("@/components/analytics/FieldVisitErpIntelligence"), { ssr: false, loading: () => <AnalyticsSkeleton label="Loading ERP intelligence" /> });
+const CurrentErpBaselineEditor = dynamic(() => import("@/components/visits/CurrentErpBaselineEditor"), { ssr: false });
 
 interface AdminVisit extends LocalFieldVisit {
   has_selfie_evidence?: boolean;
@@ -73,6 +74,7 @@ export default function AdminVisitsPage() {
   const realtimeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [realtimeSubscribed, setRealtimeSubscribed] = useState(false);
   const [analyticsMode, setAnalyticsMode] = useState<"activity" | "erp">("activity");
+  const [manageCurrentErpOpen, setManageCurrentErpOpen] = useState(false);
   const [erpSegments, setErpSegments] = useState<Record<string, FieldVisitErpSegment> | null>(null);
   const [erpError, setErpError] = useState("");
 
@@ -215,6 +217,8 @@ export default function AdminVisitsPage() {
       </div>
       <div className="mb-3 flex gap-2" role="tablist" aria-label="Visit analytics"><Button size="sm" variant={analyticsMode === "activity" ? "primary" : "outline"} onClick={() => setAnalyticsMode("activity")}>Visit Activity</Button><Button size="sm" variant={analyticsMode === "erp" ? "primary" : "outline"} onClick={() => setAnalyticsMode("erp")}>ERP Intelligence</Button></div>
       {loading && analyticsMode === "activity" ? <AnalyticsSkeleton label="Loading field activity intelligence" /> : !errorMessage && analyticsMode === "activity" ? <VisitsIntelligence model={visitAnalytics} matchedTotal={matchedTotal} page={page} /> : analyticsMode === "erp" && erpSegments ? <FieldVisitErpIntelligence segments={erpSegments} /> : analyticsMode === "erp" && erpError ? <div role="alert" className="mb-4 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800">{erpError} <Button size="sm" variant="outline" onClick={() => void loadErpIntelligence()}>Retry</Button></div> : analyticsMode === "erp" ? <AnalyticsSkeleton label="Loading ERP intelligence" /> : null}
+      {analyticsMode === "erp" && <div className="mb-3"><Button size="sm" variant="outline" onClick={() => setManageCurrentErpOpen((open) => !open)}>{manageCurrentErpOpen ? "Close Current ERP" : "Manage Current ERP"}</Button></div>}
+      {analyticsMode === "erp" && manageCurrentErpOpen && <CurrentErpBaselineEditor onSaved={() => { setErpSegments(null); setErpError(""); void loadErpIntelligence(); }} />}
       <div className="mb-3 flex flex-wrap gap-2">
         <Button size="sm" variant={date ? "outline" : "primary"} onClick={() => { setPage(1); setDate(""); }}>All visits</Button>
         <Button size="sm" variant={date === getCurrentISTDate() ? "primary" : "outline"} onClick={() => { setPage(1); setDate(getCurrentISTDate()); }}>Today</Button>

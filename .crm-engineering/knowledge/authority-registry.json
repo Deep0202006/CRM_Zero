@@ -160,6 +160,23 @@
       "mustNotOwn": ["Distributor canonical ERP assignment", "Pipeline/Lead ERP authority", "financial facts", "renewal facts"]
     },
     {
+      "id": "field_business_erp_baseline",
+      "status": "IMPLEMENTED",
+      "authority": "public.field_business_erp_baselines",
+      "identity": ["segment_type", "business_ref"],
+      "owns": ["Admin-supplied current ERP enrichment for an exact visited business identity"],
+      "writer": "Admin-authorized server boundary through service-only public.set_field_business_erp_baselines_v1 atomic batch transaction",
+      "readers": ["Admin Visits current ERP editor", "public.field_business_erp_current_v2", "public.field_visit_erp_intelligence_v2"],
+      "rules": [
+        "The table is created empty and Migration 049 performs no historical backfill.",
+        "A baseline set/None value participates in the V2 recency projection by updated_at; it is not a Field Visit observation.",
+        "Clear deletes only the exact manual baseline and reveals the latest visit-derived value or Not captured.",
+        "V1 Field Visit ERP observation and intelligence contracts remain unchanged."
+      ],
+      "mustNotOwn": ["Field Visit history or visit-time ERP observation", "Distributor canonical ERP assignment", "Pipeline/Lead ERP authority", "financial facts", "renewal facts"],
+      "security": ["RLS enabled", "public/anon/authenticated direct DML and RPC execution denied", "active Admin authorization is revalidated at the server and database write boundaries"]
+    },
+    {
       "id": "distributor_receivable_link",
       "status": "PRODUCTION_CERTIFIED",
       "authority": "public.receivables.distributor_id -> public.distributor_accounts.distributor_id",

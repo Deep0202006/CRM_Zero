@@ -162,6 +162,48 @@ test("Admin ERP intelligence retries independently and export remains available"
   await expect(page.getByRole("button", { name: "Export to Excel" })).toBeEnabled();
 });
 
+test("Admin current ERP editor searches, exposes provenance fields, and saves one multi-row batch", async ({ page }) => {
+  await mockSupabase(page, adminId); await seed(page, "admin");
+  let savedOperations: Array<Record<string, unknown>> = [];
+  await page.route("**/api/admin/visits/erp-baselines**", async route => {
+    if (route.request().method() === "POST") {
+      const saved = route.request().postDataJSON() as { operations?: Array<Record<string, unknown>> };
+      savedOperations = saved.operations ?? [];
+      return route.fulfill({ json: { success: true, result: { success: true, operation_count: savedOperations.length } } });
+    }
+    return route.fulfill({ json: { limit: 500, erp_systems: [{ erp_id: "60000000-0000-4000-a000-000000000001", erp_name: "MARG" }], rows: [
+      { segment_type: "Retailer", business_ref: leadId, business_name: "Alpha Retail", erp_usage_state: "none", erp_id: null, erp_name: null, latest_visit_at: "2026-08-20T05:00:00Z", effective_at: "2026-08-20T05:00:00Z", provenance: "field_visit", source_ref: "visit-1" },
+      { segment_type: "Distributor", business_ref: "legacy-dist", business_name: null, erp_usage_state: null, erp_id: null, erp_name: null, latest_visit_at: "2026-08-19T05:00:00Z", effective_at: null, provenance: "not_captured", source_ref: null },
+    ] } });
+  });
+  await page.route("**/api/admin/visits/erp-analytics**", route => route.fulfill({ json: { segments: {
+    Retailer: { unique_businesses: 1, observed_count: 1, erp_using_count: 0, none_count: 1, not_captured_count: 0, coverage_percent: 100, categories: [{ erp_name: "None", state: "none", count: 1, share_percent: 100 }] },
+    Distributor: { unique_businesses: 1, observed_count: 0, erp_using_count: 0, none_count: 0, not_captured_count: 1, coverage_percent: 0, categories: [{ erp_name: "Not captured", state: "not_captured", count: 1, share_percent: 100 }] },
+  } } }));
+  await page.route("**/api/admin/visits**", route => new URL(route.request().url()).pathname === "/api/admin/visits" ? route.fulfill({ json: { visits: [], page: 1, total: 0, all_time_total: 0, today_total: 0, has_more: false, representatives: [] } }) : route.fallback());
+  await page.goto("/admin/visits"); await page.getByRole("button", { name: "ERP Intelligence" }).click(); await page.getByRole("button", { name: "Manage Current ERP" }).click();
+  await expect(page.getByText("Alpha Retail", { exact: true })).toBeVisible(); await expect(page.getByText("legacy-dist", { exact: true })).toBeVisible();
+  for (const heading of ["Type", "Latest visit", "Source", "Last updated"]) await expect(page.getByRole("cell", { name: heading, exact: true })).toBeVisible();
+  await expect(page.getByLabel("Current ERP state")).toBeVisible(); await expect(page.getByLabel("Search business or ERP")).toBeVisible();
+  await expect(page.getByLabel("Retailer current ERP").getByText("Retailers", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("Distributor current ERP").getByText("Distributors", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("Business type").getByRole("option")).toHaveText(["All", "Retailers", "Distributors"]);
+  await expect(page.getByLabel("Current ERP state").getByRole("option")).toHaveText(["All states", "Not captured", "ERP assigned", "None"]);
+  const retailerEdit = page.getByLabel("ERP for Alpha Retail"); await retailerEdit.fill("MARG"); await page.getByRole("option", { name: "MARG" }).click();
+  const distributorEdit = page.getByLabel("ERP for legacy-dist"); await distributorEdit.fill("Custom Cloud ERP");
+  const saveRequestPromise = page.waitForRequest((request) => request.method() === "POST" && new URL(request.url()).pathname === "/api/admin/visits/erp-baselines");
+  await page.getByRole("button", { name: "Save 2 changes" }).click();
+  const saveRequest = await saveRequestPromise;
+  const submittedOperations = (saveRequest.postDataJSON() as { operations?: Array<Record<string, unknown>> }).operations ?? [];
+  expect(submittedOperations).toHaveLength(2);
+  expect(submittedOperations).toEqual(expect.arrayContaining([
+    expect.objectContaining({ operation: "set", segment_type: "Retailer", business_ref: leadId, erp_id: "60000000-0000-4000-a000-000000000001" }),
+    expect.objectContaining({ operation: "set", segment_type: "Distributor", business_ref: "legacy-dist", erp_name: "Custom Cloud ERP" }),
+  ]));
+  await expect(page.getByText("2 business ERP edits saved.", { exact: true })).toBeVisible();
+  await page.close();
+});
+
 test("offline attendance stores a Blob outbox with no embedded row payload and later confirms same ID", async ({ page, context }) => {
   await mockSupabase(page, employeeId, false);
   await context.grantPermissions(["geolocation"], { origin: "http://127.0.0.1:3111" });
