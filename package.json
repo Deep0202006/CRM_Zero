@@ -20,6 +20,7 @@
     "quality:legacy": "node scripts/quality/legacy-coverage-check.mjs",
     "context:resolve": "node scripts/engineering/context.mjs",
     "context:test": "node scripts/engineering/context.test.mjs",
+    "graphify:sync": "node scripts/engineering/graphify-sync.mjs",
     "graphify:verify": "node scripts/engineering/graphify-verify.mjs",
     "vercel-build": "npm run test && next build"
   },

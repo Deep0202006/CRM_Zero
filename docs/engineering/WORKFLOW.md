@@ -20,6 +20,15 @@ tests plus typecheck/lint; R2 focused/full unit plus typecheck/lint/build; R3
 adds disposable PostgreSQL, security/isolation, and E2E where applicable.
 GitHub CI is final repository proof.
 
+Release blockers are real evidence failures: unresolved authority, a
+security/auth leak, data-loss risk, relevant contract/implementation drift,
+an unsatisfied schema/production gate, relevant failing tests/CI, or a
+Graphify/source contradiction when Graphify was used. Do not invent process
+blockers. A fully authority-safe runtime fix proven by relevant tests and CI is
+not blocked solely to expand optional lesson metadata. Prevent recurring bugs
+in order: shared implementation, validation/invariant, regression test, then a
+durable lesson only when cross-cutting judgment cannot be mechanically enforced.
+
 ## Schema release
 
 Run PR CI/preview first. The Owner reviews and manually applies SQL, then runs
