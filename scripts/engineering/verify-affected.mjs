@@ -27,7 +27,7 @@ if (execute) for (const proof of selected) {
   else if (proof.runner === "playwright") result = run("npx", ["playwright", "test", ...proof.paths, "--retries=1"]);
   else if (proof.runner === "bash-postgres") {
     if (process.env.CI !== "true") { console.error("LOCAL_POSTGRES_PROOF_PROHIBITED"); process.exit(2); }
-    for (const [index,path] of proof.paths.entries()) { const database=`zg_${proof.id.replace(/[^a-z0-9]/gi,"_").toLowerCase()}_${index}`;result=run("createdb",[database]);if(result.status===0)result=run("bash",[path],{env:{...process.env,PGDATABASE:database}});if(result.status!==0)break; }
+    for (const [index,path] of proof.paths.entries()) { const database=`zg_${proof.id.replace(/[^a-z0-9]/gi,"_").toLowerCase()}_${index}`;result=run("createdb",[database]);if(result.status===0)result=run("bash",[path],{env:{...process.env,PGDATABASE:database,CRM_MASTER_DB_DISPOSABLE:"1"}});if(result.status!==0)break; }
   }
   if (!result || result.status !== 0) { record(proof, "FAIL", `${result?.status ?? "NO_RUN"}`); break; }
   record(proof, "PASS", proof.id);
