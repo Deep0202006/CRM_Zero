@@ -30,13 +30,14 @@ Ponytail FULL: understand the flow, reuse existing helpers/components/RPCs/tests
 make the minimum correct diff, and never reduce safety, security, or
 accessibility. One direct Codex only: no nested coding agents or controller.
 
-Ordinary workflow: (1) verify clean source, (2) `npm run graphify:sync`, (3) one
-bounded Graphify query (~600 tokens), (4) open candidate source, (5) resolve
-task-aware context, (6) read exact contracts/authority/capability, (7) minimum
-diff, (8) focused tests, (9) exact-head CI. For platform-wide discovery use
-`--mode platform`, then return to focused context before each write. If Graphify
-is unavailable use targeted search. Do not guess migrations, ownership,
-production state, or completion from symptoms, snapshots, or agent prose.
+Ordinary workflow: targeted `rg`/`git grep`/path search, open exact current
+source, resolve task-aware context, read authority/reuse, make the minimum
+change, and prove it. Use Graphify only when structural relationships are
+ambiguous/cross-domain or it materially reduces search cost; then run
+`graphify:sync`, make one bounded query (~600 tokens), and open exact source.
+Graphify unavailable never blocks an ordinary product task. For platform-wide
+discovery use `--mode platform`, then return to focused context before each
+write. Do not guess migrations, ownership, production state, or completion.
 
 Safety: preserve unknown dirty work; never reset, clean, prune, force-push, or
 push directly to `main`; never create production dummy data; production SQL is

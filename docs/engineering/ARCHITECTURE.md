@@ -9,14 +9,17 @@ evidence. Resolve focused context before changing a boundary.
   shared domain logic is in `src/lib`.
 - **Browser durability:** `src/lib/db.ts` uses Dexie/IndexedDB for offline
   intent and recovery. Confirmed server rows remain cross-device authority.
-- **API:** `src/app/api/**` performs critical confirmation and server-side
-  authorization. Browser Supabase setup is `src/lib/supabaseClient.ts`.
+- **Data API:** Supabase JS uses `.from()` and `.rpc()` against PostgREST; plain
+  PostgreSQL alone is not current application API compatibility.
 - **Auth:** `src/context/AuthContext.tsx` joins Supabase Auth to app profiles;
   privileged routes enforce identity, roles, and partner scope server-side.
+  Auth Admin create/update/delete/reset operations are platform dependencies,
+  not merely login/session JWT validation.
 - **Database:** Supabase PostgreSQL owns confirmed records, RPCs, RLS, and
   `supabase/migrations`. Applied migration history is immutable.
 - **Storage/media:** attendance and Field Visit evidence use Supabase Storage;
-  media lifecycle cannot undo a confirmed business row.
+  object payload transfer is separate from PostgreSQL schema/data, and media
+  lifecycle cannot undo a confirmed business row.
 - **Deployment:** GitHub CI and Vercel build/deploy Next.js. Runtime environment
   values provide public Supabase settings; service credentials stay server-only.
 
@@ -52,11 +55,25 @@ See [DOMAIN_MAP.json](DOMAIN_MAP.json), [AUTHORITIES.json](AUTHORITIES.json),
 
 ## Platform migration touchpoints
 
-- **Database:** Supabase PostgreSQL tables, RPCs, RLS, immutable migrations.
-- **Auth:** Supabase Auth, profiles, token validation, role and partner scope.
-- **Storage:** evidence buckets and lifecycle cleanup paths.
+- **Data API:** PostgREST/Supabase JS `.from()` and `.rpc()` compatibility.
+- **Realtime:** Postgres Changes, private Team Chat Broadcast, and migration 031
+  `realtime.send`/`realtime.messages` authorization.
+- **Database:** PostgreSQL tables, RPCs, RLS, immutable migrations, and pg_cron
+  / scheduled database jobs. Capture the exact live extension inventory during
+  platform handover.
+- **Auth:** Supabase Auth profiles, token validation, role/partner scope, and
+  Admin create/update/delete/reset APIs.
+- **Storage:** evidence buckets/lifecycle; object transfer is separate from
+  PostgreSQL schema and data.
 - **Environment/runtime:** `NEXT_PUBLIC_SUPABASE_*`, server-only credentials,
   VAPID/cron settings, GitHub CI, and Vercel runtime configuration.
 
-This map omits credentials, project IDs, and detailed schema. It is not a
-Supabase migration inventory; phase into focused evidence before any write.
+`supabase/schema.sql` is a legacy/bootstrap reference and MUST NOT be treated
+as current production schema authority unless freshly recertified. Production
+schema handover truth derives from read-only live catalog, live data/export,
+the recorded Owner-applied migration boundary, immutable repository migrations,
+and current application source.
+
+This map omits credentials, project IDs, row counts, volatile metrics, and
+detailed schema. It is not a Supabase migration inventory; phase into focused
+evidence before any write.

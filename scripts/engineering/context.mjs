@@ -30,13 +30,15 @@ const briefLesson = (item) => ({ id: item.id, rule: item.rule });
 
 if (mode === "platform") {
   const pack = {
-    mode: "platform", scope: "platform", risk: "R3", architecture: "docs/engineering/ARCHITECTURE.md",
+    mode: "platform", scope: "platform", risk: "R3", budget, architecture: "docs/engineering/ARCHITECTURE.md",
     domainIndex: map.domains.map(({ id, riskFloor, authorityRefs }) => ({ id, riskFloor, authorityRefs })),
     contractIndex: [...new Set(map.domains.flatMap((domain) => domain.contractPaths ?? []))],
-    criticalPlatformRoots: ["src/app", "src/lib", "src/context", "supabase", "docs/contracts", "scripts"],
+    criticalPlatformRoots: ["src/app", "src/lib", "src/context", "supabase", "docs/contracts", "scripts", ".github/workflows", "package.json", "public"],
     nextStep: "Resolve focused context for each affected write before changing product or schema."
   };
-  console.log(JSON.stringify({ ...pack, estimatedTokens: Math.ceil(JSON.stringify(pack).length / 4) }, null, 2));
+  const estimatedTokens = Math.ceil(JSON.stringify(pack).length / 4);
+  if (estimatedTokens > budget) stop("CONTEXT_REQUIRED_BUDGET_EXCEEDED");
+  console.log(JSON.stringify({ ...pack, estimatedTokens }, null, 2));
   process.exit(0);
 }
 
@@ -68,7 +70,7 @@ const optional = [...chosen.values()].filter(({ lesson }) => !mandatory.has(less
 const build = (entries, omittedLessons = []) => {
   const lessonSelection = Object.fromEntries(entries.map(({ lesson, reasons }) => [lesson.id, [...new Set(reasons)]]));
   const pack = {
-    mode: "focused", scope: domains.length === 1 ? "focused" : "cross-domain", task: task || undefined, budget,
+    mode: "focused", scope: domains.length === 1 ? "focused" : "cross-domain", budget,
     domains: domains.map((domain) => domain.id), risk, contracts: ids("contractPaths"),
     authorities: authorities.filter((item) => authorityIds.includes(item.id)).map(briefAuthority),
     capabilities: capabilities.filter((item) => ids("capabilityRefs").includes(item.id)).map(briefCapability),

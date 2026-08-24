@@ -2,8 +2,13 @@
 
 ## Discover
 
-Inspect current main/worktree, make a Graphify query, select the affected domain
-entry and exact contracts, then identify existing code to reuse.
+Inspect current main/worktree, use targeted `rg`/`git grep`/path search, open
+the exact current source, resolve task-aware context, then select the affected
+contracts, authority, and reusable implementation. Use Graphify only when
+relationships are ambiguous/cross-domain or it materially lowers search cost;
+then run `graphify:sync`, make one bounded query, and open the result. Graphify
+is a locator, never authority, and unavailable Graphify never blocks ordinary
+product work.
 
 ## Lock
 

@@ -30,14 +30,18 @@ assert("src/app/api/chat/messages/route.ts", "team-chat-boundary", ["SERVER_AUTH
 assert("src/app/api/task-upload/route.ts", "task-allocation-batch-rpc", ["ATOMIC_BATCH"]);
 const uuidTask = parsed("--path", "src/app/api/distributors/route.ts", "--task", "Distributor ERP filter Invalid UUID");
 if (!includes(uuidTask, "POSTGRES_UUID_NOT_RFC_UUID", "lessons") || !uuidTask.lessonSelection.POSTGRES_UUID_NOT_RFC_UUID?.includes("task-trigger")) throw new Error("ERP UUID task-trigger retrieval failed");
+const longTask = `Distributor ERP filter Invalid UUID ${"irrelevant ".repeat(1000)}`;
+const longPack = parsed("--path", "src/app/api/distributors/route.ts", "--task", longTask);
+if (!includes(longPack, "POSTGRES_UUID_NOT_RFC_UUID", "lessons") || longPack.estimatedTokens > longPack.budget || JSON.stringify(longPack).includes(longTask)) throw new Error("task context echoed or lost trigger matching");
 const presentationTask = parsed("--path", "src/app/api/distributors/route.ts", "--task", "adjust Distributor ERP footprint presentation spacing");
 if (includes(presentationTask, "POSTGRES_UUID_NOT_RFC_UUID", "lessons")) throw new Error("unrelated ERP UI task retrieved UUID lesson");
 const constrained = parsed("--path", "src/app/api/distributors/route.ts", "--budget", "500");
 if (!constrained.omittedLessons.length || constrained.estimatedTokens > constrained.budget) throw new Error("budget trimming did not preserve a usable pack");
 const platform = parsed("--mode", "platform");
-if (platform.mode !== "platform" || platform.risk !== "R3" || !platform.domainIndex.length || platform.lessons) throw new Error("platform discovery map failed");
+if (platform.mode !== "platform" || platform.risk !== "R3" || platform.estimatedTokens > platform.budget || !platform.criticalPlatformRoots.includes(".github/workflows") || platform.lessons) throw new Error("platform discovery map failed");
+try { run("--mode", "platform", "--budget", "1"); throw new Error("platform ignored constrained budget"); } catch (error) { if (!String(error.stderr ?? error).includes("CONTEXT_REQUIRED_BUDGET_EXCEEDED")) throw error; }
 for (const effect of ["DATABASE","AUTHORIZATION"]) if (parsed("--domain","erp","--effect",effect).risk !== "R3") throw new Error(`${effect} did not escalate`);
 if (parsed("--domain","shared-ui","--effect","UI").risk === "R3") throw new Error("UI-only context escalated to R3");
-const cross = parsed("--path","src/components/visits/CurrentErpBaselineEditor.tsx", "--task", "invalid UUID"); if (!cross.domains.includes("erp") || !cross.domains.includes("field-visits") || cross.scope !== "cross-domain" || cross.lessons.length < 9 || cross.estimatedTokens > cross.budget) throw new Error("deterministic multi-domain context failed");
+const cross = parsed("--path","src/components/visits/CurrentErpBaselineEditor.tsx", "--task", "invalid UUID"); if (!cross.domains.includes("erp") || !cross.domains.includes("field-visits") || cross.scope !== "cross-domain" || !includes(cross, "POSTGRES_UUID_NOT_RFC_UUID", "lessons") || cross.estimatedTokens > cross.budget) throw new Error("deterministic multi-domain context failed");
 for (const code of ["UNMAPPED_PATH","AUTHORITY_UNRESOLVED"]) { try { run(code === "UNMAPPED_PATH" ? "--path" : "--domain", code === "UNMAPPED_PATH" ? "src/nope.ts" : "shared-ui", "--effect", "DATABASE"); throw new Error(`${code} accepted`); } catch (error) { if (!String(error.stderr ?? error).includes(code)) throw error; } }
 console.log(`Context resolver tests passed (${cases.length} real paths).`);

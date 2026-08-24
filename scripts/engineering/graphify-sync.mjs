@@ -8,6 +8,10 @@ const head = run("rev-parse", "HEAD");
 const output = resolve(root, "graphify-out");
 const graph = resolve(output, "graph.json");
 const stamp = resolve(output, ".crm-head");
+if (run("status", "--porcelain", "--untracked-files=no")) {
+  console.log("GRAPHIFY_DIRTY_SOURCE_TARGETED_SEARCH_REQUIRED");
+  process.exit(0);
+}
 if (existsSync(graph) && existsSync(stamp) && readFileSync(stamp, "utf8").trim() === head) {
   console.log(`GRAPHIFY_FRESH:${head}`);
   process.exit(0);

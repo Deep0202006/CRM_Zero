@@ -4,6 +4,7 @@ import { resolve, extname } from "node:path";
 const root = resolve(import.meta.dirname, "../..");
 const graphPath = resolve(root, "graphify-out/graph.json");
 const stampPath = resolve(root, "graphify-out/.crm-head");
+if (execFileSync("git", ["status", "--porcelain", "--untracked-files=no"], { cwd: root, encoding: "utf8" }).trim()) throw new Error("GRAPHIFY_DIRTY_WORKTREE");
 if (!existsSync(graphPath)) throw new Error("GRAPHIFY_GRAPH_MISSING");
 if (!existsSync(stampPath) || readFileSync(stampPath, "utf8").trim() !== execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim()) throw new Error("GRAPHIFY_STALE");
 const graph = JSON.parse(readFileSync(graphPath, "utf8"));
