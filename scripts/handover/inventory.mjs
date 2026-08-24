@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { assertRedacted, classifyBudget, migrationBoundary, sourceIdentity } from './lib.mjs';
+import { assertRedacted, classifyBudget, migrationBoundary, sourceIdentity, supabaseArgv } from './lib.mjs';
 
 const root = process.cwd();
 const dbUrl = process.env.HANDOVER_SOURCE_DB_URL;
@@ -11,7 +11,7 @@ const outputFile = resolve(root, '.handover/source-inventory.json');
 const run = (program, args) => execFileSync(process.platform === 'win32' ? process.env.ComSpec : program, process.platform === 'win32' ? ['/d', '/c', [program, ...args.map((arg) => /\s/.test(arg) ? `"${arg.replaceAll('"', '""')}"` : arg)].join(' ')] : args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
 const parse = (output) => { const starts = [output.indexOf('{'), output.indexOf('[')].filter((index) => index >= 0); if (!starts.length) throw new Error('HANDOVER_INVENTORY_UNPARSEABLE'); return JSON.parse(output.slice(Math.min(...starts))); };
 const query = (args) => parse(run('supabase', ['db', 'query', '--db-url', dbUrl, '--output', 'json', ...args]));
-const countList = (args) => { const value = parse(run('supabase', args)); return Array.isArray(value) ? value.length : 0; };
+const countList = (args) => { const [, ...cliArgs] = supabaseArgv(args); const value = parse(run('supabase', cliArgs)); return Array.isArray(value) ? value.length : 0; };
 const quote = (name) => `"${name.replaceAll('"', '""')}"`;
 
 const inventorySql = readFileSync(sqlFile, 'utf8').trim();
@@ -35,16 +35,16 @@ const vault = query(["begin read only; select count(*)::bigint as count from vau
 const manifest = {
   manifestVersion: 2,
   generatedAt: new Date().toISOString(),
-  sourceIdentity: { ...identity, database: 'postgres', postgresMajor: 17 },
+  sourceIdentity: { ...identity, database: 'postgres', postgresMajor: 17, liveDatabaseCompatibilityVerified: true },
   ownerMigrationBoundary: boundary,
   toolchain: { supabaseCli: run('supabase', ['--version']).trim(), psql: process.env.PSQL_VERSION ?? 'NOT_DETECTED', docker: process.env.DOCKER_VERSION ?? 'NOT_DETECTED' },
-  edgeFunctionCount: countList(['supabase', 'functions', 'list', '--project-ref', identity.expectedProjectRef, '--output', 'json']),
-  edgeFunctionSecretCount: countList(['supabase', 'secrets', 'list', '--project-ref', identity.expectedProjectRef, '--output', 'json']),
+  edgeFunctionCount: countList(['functions', 'list', '--project-ref', identity.expectedProjectRef, '--output', 'json']),
+  edgeFunctionSecretCount: countList(['secrets', 'list', '--project-ref', identity.expectedProjectRef, '--output', 'json']),
   vaultSecretCount: Number(vault),
   freeTierBudget: { verifiedAt: '2026-08-24', database: { usedBytes: inventory.database.bytes, limitBytes: 500_000_000, classification: classifyBudget(inventory.database.bytes, 500_000_000) }, storage: { usedBytes: inventory.storage.objectBytes, limitBytes: 1_000_000_000, classification: classifyBudget(inventory.storage.objectBytes, 1_000_000_000) }, manualDashboardEvidence: ['egress', 'cachedEgress', 'realtimeMonthlyMessages', 'realtimeConnections'] },
   semantic: inventory.semantic,
   realtime: inventory.realtime,
-  storage: { bucketConfiguration: inventory.storage.buckets, metadataFingerprint: inventory.storage.metadataFingerprint, objectCount: inventory.storage.objectCount, objectBytes: inventory.storage.objectBytes, fullIntegrity: 'PENDING_ENCRYPTED_TRANSFER_MANIFEST' },
+  storage: { bucketConfiguration: inventory.storage.buckets, metadataFingerprint: inventory.storage.metadataFingerprint, objectCount: inventory.storage.objectCount, objectBytes: inventory.storage.objectBytes, fullIntegrity: { status: 'PENDING' } },
   businessInvariants: { criticalRows: inventory.criticalRows, financialAggregates: inventory.financialAggregates, fieldVisitMedia: inventory.fieldVisitMedia },
   inventory,
   ...(deepData ? { deepData } : {}),

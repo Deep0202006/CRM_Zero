@@ -1,6 +1,6 @@
 # CRM Supabase handover — lossless certification
 
-This is readiness tooling only: source production is read-only, migrations 001-050 are immutable, no Vercel backend changes occur, and source remains rollback authority.
+This is readiness tooling only: source production is read-only, the applied/immutable boundary is read from `supabase/migrations/APPLIED_OWNER_MIGRATIONS.json`, no Vercel backend changes occur, and source remains rollback authority.
 
 ## Boundary and source identity
 
@@ -22,7 +22,7 @@ Only application hooks are inventoried for managed schemas: `auth.users` applica
 
 All plaintext artifacts stay ignored under Owner-controlled encrypted `.handover/`: source/target inventories, roles/schema/data dumps, `platform-policies.sql`, Storage transfer metadata, comparison report, dump coverage report, and `SHA256SUMS`. `node scripts/handover/checksums.mjs` creates checksums for every generated artifact; `--verify` fails on any drift. Send the final encrypted-package SHA-256 through a separate trusted/signed channel. Tracked-file checks reject likely dump/export/secret bundles outside this location; canonical `supabase/schema.sql` is exempt.
 
-At rehearsal/final export only, use the supported CLI `--db-url` workflow with the secure Owner variable: role dump, schema dump, and data dump. Do not replay migrations 001-050. `node scripts/handover/dump-inspect.mjs` reads generated `data.sql` structurally and fails with `HANDOVER_AUTH_DUMP_INCOMPLETE` or `HANDOVER_STORAGE_METADATA_INCOMPLETE` if Auth users/identities or Storage buckets/objects are absent. Until a rehearsal dump exists: `NOT_RUN_UNTIL_REHEARSAL`.
+At rehearsal/final export only, use the supported CLI `--db-url` workflow with the secure Owner variable: role dump, schema dump, and data dump. Do not replay the live snapshot through historical migrations. `node scripts/handover/dump-inspect.mjs` reads generated `data.sql` structurally and fails with `HANDOVER_AUTH_DUMP_INCOMPLETE` or `HANDOVER_STORAGE_METADATA_INCOMPLETE` if Auth users/identities or Storage buckets/objects are absent. Until a rehearsal dump exists: `NOT_RUN_UNTIL_REHEARSAL`.
 
 Storage is a separate transfer through supported S3/Storage API: Source Supabase → Owner-controlled encrypted package → recipient → target Storage. Never copy volumes or give the recipient source credentials. Certification is FULL object integrity: exact bucket config/count/bytes, aggregate manifest, and EVERY content hash/check-download—not sampling—plus authenticated upload/own read/admin read and unauthorized rejection. User-derived object paths and per-object hashes exist only inside the encrypted package. `public.field_visit_media` stays DB state; report relationBytes and payloadBytes separately.
 
