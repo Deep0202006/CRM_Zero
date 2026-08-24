@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "lessons": [
     {
       "id": "ONE_FACT_ONE_AUTHORITY",
@@ -20,7 +20,24 @@
       "evidence": [
         "docs/engineering/AUTHORITIES.json"
       ],
-      "loadByDefault": true
+      "loadByDefault": true,
+      "claims": [
+        "ONE_FACT_ONE_AUTHORITY"
+      ],
+      "kind": "judgment",
+      "enforcementRefs": [],
+      "evalRefs": [
+        "mapping-attribution",
+        "distributor-renewal"
+      ],
+      "legacyRefs": [
+        "CANONICAL_IDENTITY_RULE",
+        "CROSS_AUTHORITY_ATOMIC_IMPORT_RULE",
+        "ERP_DIMENSION_AUTHORITY_RULE",
+        "G-AUTH-001",
+        "SINGLE_IMPORT_PROPAGATION_RULE",
+        "SINGLE_SERVER_ENTRY_RULE"
+      ]
     },
     {
       "id": "STABLE_IDENTITY",
@@ -43,7 +60,23 @@
       "evidence": [
         "docs/contracts/DATA_LIFECYCLE.md"
       ],
-      "loadByDefault": false
+      "loadByDefault": false,
+      "claims": [
+        "STABLE_RETRY_IDENTITY"
+      ],
+      "kind": "judgment",
+      "enforcementRefs": [],
+      "evalRefs": [
+        "mapping-attribution",
+        "pipeline-retry"
+      ],
+      "legacyRefs": [
+        "DURABLE_TRANSITION_RULE",
+        "GRAPH_WORKER_BOUNDED_TERMINATION_RULE",
+        "LATEST_BUSINESS_OBSERVATION_RULE",
+        "PAYMENT_IMPORT_IDEMPOTENCY_RULE",
+        "STABLE_EXTERNAL_IMPORT_KEY_RULE"
+      ]
     },
     {
       "id": "AUTH_PROFILE_IDENTITY",
@@ -64,7 +97,20 @@
       "evidence": [
         "docs/engineering/AUTHORITIES.json"
       ],
-      "loadByDefault": false
+      "loadByDefault": false,
+      "claims": [
+        "EMPLOYEE_IDENTITY_SEPARATION",
+        "EXTERNAL_IDENTITY_NOT_EMPLOYEE"
+      ],
+      "kind": "judgment",
+      "enforcementRefs": [],
+      "evalRefs": [
+        "external-partner"
+      ],
+      "legacyRefs": [
+        "EXTERNAL_ACCOUNT_NOT_EMPLOYEE_RULE",
+        "TEST_REALISM_RULE"
+      ]
     },
     {
       "id": "WRITE_READ_CLOSURE",
@@ -86,7 +132,28 @@
       "evidence": [
         "docs/contracts/DATA_LIFECYCLE.md"
       ],
-      "loadByDefault": false
+      "loadByDefault": false,
+      "claims": [
+        "WRITE_READ_CLOSURE"
+      ],
+      "kind": "judgment",
+      "enforcementRefs": [],
+      "evalRefs": [
+        "mapping-attribution",
+        "calls-visibility",
+        "attendance-confirmation",
+        "field-evidence"
+      ],
+      "legacyRefs": [
+        "BILLED_IS_NOT_UNPAID",
+        "G-BLOCK-001",
+        "G-END-001",
+        "LEGACY_06b158e473320cbd",
+        "LEGACY_6fa5773ba4270a99",
+        "OFFLINE_ENUM_EXTENSION_RULE",
+        "WRITE_READ_ADMIN_EXPORT",
+        "WRITE_READ_CLOSURE_RULE"
+      ]
     },
     {
       "id": "LABEL_NOT_AUTHORITY",
@@ -106,7 +173,16 @@
       "evidence": [
         "docs/engineering/INVARIANTS.md"
       ],
-      "loadByDefault": false
+      "loadByDefault": false,
+      "claims": [
+        "LABEL_NOT_IDENTITY_AUTHORITY"
+      ],
+      "kind": "judgment",
+      "enforcementRefs": [],
+      "evalRefs": [
+        "mapping-attribution"
+      ],
+      "legacyRefs": []
     },
     {
       "id": "OFFLINE_COMPATIBILITY",
@@ -130,7 +206,28 @@
         "src/lib/fieldVisits/sync.ts",
         "src/lib/db.ts"
       ],
-      "loadByDefault": false
+      "loadByDefault": false,
+      "claims": [
+        "OFFLINE_CONTRACT_COMPATIBILITY"
+      ],
+      "kind": "judgment",
+      "enforcementRefs": [],
+      "evalRefs": [
+        "mapping-attribution",
+        "attendance-confirmation"
+      ],
+      "legacyRefs": [
+        "G-LEARN-001",
+        "GRAPH_THREAD_RESUME_RULE",
+        "LEGACY_2a4a4d93555a5b04",
+        "LEGACY_5394d31a6933192c",
+        "LEGACY_6d37c5e99269b0b6",
+        "LEGACY_950bda0cc1560726",
+        "OWNER_SQL_PURE_POSTGRESQL",
+        "SEMANTIC_CONTRACT_RULE",
+        "SEMANTIC_RETRY_RULE",
+        "TERMINAL_4XX_RULE"
+      ]
     },
     {
       "id": "OFFLINE_RECOVERY",
@@ -151,7 +248,21 @@
       "evidence": [
         "docs/contracts/DATA_LIFECYCLE.md"
       ],
-      "loadByDefault": false
+      "loadByDefault": false,
+      "claims": [
+        "OFFLINE_RECOVERY_PRESERVES_INTENT"
+      ],
+      "kind": "judgment",
+      "enforcementRefs": [],
+      "evalRefs": [
+        "mapping-attribution",
+        "pipeline-retry"
+      ],
+      "legacyRefs": [
+        "G-PROD-001",
+        "LEGACY_b5d74268f8739c0e",
+        "LOCAL_TO_SERVER_CONVERGENCE_RULE"
+      ]
     },
     {
       "id": "ATOMIC_BATCH",
@@ -173,7 +284,19 @@
       "evidence": [
         "src/lib/distributorMaster/confirmation.ts"
       ],
-      "loadByDefault": false
+      "loadByDefault": false,
+      "claims": [
+        "ATOMIC_BATCH_ROLLBACK"
+      ],
+      "kind": "judgment",
+      "enforcementRefs": [],
+      "evalRefs": [
+        "import-atomicity"
+      ],
+      "legacyRefs": [
+        "ATOMIC_BATCH_RULE",
+        "LEGACY_8658557422a6eebf"
+      ]
     },
     {
       "id": "BOUNDED_BATCH_SCALING",
@@ -194,7 +317,21 @@
       "evidence": [
         "scripts/distributor-master-db/run-integration.sh"
       ],
-      "loadByDefault": false
+      "loadByDefault": false,
+      "claims": [
+        "SET_BASED_BATCH_SCALING"
+      ],
+      "kind": "judgment",
+      "enforcementRefs": [],
+      "evalRefs": [
+        "import-atomicity"
+      ],
+      "legacyRefs": [
+        "BOUNDED_IS_NOT_LINEARITY_RULE",
+        "EXECUTION_BUDGET_RULE",
+        "G-VERIFY-001",
+        "LEGACY_aa620eb6e1e9c2d6"
+      ]
     },
     {
       "id": "MONEY_TRUTH",
@@ -215,7 +352,32 @@
       "evidence": [
         "docs/contracts/receivables.md"
       ],
-      "loadByDefault": false
+      "loadByDefault": false,
+      "claims": [
+        "ONE_FINANCIAL_AUTHORITY",
+        "FINANCIAL_STATE_DERIVED"
+      ],
+      "kind": "judgment",
+      "enforcementRefs": [],
+      "evalRefs": [
+        "receivables-money"
+      ],
+      "legacyRefs": [
+        "BILLED_IS_NOT_UNPAID",
+        "DERIVED_FINANCIAL_STATE_RULE",
+        "ERP_DIMENSION_AUTHORITY_RULE",
+        "EXACT_PAYMENT_TARGET_RULE",
+        "EXTERNAL_VIEW_DATA_MINIMIZATION_RULE",
+        "FIELD_VISIT_ERP_IS_OBSERVATION_RULE",
+        "LEGACY_05b876d069c1c59e",
+        "LEGACY_aa620eb6e1e9c2d6",
+        "MULTI_PAYMENT_HISTORY_RULE",
+        "ONE_MONEY_AUTHORITY",
+        "PAYMENT_IMPORT_IDEMPOTENCY_RULE",
+        "POSTGRES_NUMERIC_WIRE_CONTRACT_RULE",
+        "REFLECTION_IS_NOT_MUTATION",
+        "ZERO_DATA_MIGRATION_RULE"
+      ]
     },
     {
       "id": "ERP_AUTHORITIES",
@@ -239,7 +401,22 @@
         "docs/engineering/AUTHORITIES.json",
         "supabase/migrations/049_field_business_erp_baseline.sql"
       ],
-      "loadByDefault": false
+      "loadByDefault": false,
+      "claims": [
+        "ERP_AUTHORITY_SEPARATION"
+      ],
+      "kind": "judgment",
+      "enforcementRefs": [],
+      "evalRefs": [
+        "erp-filter"
+      ],
+      "legacyRefs": [
+        "EXPLICIT_NONE_VS_UNKNOWN_RULE",
+        "FIELD_VISIT_ERP_IS_OBSERVATION_RULE",
+        "G-REPO-002",
+        "MANUAL_BASELINE_NOT_HISTORY_RULE",
+        "MASTER_WORKBOOK_IS_ORCHESTRATOR_RULE"
+      ]
     },
     {
       "id": "ERP_CANONICAL_WRITE",
@@ -259,7 +436,19 @@
       "evidence": [
         "src/lib/erp/server.ts"
       ],
-      "loadByDefault": false
+      "loadByDefault": false,
+      "claims": [
+        "ERP_CANONICAL_WRITE"
+      ],
+      "kind": "judgment",
+      "enforcementRefs": [],
+      "evalRefs": [
+        "erp-filter"
+      ],
+      "legacyRefs": [
+        "CANONICAL_DIMENSION_CREATE_AT_WRITE_RULE",
+        "G-CONTEXT-001"
+      ]
     },
     {
       "id": "SERVER_AUTHORIZATION",
@@ -281,7 +470,24 @@
       "evidence": [
         "docs/contracts/ROLE_MATRIX.md"
       ],
-      "loadByDefault": false
+      "loadByDefault": false,
+      "claims": [
+        "AUTHZ_SERVER_ENFORCED",
+        "UI_FILTER_NOT_AUTHORIZATION"
+      ],
+      "kind": "judgment",
+      "enforcementRefs": [],
+      "evalRefs": [
+        "calls-visibility",
+        "external-partner"
+      ],
+      "legacyRefs": [
+        "BOUNDED_READ_SIDE_EFFECT_RULE",
+        "LEGACY_05b876d069c1c59e",
+        "LEGACY_2fb529d92a79c815",
+        "RUNTIME_DB_PROOF_RULE",
+        "SERVER_SCOPE_NOT_UI_FILTER_RULE"
+      ]
     },
     {
       "id": "MINIMUM_EXTERNAL_PROJECTION",
@@ -301,7 +507,21 @@
       "evidence": [
         "docs/engineering/CAPABILITIES.json"
       ],
-      "loadByDefault": false
+      "loadByDefault": false,
+      "claims": [
+        "EXTERNAL_DATA_MINIMIZATION"
+      ],
+      "kind": "judgment",
+      "enforcementRefs": [],
+      "evalRefs": [
+        "external-partner"
+      ],
+      "legacyRefs": [
+        "DERIVED_FINANCIAL_STATE_RULE",
+        "EXTERNAL_ACCOUNT_NOT_EMPLOYEE_RULE",
+        "EXTERNAL_VIEW_DATA_MINIMIZATION_RULE",
+        "MANUAL_BASELINE_NOT_HISTORY_RULE"
+      ]
     },
     {
       "id": "PRODUCTION_DISCIPLINE",
@@ -321,7 +541,24 @@
       "evidence": [
         "supabase/migrations/APPLIED_OWNER_MIGRATIONS.json"
       ],
-      "loadByDefault": false
+      "loadByDefault": false,
+      "claims": [
+        "NO_PRODUCTION_DUMMY_DATA"
+      ],
+      "kind": "mechanical",
+      "enforcementRefs": [
+        "scripts/quality/invariants.mjs"
+      ],
+      "evalRefs": [
+        "production-safety"
+      ],
+      "legacyRefs": [
+        "G-PROD-003",
+        "HUMAN_GATE_EVIDENCE_RULE",
+        "LEGACY_27dbe1189ae2bcd3",
+        "LEGACY_3c80e36e100d42f6",
+        "NO_PRODUCTION_DUMMY_DATA"
+      ]
     },
     {
       "id": "MIGRATION_IMMUTABILITY",
@@ -340,7 +577,23 @@
       "evidence": [
         "supabase/migrations/APPLIED_OWNER_MIGRATIONS.json"
       ],
-      "loadByDefault": false
+      "loadByDefault": false,
+      "claims": [
+        "APPLIED_MIGRATION_IMMUTABLE"
+      ],
+      "kind": "mechanical",
+      "enforcementRefs": [
+        "scripts/quality/knowledge-check.mjs"
+      ],
+      "evalRefs": [
+        "production-safety"
+      ],
+      "legacyRefs": [
+        "CONTENT_SENSITIVE_WORKTREE_RULE",
+        "G-MIG-001",
+        "LEGACY_05b876d069c1c59e",
+        "REAL_ROUTE_MAP_RULE"
+      ]
     },
     {
       "id": "R3_RUNTIME_PROOF",
@@ -362,7 +615,20 @@
       "evidence": [
         ".github/workflows/product-verification.yml"
       ],
-      "loadByDefault": false
+      "loadByDefault": false,
+      "claims": [
+        "R3_DATABASE_RUNTIME_PROOF"
+      ],
+      "kind": "mechanical",
+      "enforcementRefs": [
+        "scripts/engineering/proof-plan.mjs"
+      ],
+      "evalRefs": [
+        "production-safety"
+      ],
+      "legacyRefs": [
+        "RUNTIME_DB_PROOF_RULE"
+      ]
     },
     {
       "id": "POSTGRES_WIRE_NORMALIZATION",
@@ -383,7 +649,19 @@
       "evidence": [
         "src/lib/receivables/domain.ts"
       ],
-      "loadByDefault": false
+      "loadByDefault": false,
+      "claims": [
+        "POSTGRES_WIRE_NORMALIZATION"
+      ],
+      "kind": "judgment",
+      "enforcementRefs": [],
+      "evalRefs": [
+        "receivables-money"
+      ],
+      "legacyRefs": [
+        "POSTGRES_NUMERIC_WIRE_CONTRACT_RULE",
+        "WIRE_MOCK_REALISM_RULE"
+      ]
     },
     {
       "id": "TRANSACTION_STAGING",
@@ -403,7 +681,16 @@
       "evidence": [
         "supabase/migrations/049_field_business_erp_baseline.sql"
       ],
-      "loadByDefault": false
+      "loadByDefault": false,
+      "claims": [
+        "TRANSACTION_STAGING"
+      ],
+      "kind": "judgment",
+      "enforcementRefs": [],
+      "evalRefs": [
+        "import-atomicity"
+      ],
+      "legacyRefs": []
     },
     {
       "id": "EXACT_HEAD_RELEASE",
@@ -424,7 +711,28 @@
       "evidence": [
         ".github/workflows/product-verification.yml"
       ],
-      "loadByDefault": false
+      "loadByDefault": false,
+      "claims": [
+        "EXACT_HEAD_PROOF"
+      ],
+      "kind": "mechanical",
+      "enforcementRefs": [
+        ".github/workflows/product-verification.yml"
+      ],
+      "evalRefs": [
+        "repository-proof"
+      ],
+      "legacyRefs": [
+        "CI_HOT_PATH_TOOLCHAIN_RULE",
+        "EXACT_HEAD_PROOF_REUSE_RULE",
+        "G-PROOF-001",
+        "G-RELEASE-001",
+        "GRAPH_LEARNING_CLOSURE_RULE",
+        "MAIN_BASELINE_RULE",
+        "REMOTE_RELEASE_EVIDENCE_RULE",
+        "STALE_BASE_PENALTY",
+        "WORKTREE_AUTHORITY_RULE"
+      ]
     },
     {
       "id": "TEST_REAL_ROLE_SHAPES",
@@ -445,7 +753,21 @@
       "evidence": [
         "docs/contracts/ROLE_MATRIX.md"
       ],
-      "loadByDefault": false
+      "loadByDefault": false,
+      "claims": [
+        "TEST_REAL_ROLE_SHAPES"
+      ],
+      "kind": "judgment",
+      "enforcementRefs": [],
+      "evalRefs": [
+        "repository-proof"
+      ],
+      "legacyRefs": [
+        "LEGACY_3fc924d350860f4f",
+        "LEGACY_79afa1b2c19401ac",
+        "ROUTE_MATRIX_RULE",
+        "TIME_DEPENDENT_TEST_CLOCK_RULE"
+      ]
     },
     {
       "id": "RESOURCE_BOUNDS",
@@ -469,7 +791,19 @@
       "evidence": [
         "docs/contracts/RESOURCE_BUDGET.md"
       ],
-      "loadByDefault": false
+      "loadByDefault": false,
+      "claims": [
+        "RESOURCE_BOUNDS"
+      ],
+      "kind": "judgment",
+      "enforcementRefs": [],
+      "evalRefs": [
+        "receivables-money"
+      ],
+      "legacyRefs": [
+        "LEGACY_3c52dd2a81ba5abc",
+        "TOTAL_VS_PAGE_RULE"
+      ]
     },
     {
       "id": "SPREADSHEET_COMMIT",
@@ -490,7 +824,20 @@
       "evidence": [
         "src/lib/distributorMaster/workbook.ts"
       ],
-      "loadByDefault": false
+      "loadByDefault": false,
+      "claims": [
+        "SPREADSHEET_FORMULA_SAFETY"
+      ],
+      "kind": "judgment",
+      "enforcementRefs": [],
+      "evalRefs": [
+        "receivables-money"
+      ],
+      "legacyRefs": [
+        "LEGACY_891cf5c38d571ad4",
+        "PATCH_BLANK_SEMANTICS_RULE",
+        "SPREADSHEET_FORMULA_RULE"
+      ]
     },
     {
       "id": "MEDIA_LIFECYCLE",
@@ -511,7 +858,22 @@
       "evidence": [
         "src/lib/fieldVisits/retention.ts"
       ],
-      "loadByDefault": false
+      "loadByDefault": false,
+      "claims": [
+        "MEDIA_LIFECYCLE"
+      ],
+      "kind": "judgment",
+      "enforcementRefs": [],
+      "evalRefs": [
+        "attendance-confirmation",
+        "field-evidence"
+      ],
+      "legacyRefs": [
+        "LEGACY_829b9fa3957f51d0",
+        "LEGACY_9827a172a27be3fa",
+        "LEGACY_d0c37562bc85e544",
+        "MEDIA_LIFECYCLE_RULE"
+      ]
     },
     {
       "id": "HONEST_VISUALIZATION",
@@ -534,7 +896,16 @@
       "evidence": [
         "docs/contracts/visual-intelligence.md"
       ],
-      "loadByDefault": false
+      "loadByDefault": false,
+      "claims": [
+        "HONEST_VISUALIZATION"
+      ],
+      "kind": "judgment",
+      "enforcementRefs": [],
+      "evalRefs": [
+        "distributor-renewal"
+      ],
+      "legacyRefs": []
     },
     {
       "id": "LOCK_BEFORE_CHANGE",
@@ -555,7 +926,18 @@
       "evidence": [
         "docs/engineering/WORKFLOW.md"
       ],
-      "loadByDefault": false
+      "loadByDefault": false,
+      "claims": [
+        "LOCK_BEFORE_CHANGE"
+      ],
+      "kind": "judgment",
+      "enforcementRefs": [],
+      "evalRefs": [
+        "production-safety"
+      ],
+      "legacyRefs": [
+        "LEGACY_401b30b6fe473d19"
+      ]
     },
     {
       "id": "DIRECT_ENGINEERING",
@@ -577,7 +959,19 @@
         "AGENTS.md",
         "docs/engineering/INDEX.md"
       ],
-      "loadByDefault": false
+      "loadByDefault": false,
+      "claims": [
+        "DIRECT_ENGINEERING"
+      ],
+      "kind": "judgment",
+      "enforcementRefs": [],
+      "evalRefs": [
+        "repository-proof"
+      ],
+      "legacyRefs": [
+        "DIRTY_TREE_ISOLATION_RULE",
+        "G-STALL-001"
+      ]
     },
     {
       "id": "AGENT_REPORT_NOT_PROOF",
@@ -597,7 +991,19 @@
       "evidence": [
         "docs/engineering/WORKFLOW.md"
       ],
-      "loadByDefault": false
+      "loadByDefault": false,
+      "claims": [
+        "AGENT_REPORT_NOT_PROOF"
+      ],
+      "kind": "judgment",
+      "enforcementRefs": [],
+      "evalRefs": [
+        "repository-proof"
+      ],
+      "legacyRefs": [
+        "COMMITTED_RELEASE_STATE_RULE",
+        "REMOTE_RELEASE_EVIDENCE_RULE"
+      ]
     },
     {
       "id": "UI_SYMPTOM_NOT_SCHEMA_EVIDENCE",
@@ -617,7 +1023,16 @@
       "evidence": [
         "AGENTS.md"
       ],
-      "loadByDefault": false
+      "loadByDefault": false,
+      "claims": [
+        "UI_SYMPTOM_NOT_SCHEMA_EVIDENCE"
+      ],
+      "kind": "judgment",
+      "enforcementRefs": [],
+      "evalRefs": [
+        "control-plane-regressions"
+      ],
+      "legacyRefs": []
     },
     {
       "id": "NO_FABRICATED_BACKFILL",
@@ -637,7 +1052,18 @@
       "evidence": [
         "supabase/migrations/049_field_business_erp_baseline.sql"
       ],
-      "loadByDefault": false
+      "loadByDefault": false,
+      "claims": [
+        "ZERO_DATA_NO_FABRICATION"
+      ],
+      "kind": "judgment",
+      "enforcementRefs": [],
+      "evalRefs": [
+        "import-atomicity"
+      ],
+      "legacyRefs": [
+        "ZERO_DATA_MIGRATION_RULE"
+      ]
     },
     {
       "id": "OPTIONAL_FAILURE_ISOLATION",
@@ -657,7 +1083,19 @@
       "evidence": [
         "docs/contracts/calls.md"
       ],
-      "loadByDefault": false
+      "loadByDefault": false,
+      "claims": [
+        "OPTIONAL_FAILURE_ISOLATION"
+      ],
+      "kind": "judgment",
+      "enforcementRefs": [],
+      "evalRefs": [
+        "calls-visibility"
+      ],
+      "legacyRefs": [
+        "LEGACY_734b4d3b4de2ab32",
+        "OPTIONAL_METRIC_FAILURE_RULE"
+      ]
     },
     {
       "id": "EXACT_COMPATIBILITY_CONTRACT",
@@ -679,7 +1117,18 @@
       "evidence": [
         "docs/contracts/DATA_LIFECYCLE.md"
       ],
-      "loadByDefault": false
+      "loadByDefault": false,
+      "claims": [
+        "EXACT_COMPATIBILITY_CONTRACT"
+      ],
+      "kind": "judgment",
+      "enforcementRefs": [],
+      "evalRefs": [
+        "pipeline-retry"
+      ],
+      "legacyRefs": [
+        "EXACT_COMPATIBILITY_CONTRACT_NOT_OPTIONAL_RULE"
+      ]
     },
     {
       "id": "IMPORT_TEMPLATE_VERSION",
@@ -699,7 +1148,18 @@
       "evidence": [
         "src/lib/distributorMaster/workbook.ts"
       ],
-      "loadByDefault": false
+      "loadByDefault": false,
+      "claims": [
+        "IMPORT_TEMPLATE_VERSION"
+      ],
+      "kind": "judgment",
+      "enforcementRefs": [],
+      "evalRefs": [
+        "import-atomicity"
+      ],
+      "legacyRefs": [
+        "IMPORT_TEMPLATE_VERSION_RULE"
+      ]
     },
     {
       "id": "RESOLVED_PLAN_REVALIDATION",
@@ -718,7 +1178,18 @@
       "evidence": [
         "src/lib/distributorMaster/confirmation.ts"
       ],
-      "loadByDefault": false
+      "loadByDefault": false,
+      "claims": [
+        "RESOLVED_PLAN_REVALIDATION"
+      ],
+      "kind": "judgment",
+      "enforcementRefs": [],
+      "evalRefs": [
+        "pipeline-retry"
+      ],
+      "legacyRefs": [
+        "PREVIEW_RESOLVED_PLAN_HASH_RULE"
+      ]
     },
     {
       "id": "STATIC_SNAPSHOT_NOT_CURRENT_AUTHORITY",
@@ -738,7 +1209,16 @@
       "evidence": [
         "AGENTS.md"
       ],
-      "loadByDefault": false
+      "loadByDefault": false,
+      "claims": [
+        "CURRENT_SOURCE_OVERRIDES_SNAPSHOT"
+      ],
+      "kind": "judgment",
+      "enforcementRefs": [],
+      "evalRefs": [
+        "erp-filter"
+      ],
+      "legacyRefs": []
     },
     {
       "id": "TOOLING_DOES_NOT_BLOCK_DELIVERY",
@@ -759,7 +1239,18 @@
       "evidence": [
         "AGENTS.md"
       ],
-      "loadByDefault": false
+      "loadByDefault": false,
+      "claims": [
+        "TOOLING_OPTIONAL"
+      ],
+      "kind": "judgment",
+      "enforcementRefs": [],
+      "evalRefs": [
+        "control-plane-regressions"
+      ],
+      "legacyRefs": [
+        "G-REPO-001"
+      ]
     },
     {
       "id": "NO_AUTONOMOUS_SELF_HOSTING",
@@ -778,7 +1269,16 @@
       "evidence": [
         "AGENTS.md"
       ],
-      "loadByDefault": false
+      "loadByDefault": false,
+      "claims": [
+        "NO_AUTONOMOUS_CONTROLLER"
+      ],
+      "kind": "judgment",
+      "enforcementRefs": [],
+      "evalRefs": [
+        "control-plane-regressions"
+      ],
+      "legacyRefs": []
     },
     {
       "id": "ROOT_CAUSE_SHARED_FIX",
@@ -799,7 +1299,16 @@
       "evidence": [
         "docs/engineering/WORKFLOW.md"
       ],
-      "loadByDefault": false
+      "loadByDefault": false,
+      "claims": [
+        "ROOT_CAUSE_SHARED_FIX"
+      ],
+      "kind": "judgment",
+      "enforcementRefs": [],
+      "evalRefs": [
+        "field-evidence"
+      ],
+      "legacyRefs": []
     },
     {
       "id": "PREEXISTING_FAILURE_PROOF",
@@ -819,7 +1328,19 @@
       "evidence": [
         "docs/engineering/WORKFLOW.md"
       ],
-      "loadByDefault": false
+      "loadByDefault": false,
+      "claims": [
+        "BASELINE_FAILURE_ABLATION"
+      ],
+      "kind": "judgment",
+      "enforcementRefs": [],
+      "evalRefs": [
+        "repository-proof"
+      ],
+      "legacyRefs": [
+        "LEGACY_6d9f537b0ffefa2e",
+        "PREEXISTING_FAILURE_RULE"
+      ]
     },
     {
       "id": "IST_BUSINESS_DATE",
@@ -840,7 +1361,16 @@
       "evidence": [
         "docs/engineering/INVARIANTS.md"
       ],
-      "loadByDefault": false
+      "loadByDefault": false,
+      "claims": [
+        "IST_BUSINESS_DATE"
+      ],
+      "kind": "judgment",
+      "enforcementRefs": [],
+      "evalRefs": [
+        "attendance-confirmation"
+      ],
+      "legacyRefs": []
     },
     {
       "id": "UNKNOWN_PRESERVATION",
@@ -859,7 +1389,16 @@
       "evidence": [
         "docs/engineering/INVARIANTS.md"
       ],
-      "loadByDefault": false
+      "loadByDefault": false,
+      "claims": [
+        "UNKNOWN_DATA_PRESERVATION"
+      ],
+      "kind": "judgment",
+      "enforcementRefs": [],
+      "evalRefs": [
+        "import-atomicity"
+      ],
+      "legacyRefs": []
     },
     {
       "id": "EXPLICIT_OPERATION_STATES",
@@ -878,7 +1417,18 @@
       "evidence": [
         "docs/engineering/INVARIANTS.md"
       ],
-      "loadByDefault": false
+      "loadByDefault": false,
+      "claims": [
+        "EXPLICIT_OPERATION_STATES"
+      ],
+      "kind": "judgment",
+      "enforcementRefs": [],
+      "evalRefs": [
+        "attendance-confirmation"
+      ],
+      "legacyRefs": [
+        "LEGACY_2fb529d92a79c815"
+      ]
     },
     {
       "id": "SIDE_EFFECT_BUDGET",
@@ -897,7 +1447,19 @@
       "evidence": [
         "docs/engineering/INVARIANTS.md"
       ],
-      "loadByDefault": false
+      "loadByDefault": false,
+      "claims": [
+        "SIDE_EFFECT_BUDGET"
+      ],
+      "kind": "judgment",
+      "enforcementRefs": [],
+      "evalRefs": [
+        "distributor-renewal"
+      ],
+      "legacyRefs": [
+        "BOUNDED_READ_SIDE_EFFECT_RULE",
+        "LEGACY_6faaff3152ac14fa"
+      ]
     },
     {
       "id": "STALE_WRITE_PROTECTION",
@@ -917,7 +1479,16 @@
       "evidence": [
         "docs/contracts/pipeline.md"
       ],
-      "loadByDefault": false
+      "loadByDefault": false,
+      "claims": [
+        "STALE_WRITE_PROTECTION"
+      ],
+      "kind": "judgment",
+      "enforcementRefs": [],
+      "evalRefs": [
+        "pipeline-retry"
+      ],
+      "legacyRefs": []
     },
     {
       "id": "DERIVED_ALERTS_NOT_WORK",
@@ -937,7 +1508,16 @@
       "evidence": [
         "docs/engineering/INVARIANTS.md"
       ],
-      "loadByDefault": false
+      "loadByDefault": false,
+      "claims": [
+        "DERIVED_ALERTS_NOT_WRITES"
+      ],
+      "kind": "judgment",
+      "enforcementRefs": [],
+      "evalRefs": [
+        "distributor-renewal"
+      ],
+      "legacyRefs": []
     },
     {
       "id": "CRITICAL_PRIORITY_CONFIRMATION",
@@ -957,7 +1537,18 @@
       "evidence": [
         "docs/contracts/calls.md"
       ],
-      "loadByDefault": false
+      "loadByDefault": false,
+      "claims": [
+        "CRITICAL_PRIORITY_CONFIRMATION"
+      ],
+      "kind": "judgment",
+      "enforcementRefs": [],
+      "evalRefs": [
+        "calls-visibility"
+      ],
+      "legacyRefs": [
+        "LEGACY_b89947e249cb4a8d"
+      ]
     },
     {
       "id": "OWNER_MIGRATION_CLOSEOUT",
@@ -976,7 +1567,19 @@
       "evidence": [
         "docs/engineering/WORKFLOW.md"
       ],
-      "loadByDefault": false
+      "loadByDefault": false,
+      "claims": [
+        "OWNER_MIGRATION_CERTIFICATION"
+      ],
+      "kind": "judgment",
+      "enforcementRefs": [],
+      "evalRefs": [
+        "production-safety"
+      ],
+      "legacyRefs": [
+        "G-PROD-002",
+        "OWNER_MIGRATION_CLOSURE_RULE"
+      ]
     },
     {
       "id": "POSTGRES_UUID_NOT_RFC_UUID",
@@ -1005,7 +1608,16 @@
         "src/lib/erp/validation.ts",
         "src/lib/__tests__/erpCanonicalGuidValidation.test.ts"
       ],
-      "loadByDefault": false
+      "loadByDefault": false,
+      "claims": [
+        "POSTGRES_UUID_NOT_RFC_UUID"
+      ],
+      "kind": "judgment",
+      "enforcementRefs": [],
+      "evalRefs": [
+        "erp-filter"
+      ],
+      "legacyRefs": []
     },
     {
       "id": "CI_TOOLCHAIN_REUSE",
@@ -1024,7 +1636,22 @@
       "evidence": [
         ".github/workflows/product-verification.yml"
       ],
-      "loadByDefault": false
+      "loadByDefault": false,
+      "claims": [
+        "NO_REDUNDANT_LOCAL_TOOLCHAIN"
+      ],
+      "kind": "mechanical",
+      "enforcementRefs": [
+        "scripts/engineering/hooks/pre-tool.mjs"
+      ],
+      "evalRefs": [
+        "control-plane-regressions"
+      ],
+      "legacyRefs": [
+        "G-TOOLCHAIN-001",
+        "LOCAL_EPHEMERAL_DB_TOOLCHAIN_RULE",
+        "REDUNDANT_LOCAL_TOOLCHAIN_DENY_RULE"
+      ]
     }
   ]
 }

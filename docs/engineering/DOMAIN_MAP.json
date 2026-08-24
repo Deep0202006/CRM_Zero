@@ -219,7 +219,7 @@
                                               "e2e/mappings"
                                           ],
                         "mustNotWriteAuthorityRefs":  [
-
+                                                          "pipeline_lead"
                                                       ]
                     },
                     {

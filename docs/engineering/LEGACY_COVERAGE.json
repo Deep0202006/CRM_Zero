@@ -1,1585 +1,2042 @@
 {
-  "schemaVersion": 2,
-  "sources": [
+  "schemaVersion": 3,
+  "sourceSummary": {
+    "sourceBlobCount": 1089,
+    "ledgerVersionCount": 22,
+    "rawLessonRowCount": 270,
+    "uniqueNormalizedRules": 111,
+    "corpusCanary": {
+      "status": "NOT_APPLICABLE",
+      "reason": "ZEROGRAPH_LEGACY_CORPUS not supplied"
+    }
+  },
+  "resolutions": [
     {
-      "sourceId": "graph-lessons",
-      "commit": "ae7db36287a1f1fd2e70e7dbd36ed463a0f52ef6",
-      "path": ".crm-engineering/knowledge/lessons-registry.json",
-      "sourceType": "lesson",
-      "sourceHash": "22aa696f6337583ef88abed1f8a5349daa9ce0aa",
-      "items": [
-        {
-          "legacyId": "ERP_DIMENSION_AUTHORITY_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "ERP_AUTHORITIES",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "SERVER_SCOPE_NOT_UI_FILTER_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "WRITE_READ_CLOSURE",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "EXTERNAL_ACCOUNT_NOT_EMPLOYEE_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "ATOMIC_BATCH",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "SINGLE_IMPORT_PROPAGATION_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "ATOMIC_BATCH",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "EXTERNAL_VIEW_DATA_MINIMIZATION_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "ATOMIC_BATCH",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "IMPORT_TEMPLATE_VERSION_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "ATOMIC_BATCH",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "LOCAL_EPHEMERAL_DB_TOOLCHAIN_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "DIRECT_ENGINEERING",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "REDUNDANT_LOCAL_TOOLCHAIN_DENY_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "DIRECT_ENGINEERING",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "MASTER_WORKBOOK_IS_ORCHESTRATOR_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "ATOMIC_BATCH",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "CROSS_AUTHORITY_ATOMIC_IMPORT_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "ATOMIC_BATCH",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "STABLE_EXTERNAL_IMPORT_KEY_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "ATOMIC_BATCH",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "PAYMENT_IMPORT_IDEMPOTENCY_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "ATOMIC_BATCH",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "DERIVED_FINANCIAL_STATE_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "EXACT_HEAD_RELEASE",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "PREVIEW_RESOLVED_PLAN_HASH_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "ATOMIC_BATCH",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "PATCH_BLANK_SEMANTICS_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "ATOMIC_BATCH",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "MULTI_PAYMENT_HISTORY_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "ATOMIC_BATCH",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "POSTGRES_NUMERIC_WIRE_CONTRACT_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "POSTGRES_WIRE_NORMALIZATION",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "WIRE_MOCK_REALISM_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "POSTGRES_WIRE_NORMALIZATION",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "TIME_DEPENDENT_TEST_CLOCK_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "DIRECT_ENGINEERING",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "EXECUTION_BUDGET_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "DIRECT_ENGINEERING",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "ZERO_DATA_MIGRATION_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "PRODUCTION_DISCIPLINE",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "REFLECTION_IS_NOT_MUTATION",
-          "resolution": {
-            "type": "lesson",
-            "ref": "DIRECT_ENGINEERING",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "BILLED_IS_NOT_UNPAID",
-          "resolution": {
-            "type": "lesson",
-            "ref": "MONEY_TRUTH",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "EXACT_PAYMENT_TARGET_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "ATOMIC_BATCH",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "CANONICAL_IDENTITY_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "DIRECT_ENGINEERING",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "ONE_MONEY_AUTHORITY",
-          "resolution": {
-            "type": "lesson",
-            "ref": "MONEY_TRUTH",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "WORKTREE_AUTHORITY_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "EXACT_HEAD_RELEASE",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "DIRTY_TREE_ISOLATION_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "EXACT_HEAD_RELEASE",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "STALE_BASE_PENALTY",
-          "resolution": {
-            "type": "lesson",
-            "ref": "DIRECT_ENGINEERING",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "TEST_REALISM_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "DIRECT_ENGINEERING",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "PREEXISTING_FAILURE_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "DIRECT_ENGINEERING",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "WRITE_READ_ADMIN_EXPORT",
-          "resolution": {
-            "type": "lesson",
-            "ref": "WRITE_READ_CLOSURE",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "SINGLE_SERVER_ENTRY_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "WRITE_READ_CLOSURE",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "TERMINAL_4XX_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "OFFLINE_COMPATIBILITY",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "WRITE_READ_CLOSURE_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "WRITE_READ_CLOSURE",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "ROUTE_MATRIX_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "WRITE_READ_CLOSURE",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "MAIN_BASELINE_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "ERP_AUTHORITIES",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "OWNER_SQL_PURE_POSTGRESQL",
-          "resolution": {
-            "type": "lesson",
-            "ref": "PRODUCTION_DISCIPLINE",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "BOUNDED_READ_SIDE_EFFECT_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "WRITE_READ_CLOSURE",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "SEMANTIC_CONTRACT_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "DIRECT_ENGINEERING",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "NO_PRODUCTION_DUMMY_DATA",
-          "resolution": {
-            "type": "lesson",
-            "ref": "PRODUCTION_DISCIPLINE",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "OPTIONAL_METRIC_FAILURE_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "DIRECT_ENGINEERING",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "DURABLE_TRANSITION_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "OFFLINE_COMPATIBILITY",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "REAL_ROUTE_MAP_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "WRITE_READ_CLOSURE",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "LOCAL_TO_SERVER_CONVERGENCE_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "OFFLINE_COMPATIBILITY",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "TOTAL_VS_PAGE_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "DIRECT_ENGINEERING",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "ATOMIC_BATCH_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "DIRECT_ENGINEERING",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "RUNTIME_DB_PROOF_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "DIRECT_ENGINEERING",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "SEMANTIC_RETRY_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "OFFLINE_COMPATIBILITY",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "BOUNDED_IS_NOT_LINEARITY_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "DIRECT_ENGINEERING",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "SPREADSHEET_FORMULA_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "WRITE_READ_CLOSURE",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "MEDIA_LIFECYCLE_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "MEDIA_LIFECYCLE",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "GRAPH_WORKER_BOUNDED_TERMINATION_RULE",
-          "resolution": {
-            "type": "obsolete",
-            "ref": "NO_AUTONOMOUS_SELF_HOSTING",
-            "reason": "The autonomous child-worker runtime was retired; direct Codex work has no worker termination loop."
-          }
-        },
-        {
-          "legacyId": "GRAPH_THREAD_RESUME_RULE",
-          "resolution": {
-            "type": "obsolete",
-            "ref": "NO_AUTONOMOUS_SELF_HOSTING",
-            "reason": "The nested App Server checkpoint runtime was retired; direct Codex work has no resumable controller thread."
-          }
-        },
-        {
-          "legacyId": "CONTENT_SENSITIVE_WORKTREE_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "EXACT_HEAD_RELEASE",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "HUMAN_GATE_EVIDENCE_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "PRODUCTION_DISCIPLINE",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "EXACT_HEAD_PROOF_REUSE_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "EXACT_HEAD_RELEASE",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "CI_HOT_PATH_TOOLCHAIN_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "EXACT_HEAD_RELEASE",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "OWNER_MIGRATION_CLOSURE_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "PRODUCTION_DISCIPLINE",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "GRAPH_LEARNING_CLOSURE_RULE",
-          "resolution": {
-            "type": "obsolete",
-            "ref": "LESSONS.json",
-            "reason": "Graph task-state learning closure was retired; durable reusable lessons now live in the canonical registry without task checkpoints."
-          }
-        },
-        {
-          "legacyId": "COMMITTED_RELEASE_STATE_RULE",
-          "resolution": {
-            "type": "obsolete",
-            "ref": "EXACT_HEAD_RELEASE",
-            "reason": "Graph task-state authority was retired; exact-head Git and CI release proof survives in the current workflow."
-          }
-        },
-        {
-          "legacyId": "REMOTE_RELEASE_EVIDENCE_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "EXACT_HEAD_RELEASE",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "FIELD_VISIT_ERP_IS_OBSERVATION_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "ERP_AUTHORITIES",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "EXPLICIT_NONE_VS_UNKNOWN_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "ERP_AUTHORITIES",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "LATEST_BUSINESS_OBSERVATION_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "DIRECT_ENGINEERING",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "OFFLINE_ENUM_EXTENSION_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "OFFLINE_COMPATIBILITY",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "CANONICAL_DIMENSION_CREATE_AT_WRITE_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "ERP_AUTHORITIES",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "EXACT_COMPATIBILITY_CONTRACT_NOT_OPTIONAL_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "DIRECT_ENGINEERING",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "MANUAL_BASELINE_NOT_HISTORY_RULE",
-          "resolution": {
-            "type": "lesson",
-            "ref": "ERP_AUTHORITIES",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        }
-      ]
+      "legacyId": "G-AUTH-001",
+      "ruleTextHash": "0027b7a663a093210054a2e81b916087acb32aed57059bf229b5212c6f0b4765",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "ONE_FACT_ONE_AUTHORITY"
+      ],
+      "preservedClaims": [
+        "ONE_FACT_ONE_AUTHORITY"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "mapping-attribution",
+        "distributor-renewal"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
     },
     {
-      "sourceId": "graph-rules",
-      "commit": "ae7db36287a1f1fd2e70e7dbd36ed463a0f52ef6",
-      "path": ".crm-engineering/policy/rules.json",
-      "sourceType": "rule",
-      "sourceHash": "01fdc3c616a3c7a7c67c3330d0263b4e34ad882d",
-      "items": [
-        {
-          "legacyId": "G-END-001",
-          "resolution": {
-            "type": "lesson",
-            "ref": "DIRECT_ENGINEERING",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "G-BLOCK-001",
-          "resolution": {
-            "type": "lesson",
-            "ref": "DIRECT_ENGINEERING",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "G-VERIFY-001",
-          "resolution": {
-            "type": "lesson",
-            "ref": "DIRECT_ENGINEERING",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "G-STALL-001",
-          "resolution": {
-            "type": "lesson",
-            "ref": "DIRECT_ENGINEERING",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "G-REPO-001",
-          "resolution": {
-            "type": "lesson",
-            "ref": "DIRECT_ENGINEERING",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "G-REPO-002",
-          "resolution": {
-            "type": "lesson",
-            "ref": "DIRECT_ENGINEERING",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "G-MIG-001",
-          "resolution": {
-            "type": "lesson",
-            "ref": "DIRECT_ENGINEERING",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "G-PROD-001",
-          "resolution": {
-            "type": "lesson",
-            "ref": "DIRECT_ENGINEERING",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "G-PROD-002",
-          "resolution": {
-            "type": "lesson",
-            "ref": "DIRECT_ENGINEERING",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "G-AUTH-001",
-          "resolution": {
-            "type": "lesson",
-            "ref": "DIRECT_ENGINEERING",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "G-RELEASE-001",
-          "resolution": {
-            "type": "lesson",
-            "ref": "EXACT_HEAD_RELEASE",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "G-CONTEXT-001",
-          "resolution": {
-            "type": "lesson",
-            "ref": "DIRECT_ENGINEERING",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "G-PROOF-001",
-          "resolution": {
-            "type": "lesson",
-            "ref": "DIRECT_ENGINEERING",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "G-LEARN-001",
-          "resolution": {
-            "type": "lesson",
-            "ref": "DIRECT_ENGINEERING",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "G-PROD-003",
-          "resolution": {
-            "type": "lesson",
-            "ref": "DIRECT_ENGINEERING",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "G-TOOLCHAIN-001",
-          "resolution": {
-            "type": "lesson",
-            "ref": "DIRECT_ENGINEERING",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        }
-      ]
+      "legacyId": "TIME_DEPENDENT_TEST_CLOCK_RULE",
+      "ruleTextHash": "00fab56995e52fe4390f527fe39508c339591d713da0efcfa2f0155b0b0f3d35",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "TEST_REAL_ROLE_SHAPES"
+      ],
+      "preservedClaims": [
+        "TEST_REAL_ROLE_SHAPES"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "repository-proof"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
     },
     {
-      "sourceId": "graph-authorities",
-      "commit": "ae7db36287a1f1fd2e70e7dbd36ed463a0f52ef6",
-      "path": ".crm-engineering/knowledge/authority-registry.json",
-      "sourceType": "authority",
-      "sourceHash": "b89ed8ed2cb8ecf73fa49f1cda76cbd279a7b87e",
-      "items": [
-        {
-          "legacyId": "erp_system",
-          "resolution": {
-            "type": "authority",
-            "ref": "erp_system",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "distributor_erp_assignment",
-          "resolution": {
-            "type": "authority",
-            "ref": "distributor_erp_assignment",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "erp_partner_scope",
-          "resolution": {
-            "type": "authority",
-            "ref": "erp_partner_scope",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "employee_identity",
-          "resolution": {
-            "type": "authority",
-            "ref": "employee_identity",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "attendance",
-          "resolution": {
-            "type": "authority",
-            "ref": "attendance",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "distributor_account",
-          "resolution": {
-            "type": "authority",
-            "ref": "distributor_account",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "receivable",
-          "resolution": {
-            "type": "authority",
-            "ref": "receivable",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "payment",
-          "resolution": {
-            "type": "authority",
-            "ref": "payment",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "renewal",
-          "resolution": {
-            "type": "authority",
-            "ref": "renewal",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "pipeline_lead",
-          "resolution": {
-            "type": "authority",
-            "ref": "pipeline_lead",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "pipeline_stage",
-          "resolution": {
-            "type": "authority",
-            "ref": "pipeline_stage",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "call_history",
-          "resolution": {
-            "type": "authority",
-            "ref": "call_history",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "field_visit",
-          "resolution": {
-            "type": "authority",
-            "ref": "field_visit",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "field_visit_erp_observation",
-          "resolution": {
-            "type": "authority",
-            "ref": "field_visit_erp_observation",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "field_business_erp_baseline",
-          "resolution": {
-            "type": "authority",
-            "ref": "field_business_erp_baseline",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "distributor_receivable_link",
-          "resolution": {
-            "type": "authority",
-            "ref": "distributor_receivable_link",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "unified_distributor_master_import_orchestration",
-          "resolution": {
-            "type": "authority",
-            "ref": "unified_distributor_master_import_orchestration",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        }
-      ]
+      "legacyId": "LEGACY_05b876d069c1c59e",
+      "ruleTextHash": "05b876d069c1c59e59e4215b1ed822b9760a14c79d7870dc577b34a69cf139d6",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "MIGRATION_IMMUTABILITY",
+        "SERVER_AUTHORIZATION",
+        "MONEY_TRUTH"
+      ],
+      "preservedClaims": [
+        "AUTHZ_SERVER_ENFORCED",
+        "FINANCIAL_STATE_DERIVED"
+      ],
+      "enforcementRefs": [
+        "scripts/quality/knowledge-check.mjs"
+      ],
+      "evalRefs": [
+        "production-safety",
+        "calls-visibility",
+        "external-partner",
+        "receivables-money"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "CRITICAL"
     },
     {
-      "sourceId": "graph-capabilities",
-      "commit": "ae7db36287a1f1fd2e70e7dbd36ed463a0f52ef6",
-      "path": ".crm-engineering/knowledge/capability-registry.json",
-      "sourceType": "capability",
-      "sourceHash": "ddf86ca22b17ff8d512b8933818f55a6d529d5fe",
-      "items": [
-        {
-          "legacyId": "erp-partner-visibility",
-          "resolution": {
-            "type": "capability",
-            "ref": "erp-partner-visibility",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "employee-import-identity",
-          "resolution": {
-            "type": "capability",
-            "ref": "employee-import-identity",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "receivables-money",
-          "resolution": {
-            "type": "capability",
-            "ref": "receivables-money",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "distributor-renewal",
-          "resolution": {
-            "type": "capability",
-            "ref": "distributor-renewal",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "canonical-distributor-receivables",
-          "resolution": {
-            "type": "capability",
-            "ref": "canonical-distributor-receivables",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "unified-distributor-master-import",
-          "resolution": {
-            "type": "capability",
-            "ref": "unified-distributor-master-import",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "pipeline-authoritative-transition",
-          "resolution": {
-            "type": "capability",
-            "ref": "pipeline-authoritative-transition",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "attendance-write-read-closure",
-          "resolution": {
-            "type": "capability",
-            "ref": "attendance-write-read-closure",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "field-visit-erp-intelligence",
-          "resolution": {
-            "type": "capability",
-            "ref": "field-visit-erp-intelligence",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        },
-        {
-          "legacyId": "current-business-erp-intelligence",
-          "resolution": {
-            "type": "capability",
-            "ref": "current-business-erp-intelligence",
-            "reason": "Current canonical knowledge preserves the underlying business/safety invariant."
-          }
-        }
-      ]
+      "legacyId": "LEGACY_06b158e473320cbd",
+      "ruleTextHash": "06b158e473320cbd176da4811ad7a9b6e8bd7be6bdefa7985aef68f486c947c1",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "WRITE_READ_CLOSURE"
+      ],
+      "preservedClaims": [
+        "WRITE_READ_CLOSURE"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "mapping-attribution",
+        "calls-visibility",
+        "attendance-confirmation",
+        "field-evidence"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
     },
     {
-      "sourceId": "os-ledger",
-      "commit": "f8d5d5c7bca84cb16d2d378aa1c0bab685f79f4b",
-      "path": "docs/os/LESSONS_LEDGER.md",
-      "sourceType": "ledger",
-      "sourceHash": "55a4c0b8a3cbb0d85510271387afd670edf28173",
-      "items": [
-        {
-          "legacyId": "32d25b5453a5d0ea",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "3b082a0f4387d463",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "7f0b2413261b7cfb",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "296c980d680eba20",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "cfacc748e1efdd28",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "d0ab2c400d9e46d7",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "eb70a5e0f8832253",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "9d9271c79499ca70",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "4a2611813e1e8706",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "28620e0d8bd3957b",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "89a022a66c1e8f4d",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "a7c85eaf985bf437",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "95fad84ccd6e729a",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "f17fa34fcb502157",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "3bd576e79a632aa6",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "ca04e1c797485436",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "0f969d5b9c08c162",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "d4695baa3431b867",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "65a3384174327f6c",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "f8b075c4fb1dd51f",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "a6b9acd9f6001755",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "8d2cd7cf8f8c8eb3",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        }
-      ]
+      "legacyId": "STABLE_EXTERNAL_IMPORT_KEY_RULE",
+      "ruleTextHash": "08527a3ef7423d81608f18554966053078a4001d21054115594d0615c145425a",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "STABLE_IDENTITY"
+      ],
+      "preservedClaims": [
+        "STABLE_RETRY_IDENTITY"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "mapping-attribution",
+        "pipeline-retry"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
     },
     {
-      "sourceId": "golden-principles",
-      "commit": "f8d5d5c7bca84cb16d2d378aa1c0bab685f79f4b",
-      "path": "docs/quality/GOLDEN_PRINCIPLES.md",
-      "sourceType": "principle",
-      "sourceHash": "1b41385075a9ad6a558ff4ac8d3e6d55b4bbde7b",
-      "items": [
-        {
-          "legacyId": "543deb5e68e6d83f",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "972952c0169bb08f",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "44120efc5b4d0f11",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "44efed7d7424d5fc",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "d21870c6caacb05d",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "da6367a407b620fd",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "4e8abc30f96eedae",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "bec6029b85dd0195",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "21962bebf3c0421e",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "0dafccfdb06cb8de",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "b80dd8fbed2484bc",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "24dcd84fd15aeed7",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "f3bd626c1c51c5ae",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "a33744358328ab7a",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "3aa22ea742a5a04a",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "b3f7b5e601dfdd4c",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "5c8e72f055d1536f",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "a82af7b298135587",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "6ab974b538ee3cb1",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "2d8a296719a05b04",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "9f7307ed41d149e0",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "9c92429627a262ae",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "7f5d7f7490cc822b",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "da119d7a9da6cbb2",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "a484a812abe5b955",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "fa59b1ed3d2d6aab",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "f3e249bb7ade4f8d",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "9b5477090b5ec9b5",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "863713a8decd4667",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "6bdb8fa85565cb22",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "1e1121ae9acc9730",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "b44cba8555aea809",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "4446ff63586fd9e4",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "93a4a0d60be91b6d",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "7f7ec85fadd7f364",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "3b8ef8906c74e989",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "07465aa1260646dd",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "8fdb8fc9b3a07371",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "14e25236eff1f4d3",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "b71a3c6509144e51",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "402e49a0f2b8f3c1",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "a99e45d0052b1523",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "4df21fb98f665b2d",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        },
-        {
-          "legacyId": "10e780d8eeca0bf8",
-          "resolution": {
-            "type": "invariant",
-            "ref": "docs/engineering/INVARIANTS.md",
-            "reason": "Consolidated current non-negotiable invariant."
-          }
-        }
-      ]
+      "legacyId": "SERVER_SCOPE_NOT_UI_FILTER_RULE",
+      "ruleTextHash": "08f3d48283ae431071bc6daf5814e995902eae27169ef2649dc958f36f2c2d94",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "SERVER_AUTHORIZATION"
+      ],
+      "preservedClaims": [
+        "AUTHZ_SERVER_ENFORCED",
+        "UI_FILTER_NOT_AUTHORIZATION"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "calls-visibility",
+        "external-partner"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "CRITICAL"
     },
     {
-      "sourceId": "operating-model",
-      "commit": "f8d5d5c7bca84cb16d2d378aa1c0bab685f79f4b",
-      "path": "docs/os/OPERATING_MODEL.md",
-      "sourceType": "policy",
-      "sourceHash": "3aa1c2839ebc4a2b30a0921f36d73354520950ea",
-      "items": [
-        {
-          "legacyId": "operating-model",
-          "resolution": {
-            "type": "contract",
-            "ref": "docs/engineering/WORKFLOW.md",
-            "reason": "Direct single-agent workflow supersedes retired operating model."
-          }
-        }
-      ]
+      "legacyId": "EXACT_PAYMENT_TARGET_RULE",
+      "ruleTextHash": "0b97bd7767dc59404b9e18cece9f79e310992e6f3afbaede1267652f1cbca263",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "MONEY_TRUTH"
+      ],
+      "preservedClaims": [
+        "FINANCIAL_STATE_DERIVED"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "receivables-money"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
     },
     {
-      "sourceId": "change-protocol",
-      "commit": "f8d5d5c7bca84cb16d2d378aa1c0bab685f79f4b",
-      "path": "docs/os/CHANGE_PROTOCOL.md",
-      "sourceType": "policy",
-      "sourceHash": "3d3eefc55188f8cb4693f989dea2848496e4a687",
-      "items": [
-        {
-          "legacyId": "change-protocol",
-          "resolution": {
-            "type": "contract",
-            "ref": "docs/engineering/WORKFLOW.md",
-            "reason": "Current workflow preserves change discipline."
-          }
-        }
-      ]
+      "legacyId": "RUNTIME_DB_PROOF_RULE",
+      "ruleTextHash": "1520c66e3587c4159bd7438548d65de0e82fbe13d6935e0733a0562de9ca8bb3",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "R3_RUNTIME_PROOF",
+        "SERVER_AUTHORIZATION"
+      ],
+      "preservedClaims": [
+        "AUTHZ_SERVER_ENFORCED"
+      ],
+      "enforcementRefs": [
+        "scripts/engineering/proof-plan.mjs"
+      ],
+      "evalRefs": [
+        "production-safety",
+        "calls-visibility",
+        "external-partner"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "CRITICAL"
     },
     {
-      "sourceId": "release-protocol",
-      "commit": "f8d5d5c7bca84cb16d2d378aa1c0bab685f79f4b",
-      "path": "docs/os/RELEASE_PROTOCOL.md",
-      "sourceType": "policy",
-      "sourceHash": "a6a70d481c70ee3313a0c6f97293f6ddfc74bb30",
-      "items": [
-        {
-          "legacyId": "release-protocol",
-          "resolution": {
-            "type": "contract",
-            "ref": "docs/engineering/WORKFLOW.md",
-            "reason": "Current workflow preserves exact-head release proof."
-          }
-        }
-      ]
+      "legacyId": "SINGLE_IMPORT_PROPAGATION_RULE",
+      "ruleTextHash": "15843afd833d31baa6c0747bf34956f30e8409da901ba964af9769012d7dfe47",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "ONE_FACT_ONE_AUTHORITY"
+      ],
+      "preservedClaims": [
+        "ONE_FACT_ONE_AUTHORITY"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "mapping-attribution",
+        "distributor-renewal"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
     },
     {
-      "sourceId": "risk-model",
-      "commit": "f8d5d5c7bca84cb16d2d378aa1c0bab685f79f4b",
-      "path": "docs/os/RISK_MODEL.md",
-      "sourceType": "policy",
-      "sourceHash": "339a4cac9d69a10be5a70caa8ad7b9df546d3981",
-      "items": [
-        {
-          "legacyId": "risk-model",
-          "resolution": {
-            "type": "contract",
-            "ref": "docs/engineering/WORKFLOW.md",
-            "reason": "Current workflow retains risk classification."
-          }
-        }
-      ]
+      "legacyId": "G-MIG-001",
+      "ruleTextHash": "17a4e11a4d6b3db1bc102b1ec1e5aa848436f0b440bc4dbeecd2669ddf90695f",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "MIGRATION_IMMUTABILITY"
+      ],
+      "preservedClaims": [
+        "APPLIED_MIGRATION_IMMUTABLE"
+      ],
+      "enforcementRefs": [
+        "scripts/quality/knowledge-check.mjs"
+      ],
+      "evalRefs": [
+        "production-safety"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "CRITICAL"
     },
     {
-      "sourceId": "prompting",
-      "commit": "f8d5d5c7bca84cb16d2d378aa1c0bab685f79f4b",
-      "path": "docs/os/PROMPTING.md",
-      "sourceType": "policy",
-      "sourceHash": "2ff7fc2443c14e901daed0b50448a32804466112",
-      "items": [
-        {
-          "legacyId": "prompting",
-          "resolution": {
-            "type": "contract",
-            "ref": "AGENTS.md",
-            "reason": "Root bootloader defines progressive context."
-          }
-        }
-      ]
+      "legacyId": "TOTAL_VS_PAGE_RULE",
+      "ruleTextHash": "1a78a9df9700b2325117750d3d832b92c515663dba0a78e3a5d20f676e0163a7",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "RESOURCE_BOUNDS"
+      ],
+      "preservedClaims": [
+        "RESOURCE_BOUNDS"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "receivables-money"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
     },
     {
-      "sourceId": "production-baseline",
-      "commit": "ae7db36287a1f1fd2e70e7dbd36ed463a0f52ef6",
-      "path": ".crm-engineering/knowledge/current-production-baseline.json",
-      "sourceType": "snapshot",
-      "sourceHash": "41ebbb2d7954f9b0cb16cc42076fdc5a1193a07a",
-      "items": [
-        {
-          "legacyId": "production-baseline",
-          "resolution": {
-            "type": "lesson",
-            "ref": "STATIC_SNAPSHOT_NOT_CURRENT_AUTHORITY",
-            "reason": "Historical snapshot is not current production truth."
-          }
-        }
-      ]
+      "legacyId": "TEST_REALISM_RULE",
+      "ruleTextHash": "1f8230c32f1efbc25908f65362f36d5e6cc25eec88607cf38a4b1de7dff4c2c0",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "AUTH_PROFILE_IDENTITY"
+      ],
+      "preservedClaims": [
+        "EMPLOYEE_IDENTITY_SEPARATION",
+        "EXTERNAL_IDENTITY_NOT_EMPLOYEE"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "external-partner"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "CRITICAL"
+    },
+    {
+      "legacyId": "SEMANTIC_CONTRACT_RULE",
+      "ruleTextHash": "2268f22e1b66b21e53644d4cd16f1a7205379691dc397365387166f639da3e8d",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "OFFLINE_COMPATIBILITY"
+      ],
+      "preservedClaims": [
+        "OFFLINE_CONTRACT_COMPATIBILITY"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "mapping-attribution",
+        "attendance-confirmation"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "ZERO_DATA_MIGRATION_RULE",
+      "ruleTextHash": "22cd9e9a2254a8c0f1ccd2a327e1d53415bc7792c05d14d204e947a71d567fb9",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "NO_FABRICATED_BACKFILL",
+        "MONEY_TRUTH"
+      ],
+      "preservedClaims": [
+        "FINANCIAL_STATE_DERIVED"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "import-atomicity",
+        "receivables-money"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "CRITICAL"
+    },
+    {
+      "legacyId": "PAYMENT_IMPORT_IDEMPOTENCY_RULE",
+      "ruleTextHash": "23ee99e5613a13a1cc9452017efefe1f2c2ade6474eecd08cc92d44834088a49",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "STABLE_IDENTITY",
+        "MONEY_TRUTH"
+      ],
+      "preservedClaims": [
+        "FINANCIAL_STATE_DERIVED"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "mapping-attribution",
+        "pipeline-retry",
+        "receivables-money"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "CRITICAL"
+    },
+    {
+      "legacyId": "FIELD_VISIT_ERP_IS_OBSERVATION_RULE",
+      "ruleTextHash": "24afb50c6a9369f2a950fb984f0ad1d73dfe29b34c86e4259549949218452aa9",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "ERP_AUTHORITIES",
+        "MONEY_TRUTH"
+      ],
+      "preservedClaims": [
+        "FINANCIAL_STATE_DERIVED"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "erp-filter",
+        "receivables-money"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "CRITICAL"
+    },
+    {
+      "legacyId": "LEGACY_27dbe1189ae2bcd3",
+      "ruleTextHash": "27dbe1189ae2bcd3d5472353d8279df895e4f166cb26ab513e9d532d2d7282b4",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "PRODUCTION_DISCIPLINE"
+      ],
+      "preservedClaims": [
+        "NO_PRODUCTION_DUMMY_DATA"
+      ],
+      "enforcementRefs": [
+        "scripts/quality/invariants.mjs"
+      ],
+      "evalRefs": [
+        "production-safety"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "LOCAL_EPHEMERAL_DB_TOOLCHAIN_RULE",
+      "ruleTextHash": "29591c99d5d00cbb39b89c22562475d45810cdfd74407e8622a04a6102aa2fb6",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "CI_TOOLCHAIN_REUSE"
+      ],
+      "preservedClaims": [
+        "NO_REDUNDANT_LOCAL_TOOLCHAIN"
+      ],
+      "enforcementRefs": [
+        "scripts/engineering/hooks/pre-tool.mjs"
+      ],
+      "evalRefs": [
+        "control-plane-regressions"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "LEGACY_2a4a4d93555a5b04",
+      "ruleTextHash": "2a4a4d93555a5b04c7200f6a0c2229caa716303f0ce7359a77342eab773bad96",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "OFFLINE_COMPATIBILITY"
+      ],
+      "preservedClaims": [
+        "OFFLINE_CONTRACT_COMPATIBILITY"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "mapping-attribution",
+        "attendance-confirmation"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "BOUNDED_READ_SIDE_EFFECT_RULE",
+      "ruleTextHash": "2b1774dcc54d7b15ed9ce580e5e8fcad0b02d631a584afeaa21ac4b9eef57764",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "SIDE_EFFECT_BUDGET",
+        "SERVER_AUTHORIZATION"
+      ],
+      "preservedClaims": [
+        "AUTHZ_SERVER_ENFORCED"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "distributor-renewal",
+        "calls-visibility",
+        "external-partner"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "CRITICAL"
+    },
+    {
+      "legacyId": "OPTIONAL_METRIC_FAILURE_RULE",
+      "ruleTextHash": "2e84b1e84a883b41ab201b7ba684e223ca840af7dd8a2c8266da0f8809ac50c1",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "OPTIONAL_FAILURE_ISOLATION"
+      ],
+      "preservedClaims": [
+        "OPTIONAL_FAILURE_ISOLATION"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "calls-visibility"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "LEGACY_2fb529d92a79c815",
+      "ruleTextHash": "2fb529d92a79c81515294ae95591ecf0cb89b5b9f3168470a01c8b5154b38759",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "EXPLICIT_OPERATION_STATES",
+        "SERVER_AUTHORIZATION"
+      ],
+      "preservedClaims": [
+        "AUTHZ_SERVER_ENFORCED"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "attendance-confirmation",
+        "calls-visibility",
+        "external-partner"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "CRITICAL"
+    },
+    {
+      "legacyId": "G-STALL-001",
+      "ruleTextHash": "354bf88bcc025e631272dc622734204139c92a389c5e6acd7bb01046c6bf4884",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "DIRECT_ENGINEERING"
+      ],
+      "preservedClaims": [
+        "DIRECT_ENGINEERING"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "repository-proof"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "SINGLE_SERVER_ENTRY_RULE",
+      "ruleTextHash": "3c03f2360d8fe930321365e4c76b86df8a8e3f04a25300b9bd4d4132f3f3fe5b",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "ONE_FACT_ONE_AUTHORITY"
+      ],
+      "preservedClaims": [
+        "ONE_FACT_ONE_AUTHORITY"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "mapping-attribution",
+        "distributor-renewal"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "LEGACY_3c52dd2a81ba5abc",
+      "ruleTextHash": "3c52dd2a81ba5abc799379046b97f0521b4c66fff1e0a2d199d0fec766ffc5d2",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "RESOURCE_BOUNDS"
+      ],
+      "preservedClaims": [
+        "RESOURCE_BOUNDS"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "receivables-money"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "LEGACY_3c80e36e100d42f6",
+      "ruleTextHash": "3c80e36e100d42f622e182f5f9d706365f1c567ddba5a20ac3ca5d95ccb1c9cb",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "PRODUCTION_DISCIPLINE"
+      ],
+      "preservedClaims": [
+        "NO_PRODUCTION_DUMMY_DATA"
+      ],
+      "enforcementRefs": [
+        "scripts/quality/invariants.mjs"
+      ],
+      "evalRefs": [
+        "production-safety"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "CRITICAL"
+    },
+    {
+      "legacyId": "CANONICAL_DIMENSION_CREATE_AT_WRITE_RULE",
+      "ruleTextHash": "3ca030118723e7ed136a36bd187a91805cbfea58e5847997745fedd1881cb19a",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "ERP_CANONICAL_WRITE"
+      ],
+      "preservedClaims": [
+        "ERP_CANONICAL_WRITE"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "erp-filter"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "LEGACY_3fc924d350860f4f",
+      "ruleTextHash": "3fc924d350860f4f41ca0900792a756ff404a2f1103711d61f8590131e5eb7c1",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "TEST_REAL_ROLE_SHAPES"
+      ],
+      "preservedClaims": [
+        "TEST_REAL_ROLE_SHAPES"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "repository-proof"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "CRITICAL"
+    },
+    {
+      "legacyId": "LEGACY_401b30b6fe473d19",
+      "ruleTextHash": "401b30b6fe473d19c20467274d6b43e08a70f900cf5c386b7bea58049f13ec0e",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "LOCK_BEFORE_CHANGE"
+      ],
+      "preservedClaims": [
+        "LOCK_BEFORE_CHANGE"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "production-safety"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "NO_PRODUCTION_DUMMY_DATA",
+      "ruleTextHash": "406922b6a22d73c61d0225b21620de78f4cadd639dfcaf384d460ee6c3165a3e",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "PRODUCTION_DISCIPLINE"
+      ],
+      "preservedClaims": [
+        "NO_PRODUCTION_DUMMY_DATA"
+      ],
+      "enforcementRefs": [
+        "scripts/quality/invariants.mjs"
+      ],
+      "evalRefs": [
+        "production-safety"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "CRITICAL"
+    },
+    {
+      "legacyId": "WORKTREE_AUTHORITY_RULE",
+      "ruleTextHash": "4192e31f5456de605523add286170743d81cf7a38340fb6b157ab538a09721ef",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "EXACT_HEAD_RELEASE"
+      ],
+      "preservedClaims": [
+        "EXACT_HEAD_PROOF"
+      ],
+      "enforcementRefs": [
+        ".github/workflows/product-verification.yml"
+      ],
+      "evalRefs": [
+        "repository-proof"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "G-CONTEXT-001",
+      "ruleTextHash": "428eca82f117dd9023bea0cf782348bf8981a326c5896b19c65954fc2399d892",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "ERP_CANONICAL_WRITE"
+      ],
+      "preservedClaims": [
+        "ERP_CANONICAL_WRITE"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "erp-filter"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "MANUAL_BASELINE_NOT_HISTORY_RULE",
+      "ruleTextHash": "4479f4858929193ba6eb2b77e0c831ca9c8c1651c50451fc26b9fb84afbac4e2",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "ERP_AUTHORITIES",
+        "MINIMUM_EXTERNAL_PROJECTION"
+      ],
+      "preservedClaims": [
+        "EXTERNAL_DATA_MINIMIZATION"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "erp-filter",
+        "external-partner"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "OFFLINE_ENUM_EXTENSION_RULE",
+      "ruleTextHash": "4580b62feaea625c07883a2ff694d04df6053f643997d8d7d0866cf5ac780a84",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "WRITE_READ_CLOSURE"
+      ],
+      "preservedClaims": [
+        "WRITE_READ_CLOSURE"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "mapping-attribution",
+        "calls-visibility",
+        "attendance-confirmation",
+        "field-evidence"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "G-REPO-001",
+      "ruleTextHash": "46aef3c2b98c9ae61bd6a21c7cfe1689e85563c1867e7427d1bdf24ea81c2634",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "TOOLING_DOES_NOT_BLOCK_DELIVERY"
+      ],
+      "preservedClaims": [
+        "TOOLING_OPTIONAL"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "control-plane-regressions"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "ONE_MONEY_AUTHORITY",
+      "ruleTextHash": "4b96e4b8fcaa4cd8b811961f51d47bf385ee95ffc0df0df4cb88d7ca1bb4e44a",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "MONEY_TRUTH"
+      ],
+      "preservedClaims": [
+        "FINANCIAL_STATE_DERIVED"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "receivables-money"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "CRITICAL"
+    },
+    {
+      "legacyId": "GRAPH_THREAD_RESUME_RULE",
+      "ruleTextHash": "4eaf9fcfc77f602dad49e0c82b9e896a8ce7bb0c382b4a2cc2800bcc8031405e",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "OFFLINE_COMPATIBILITY"
+      ],
+      "preservedClaims": [
+        "OFFLINE_CONTRACT_COMPATIBILITY"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "mapping-attribution",
+        "attendance-confirmation"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "LEGACY_5394d31a6933192c",
+      "ruleTextHash": "5394d31a6933192c17b80b55597307b19e7a72a134042408cae61fde1481cc8e",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "OFFLINE_COMPATIBILITY"
+      ],
+      "preservedClaims": [
+        "OFFLINE_CONTRACT_COMPATIBILITY"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "mapping-attribution",
+        "attendance-confirmation"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "POSTGRES_NUMERIC_WIRE_CONTRACT_RULE",
+      "ruleTextHash": "569ba8df231743e761abc99333eac1852fd11158701ad6bdacda8da13fffc761",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "POSTGRES_WIRE_NORMALIZATION",
+        "MONEY_TRUTH"
+      ],
+      "preservedClaims": [
+        "FINANCIAL_STATE_DERIVED"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "receivables-money"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "CRITICAL"
+    },
+    {
+      "legacyId": "REDUNDANT_LOCAL_TOOLCHAIN_DENY_RULE",
+      "ruleTextHash": "56b3eddcb07cd5a84c93c8005e7c41bcd588854f9be16115de75e2e379f1e9ac",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "CI_TOOLCHAIN_REUSE"
+      ],
+      "preservedClaims": [
+        "NO_REDUNDANT_LOCAL_TOOLCHAIN"
+      ],
+      "enforcementRefs": [
+        "scripts/engineering/hooks/pre-tool.mjs"
+      ],
+      "evalRefs": [
+        "control-plane-regressions"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "ERP_DIMENSION_AUTHORITY_RULE",
+      "ruleTextHash": "57c98a264ae5e03b4b09ed263b8a79e833c60a6b2f91628cc46f45b5d5c9e950",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "ONE_FACT_ONE_AUTHORITY",
+        "MONEY_TRUTH"
+      ],
+      "preservedClaims": [
+        "FINANCIAL_STATE_DERIVED"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "mapping-attribution",
+        "distributor-renewal",
+        "receivables-money"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "CRITICAL"
+    },
+    {
+      "legacyId": "G-LEARN-001",
+      "ruleTextHash": "5e4e0852585ac56b818d87d5942acc71a82cbcb2c18ed6de6153ac7310af3da0",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "OFFLINE_COMPATIBILITY"
+      ],
+      "preservedClaims": [
+        "OFFLINE_CONTRACT_COMPATIBILITY"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "mapping-attribution",
+        "attendance-confirmation"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "G-BLOCK-001",
+      "ruleTextHash": "607aa1abf298c2989638ada722c3c8b382ec940bd854d11f50c22ea85a8a92db",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "WRITE_READ_CLOSURE"
+      ],
+      "preservedClaims": [
+        "WRITE_READ_CLOSURE"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "mapping-attribution",
+        "calls-visibility",
+        "attendance-confirmation",
+        "field-evidence"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "COMMITTED_RELEASE_STATE_RULE",
+      "ruleTextHash": "620dc5072a94bee526c603e307a8365970344c9f337f33e0863a275c3276b7cd",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "AGENT_REPORT_NOT_PROOF"
+      ],
+      "preservedClaims": [
+        "AGENT_REPORT_NOT_PROOF"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "repository-proof"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "CRITICAL"
+    },
+    {
+      "legacyId": "LEGACY_6d37c5e99269b0b6",
+      "ruleTextHash": "6d37c5e99269b0b620915887a6b6f44bc1e96aa57862526f4de933cc70a30ce5",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "OFFLINE_COMPATIBILITY"
+      ],
+      "preservedClaims": [
+        "OFFLINE_CONTRACT_COMPATIBILITY"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "mapping-attribution",
+        "attendance-confirmation"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "LEGACY_6d9f537b0ffefa2e",
+      "ruleTextHash": "6d9f537b0ffefa2e5798c5fedea2df18f86f4fabeb23388eb32010f2b40a7399",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "PREEXISTING_FAILURE_PROOF"
+      ],
+      "preservedClaims": [
+        "BASELINE_FAILURE_ABLATION"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "repository-proof"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "CRITICAL"
+    },
+    {
+      "legacyId": "PATCH_BLANK_SEMANTICS_RULE",
+      "ruleTextHash": "6f13a6a394a05686539bac3ba9c35572fc2132acdbaeef87df77b620736e1258",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "SPREADSHEET_COMMIT"
+      ],
+      "preservedClaims": [
+        "SPREADSHEET_FORMULA_SAFETY"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "receivables-money"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "LEGACY_6fa5773ba4270a99",
+      "ruleTextHash": "6fa5773ba4270a99cc2ff2ecf0088375e816b58cd92e5b596aa5e6dcf49d41c2",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "WRITE_READ_CLOSURE"
+      ],
+      "preservedClaims": [
+        "WRITE_READ_CLOSURE"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "mapping-attribution",
+        "calls-visibility",
+        "attendance-confirmation",
+        "field-evidence"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "LEGACY_6faaff3152ac14fa",
+      "ruleTextHash": "6faaff3152ac14faac5227ca27a8ec8a0152ec5bbf5a75ff0f9afee1f82860db",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "SIDE_EFFECT_BUDGET"
+      ],
+      "preservedClaims": [
+        "SIDE_EFFECT_BUDGET"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "distributor-renewal"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "WIRE_MOCK_REALISM_RULE",
+      "ruleTextHash": "70e5c59d92a3cf3f792fcb6fa2ef4af694478d5b2caafceb5d7432c215106e75",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "POSTGRES_WIRE_NORMALIZATION"
+      ],
+      "preservedClaims": [
+        "POSTGRES_WIRE_NORMALIZATION"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "receivables-money"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "CRITICAL"
+    },
+    {
+      "legacyId": "LOCAL_TO_SERVER_CONVERGENCE_RULE",
+      "ruleTextHash": "7234d5a79bb82a268adb76f5285cfd98611ab513d4f42796115377128276b895",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "OFFLINE_RECOVERY"
+      ],
+      "preservedClaims": [
+        "OFFLINE_RECOVERY_PRESERVES_INTENT"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "mapping-attribution",
+        "pipeline-retry"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "LEGACY_734b4d3b4de2ab32",
+      "ruleTextHash": "734b4d3b4de2ab3281172a113d1c00bac7dec22fb2ef807a68cac5310f1e3a66",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "OPTIONAL_FAILURE_ISOLATION"
+      ],
+      "preservedClaims": [
+        "OPTIONAL_FAILURE_ISOLATION"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "calls-visibility"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "LEGACY_79afa1b2c19401ac",
+      "ruleTextHash": "79afa1b2c19401ac87ed0384749ac7decace902e39ba60cb5f904f8dfbe810e7",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "TEST_REAL_ROLE_SHAPES"
+      ],
+      "preservedClaims": [
+        "TEST_REAL_ROLE_SHAPES"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "repository-proof"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "G-TOOLCHAIN-001",
+      "ruleTextHash": "7a046c8a3a7e24541671097823f28bf71965b10d3d6f259f2799ecc0bd3efae4",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "CI_TOOLCHAIN_REUSE"
+      ],
+      "preservedClaims": [
+        "NO_REDUNDANT_LOCAL_TOOLCHAIN"
+      ],
+      "enforcementRefs": [
+        "scripts/engineering/hooks/pre-tool.mjs"
+      ],
+      "evalRefs": [
+        "control-plane-regressions"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "LEGACY_829b9fa3957f51d0",
+      "ruleTextHash": "829b9fa3957f51d0438d3070be80888aa32b70eeeeeb4119c67df37f2666d8c2",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "MEDIA_LIFECYCLE"
+      ],
+      "preservedClaims": [
+        "MEDIA_LIFECYCLE"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "attendance-confirmation",
+        "field-evidence"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "G-PROOF-001",
+      "ruleTextHash": "84eb1ef5dcf1387f4d4b23503a4989cf05b73acd5b3e4816f71918c53733e50e",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "EXACT_HEAD_RELEASE"
+      ],
+      "preservedClaims": [
+        "EXACT_HEAD_PROOF"
+      ],
+      "enforcementRefs": [
+        ".github/workflows/product-verification.yml"
+      ],
+      "evalRefs": [
+        "repository-proof"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "LEGACY_8658557422a6eebf",
+      "ruleTextHash": "8658557422a6eebf27185833801ac07e08185f9d94734f4ed2a97cc518006c2e",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "ATOMIC_BATCH"
+      ],
+      "preservedClaims": [
+        "ATOMIC_BATCH_ROLLBACK"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "import-atomicity"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "SEMANTIC_RETRY_RULE",
+      "ruleTextHash": "872aafddaf902fe85645630320f51bb802e3bb11a60c9af892fcc92d97184162",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "OFFLINE_COMPATIBILITY"
+      ],
+      "preservedClaims": [
+        "OFFLINE_CONTRACT_COMPATIBILITY"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "mapping-attribution",
+        "attendance-confirmation"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "LEGACY_891cf5c38d571ad4",
+      "ruleTextHash": "891cf5c38d571ad4a3a8a7043f832354cbb9adbffbfc7da7d7ffcaef6a66dd7d",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "SPREADSHEET_COMMIT"
+      ],
+      "preservedClaims": [
+        "SPREADSHEET_FORMULA_SAFETY"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "receivables-money"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "CI_HOT_PATH_TOOLCHAIN_RULE",
+      "ruleTextHash": "8de1aa9151cd14310e56d46ca7b011fa0b901fc75424cfbd52dee147154f9ffc",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "EXACT_HEAD_RELEASE"
+      ],
+      "preservedClaims": [
+        "EXACT_HEAD_PROOF"
+      ],
+      "enforcementRefs": [
+        ".github/workflows/product-verification.yml"
+      ],
+      "evalRefs": [
+        "repository-proof"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "DERIVED_FINANCIAL_STATE_RULE",
+      "ruleTextHash": "8e7c1d88da70973aee2c153f03925653a59c98263fe5c3cfb8242e96555f6995",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "MONEY_TRUTH",
+        "MINIMUM_EXTERNAL_PROJECTION"
+      ],
+      "preservedClaims": [
+        "EXTERNAL_DATA_MINIMIZATION",
+        "FINANCIAL_STATE_DERIVED"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "receivables-money",
+        "external-partner"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "CRITICAL"
+    },
+    {
+      "legacyId": "PREVIEW_RESOLVED_PLAN_HASH_RULE",
+      "ruleTextHash": "8fc19965d9f52c3834c5801f36c19f7b8da041ef23f36b01e03113087f8babce",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "RESOLVED_PLAN_REVALIDATION"
+      ],
+      "preservedClaims": [
+        "RESOLVED_PLAN_REVALIDATION"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "pipeline-retry"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "CANONICAL_IDENTITY_RULE",
+      "ruleTextHash": "941b29ed27b3e27ecf0d3667e184c5006e7e843a5c9742ea4ea527a69bb5270e",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "ONE_FACT_ONE_AUTHORITY"
+      ],
+      "preservedClaims": [
+        "ONE_FACT_ONE_AUTHORITY"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "mapping-attribution",
+        "distributor-renewal"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "STALE_BASE_PENALTY",
+      "ruleTextHash": "9441d95f8e3d3f7c41b243db3351033582d38015dbf04bb35755989acf176f51",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "EXACT_HEAD_RELEASE"
+      ],
+      "preservedClaims": [
+        "EXACT_HEAD_PROOF"
+      ],
+      "enforcementRefs": [
+        ".github/workflows/product-verification.yml"
+      ],
+      "evalRefs": [
+        "repository-proof"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "LEGACY_950bda0cc1560726",
+      "ruleTextHash": "950bda0cc15607261addb80d67c9ccea5814b7176b245379cf8c08e2408f21e2",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "OFFLINE_COMPATIBILITY"
+      ],
+      "preservedClaims": [
+        "OFFLINE_CONTRACT_COMPATIBILITY"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "mapping-attribution",
+        "attendance-confirmation"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "EXTERNAL_ACCOUNT_NOT_EMPLOYEE_RULE",
+      "ruleTextHash": "968b4ff94200a589f6353e1ef064e5839ae17d402a57392b03d0c71bf902b6da",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "AUTH_PROFILE_IDENTITY",
+        "MINIMUM_EXTERNAL_PROJECTION"
+      ],
+      "preservedClaims": [
+        "EXTERNAL_IDENTITY_NOT_EMPLOYEE",
+        "EXTERNAL_DATA_MINIMIZATION"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "external-partner"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "LEGACY_9827a172a27be3fa",
+      "ruleTextHash": "9827a172a27be3fabdfbd500411ac91a84c12c9b74e0852c3936570c2e5b6cfb",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "MEDIA_LIFECYCLE"
+      ],
+      "preservedClaims": [
+        "MEDIA_LIFECYCLE"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "attendance-confirmation",
+        "field-evidence"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "WRITE_READ_ADMIN_EXPORT",
+      "ruleTextHash": "98357041eb470cb680c11ec4281046cdf56cf03a6077e9ac62dd45cd6c7b4e34",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "WRITE_READ_CLOSURE"
+      ],
+      "preservedClaims": [
+        "WRITE_READ_CLOSURE"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "mapping-attribution",
+        "calls-visibility",
+        "attendance-confirmation",
+        "field-evidence"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "LOCAL_EPHEMERAL_DB_TOOLCHAIN_RULE",
+      "ruleTextHash": "9a70d227611b479c3b7727767637662d6d565ef04642dee258c8cc0f05e2465f",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "CI_TOOLCHAIN_REUSE"
+      ],
+      "preservedClaims": [
+        "NO_REDUNDANT_LOCAL_TOOLCHAIN"
+      ],
+      "enforcementRefs": [
+        "scripts/engineering/hooks/pre-tool.mjs"
+      ],
+      "evalRefs": [
+        "control-plane-regressions"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "MEDIA_LIFECYCLE_RULE",
+      "ruleTextHash": "9acfe7a7b7e2632f4b26bcb12bc6222cf40651ff55d970eba0ed269452ef9a03",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "MEDIA_LIFECYCLE"
+      ],
+      "preservedClaims": [
+        "MEDIA_LIFECYCLE"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "attendance-confirmation",
+        "field-evidence"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "WRITE_READ_CLOSURE_RULE",
+      "ruleTextHash": "9ea2c79b4a5942ce269a9b5b584f41644967e00cad18aa2ea7efda202f31c1af",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "WRITE_READ_CLOSURE"
+      ],
+      "preservedClaims": [
+        "WRITE_READ_CLOSURE"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "mapping-attribution",
+        "calls-visibility",
+        "attendance-confirmation",
+        "field-evidence"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "GRAPH_WORKER_BOUNDED_TERMINATION_RULE",
+      "ruleTextHash": "a1e04935fa66d81ab09db87aee6578c06536c8fdabc6a79568a834587c02b5bd",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "STABLE_IDENTITY"
+      ],
+      "preservedClaims": [
+        "STABLE_RETRY_IDENTITY"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "mapping-attribution",
+        "pipeline-retry"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "REMOTE_RELEASE_EVIDENCE_RULE",
+      "ruleTextHash": "a86a08c6d583d47e47d33a93074ad440b8a77aa7484e07de4ee350155795a42c",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "AGENT_REPORT_NOT_PROOF",
+        "EXACT_HEAD_RELEASE"
+      ],
+      "preservedClaims": [
+        "EXACT_HEAD_PROOF"
+      ],
+      "enforcementRefs": [
+        ".github/workflows/product-verification.yml"
+      ],
+      "evalRefs": [
+        "repository-proof"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "LEGACY_aa620eb6e1e9c2d6",
+      "ruleTextHash": "aa620eb6e1e9c2d65754d73e2d4644cef66a1f9eaf84792917cb65a272a75603",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "BOUNDED_BATCH_SCALING",
+        "MONEY_TRUTH"
+      ],
+      "preservedClaims": [
+        "FINANCIAL_STATE_DERIVED"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "import-atomicity",
+        "receivables-money"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "CRITICAL"
+    },
+    {
+      "legacyId": "MASTER_WORKBOOK_IS_ORCHESTRATOR_RULE",
+      "ruleTextHash": "aad51a39e2dd8ad0a08ad2e095d7c895312e4c743a9c7987f2d25d5fbd650218",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "ERP_AUTHORITIES"
+      ],
+      "preservedClaims": [
+        "ERP_AUTHORITY_SEPARATION"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "erp-filter"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "G-END-001",
+      "ruleTextHash": "ae6236efa2facd9f405c79a0a49c76cf9febf75e354358f445482ea6e3af2317",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "WRITE_READ_CLOSURE"
+      ],
+      "preservedClaims": [
+        "WRITE_READ_CLOSURE"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "mapping-attribution",
+        "calls-visibility",
+        "attendance-confirmation",
+        "field-evidence"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "EXACT_COMPATIBILITY_CONTRACT_NOT_OPTIONAL_RULE",
+      "ruleTextHash": "b4ab342889aecbcd03091ac003aa7544bd635fe5af5de2b9b81ef388e81b15c9",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "EXACT_COMPATIBILITY_CONTRACT"
+      ],
+      "preservedClaims": [
+        "EXACT_COMPATIBILITY_CONTRACT"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "pipeline-retry"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "IMPORT_TEMPLATE_VERSION_RULE",
+      "ruleTextHash": "b4c55b990de835efe75f48363970678e20911d1b73ab17c8ca3b2c404c96c45b",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "IMPORT_TEMPLATE_VERSION"
+      ],
+      "preservedClaims": [
+        "IMPORT_TEMPLATE_VERSION"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "import-atomicity"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "LEGACY_b5d74268f8739c0e",
+      "ruleTextHash": "b5d74268f8739c0e4b45d9d596c010780eb0346644f2816ea92618572b590e2c",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "OFFLINE_RECOVERY"
+      ],
+      "preservedClaims": [
+        "OFFLINE_RECOVERY_PRESERVES_INTENT"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "mapping-attribution",
+        "pipeline-retry"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "LEGACY_b89947e249cb4a8d",
+      "ruleTextHash": "b89947e249cb4a8d7a6a1e0248f3eada5fcb307119f15415e05fb54bb2782834",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "CRITICAL_PRIORITY_CONFIRMATION"
+      ],
+      "preservedClaims": [
+        "CRITICAL_PRIORITY_CONFIRMATION"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "calls-visibility"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "EXACT_HEAD_PROOF_REUSE_RULE",
+      "ruleTextHash": "b98c078916d6021c4ea6d56bed9052079db841fe698df8b4a55965878272e895",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "EXACT_HEAD_RELEASE"
+      ],
+      "preservedClaims": [
+        "EXACT_HEAD_PROOF"
+      ],
+      "enforcementRefs": [
+        ".github/workflows/product-verification.yml"
+      ],
+      "evalRefs": [
+        "repository-proof"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "LATEST_BUSINESS_OBSERVATION_RULE",
+      "ruleTextHash": "ba675d3cb946b9d08bbc78bef2f575081a32e5f1f3441cba724f853091a1f2a8",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "STABLE_IDENTITY"
+      ],
+      "preservedClaims": [
+        "STABLE_RETRY_IDENTITY"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "mapping-attribution",
+        "pipeline-retry"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "G-PROD-001",
+      "ruleTextHash": "c199cf88a85e37a65a2c4a7a7a0e56d1f79abaee244386ce4e1e689cedcb184e",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "OFFLINE_RECOVERY"
+      ],
+      "preservedClaims": [
+        "OFFLINE_RECOVERY_PRESERVES_INTENT"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "mapping-attribution",
+        "pipeline-retry"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "CRITICAL"
+    },
+    {
+      "legacyId": "TERMINAL_4XX_RULE",
+      "ruleTextHash": "c2d3d130a9c943c589449081b2300b95e77acdf82ecb2f1c80ed146f55926529",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "OFFLINE_COMPATIBILITY"
+      ],
+      "preservedClaims": [
+        "OFFLINE_CONTRACT_COMPATIBILITY"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "mapping-attribution",
+        "attendance-confirmation"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "G-PROD-003",
+      "ruleTextHash": "c3004aad58defce70362c27d620ebf4aa9e10067b8406ed38b40c9049f89a4f9",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "PRODUCTION_DISCIPLINE"
+      ],
+      "preservedClaims": [
+        "NO_PRODUCTION_DUMMY_DATA"
+      ],
+      "enforcementRefs": [
+        "scripts/quality/invariants.mjs"
+      ],
+      "evalRefs": [
+        "production-safety"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "CRITICAL"
+    },
+    {
+      "legacyId": "DIRTY_TREE_ISOLATION_RULE",
+      "ruleTextHash": "c432c1a0f4df7370ff79f5d9880b5a32bdaaaf95973f63f0060d6d27f686969a",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "DIRECT_ENGINEERING"
+      ],
+      "preservedClaims": [
+        "DIRECT_ENGINEERING"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "repository-proof"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "ROUTE_MATRIX_RULE",
+      "ruleTextHash": "c4c2f1ba27cba324ab288aea69a1eac24e15d718709cf465006d23b73640c418",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "TEST_REAL_ROLE_SHAPES"
+      ],
+      "preservedClaims": [
+        "TEST_REAL_ROLE_SHAPES"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "repository-proof"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "PREEXISTING_FAILURE_RULE",
+      "ruleTextHash": "c8963df25bf3c30f4dbc58729343796c6c5b30dd2f3bfb0952bcdac16ddb5ae6",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "PREEXISTING_FAILURE_PROOF"
+      ],
+      "preservedClaims": [
+        "BASELINE_FAILURE_ABLATION"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "repository-proof"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "MULTI_PAYMENT_HISTORY_RULE",
+      "ruleTextHash": "ca8daf9a4a7a7d175ab3bdb135f2edfa50578f19756ddd6acd378012d60d20a9",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "MONEY_TRUTH"
+      ],
+      "preservedClaims": [
+        "FINANCIAL_STATE_DERIVED"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "receivables-money"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "GRAPH_LEARNING_CLOSURE_RULE",
+      "ruleTextHash": "ceadde8747243a1f3bcc4fd02e1419c160f4d2989997987ccf3c82eb8ef29ce3",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "EXACT_HEAD_RELEASE"
+      ],
+      "preservedClaims": [
+        "EXACT_HEAD_PROOF"
+      ],
+      "enforcementRefs": [
+        ".github/workflows/product-verification.yml"
+      ],
+      "evalRefs": [
+        "repository-proof"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "LEGACY_d0c37562bc85e544",
+      "ruleTextHash": "d0c37562bc85e544fd41be7200e46500f6b400ef7dfa929d57c00faa3d40fd0c",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "MEDIA_LIFECYCLE"
+      ],
+      "preservedClaims": [
+        "MEDIA_LIFECYCLE"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "attendance-confirmation",
+        "field-evidence"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "EXPLICIT_NONE_VS_UNKNOWN_RULE",
+      "ruleTextHash": "d18e2b1217bfa76652a5031782dbc8711d20cad85fe7bb0e649519fe43bee085",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "ERP_AUTHORITIES"
+      ],
+      "preservedClaims": [
+        "ERP_AUTHORITY_SEPARATION"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "erp-filter"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "G-RELEASE-001",
+      "ruleTextHash": "d58a5c9160faac7959809bf36b57f97c5b183e5b7cedb38bddf4edb0a2a5e470",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "EXACT_HEAD_RELEASE"
+      ],
+      "preservedClaims": [
+        "EXACT_HEAD_PROOF"
+      ],
+      "enforcementRefs": [
+        ".github/workflows/product-verification.yml"
+      ],
+      "evalRefs": [
+        "repository-proof"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "EXTERNAL_VIEW_DATA_MINIMIZATION_RULE",
+      "ruleTextHash": "d5a7bca0e363d2753049d4d5756498fbb1f836bb5b14f3e19be9dea14e7e0437",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "MINIMUM_EXTERNAL_PROJECTION",
+        "MONEY_TRUTH"
+      ],
+      "preservedClaims": [
+        "EXTERNAL_DATA_MINIMIZATION",
+        "FINANCIAL_STATE_DERIVED"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "external-partner",
+        "receivables-money"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "CRITICAL"
+    },
+    {
+      "legacyId": "SPREADSHEET_FORMULA_RULE",
+      "ruleTextHash": "dadf6fa3ea219c8702e521f5eb1e2b6113befb6ba54b9d82436f474a07e3d1d5",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "SPREADSHEET_COMMIT"
+      ],
+      "preservedClaims": [
+        "SPREADSHEET_FORMULA_SAFETY"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "receivables-money"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "G-VERIFY-001",
+      "ruleTextHash": "dbcc0c596073e44a45f2e5a4e8b732698c5bddf3c8d5a3459009b462bfd214d7",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "BOUNDED_BATCH_SCALING"
+      ],
+      "preservedClaims": [
+        "SET_BASED_BATCH_SCALING"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "import-atomicity"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "G-REPO-002",
+      "ruleTextHash": "dd0e81e7a31f1a29dfd3c9c68466317bb49676671e07f5a2033d247b6e509e36",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "ERP_AUTHORITIES"
+      ],
+      "preservedClaims": [
+        "ERP_AUTHORITY_SEPARATION"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "erp-filter"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "EXECUTION_BUDGET_RULE",
+      "ruleTextHash": "e37e76e8ffd9c7c5b7ad96c04f1591437f2e71b5e8c3772a39a91352a5723695",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "BOUNDED_BATCH_SCALING"
+      ],
+      "preservedClaims": [
+        "SET_BASED_BATCH_SCALING"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "import-atomicity"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "REAL_ROUTE_MAP_RULE",
+      "ruleTextHash": "e4b781d23d4db7b116a336cb372fe1d0d75a9c60b3f5ff921cc44eacd9860d30",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "MIGRATION_IMMUTABILITY"
+      ],
+      "preservedClaims": [
+        "APPLIED_MIGRATION_IMMUTABLE"
+      ],
+      "enforcementRefs": [
+        "scripts/quality/knowledge-check.mjs"
+      ],
+      "evalRefs": [
+        "production-safety"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "CRITICAL"
+    },
+    {
+      "legacyId": "CONTENT_SENSITIVE_WORKTREE_RULE",
+      "ruleTextHash": "e5e439c8bf81b6fee555da9132f79d2ed58c2dda8bd9f9d13a25ecf3e994337d",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "MIGRATION_IMMUTABILITY"
+      ],
+      "preservedClaims": [
+        "APPLIED_MIGRATION_IMMUTABLE"
+      ],
+      "enforcementRefs": [
+        "scripts/quality/knowledge-check.mjs"
+      ],
+      "evalRefs": [
+        "production-safety"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "OWNER_MIGRATION_CLOSURE_RULE",
+      "ruleTextHash": "e94f28021267fcb240a5c7287e32dbebf23e0e5527afb619d331c5f2f06df433",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "OWNER_MIGRATION_CLOSEOUT"
+      ],
+      "preservedClaims": [
+        "OWNER_MIGRATION_CERTIFICATION"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "production-safety"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "CRITICAL"
+    },
+    {
+      "legacyId": "REFLECTION_IS_NOT_MUTATION",
+      "ruleTextHash": "e950cc7e6584b2d6cdc57db74b55a5be66f287f67882b0ea9d88bd917edcb699",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "MONEY_TRUTH"
+      ],
+      "preservedClaims": [
+        "FINANCIAL_STATE_DERIVED"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "receivables-money"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "CRITICAL"
+    },
+    {
+      "legacyId": "DURABLE_TRANSITION_RULE",
+      "ruleTextHash": "eab7be21d8c9031189ef1ee0f78126742b9e20f51658e8a41f128802ebfe83ac",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "STABLE_IDENTITY"
+      ],
+      "preservedClaims": [
+        "STABLE_RETRY_IDENTITY"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "mapping-attribution",
+        "pipeline-retry"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "BILLED_IS_NOT_UNPAID",
+      "ruleTextHash": "ebc80ee070f7a156c1e213017584c9f862ff4280c07d6338d71bf33978927ffe",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "WRITE_READ_CLOSURE",
+        "MONEY_TRUTH"
+      ],
+      "preservedClaims": [
+        "FINANCIAL_STATE_DERIVED"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "mapping-attribution",
+        "calls-visibility",
+        "attendance-confirmation",
+        "field-evidence",
+        "receivables-money"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "OWNER_SQL_PURE_POSTGRESQL",
+      "ruleTextHash": "ebd5518fd5f9db380d99846b7149b4bf39fb7a27f8752d9ababc6c2d8fcf4a8e",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "OFFLINE_COMPATIBILITY"
+      ],
+      "preservedClaims": [
+        "OFFLINE_CONTRACT_COMPATIBILITY"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "mapping-attribution",
+        "attendance-confirmation"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "HUMAN_GATE_EVIDENCE_RULE",
+      "ruleTextHash": "f106d8e4ee5582f621d7dbf1b8fc19af47c1ef9776eed5515703d05599c1db57",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "PRODUCTION_DISCIPLINE"
+      ],
+      "preservedClaims": [
+        "NO_PRODUCTION_DUMMY_DATA"
+      ],
+      "enforcementRefs": [
+        "scripts/quality/invariants.mjs"
+      ],
+      "evalRefs": [
+        "production-safety"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "CRITICAL"
+    },
+    {
+      "legacyId": "BOUNDED_IS_NOT_LINEARITY_RULE",
+      "ruleTextHash": "f50d703b846d266f982a4ce638cf0c683087d27fa1e28e034303ba093bcb3ab9",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "BOUNDED_BATCH_SCALING"
+      ],
+      "preservedClaims": [
+        "SET_BASED_BATCH_SCALING"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "import-atomicity"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "MAIN_BASELINE_RULE",
+      "ruleTextHash": "f78d6adb251c1618694ac0b676162a654a681045b64566248a73de7511295bda",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "EXACT_HEAD_RELEASE"
+      ],
+      "preservedClaims": [
+        "EXACT_HEAD_PROOF"
+      ],
+      "enforcementRefs": [
+        ".github/workflows/product-verification.yml"
+      ],
+      "evalRefs": [
+        "repository-proof"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "CROSS_AUTHORITY_ATOMIC_IMPORT_RULE",
+      "ruleTextHash": "faa4daa7fd5fcd006a3bd11f01ea095dfb0bf8ffdc5f8a62311e35ade09dbe2b",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "ONE_FACT_ONE_AUTHORITY"
+      ],
+      "preservedClaims": [
+        "ONE_FACT_ONE_AUTHORITY"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "mapping-attribution",
+        "distributor-renewal"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
+    },
+    {
+      "legacyId": "G-PROD-002",
+      "ruleTextHash": "fb7c0a633e3f575ad506265f46294559fcc6af1006812600a2950c393d5bbf55",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "OWNER_MIGRATION_CLOSEOUT"
+      ],
+      "preservedClaims": [
+        "OWNER_MIGRATION_CERTIFICATION"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "production-safety"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "CRITICAL"
+    },
+    {
+      "legacyId": "ATOMIC_BATCH_RULE",
+      "ruleTextHash": "fc9ee1f48d2820872a2b840d90d29885570d462d15c65f092623e34075cf93e3",
+      "status": "CONSOLIDATED",
+      "targets": [
+        "ATOMIC_BATCH"
+      ],
+      "preservedClaims": [
+        "ATOMIC_BATCH_ROLLBACK"
+      ],
+      "enforcementRefs": [],
+      "evalRefs": [
+        "import-atomicity"
+      ],
+      "reason": "Canonical lesson claims preserve this deduplicated historical rule.",
+      "severity": "NORMAL"
     }
   ]
 }

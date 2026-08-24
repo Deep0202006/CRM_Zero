@@ -13,3 +13,7 @@
   path uses `SELECT *` or N+1 fan-out.
 - Schema, RLS, auth, destructive, and foundational persistence changes require
   R3 disposable-runtime proof and isolation coverage.
+- Proof belongs to one exact head/tree/plan hash; any head move invalidates the
+  repository certificate. Generic green product CI is not OS acceptance.
+- Generated graph and test selection may self-repair. Human-authored expected
+  behavior, authorization, RLS, money truth, assertions and required proofs may not.

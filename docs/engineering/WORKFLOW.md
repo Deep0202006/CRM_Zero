@@ -1,29 +1,30 @@
 # Engineering workflow
 
-## Discover
+## Task and resolve
 
-Inspect current main/worktree, use targeted `rg`/`git grep`/path search, open
-the exact current source, resolve task-aware context, then select the affected
+Resolve natural-language intent first, inspect current main/worktree, use
+targeted `rg`/`git grep`/path search, open the exact current source, then select the affected
 contracts, authority, and reusable implementation. Use Graphify only when
 relationships are ambiguous/cross-domain or it materially lowers search cost;
 then run `graphify:sync`, make one bounded query, and open the result. Graphify
 is a locator, never authority, and unavailable Graphify never blocks ordinary
 product work.
 
-## Lock
+## Implement and impact
 
-Record in the PR draft: outcome, expected user flow, canonical authority,
-must-not-change, and risk. R0 is docs/presentation; R1 isolated non-critical
+Lock outcome, canonical authority, must-not-write facts and minimum change.
+Compile the actual diff after implementation; requested risk never overrides
+detected effects. R0 is docs/presentation; R1 isolated non-critical
 behavior; R2 business logic/API/critical read/sync; R3 schema, RLS, auth,
 destructive, production, or foundational persistence.
 
-## Implement and verify
+## Prove and certify
 
-Use one clean worktree and one direct Codex implementation. Apply Ponytail FULL
-and run focused tests first. R0 needs lightweight relevant proof; R1 focused
-tests plus typecheck/lint; R2 focused/full unit plus typecheck/lint/build; R3
-adds disposable PostgreSQL, security/isolation, and E2E where applicable.
-GitHub CI is final repository proof.
+Use `proof:plan` and `verify:affected`; declared business proofs remain required
+alongside related tests. R3 adds GitHub-hosted disposable PostgreSQL,
+security/isolation, E2E, and Owner SQL evidence where applicable. A retry-pass
+is `FLAKY_DETECTED`, not release PASS. GitHub exact-head CI is final repository
+proof; generated or refreshed tests never rewrite correctness expectations.
 
 Release blockers are real evidence failures: unresolved authority, a
 security/auth leak, data-loss risk, relevant contract/implementation drift,
@@ -41,3 +42,9 @@ a read-only postcheck. The migration becomes immutable; every repair is forward
 only. Do not create durable task state files. Use a PR body or temporary
 uncommitted brief for complex work unless a design document is explicitly
 requested.
+
+## Learn
+
+Run `learn:close` for R2/R3 failures. Known rules strengthen their enforcement
+or eval; genuinely reusable unrepresented gaps add claim, enforcement and
+Golden evidence. Non-reusable mistakes do not create registry churn.

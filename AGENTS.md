@@ -1,51 +1,44 @@
 <!-- BEGIN:nextjs-agent-rules -->
 # This is NOT the Next.js you know
 
-This repository uses the installed Next.js version as authority. Before changing
-Next.js APIs, conventions, routing, caching, rendering, middleware, or server
-behavior, read the relevant guide under `node_modules/next/dist/docs/`.
+The installed Next.js version is authority. Before changing its APIs, routing,
+caching, rendering, middleware, or conventions, read the relevant guide under
+`node_modules/next/dist/docs/`.
 <!-- END:nextjs-agent-rules -->
 
-# CRM Engineering Intelligence
+# ZeroData engineering map
 
-Repository scope: `Deep0202006/CRM_Zero` only. Canonical root is
-`C:\Users\dcp69\Desktop\CRM_Zero`; use a clean worktree below `.worktrees/`.
+Repository scope is `Deep0202006/CRM_Zero`. Preserve unknown work and use a
+clean feature worktree below `.worktrees/`; never reset, clean, force-push, or
+push directly to `main`.
 
-Load progressively: current code/schema/tests, one Graphify query, the affected
-domain entry and exact contracts, named authority/capability entries, then
-lessons selected by deterministic task relevance and resolver token budget.
-Use `npm run context:resolve -- --task "<summary>" --path <path>` after source
-verification. Never preload unrelated history, every contract, or graph cache.
+Run task-only resolution first:
 
-Source roles: user request = outcome; fresh read-only production evidence =
-deployed fact; contracts = intended invariants; current code/tests = behavior;
-authorities = ownership; capabilities = reuse; lessons = failure prevention;
-Graphify = a locator, never authority; CI = exact-head proof. Docs do not
-overrule fresh source or deployed evidence. Confirm Graphify findings by opening
-current source; unsupported assumptions are not evidence. If contract and code
-disagree, stop on `CONTRACT_IMPLEMENTATION_DRIFT`. If a write has no authority,
-stop on `AUTHORITY_UNRESOLVED` rather than inventing ownership.
+`npm run context:resolve -- --task "<outcome>"`
 
-Ponytail FULL: understand the flow, reuse existing helpers/components/RPCs/tests,
-make the minimum correct diff, and never reduce safety, security, or
-accessibility. One direct Codex only: no nested coding agents or controller.
+Then follow: Task → Resolve → open current source → Authority → Reuse → minimum
+diff → Impact → Prove → exact-head Certify → Learn. Current source/tests are
+behavior evidence, contracts are intended invariants, AUTHORITIES owns facts,
+CAPABILITIES identifies reuse, and PROOFS determines evidence. One fact has one
+writable authority. If evidence conflicts, fresh source and read-only deployed
+fact outrank docs; correct stale docs in scope.
 
-Ordinary workflow: targeted `rg`/`git grep`/path search, open exact current
-source, resolve task-aware context, read authority/reuse, make the minimum
-change, and prove it. Use Graphify only when structural relationships are
-ambiguous/cross-domain or it materially reduces search cost; then run
-`graphify:sync`, make one bounded query (~600 tokens), and open exact source.
-Graphify unavailable never blocks an ordinary product task. For platform-wide
-discovery use `--mode platform`, then return to focused context before each
-write. Do not guess migrations, ownership, production state, or completion.
+After implementation run `impact:compile` and `proof:plan`; actual diff effects
+may raise risk. R3 database/auth/security work requires its mapped disposable
+PostgreSQL and Owner pre/post proof. `verify:affected` never substitutes related
+tests for a declared contract proof. GitHub re-certifies every exact PR head.
 
-Safety: preserve unknown dirty work; never reset, clean, prune, force-push, or
-push directly to `main`; never create production dummy data; production SQL is
-Owner-applied and postcheck is read-only; applied migrations are immutable;
-service-role and private keys are server-only.
+Graphify is an optional bounded structural locator, never authority. Use it only
+when relationships are ambiguous or cross-domain, then open the exact source.
+Unavailable Graphify does not block targeted repository search.
 
-Memory policy: do not expand LESSONS or DOMAIN_MAP merely because a bug occurred.
-Prevent it through shared implementation, validation/invariant, and regression
-test first; add a durable lesson only for cross-cutting judgment that cannot be
-mechanically enforced. Invalid knowledge, unresolved authority, security,
-schema/production gates, and relevant failing tests remain blocking.
+Production SQL is Owner-only; postchecks are read-only. Applied migrations are
+immutable. Never create production dummy data, expose service-role/private
+keys to client code, delete protected history, clear durable browser recovery,
+or bypass approved server confirmation for Calls and Field Visits.
+
+Prevent recurrence in this order: shared implementation, invariant/validation,
+regression proof, then a durable lesson only for reusable judgment. Close R2/R3
+through `learn:close`; do not duplicate known lesson prose. Self-healing may
+refresh generated navigation/proof selection, never expected business facts,
+authorization, RLS, money semantics, assertions, snapshots, or required proof.

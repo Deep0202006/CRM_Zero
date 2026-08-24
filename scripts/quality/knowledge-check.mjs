@@ -15,13 +15,19 @@ const domains = mapFile.domains ?? [];
 const authorities = json("docs/engineering/AUTHORITIES.json").facts ?? [];
 const capabilities = json("docs/engineering/CAPABILITIES.json").capabilities ?? [];
 const lessons = json("docs/engineering/LESSONS.json").lessons ?? [];
+const proofFile = json("docs/engineering/PROOFS.json");
+const proofs = proofFile.proofs ?? [];
+const goldenCases = json("docs/engineering/ENGINEERING_GOLDEN_CASES.json").cases ?? [];
 const legacy = json("docs/engineering/LEGACY_COVERAGE.json");
 if (mapFile.schemaVersion !== 2) fail("DOMAIN_MAP schemaVersion must be 2");
-unique(domains, "domain"); unique(authorities, "authority"); unique(capabilities, "capability"); unique(lessons, "lesson");
+if (json("docs/engineering/LESSONS.json").schemaVersion !== 2) fail("LESSONS schemaVersion must be 2");
+if (proofFile.schemaVersion !== 2) fail("PROOFS schemaVersion must be 2");
+unique(domains, "domain"); unique(authorities, "authority"); unique(capabilities, "capability"); unique(lessons, "lesson"); unique(proofs, "proof");
 const authorityIds = new Set(authorities.map((item) => item.id));
 const capabilityIds = new Set(capabilities.map((item) => item.id));
 const lessonIds = new Set(lessons.map((item) => item.id));
 const domainIds = new Set(domains.map((item) => item.id));
+const evalIds = new Set(goldenCases.map((item) => item.id));
 const pathFields = ["surfacePaths", "codeRoots", "serverBoundaries", "contractPaths", "criticalTests"];
 for (const domain of domains) {
   for (const key of pathFields) for (const path of domain[key] ?? []) if (!pathExists(path)) fail(`${domain.id} missing ${key}: ${path}`);
@@ -42,9 +48,18 @@ for (const capability of capabilities.filter((item) => item.reuse === "required"
 for (const domain of domains) if (["R2", "R3"].includes(domain.riskFloor) && !(domain.lessonRefs ?? []).length) fail(`high-risk domain has no lessons: ${domain.id}`);
 for (const domain of domains) for (const test of domain.criticalTests ?? []) if (["src/lib/__tests__", "src/lib/__tests__/receivables", "src/lib/__tests__/distributors", "src/lib/__tests__/distributorMaster"].includes(test)) fail(`broad critical-test locator: ${domain.id}`);
 for (const lesson of lessons) {
+  for (const key of ["id", "domains", "triggers", "risk", "rule", "why", "claims", "kind", "evidence", "enforcementRefs", "evalRefs", "legacyRefs", "loadByDefault"]) if (!(key in lesson)) fail(`${lesson.id} missing lesson field: ${key}`);
+  if (!["mechanical", "judgment"].includes(lesson.kind) || !(lesson.claims ?? []).length) fail(`${lesson.id} invalid semantic lesson`);
+  if (lesson.kind === "mechanical" && (!(lesson.enforcementRefs ?? []).length || !(lesson.evalRefs ?? []).length)) fail(`${lesson.id} mechanical lesson lacks enforcement/eval`);
   for (const domain of lesson.domains ?? []) if (domain !== "all" && !domainIds.has(domain)) fail(`${lesson.id} unknown lesson domain: ${domain}`);
   for (const evidence of lesson.evidence ?? []) if (!evidence.startsWith("public.") && !pathExists(evidence)) fail(`${lesson.id} missing evidence: ${evidence}`);
+  for (const enforcement of lesson.enforcementRefs ?? []) if (!pathExists(enforcement)) fail(`${lesson.id} missing enforcement: ${enforcement}`);
+  for (const evaluation of lesson.evalRefs ?? []) if (!evalIds.has(evaluation)) fail(`${lesson.id} missing eval: ${evaluation}`);
 }
+const runners = new Set(["jest", "playwright", "bash-postgres", "node", "owner-sql"]),proofIds=new Set(proofs.map((item)=>item.id));
+for (const proof of proofs) { if (!runners.has(proof.runner) || !["unit","e2e","postgres","invariant","owner-pre","owner-post"].includes(proof.kind)) fail(`${proof.id} invalid proof kind/runner`); for (const domain of proof.domains ?? []) if (domain !== "engineering-control" && !domainIds.has(domain)) fail(`${proof.id} unknown proof domain: ${domain}`); for (const path of proof.paths ?? []) if (!pathExists(path)) fail(`${proof.id} missing proof path: ${path}`); }
+for (const domain of domains.filter((item)=>["R2","R3"].includes(item.riskFloor))) if (!proofs.some((proof)=>(proof.domains??[]).includes(domain.id))) fail(`${domain.id} has no meaningful proof`);
+for (const domain of domains) for (const id of domain.proofRefs ?? []) if (!proofIds.has(id)) fail(`${domain.id} unknown proof: ${id}`);
 for (const contract of tracked("docs/contracts")) if (!domains.some((domain) => (domain.contractPaths ?? []).includes(contract))) fail(`unmapped contract: ${contract}`);
 const covered = (path) => domains.some((domain) => (domain.surfacePaths ?? []).some((prefix) => path === prefix || path.startsWith(`${prefix}/`)));
 for (const path of tracked("src/app").filter((path) => /\/(page\.tsx|route\.ts)$/.test(path))) if (!covered(path)) fail(`unmapped surface: ${path}`);

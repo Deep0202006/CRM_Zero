@@ -5,10 +5,11 @@ export default defineConfig({
   fullyParallel: false,
   workers: process.env.PLAYWRIGHT_E2E_WEBPACK === "true" ? 1 : undefined,
   retries: process.env.CI ? 1 : 0,
+  failOnFlakyTests: Boolean(process.env.CI),
   reporter: process.env.CI ? "github" : "list",
   use: {
     baseURL: "http://127.0.0.1:3111",
-    trace: "retain-on-failure",
+    trace: process.env.CI ? "on-first-retry" : "retain-on-failure",
     screenshot: "only-on-failure",
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],

@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { createHash } from "node:crypto";
 
 const root = resolve(import.meta.dirname, "../..");
 const json = (file) => JSON.parse(readFileSync(resolve(root, file), "utf8"));
@@ -7,6 +8,7 @@ const map = json("docs/engineering/DOMAIN_MAP.json");
 const authorities = json("docs/engineering/AUTHORITIES.json").facts;
 const capabilities = json("docs/engineering/CAPABILITIES.json").capabilities;
 const lessons = json("docs/engineering/LESSONS.json").lessons;
+const proofs = json("docs/engineering/PROOFS.json").proofs;
 const effects = new Set(["UI", "API", "DATABASE", "AUTHORIZATION", "OFFLINE", "IMPORT", "ANALYTICS", "EXPORT", "SECURITY"]);
 const args = process.argv.slice(2);
 const values = (name) => args.flatMap((arg, index) => arg === name && args[index + 1] ? [args[index + 1]] : []);
@@ -16,7 +18,7 @@ const paths = values("--path");
 const requestedEffects = values("--effect");
 const task = values("--task").at(-1) ?? "";
 const mode = values("--mode").at(-1) ?? "focused";
-const budgetValue = values("--budget").at(-1) ?? "1500";
+const budgetValue = values("--budget").at(-1) ?? "900";
 const budget = Number(budgetValue);
 if (!Number.isInteger(budget) || budget <= 0) stop("INVALID_BUDGET");
 if (!new Set(["focused", "platform"]).has(mode)) stop("INVALID_MODE");
@@ -27,7 +29,7 @@ const tokens = (value) => [...new Set(String(value).normalize("NFKC").replace(/(
 const taskTokens = new Set(tokens(task));
 const briefAuthority = (item) => ({ id: item.id, authority: item.authority, owns: item.owns, mustNotOwn: item.mustNotOwn });
 const briefCapability = (item) => ({ id: item.id, reuse: item.reuse, implementationPaths: item.implementationPaths, testPaths: item.testPaths });
-const briefLesson = (item) => ({ id: item.id, rule: item.rule });
+const briefLesson = (item) => ({ id: item.id, claims: item.claims });
 
 if (mode === "platform") {
   const pack = {
@@ -44,6 +46,8 @@ if (mode === "platform") {
 }
 
 const selected = new Set(domainsArg);
+let confidence = paths.length || domainsArg.length ? 1 : 0;
+let margin = 1;
 for (const id of selected) if (!byId.has(id)) stop("UNMAPPED_PATH");
 for (const path of paths) {
   const matches = map.domains.filter((domain) => ["surfacePaths", "codeRoots", "serverBoundaries"].some((key) => (domain[key] ?? []).some((prefix) => path === prefix || path.startsWith(`${prefix}/`))));
@@ -62,6 +66,8 @@ if (!selected.size && task) {
     return { domain, direct, score: direct * 5 + scoreText([...(domain.surfacePaths ?? []), ...authorityText, ...capabilityText].join(" ")) };
   }).filter((candidate) => candidate.score > 0).sort((a, b) => b.score - a.score || a.domain.id.localeCompare(b.domain.id));
   if (!candidates.length) stop("CONTEXT_AMBIGUOUS");
+  confidence = Math.min(1, candidates[0].score / 10);
+  margin = candidates[1] ? (candidates[0].score - candidates[1].score) / Math.max(1, candidates[0].score) : 1;
   const confirmed = candidates.filter((candidate) => candidate.direct > 0 && candidate.score >= candidates[0].score - 1);
   if (confirmed.length > 1) confirmed.forEach((candidate) => selected.add(candidate.domain.id));
   else if (candidates[1] && candidates[0].score === candidates[1].score) stop("CONTEXT_AMBIGUOUS");
@@ -88,11 +94,13 @@ const build = (entries, omittedLessons = []) => {
   const lessonSelection = Object.fromEntries(entries.map(({ lesson, reasons }) => [lesson.id, [...new Set(reasons)]]));
   const pack = {
     mode: "focused", scope: domains.length === 1 ? "focused" : "cross-domain", budget,
-    domains: domains.map((domain) => domain.id), risk, contracts: ids("contractPaths").slice(0, 3),
+    ...(task ? { taskHash: createHash("sha256").update(task).digest("hex"), confidence, margin } : {}),
+    domains: domains.map((domain) => domain.id), risk, riskFloor: risk, contracts: ids("contractPaths").slice(0, 3),
+    candidatePaths: [...new Set([...ids("codeRoots"), ...ids("surfacePaths"), ...ids("serverBoundaries"), ...capabilities.filter((item) => ids("capabilityRefs").includes(item.id)).flatMap((item) => item.implementationPaths ?? [])])].slice(0, 5),
     authorities: authorities.filter((item) => authorityIds.includes(item.id)).map(briefAuthority),
     capabilities: capabilities.filter((item) => ids("capabilityRefs").includes(item.id)).slice(0, 4).map(briefCapability),
-    lessons: entries.map(({ lesson }) => briefLesson(lesson),), lessonSelection, omittedLessons,
-    mustNotWriteAuthorities: ids("mustNotWriteAuthorityRefs"), criticalTests: ids("criticalTests"), serverBoundaries: ids("serverBoundaries")
+    lessons: entries.map(({ lesson }) => briefLesson(lesson),), ...(task ? { criticalClaims: [...new Set(entries.flatMap(({ lesson }) => lesson.claims ?? []))] } : {}), lessonSelection, omittedLessons,
+    mustNotWriteAuthorities: ids("mustNotWriteAuthorityRefs"), criticalTests: ids("criticalTests"), requiredProofRefs: proofs.filter((proof) => (proof.domains ?? []).some((id) => selected.has(id))).map((proof) => proof.id)
   };
   return { pack, estimatedTokens: Math.ceil(JSON.stringify(pack).length / 4) };
 };
