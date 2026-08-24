@@ -29,7 +29,7 @@ update public.mapping_requests r set mapped_by_name_snapshot = u.name from publi
 alter table public.mapping_requests drop constraint if exists mapping_requests_completed_attribution_check;
 alter table public.mapping_requests add constraint mapping_requests_completed_attribution_check check (status <> 'Completed' or (mapped_by_id_snapshot is not null and completed_at is not null));
 alter table public.mapping_requests drop constraint if exists mapping_requests_actor_snapshot_check;
-alter table public.mapping_requests add constraint mapping_requests_actor_snapshot_check check (requested_by_id_snapshot is not null and (requested_by is null or requested_by = requested_by_id_snapshot) and (mapped_by is null or mapped_by = mapped_by_id_snapshot));
+alter table public.mapping_requests add constraint mapping_requests_actor_snapshot_check check (requested_by_id_snapshot is not null and (requested_by is null or requested_by = requested_by_id_snapshot) and (mapped_by is null or (mapped_by_id_snapshot is not null and mapped_by = mapped_by_id_snapshot)));
 
 create or replace function public.mapping_request_attribution_guard_v1()
 returns trigger language plpgsql security definer set search_path = pg_catalog, public as $$
