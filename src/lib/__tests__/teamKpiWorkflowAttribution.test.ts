@@ -14,7 +14,7 @@ describe("Team KPI source workflow attribution", () => {
   it("preserves the mapping requester separately and credits the completing user", () => {
     expect(dbSource).toContain("requested_by?: string | null");
     expect(mappingsPage).toContain("requested_by: currentUser?.user_id || null");
-    expect(mappingsPage).toContain("mapped_by: currentUser?.user_id || null");
+    expect(mappingsPage).toContain("mapped_by: null");
     expect(mappingsPage).toContain("updates.mapped_by = currentUser?.user_id || null");
   });
 });
