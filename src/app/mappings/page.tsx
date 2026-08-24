@@ -146,12 +146,21 @@ export default function MappingsPage() {
   const secondaryLabel = activeSegment === "Distributor" ? "Retailer" : "Distributor";
   const pendingCount = mappings.filter((mapping) => mapping.status !== "Completed").length;
   const completedCount = mappings.filter((mapping) => mapping.status === "Completed").length;
-  const userLabel = (id?: string | null, snapshot?: string | null) => mappingUsers.find((user) => user.user_id === id)?.name?.trim() || snapshot?.trim() || "Unknown/Former employee";
+  const resolveActorId = (live?: string | null, snapshot?: string | null) => live ?? snapshot ?? null;
+  const userLabel = (live?: string | null, nameSnapshot?: string | null, idSnapshot?: string | null) => mappingUsers.find((user) => user.user_id === resolveActorId(live, idSnapshot))?.name?.trim() || nameSnapshot?.trim() || "Unknown/Former employee";
+  const actorOptions = Array.from(new Map(mappings.flatMap((mapping) => {
+    const requesterId = resolveActorId(mapping.requested_by, mapping.requested_by_id_snapshot);
+    const completerId = resolveActorId(mapping.mapped_by, mapping.mapped_by_id_snapshot);
+    return [
+      ...(requesterId ? [[requesterId, userLabel(mapping.requested_by, mapping.requested_by_name_snapshot, mapping.requested_by_id_snapshot)] as const] : []),
+      ...(completerId ? [[completerId, userLabel(mapping.mapped_by, mapping.mapped_by_name_snapshot, mapping.mapped_by_id_snapshot)] as const] : []),
+    ];
+  })).entries());
   const visibleMappings = mappings.filter((mapping) => {
-    if (scope === "mine" && !(mapping.status === "Completed" && mapping.mapped_by === currentUser?.user_id)) return false;
-    if (scope === "logged" && mapping.requested_by !== currentUser?.user_id) return false;
-    if (isAdmin && actorId && mapping[actorDimension] !== actorId) return false;
-    return [mapping.distributor_name_unregistered, mapping.retailer_name_unregistered, userLabel(mapping.requested_by, mapping.requested_by_name_snapshot), userLabel(mapping.mapped_by, mapping.mapped_by_name_snapshot)].join(" ").toLowerCase().includes(search.toLowerCase());
+    if (scope === "mine" && !(mapping.status === "Completed" && resolveActorId(mapping.mapped_by, mapping.mapped_by_id_snapshot) === currentUser?.user_id)) return false;
+    if (scope === "logged" && resolveActorId(mapping.requested_by, mapping.requested_by_id_snapshot) !== currentUser?.user_id) return false;
+    if (isAdmin && actorId && resolveActorId(mapping[actorDimension], actorDimension === "requested_by" ? mapping.requested_by_id_snapshot : mapping.mapped_by_id_snapshot) !== actorId) return false;
+    return [mapping.distributor_name_unregistered, mapping.retailer_name_unregistered, userLabel(mapping.requested_by, mapping.requested_by_name_snapshot, mapping.requested_by_id_snapshot), userLabel(mapping.mapped_by, mapping.mapped_by_name_snapshot, mapping.mapped_by_id_snapshot)].join(" ").toLowerCase().includes(search.toLowerCase());
   });
 
   return (
@@ -170,9 +179,9 @@ export default function MappingsPage() {
 
       <div className="metric-grid">
         <MetricCard label="Team completed" value={completedCount} icon={<CheckCircle2 size={17} />} tone="success" note="Completed mappings" />
-        <MetricCard label="My completed" value={mappings.filter((m) => m.status === "Completed" && m.mapped_by === currentUser?.user_id).length} icon={<CheckCircle2 size={17} />} tone="brand" note="Work I completed" />
+        <MetricCard label="My completed" value={mappings.filter((m) => m.status === "Completed" && resolveActorId(m.mapped_by, m.mapped_by_id_snapshot) === currentUser?.user_id).length} icon={<CheckCircle2 size={17} />} tone="brand" note="Work I completed" />
         <MetricCard label="Pending" value={pendingCount} icon={<Link2 size={17} />} tone="warning" note="Relationships waiting" />
-        <MetricCard label="Contributors" value={new Set(mappings.filter((m) => m.status === "Completed" && m.mapped_by).map((m) => m.mapped_by)).size} icon={<ArrowRightLeft size={17} />} tone="neutral" note="Completed actors" />
+        <MetricCard label="Contributors" value={new Set(mappings.filter((m) => m.status === "Completed").map((m) => resolveActorId(m.mapped_by, m.mapped_by_id_snapshot)).filter(Boolean)).size} icon={<ArrowRightLeft size={17} />} tone="neutral" note="Completed actors" />
       </div>
 
       {successMsg && <div className="alert-panel alert-panel--success" role="status"><CheckCircle2 size={16} className="mt-0.5 shrink-0" /><span>{successMsg}</span></div>}
@@ -231,7 +240,7 @@ export default function MappingsPage() {
           </form>
         </section>
 
-        <section className="space-y-3"><div className="flex flex-wrap gap-2"><Button size="sm" variant={scope === "team" ? "primary" : "outline"} onClick={() => setScope("team")}>All team</Button><Button size="sm" variant={scope === "mine" ? "primary" : "outline"} onClick={() => setScope("mine")}>My completed</Button><Button size="sm" variant={scope === "logged" ? "primary" : "outline"} onClick={() => setScope("logged")}>Logged by me</Button><input className="field-control max-w-xs" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search mapping or employee" />{isAdmin && <><select className="field-control max-w-40" value={actorDimension} onChange={(e) => setActorDimension(e.target.value as "mapped_by" | "requested_by")}><option value="mapped_by">Completed by</option><option value="requested_by">Logged by</option></select><select className="field-control max-w-48" value={actorId} onChange={(e) => setActorId(e.target.value)}><option value="">All employees</option>{[...new Set(mappings.flatMap((m) => [m.requested_by, m.mapped_by]).filter((id): id is string => Boolean(id)))].map((id) => <option key={id} value={id}>{userLabel(id)}</option>)}</select></>}</div>
+        <section className="space-y-3"><div className="flex flex-wrap gap-2"><Button size="sm" variant={scope === "team" ? "primary" : "outline"} onClick={() => setScope("team")}>All team</Button><Button size="sm" variant={scope === "mine" ? "primary" : "outline"} onClick={() => setScope("mine")}>My completed</Button><Button size="sm" variant={scope === "logged" ? "primary" : "outline"} onClick={() => setScope("logged")}>Logged by me</Button><input className="field-control max-w-xs" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search mapping or employee" />{isAdmin && <><select className="field-control max-w-40" value={actorDimension} onChange={(e) => setActorDimension(e.target.value as "mapped_by" | "requested_by")}><option value="mapped_by">Completed by</option><option value="requested_by">Logged by</option></select><select className="field-control max-w-48" value={actorId} onChange={(e) => setActorId(e.target.value)}><option value="">All employees</option>{actorOptions.map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></>}</div>
         <QueueList
           title="Mapping work queue"
           items={visibleMappings.map((mapping) => ({
@@ -241,7 +250,7 @@ export default function MappingsPage() {
                 <p className="text-[11px] font-bold uppercase tracking-[0.06em] text-[var(--text-muted)]">Retailer → Distributor</p>
                 <p className="mt-1.5 text-[13px] font-semibold leading-5 text-[var(--text-primary)]">{formatIdentity(mapping.retailer_name_unregistered, mapping.retailer_lead_id, "Retailer")}</p>
                 <p className="mt-1 flex items-center gap-2 text-[12px] text-[var(--text-secondary)]"><ArrowRightLeft size={12} className="text-[var(--brand-600)]" /> {formatIdentity(mapping.distributor_name_unregistered, mapping.distributor_lead_id, "Distributor")}</p>
-                <p className="mt-1 text-[12px] text-[var(--text-secondary)]">Logged by: {userLabel(mapping.requested_by, mapping.requested_by_name_snapshot)}</p><p className="mt-1 text-[12px] text-[var(--text-secondary)]">Completed by: {mapping.status === "Completed" ? userLabel(mapping.mapped_by, mapping.mapped_by_name_snapshot) : "—"}</p>
+                <p className="mt-1 text-[12px] text-[var(--text-secondary)]">Logged by: {userLabel(mapping.requested_by, mapping.requested_by_name_snapshot, mapping.requested_by_id_snapshot)}</p><p className="mt-1 text-[12px] text-[var(--text-secondary)]">Completed by: {mapping.status === "Completed" ? userLabel(mapping.mapped_by, mapping.mapped_by_name_snapshot, mapping.mapped_by_id_snapshot) : "—"}</p>
               </div>
             ),
             statusText: mapping.status,

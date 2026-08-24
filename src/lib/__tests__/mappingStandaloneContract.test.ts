@@ -60,6 +60,16 @@ describe("standalone Mapping contract", () => {
     expect(page).toContain("Completed by:");
   });
 
+  it("uses immutable actor IDs only as deleted-user audit fallbacks", () => {
+    const migration = read("supabase/migrations/051_mapping_attribution_visibility.sql");
+    const page = read("src/app/mappings/page.tsx");
+    expect(migration).toContain("requested_by_id_snapshot uuid null");
+    expect(migration).toContain("mapped_by_id_snapshot uuid null");
+    expect(migration).toContain("FK ON DELETE SET NULL may only detach live IDs");
+    expect(migration).toContain("mapped_by_id_snapshot is not null and completed_at is not null");
+    expect(page).toContain("resolveActorId(mapping.mapped_by, mapping.mapped_by_id_snapshot)");
+  });
+
   it("has zero Lead or Pipeline write authority", () => {
     const page = read("src/app/mappings/page.tsx");
     expect(page).not.toMatch(/transactionalMutation\(["']leads|db\.leads|resolveLeadId|Mapping Form|pipeline/i);
