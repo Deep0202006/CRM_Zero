@@ -1,14 +1,15 @@
 import { z } from "zod";
 import { apiError, contextFor } from "@/lib/receivables/server";
+import { optionalCanonicalErpIdSchema } from "@/lib/erp/validation";
 
-const querySchema = z
+export const querySchema = z
   .object({
     page: z.coerce.number().int().min(1).default(1),
     pageSize: z.coerce.number().int().min(1).max(50).default(50),
     filter: z
       .enum(["all", "overdue", "today", "tomorrow", "in_two_days"])
       .default("all"),
-    erp: z.union([z.string().uuid(), z.literal("")]).default(""),
+    erp: optionalCanonicalErpIdSchema.default(""),
   })
   .strict();
 export const dynamic = "force-dynamic";

@@ -979,6 +979,31 @@
       "loadByDefault": false
     },
     {
+      "id": "POSTGRES_UUID_NOT_RFC_UUID",
+      "domains": [
+        "erp",
+        "distributor-status",
+        "erp-partner",
+        "field-visits"
+      ],
+      "triggers": [
+        "canonical ERP identifier",
+        "Zod UUID validation"
+      ],
+      "risk": [
+        "R2",
+        "R3"
+      ],
+      "rule": "A PostgreSQL uuid identifier whose generator does not enforce RFC version/variant bits must use the project's canonical GUID-shape validator, not RFC-strict z.uuid(). Keep RFC-strict validation for identifiers whose generator guarantees RFC UUID semantics.",
+      "why": "Zod 4 uuid() validates RFC variant bits while PostgreSQL accepts arbitrary 128-bit UUID values; deterministic MD5-derived ERP IDs can fail strict RFC validation.",
+      "evidence": [
+        "src/lib/erp/domain.ts",
+        "src/lib/erp/validation.ts",
+        "src/lib/__tests__/erpCanonicalGuidValidation.test.ts"
+      ],
+      "loadByDefault": false
+    },
+    {
       "id": "CI_TOOLCHAIN_REUSE",
       "domains": [
         "all"

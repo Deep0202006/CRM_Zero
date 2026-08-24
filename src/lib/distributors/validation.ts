@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { activityStatuses, billingStatuses, installationStatuses, mappingStatuses, trainingStatuses, validateStatusCombination } from "./domain";
 import { isValidISTDateKey } from "@/lib/dateTime";
+import { optionalCanonicalErpIdSchema } from "@/lib/erp/validation";
 
 const uuid = z.string().uuid();
 const date = z.string().refine(isValidISTDateKey, "Enter a valid calendar date.");
@@ -49,7 +50,7 @@ export const distributorListSchema = z.object({
   billing: z.enum(["", ...billingStatuses]).default(""),
   renewal: z.enum(["", "due_soon"]).default(""),
   paymentStatus: z.enum(["", "PAID", "NOT_PAID", "DISPUTED", "COLLECTION_SETUP_REQUIRED", "NOT_BILLED"]).default(""),
-  erp: z.union([uuid, z.literal("")]).default(""),
+  erp: optionalCanonicalErpIdSchema.default(""),
   erpUnset: z.enum(["", "true"]).default(""),
 });
 
@@ -59,6 +60,6 @@ export const renewalReadSchema = z.object({
   page: z.coerce.number().int().min(1).max(10000).default(1),
   pageSize: z.coerce.number().int().min(1).max(50).default(50),
   limit: z.coerce.number().int().min(1).max(50).default(50),
-  erp: z.union([uuid, z.literal("")]).default(""),
+  erp: optionalCanonicalErpIdSchema.default(""),
   erpUnset: z.enum(["", "true"]).default(""),
 });
