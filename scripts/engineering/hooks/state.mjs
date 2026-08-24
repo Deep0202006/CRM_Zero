@@ -1,0 +1,13 @@
+import { createHash } from "node:crypto";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { execFileSync } from "node:child_process";
+export const root=resolve(import.meta.dirname,"../../..");
+export const git=(...args)=>execFileSync("git",args,{cwd:root,encoding:"utf8"}).trim();
+export const sha=(value)=>createHash("sha256").update(String(value)).digest("hex");
+export const readInput=async()=>{let raw="";for await(const chunk of process.stdin)raw+=chunk;return JSON.parse(raw||"{}");};
+export const sessionPath=(sessionId="unknown")=>resolve(root,git("rev-parse","--git-path",`zerograph/sessions/${String(sessionId).replace(/[^a-zA-Z0-9._-]/g,"_")}.json`));
+export const loadState=(sessionId)=>{const path=sessionPath(sessionId);return existsSync(path)?JSON.parse(readFileSync(path,"utf8")):{session_id:sessionId,stallCount:0};};
+export const saveState=(state)=>{const path=sessionPath(state.session_id);mkdirSync(dirname(path),{recursive:true});writeFileSync(path,JSON.stringify(state));};
+export const dirtyFingerprint=()=>sha(git("status","--porcelain=v1","--untracked-files=all"));
+export const repositoryState=()=>({headSha:git("rev-parse","HEAD"),treeSha:git("rev-parse","HEAD^{tree}"),dirtyFingerprint:dirtyFingerprint()});

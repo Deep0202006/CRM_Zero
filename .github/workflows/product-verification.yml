@@ -18,6 +18,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
@@ -28,7 +29,7 @@ jobs:
       - run: npm run quality:legacy
       - run: npm run quality:invariants
       - run: npm run context:test
-      - run: npm run os:acceptance -- --mode ci
+      - run: npm run os:bootstrap-test
       - name: Check changed diff integrity
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
@@ -53,7 +54,7 @@ jobs:
             npm test -- --runInBand --findRelatedTests "${affected[@]}"
           fi
 
-  verify:
+  unit-build:
     needs: preflight
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -64,6 +65,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
@@ -76,6 +78,7 @@ jobs:
 
   receivables-postgres:
     needs: preflight
+    if: always() && needs.preflight.result != 'cancelled'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     services:
@@ -100,6 +103,9 @@ jobs:
       PGPASSWORD: postgres
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
       - name: Activate preinstalled PostgreSQL client
         run: |
           pg_bin="$(pg_config --bindir)"
@@ -134,7 +140,8 @@ jobs:
         run: createdb mappings_test && PGDATABASE=mappings_test bash scripts/mappings-db/run-integration.sh
 
   e2e:
-    needs: [preflight, verify]
+    needs: [preflight, unit-build]
+    if: always() && needs.preflight.result != 'cancelled' && needs.unit-build.result != 'cancelled'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     container:
@@ -147,6 +154,9 @@ jobs:
       PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 24.13.0
@@ -167,3 +177,30 @@ jobs:
           PLAYWRIGHT_E2E_WEBPACK: "true"
       - name: Run Mapping team attribution and offline convergence flows
         run: npm run test:e2e:mappings
+
+  verify:
+    needs: [preflight, unit-build, receivables-postgres, e2e]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.13.0
+          cache: npm
+      - run: npm ci
+      - name: Require exact PR head
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+      - name: Require complete evidence jobs
+        env:
+          PREFLIGHT: ${{ needs.preflight.result }}
+          UNIT_BUILD: ${{ needs.unit-build.result }}
+          POSTGRES: ${{ needs.receivables-postgres.result }}
+          E2E: ${{ needs.e2e.result }}
+        run: test "$PREFLIGHT:$UNIT_BUILD:$POSTGRES:$E2E" = "success:success:success:success"
+      - run: npm run os:acceptance -- --mode release
