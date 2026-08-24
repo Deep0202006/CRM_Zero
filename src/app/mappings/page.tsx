@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { db, transactionalMutation, LocalMappingRequest } from "@/lib/db";
+import { db, transactionalMutation, LocalMappingRequest, LocalUser, pullDownSync } from "@/lib/db";
 import { AlertCircle, CheckCircle2, Link2, Download, ArrowRightLeft } from "lucide-react";
 import { SearchableSelect, SearchableOption } from "@/components/SearchableSelect";
 import { QueueList } from "@/components/QueueList";
@@ -15,8 +15,9 @@ import { buildCanonicalClientOptions, resolveClientOptionInput } from "@/lib/cli
 import { mappingRequestSchema } from "@/lib/validation";
 
 export default function MappingsPage() {
-  const { currentUser, hasSupport, allUsers, isAdmin } = useAuth();
+  const { currentUser, hasSupport, isAdmin } = useAuth();
   const [mappings, setMappings] = useState<LocalMappingRequest[]>([]);
+  const [mappingUsers, setMappingUsers] = useState<LocalUser[]>([]);
   const [scope, setScope] = useState<"team" | "mine" | "logged">("team");
   const [actorDimension, setActorDimension] = useState<"mapped_by" | "requested_by">("mapped_by");
   const [actorId, setActorId] = useState("");
@@ -38,7 +39,9 @@ export default function MappingsPage() {
 
   const loadData = async () => {
     try {
+      if (typeof navigator !== "undefined" && navigator.onLine) await pullDownSync();
       const allMaps = await db.mapping_requests.toArray();
+      setMappingUsers(await db.users.toArray());
       allMaps.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
       setMappings(allMaps);
     } catch (err) {
@@ -48,6 +51,9 @@ export default function MappingsPage() {
 
   useEffect(() => {
     loadData();
+    const refresh = () => { loadData(); };
+    window.addEventListener("zerodata:mapping-requests-changed", refresh);
+    return () => window.removeEventListener("zerodata:mapping-requests-changed", refresh);
   }, []);
 
   const handleLogMapping = async (e: React.FormEvent) => {
@@ -140,7 +146,7 @@ export default function MappingsPage() {
   const secondaryLabel = activeSegment === "Distributor" ? "Retailer" : "Distributor";
   const pendingCount = mappings.filter((mapping) => mapping.status !== "Completed").length;
   const completedCount = mappings.filter((mapping) => mapping.status === "Completed").length;
-  const userLabel = (id?: string | null, snapshot?: string | null) => allUsers.find((user) => user.user_id === id)?.name?.trim() || snapshot?.trim() || "Unknown/Former employee";
+  const userLabel = (id?: string | null, snapshot?: string | null) => mappingUsers.find((user) => user.user_id === id)?.name?.trim() || snapshot?.trim() || "Unknown/Former employee";
   const visibleMappings = mappings.filter((mapping) => {
     if (scope === "mine" && !(mapping.status === "Completed" && mapping.mapped_by === currentUser?.user_id)) return false;
     if (scope === "logged" && mapping.requested_by !== currentUser?.user_id) return false;
@@ -225,7 +231,7 @@ export default function MappingsPage() {
           </form>
         </section>
 
-        <section className="space-y-3"><div className="flex flex-wrap gap-2"><Button size="sm" variant={scope === "team" ? "primary" : "outline"} onClick={() => setScope("team")}>All team</Button><Button size="sm" variant={scope === "mine" ? "primary" : "outline"} onClick={() => setScope("mine")}>My completed</Button><Button size="sm" variant={scope === "logged" ? "primary" : "outline"} onClick={() => setScope("logged")}>Logged by me</Button><input className="field-control max-w-xs" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search mapping or employee" />{isAdmin && <><select className="field-control max-w-40" value={actorDimension} onChange={(e) => setActorDimension(e.target.value as "mapped_by" | "requested_by")}><option value="mapped_by">Completed by</option><option value="requested_by">Logged by</option></select><select className="field-control max-w-48" value={actorId} onChange={(e) => setActorId(e.target.value)}><option value="">All employees</option>{allUsers.map((u) => <option key={u.user_id} value={u.user_id}>{u.name.trim()}</option>)}</select></>}</div>
+        <section className="space-y-3"><div className="flex flex-wrap gap-2"><Button size="sm" variant={scope === "team" ? "primary" : "outline"} onClick={() => setScope("team")}>All team</Button><Button size="sm" variant={scope === "mine" ? "primary" : "outline"} onClick={() => setScope("mine")}>My completed</Button><Button size="sm" variant={scope === "logged" ? "primary" : "outline"} onClick={() => setScope("logged")}>Logged by me</Button><input className="field-control max-w-xs" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search mapping or employee" />{isAdmin && <><select className="field-control max-w-40" value={actorDimension} onChange={(e) => setActorDimension(e.target.value as "mapped_by" | "requested_by")}><option value="mapped_by">Completed by</option><option value="requested_by">Logged by</option></select><select className="field-control max-w-48" value={actorId} onChange={(e) => setActorId(e.target.value)}><option value="">All employees</option>{[...new Set(mappings.flatMap((m) => [m.requested_by, m.mapped_by]).filter((id): id is string => Boolean(id)))].map((id) => <option key={id} value={id}>{userLabel(id)}</option>)}</select></>}</div>
         <QueueList
           title="Mapping work queue"
           items={visibleMappings.map((mapping) => ({
