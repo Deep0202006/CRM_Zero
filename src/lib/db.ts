@@ -87,6 +87,8 @@ export interface LocalMappingRequest {
   retailer_name_unregistered?: string | null;
   requested_by?: string | null;
   mapped_by?: string | null;
+  requested_by_name_snapshot?: string | null;
+  mapped_by_name_snapshot?: string | null;
   status: "Pending" | "Completed";
   notes?: string | null;
   created_at: string;

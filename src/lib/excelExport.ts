@@ -60,8 +60,10 @@ export async function exportSupport(userId: string) {
 
 export async function exportMappings(userId: string) {
   const mappings = await db.mapping_requests.where('mapped_by').equals(userId).toArray();
+  const users = new Map((await db.users.toArray()).map((user) => [user.user_id, user.name.trim()]));
   const data = mappings.map(m => ({
-    'Request ID': m.request_id,
+    'Logged By': users.get(m.requested_by ?? '') || m.requested_by_name_snapshot || 'Unknown/Former employee',
+    'Completed By': users.get(m.mapped_by ?? '') || m.mapped_by_name_snapshot || 'Unknown/Former employee',
     'Distributor': m.distributor_name_unregistered || m.distributor_lead_id || '',
     'Retailer': m.retailer_name_unregistered || m.retailer_lead_id || '',
     'Status': m.status,
@@ -160,7 +162,8 @@ export async function exportMasterMappings() {
     'Request ID': r.request_id,
     'Distributor Name': r.distributor_name_unregistered || (r.distributor_lead_id ? leadMap.get(r.distributor_lead_id) : '') || r.distributor_lead_id || '',
     'Retailer Name': r.retailer_name_unregistered || (r.retailer_lead_id ? leadMap.get(r.retailer_lead_id) : '') || r.retailer_lead_id || '',
-    'Mapped By Username': r.mapped_by ? (userMap.get(r.mapped_by) || r.mapped_by) : '',
+    'Logged By': r.requested_by ? (userMap.get(r.requested_by)?.trim() || r.requested_by_name_snapshot || 'Unknown/Former employee') : 'Unknown/Former employee',
+    'Completed By': r.mapped_by ? (userMap.get(r.mapped_by)?.trim() || r.mapped_by_name_snapshot || 'Unknown/Former employee') : '',
     'Status': r.status,
     'Notes': r.notes || '',
     'Created At': formatIsoDate(r.created_at),

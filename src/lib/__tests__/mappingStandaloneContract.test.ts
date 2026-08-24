@@ -46,10 +46,18 @@ describe("standalone Mapping contract", () => {
       distributor_name_unregistered: "ABC & Co.",
       retailer_name_unregistered: "Store 42",
       requested_by: "00000000-0000-4000-8000-000000000002",
-      mapped_by: "00000000-0000-4000-8000-000000000002",
+      mapped_by: null,
       status: "Pending",
       created_at: "2026-08-16T00:00:00.000Z",
     }).success).toBe(true);
+  });
+
+  it("keeps requester and completer as separate facts", () => {
+    const page = read("src/app/mappings/page.tsx");
+    expect(page).toContain("mapped_by: null");
+    expect(page).toContain("updates.mapped_by = currentUser?.user_id || null");
+    expect(page).toContain("Logged by:");
+    expect(page).toContain("Completed by:");
   });
 
   it("has zero Lead or Pipeline write authority", () => {
