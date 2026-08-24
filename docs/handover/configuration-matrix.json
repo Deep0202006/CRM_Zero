@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "values": "never-recorded",
+  "items": [
+    { "setting": "SUPABASE_PUBLIC_URL", "evidence": "MANUAL_DASHBOARD_EVIDENCE" },
+    { "setting": "API_EXTERNAL_URL", "evidence": "MANUAL_DASHBOARD_EVIDENCE" },
+    { "setting": "Auth SITE_URL and redirect URLs", "evidence": "MANUAL_DASHBOARD_EVIDENCE" },
+    { "setting": "Auth password, sign-up, JWT expiry and refresh", "evidence": "MANUAL_DASHBOARD_EVIDENCE" },
+    { "setting": "SMTP presence/configuration", "evidence": "MANUAL_DASHBOARD_EVIDENCE" },
+    { "setting": "PGRST_DB_SCHEMAS and PGRST_DB_MAX_ROWS", "evidence": "MANUAL_DASHBOARD_EVIDENCE" },
+    { "setting": "Realtime Postgres Changes/private Broadcast/REALTIME_DB_ENC_KEY", "evidence": "MANUAL_DASHBOARD_EVIDENCE" },
+    { "setting": "STORAGE_PUBLIC_URL and S3 configuration", "evidence": "MANUAL_DASHBOARD_EVIDENCE" },
+    { "setting": "backup and restore configuration", "evidence": "MANUAL_DASHBOARD_EVIDENCE" },
+    { "setting": "TLS, DNS, CORS and WebSocket proxy", "evidence": "MANUAL_DASHBOARD_EVIDENCE" }
+  ]
+}

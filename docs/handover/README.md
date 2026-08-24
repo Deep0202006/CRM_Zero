@@ -1,48 +1,37 @@
-# CRM Supabase Handover Phase 1
+# CRM Supabase handover — lossless certification
 
-Status: readiness only. Production Supabase is read-only and remains rollback authority. This repository does not perform a migration, alter migrations 001-050, create migration 051, or move Vercel.
+This is readiness tooling only: source production is read-only, migrations 001-050 are immutable, no Vercel backend changes occur, and source remains rollback authority.
 
-## Locked boundary
+## Boundary and source identity
 
-Vercel remains the Next.js web/API application, production domains, Vercel Functions, Vercel Cron (`/api/maintenance/selfie-retention`), `CRON_SECRET`, VAPID/Web Push, and GitHub/Vercel deployment flow. Supabase moves as one compatible backend: PostgreSQL schema/data, Auth, Data API/RPC, RLS/grants/roles, Realtime, Storage metadata/object bytes, pg_cron, extensions, and Supabase Auth/Realtime/Storage configuration. Edge Functions and Vault secrets are inventoried, not assumed.
+Vercel retains Next.js/API routes, domains, Functions, Vercel Cron (`/api/maintenance/selfie-retention`), `CRON_SECRET`, VAPID/Web Push, and deployment flow. Supabase moves PostgreSQL, Auth, Data API/RPC, RLS/grants/roles, Realtime, Storage, pg_cron, extensions, and Supabase service configuration. Edge Functions and Vault are inventoried as facts, never assumed.
 
-The target operator does not need Vercel ownership. It returns its URL, public key, and service-role credential through approved secure transfer to the Vercel owner for final cutover.
+Run inventory only with Owner-supplied `HANDOVER_SOURCE_DB_URL`. Its hostname must be the intended production DB host and the live query must prove PostgreSQL 17; otherwise `HANDOVER_SOURCE_IDENTITY_UNRESOLVED`. The URL is never printed or recorded. No `--linked` fallback exists. Functions/secrets use the same verified project ref only after this check. `vaultSecretCount` is `vault.secrets`; `edgeFunctionSecretCount` is the read-only Edge Function secrets listing.
 
-## Source inventory and Free budget
+## Manifest V2 and comparison
 
-Run `node scripts/handover/inventory.mjs` only with authorized read-only source access. It writes the sanitized manifest to ignored `.handover/source-inventory.json`; it includes catalog metadata, counts, aggregate amounts, migration boundary, and no row payloads, user identifiers, object names, secrets, JWTs, or connection strings. The query is a `BEGIN READ ONLY` transaction.
+Ignored `.handover/source-inventory.json` is V2. It contains privacy-safe application semantic fingerprints: public tables/columns/types/enums, constraints, indexes, views, functions/RPCs, triggers, policies across public/storage/realtime, privileges, app Realtime publication membership, pg_cron name/schedule/command fingerprint, extensions, bucket configuration, and business totals. SQL definitions and policy predicates are hashed; no row values, emails, paths, credentials, or secret names are emitted.
 
-Free-plan reference: verifiedAt `2026-08-24`; source: https://supabase.com/docs/guides/platform/billing-on-supabase and https://supabase.com/pricing. Limits: two active Free projects, 500 MB database/project, 1 GB Storage, 5 GB egress, 5 GB cached egress, 50,000 MAU, 200 concurrent Realtime connections, and 2,000,000 Realtime messages/month. Classify database and Storage usage GREEN below 50%, YELLOW 50-70%, RED above 70%. Egress, cached egress, Realtime messages, and connections require `MANUAL_DASHBOARD_EVIDENCE`; database catalog cannot prove their current consumption. A RED database/Storage/bandwidth result blocks optional rehearsal export pending human review. Production and staging already use the two active Free projects: do not create a third or use paid Branching.
+Deep mode (`node scripts/handover/inventory.mjs --deep`) fingerprints every public table from canonical JSON rows, sorted by per-row SHA-256 under UTC session settings. It also fingerprints Auth UUID, identity, and credential/password-hash sets before any target login. Volatile sessions/refresh state are excluded because post-cutover session invalidation is `EXPECTED_REAUTHENTICATION`.
 
-## Vercel environment handoff
+`node scripts/handover/compare.mjs` classifies app schema/types/policies/grants/publication membership/deep data/Auth/bucket config/full Storage integrity/business invariants as MUST_EQUAL. PG17, service schema compatibility, API/Auth/PostgREST/Realtime/Storage/Supavisor, TLS/CORS/WebSocket, and backups are MUST_BE_COMPATIBLE. Physical bytes, cron execution history, advisor findings, and Vercel errors are SOURCE_BASELINE_ONLY; service-managed timestamps/job IDs/Realtime partitions are VOLATILE/SYSTEM_MANAGED. A mismatch is `HANDOVER_PARITY_FAILED`; a missing capability is `TARGET_PLATFORM_INCOMPATIBLE`.
 
-Read-only Project Environment Variable name audit is required in both Production and Preview for `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY`; never print values. Until parity is established, this state is `VERCEL_ENV_HANDOFF_REQUIRED`: retain the existing legacy values in `vercel.json` and do not deploy a changed backend configuration. `handover:check` allows only the exact pinned legacy URL/anon pair and rejects new committed `*.supabase.co` endpoints, embedded Supabase keys, and any service-role value in `vercel.json`. Once parity is confirmed, remove that legacy exception and keep backend selection only in Vercel Project Environment Variables.
+Only application hooks are inventoried for managed schemas: `auth.users` application triggers, Storage policies, and Realtime `messages` policies (including `chat_private_broadcast_member_select`). Do not clone managed internals. `.handover/platform-policies.sql` may be generated only after dump inspection proves a supported dump omits reviewed application-owned policies/grants; it is applied only to rehearsal/target.
 
-## Artifacts and transfer
+## Artifacts, dumps, and Storage
 
-Generated artifacts stay in ignored `.handover/`:
+All plaintext artifacts stay ignored under Owner-controlled encrypted `.handover/`: source/target inventories, roles/schema/data dumps, `platform-policies.sql`, Storage transfer metadata, comparison report, dump coverage report, and `SHA256SUMS`. `node scripts/handover/checksums.mjs` creates checksums for every generated artifact; `--verify` fails on any drift. Send the final encrypted-package SHA-256 through a separate trusted/signed channel. Tracked-file checks reject likely dump/export/secret bundles outside this location; canonical `supabase/schema.sql` is exempt.
 
-```text
-.handover/
-  source-inventory.json
-  roles.sql
-  schema.sql
-  data.sql
-  SHA256SUMS
-```
+At rehearsal/final export only, use the supported CLI `--db-url` workflow with the secure Owner variable: role dump, schema dump, and data dump. Do not replay migrations 001-050. `node scripts/handover/dump-inspect.mjs` reads generated `data.sql` structurally and fails with `HANDOVER_AUTH_DUMP_INCOMPLETE` or `HANDOVER_STORAGE_METADATA_INCOMPLETE` if Auth users/identities or Storage buckets/objects are absent. Until a rehearsal dump exists: `NOT_RUN_UNTIL_REHEARSAL`.
 
-Use the supported `supabase db dump` workflow for `roles.sql`, `schema.sql`, and `data.sql`; restore the live snapshot rather than replaying immutable CRM migrations 001-050. SHA-256 every artifact. Database dumps include Auth and sensitive business data, so `ENCRYPTION_REQUIRED` applies before any bundle leaves Owner custody. Do not make a recipient package until a recipient public key or approved secure transfer exists. No dump is committed.
+Storage is a separate transfer through supported S3/Storage API: Source Supabase → Owner-controlled encrypted package → recipient → target Storage. Never copy volumes or give the recipient source credentials. Certification is FULL object integrity: exact bucket config/count/bytes, aggregate manifest, and EVERY content hash/check-download—not sampling—plus authenticated upload/own read/admin read and unauthorized rejection. User-derived object paths and per-object hashes exist only inside the encrypted package. `public.field_visit_media` stays DB state; report relationBytes and payloadBytes separately.
 
-At the approved rehearsal/final export window only: run `supabase db dump --linked --role-only -f .handover/roles.sql`, `supabase db dump --linked -f .handover/schema.sql`, and `supabase db dump --linked --data-only --use-copy -f .handover/data.sql`, then `node scripts/handover/checksums.mjs`. Do not run those exports repeatedly or outside Owner custody.
+## Target, configuration, and rollback
 
-Storage is a separate byte transfer: use Supabase S3-compatible API/rclone into the self-hosted Storage service, never direct volume copies. Preserve bucket identity, visibility, paths, metadata, and bytes; certify count, total bytes, sampled content integrity, authenticated upload/download/admin read, and unauthorized-read rejection. `public.field_visit_media` remains a database backup/fallback authority and belongs in the database dump.
+Target requires an exact pinned self-hosted release, image tags/digests, PostgreSQL `SHOW server_version` proving 17, service versions, and rehearsal-proven Auth/Storage/Realtime schema compatibility. Gateway may be Envoy or supported Kong; observable CRM behavior is authority. Preserve current anon/service-role API-key semantics initially; opaque-key migration is separate.
 
-## Target and cutover contract
+Use `configuration-matrix.json` to record sanitized configuration evidence for `SUPABASE_PUBLIC_URL`, `API_EXTERNAL_URL`, Auth site/redirect/password/JWT/SMTP settings, PGRST schemas/max rows, Realtime/private Broadcast/Postgres Changes/DB encryption key, Storage public/S3 settings, backups, and TLS/DNS/CORS/WebSocket proxy behavior. Unknown source settings are `MANUAL_DASHBOARD_EVIDENCE`, never guessed.
 
-Target requires a pinned supported self-hosted Supabase release, PostgreSQL 17, compatible Auth/Storage/Realtime schemas, required extensions, API gateway, Auth, PostgREST, Realtime, Storage, Supavisor/appropriate DB access, independent backups, and public valid TLS endpoints for `/auth/v1`, `/rest/v1`, `/realtime/v1` (WSS), and `/storage/v1`. A private-only PostgreSQL host is `TARGET_PLATFORM_INCOMPATIBLE`. Validate DNS/TLS/CORS/origins for `zerodatacrm.com`, `www.zerodatacrm.com`, and a controlled Vercel Preview origin.
+Free reference verifiedAt `2026-08-24`: two projects, 500 MB DB, 1 GB Storage, 5 GB egress/cached egress, 50k MAU, 200 Realtime connections, 2m messages. GREEN <50%, YELLOW 50-70%, RED >70%; egress and Realtime consumption require `MANUAL_DASHBOARD_EVIDENCE`. A RED result blocks optional rehearsal export. Source pausing policy is external; record its URL and verifiedAt at cutover, not a permanent restore window. Independent encrypted backup is mandatory. After target receives writes, reconcile them before any rollback; never blindly switch Vercel back.
 
-Auth UUIDs and password hashes survive exactly; verify Auth Admin create/update/delete/reset parity. Session invalidation from new signing material is `EXPECTED_REAUTHENTICATION`, not data loss. Preserve same-origin Dexie/localStorage recovery data; after login with the same UUID, owner-bound outboxes remain recoverable without clearing browser storage.
-
-Inventory exact `supabase_realtime` membership, Postgres Changes subscriptions, private Team Chat Broadcast, `realtime.setAuth`, `realtime.messages` authorization, and target WSS. Keep Vercel Cron remains on Vercel; inventory/migrate only Supabase pg_cron jobs to avoid duplicate selfie retention. `nightly-kpi` referencing missing `public.daily_kpi_snapshots` is `KNOWN_LIVE_DEFECT`, preserved rather than repaired here.
-
-Rehearsal restores to a self-hosted target and changes Vercel Preview only. Final cutover is documented work: dashboard headroom, write drain, final inventory/dumps/Storage transfer, target restore, source vs target manifest comparison, Auth/RPC/RLS/Realtime/Storage verification, then Vercel Production environment switch and redeploy, reauthentication, CRM smoke, release or rollback. Source remains intact; no blind failback after target writes without reconciliation.
+`VERCEL_ENV_HANDOFF_REQUIRED` remains until authorized Production and Preview environment-name parity for the three Supabase variables is proven without printing values. It blocks actual cutover, not readiness tooling. Production Vercel retains its current backend during this PR.
