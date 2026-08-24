@@ -204,7 +204,7 @@
                                               "docs/contracts/mappings.md"
                                           ],
                         "authorityRefs":  [
-
+                                              "mapping_request"
                                           ],
                         "capabilityRefs":  [
                                                "mapping-standalone-persistence",

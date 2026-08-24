@@ -129,6 +129,8 @@ jobs:
         run: createdb distributor_status_test && PGDATABASE=distributor_status_test bash scripts/distributor-status-db/run-integration.sh
       - name: Fresh-apply Migrations 046-047 and prove master-import, ERP scope, and financial isolation
         run: createdb distributor_master_test && CRM_MASTER_DB_DISPOSABLE=1 PGDATABASE=distributor_master_test bash scripts/distributor-master-db/run-integration.sh
+      - name: Fresh-apply Migration 051 and prove Mapping attribution/RLS
+        run: createdb mappings_test && PGDATABASE=mappings_test bash scripts/mappings-db/run-integration.sh
 
   e2e:
     needs: [preflight, verify]
@@ -162,3 +164,5 @@ jobs:
         run: npm run test:e2e:pipeline
         env:
           PLAYWRIGHT_E2E_WEBPACK: "true"
+      - name: Run Mapping team attribution and offline convergence flows
+        run: npm run test:e2e:mappings

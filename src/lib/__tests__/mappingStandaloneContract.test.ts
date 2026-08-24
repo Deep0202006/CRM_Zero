@@ -46,10 +46,28 @@ describe("standalone Mapping contract", () => {
       distributor_name_unregistered: "ABC & Co.",
       retailer_name_unregistered: "Store 42",
       requested_by: "00000000-0000-4000-8000-000000000002",
-      mapped_by: "00000000-0000-4000-8000-000000000002",
+      mapped_by: null,
       status: "Pending",
       created_at: "2026-08-16T00:00:00.000Z",
     }).success).toBe(true);
+  });
+
+  it("keeps requester and completer as separate facts", () => {
+    const page = read("src/app/mappings/page.tsx");
+    expect(page).toContain("mapped_by: null");
+    expect(page).toContain("updates.mapped_by = currentUser?.user_id || null");
+    expect(page).toContain("Logged by:");
+    expect(page).toContain("Completed by:");
+  });
+
+  it("uses immutable actor IDs only as deleted-user audit fallbacks", () => {
+    const migration = read("supabase/migrations/051_mapping_attribution_visibility.sql");
+    const page = read("src/app/mappings/page.tsx");
+    expect(migration).toContain("requested_by_id_snapshot uuid null");
+    expect(migration).toContain("mapped_by_id_snapshot uuid null");
+    expect(migration).toContain("FK ON DELETE SET NULL may only detach live IDs");
+    expect(migration).toContain("mapped_by_id_snapshot is not null and completed_at is not null");
+    expect(page).toContain("resolveActorId(mapping.mapped_by, mapping.mapped_by_id_snapshot)");
   });
 
   it("has zero Lead or Pipeline write authority", () => {
