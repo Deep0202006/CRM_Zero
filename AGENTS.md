@@ -11,36 +11,41 @@ behavior, read the relevant guide under `node_modules/next/dist/docs/`.
 Repository scope: `Deep0202006/CRM_Zero` only. Canonical root is
 `C:\Users\dcp69\Desktop\CRM_Zero`; use a clean worktree below `.worktrees/`.
 
-For an ordinary request, the user need provide only the outcome and unusual
-constraints. Load progressively: (1) current code/schema/tests, (2) one
-Graphify structural query, (3) the affected `DOMAIN_MAP.json` entry, (4) its
-exact contracts, (5) named authority/capability entries, then (6) at most eight
-matching lessons. Never preload unrelated history, every contract, or
-`graphify-out/`. Use `npm run context:resolve -- --domain <id>` after source
-verification to make that selection deterministic.
+Load progressively: current code/schema/tests, one Graphify query, the affected
+domain entry and exact contracts, named authority/capability entries, then
+lessons selected by deterministic task relevance and resolver token budget.
+Use `npm run context:resolve -- --task "<summary>" --path <path>` after source
+verification. Never preload unrelated history, every contract, or graph cache.
 
 Source roles: user request = outcome; fresh read-only production evidence =
-deployed fact; contracts = intended invariants; current code/tests = behavior
-and executable evidence; authorities = ownership; capabilities = reuse;
-lessons = failure prevention; Graphify = local structural navigation only; CI
-= exact-head proof. If contract and code disagree, stop on
-`CONTRACT_IMPLEMENTATION_DRIFT`. If a write has no authority, stop on
-`AUTHORITY_UNRESOLVED` rather than inventing ownership.
+deployed fact; contracts = intended invariants; current code/tests = behavior;
+authorities = ownership; capabilities = reuse; lessons = failure prevention;
+Graphify = a locator, never authority; CI = exact-head proof. Docs do not
+overrule fresh source or deployed evidence. Confirm Graphify findings by opening
+current source; unsupported assumptions are not evidence. If contract and code
+disagree, stop on `CONTRACT_IMPLEMENTATION_DRIFT`. If a write has no authority,
+stop on `AUTHORITY_UNRESOLVED` rather than inventing ownership.
 
-Ponytail FULL: understand the real flow first; reuse existing helpers,
-components, RPCs, and tests; prefer native/current dependencies before a new
-abstraction; make the minimum correct diff; never reduce safety, security, or
-accessibility. Codex is the single implementation agent: no nested coding
-agent or autonomous task controller.
+Ponytail FULL: understand the flow, reuse existing helpers/components/RPCs/tests,
+make the minimum correct diff, and never reduce safety, security, or
+accessibility. One direct Codex only: no nested coding agents or controller.
 
-Protocol: inspect clean current main, query Graphify, verify the candidate
-source, resolve context, trace write/read flow, reuse first, lock authority and
-risk, make the minimum diff, prove it, then use exact-head CI. If Graphify is
-unavailable use targeted search; if Ponytail hooks are unavailable this policy
-remains binding. Do not guess a migration from a UI symptom, ownership from a
-field name, production state from a snapshot, or completion from agent prose.
+Ordinary workflow: targeted `rg`/`git grep`/path search, open exact current
+source, resolve task-aware context, read authority/reuse, make the minimum
+change, and prove it. Use Graphify only when structural relationships are
+ambiguous/cross-domain or it materially reduces search cost; then run
+`graphify:sync`, make one bounded query (~600 tokens), and open exact source.
+Graphify unavailable never blocks an ordinary product task. For platform-wide
+discovery use `--mode platform`, then return to focused context before each
+write. Do not guess migrations, ownership, production state, or completion.
 
 Safety: preserve unknown dirty work; never reset, clean, prune, force-push, or
 push directly to `main`; never create production dummy data; production SQL is
-Owner-applied only and postcheck is read-only; migrations through the recorded
-boundary are immutable; service-role and private keys are server-only.
+Owner-applied and postcheck is read-only; applied migrations are immutable;
+service-role and private keys are server-only.
+
+Memory policy: do not expand LESSONS or DOMAIN_MAP merely because a bug occurred.
+Prevent it through shared implementation, validation/invariant, and regression
+test first; add a durable lesson only for cross-cutting judgment that cannot be
+mechanically enforced. Invalid knowledge, unresolved authority, security,
+schema/production gates, and relevant failing tests remain blocking.

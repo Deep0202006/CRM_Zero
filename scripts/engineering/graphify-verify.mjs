@@ -1,8 +1,12 @@
 import { existsSync, readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { resolve, extname } from "node:path";
 const root = resolve(import.meta.dirname, "../..");
 const graphPath = resolve(root, "graphify-out/graph.json");
+const stampPath = resolve(root, "graphify-out/.crm-head");
+if (execFileSync("git", ["status", "--porcelain", "--untracked-files=no"], { cwd: root, encoding: "utf8" }).trim()) throw new Error("GRAPHIFY_DIRTY_WORKTREE");
 if (!existsSync(graphPath)) throw new Error("GRAPHIFY_GRAPH_MISSING");
+if (!existsSync(stampPath) || readFileSync(stampPath, "utf8").trim() !== execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim()) throw new Error("GRAPHIFY_STALE");
 const graph = JSON.parse(readFileSync(graphPath, "utf8"));
 const nodes = graph.nodes ?? []; const links = graph.links ?? graph.edges ?? [];
 if (!nodes.length || !links.length) throw new Error("GRAPHIFY_GRAPH_INTEGRITY_FAIL");
@@ -11,5 +15,5 @@ const source = (node) => String(node.source_file ?? node.source ?? node.file ?? 
 const bad = nodes.map(source).filter((file) => file && (file.startsWith("docs/") || ["AGENTS.md", "CLAUDE.md", "README.md", "supabase/migrations/APPLIED_OWNER_MIGRATIONS.json"].includes(file) || forbidden.has(extname(file).toLowerCase())));
 if (bad.length) throw new Error(`GRAPHIFY_NON_CODE_SOURCE:${bad.slice(0, 3).join(",")}`);
 const text = JSON.stringify(nodes);
-for (const canary of ["pipeline/create/route.ts", "pipeline/transition/route.ts", "field-visits/confirm/route.ts", "receivables/commands/route.ts", "CurrentErpBaselineEditor.tsx"]) if (!text.includes(canary)) throw new Error(`GRAPHIFY_CANARY_MISSING:${canary}`);
+for (const canary of ["pipeline/create/route.ts", "pipeline/transition/route.ts", "field-visits/confirm/route.ts", "receivables/commands/route.ts", "CurrentErpBaselineEditor.tsx", "api/distributors/route.ts", "api/erp-systems/route.ts", "AuthContext.tsx", "api/task-upload/route.ts"]) if (!text.includes(canary)) throw new Error(`GRAPHIFY_CANARY_MISSING:${canary}`);
 console.log(`Graphify verification passed (${nodes.length} nodes, ${links.length} links, 0 non-code sources).`);

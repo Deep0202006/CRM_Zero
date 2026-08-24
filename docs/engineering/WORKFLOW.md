@@ -2,8 +2,13 @@
 
 ## Discover
 
-Inspect current main/worktree, make a Graphify query, select the affected domain
-entry and exact contracts, then identify existing code to reuse.
+Inspect current main/worktree, use targeted `rg`/`git grep`/path search, open
+the exact current source, resolve task-aware context, then select the affected
+contracts, authority, and reusable implementation. Use Graphify only when
+relationships are ambiguous/cross-domain or it materially lowers search cost;
+then run `graphify:sync`, make one bounded query, and open the result. Graphify
+is a locator, never authority, and unavailable Graphify never blocks ordinary
+product work.
 
 ## Lock
 
@@ -19,6 +24,15 @@ and run focused tests first. R0 needs lightweight relevant proof; R1 focused
 tests plus typecheck/lint; R2 focused/full unit plus typecheck/lint/build; R3
 adds disposable PostgreSQL, security/isolation, and E2E where applicable.
 GitHub CI is final repository proof.
+
+Release blockers are real evidence failures: unresolved authority, a
+security/auth leak, data-loss risk, relevant contract/implementation drift,
+an unsatisfied schema/production gate, relevant failing tests/CI, or a
+Graphify/source contradiction when Graphify was used. Do not invent process
+blockers. A fully authority-safe runtime fix proven by relevant tests and CI is
+not blocked solely to expand optional lesson metadata. Prevent recurring bugs
+in order: shared implementation, validation/invariant, regression test, then a
+durable lesson only when cross-cutting judgment cannot be mechanically enforced.
 
 ## Schema release
 

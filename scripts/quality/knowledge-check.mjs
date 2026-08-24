@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { execFileSync } from "node:child_process";
+import { isTrackedPathOrDescendant } from "./tracked-paths.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
 const read = (file) => readFileSync(resolve(root, file), "utf8");
@@ -50,7 +51,9 @@ for (const path of tracked("src/app").filter((path) => /\/(page\.tsx|route\.ts)$
 const agents = tracked("").filter((path) => pathExists(path) && /(^|\/)AGENTS\.md$/.test(path));
 if (agents.length !== 1 || agents[0] !== "AGENTS.md") fail("exactly one tracked root AGENTS.md required");
 if (read("CLAUDE.md").replaceAll("\r\n", "\n") !== "@AGENTS.md\n") fail("CLAUDE.md must be the exact root alias");
-for (const path of [".agents", ".claude", ".cursor/rules", ".codex", ".clinerules", ".github/copilot-instructions.md", "GEMINI.md", ".crm-engineering", "tools/crm-graph", "docs/engineering-graph", "docs/os", ".harness", "scripts/harness", "docs/generated", "docs/exec-plans", "docs/field-visits-hardening", "harness.config.json", ".github/workflows/harness.yml"]) if (pathExists(path)) fail(`retired or alternate instruction path exists: ${path}`);
+const trackedFiles = tracked("");
+if (!isTrackedPathOrDescendant([".harness/foo"], ".harness") || isTrackedPathOrDescendant(["docs/engineering/INDEX.md"], ".harness")) fail("tracked retired-path helper self-eval failed");
+for (const path of [".agents", ".claude", ".cursor/rules", ".codex", ".clinerules", ".github/copilot-instructions.md", "GEMINI.md", ".crm-engineering", "tools/crm-graph", "docs/engineering-graph", "docs/os", ".harness", "scripts/harness", "docs/generated", "docs/exec-plans", "docs/field-visits-hardening", "harness.config.json", ".github/workflows/harness.yml"]) if (isTrackedPathOrDescendant(trackedFiles, path)) fail(`retired or alternate instruction path tracked: ${path}`);
 for (const source of legacy.sources ?? []) for (const item of source.items ?? []) {
   const resolution = item.resolution ?? {};
   if (!resolution.type || !resolution.ref) fail(`legacy coverage resolution missing: ${item.legacyId}`);

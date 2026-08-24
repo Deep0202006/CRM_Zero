@@ -538,8 +538,7 @@
                         "lessonRefs":  [
                                            "SERVER_AUTHORIZATION",
                                            "MINIMUM_EXTERNAL_PROJECTION",
-                                           "ERP_AUTHORITIES",
-                                           "POSTGRES_UUID_NOT_RFC_UUID"
+                                           "ERP_AUTHORITIES"
                                        ],
                         "criticalTests":  [
                                               "src/lib/__tests__/erpVisibilityContract.test.ts"

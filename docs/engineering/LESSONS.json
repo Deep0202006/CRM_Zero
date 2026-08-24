@@ -984,10 +984,14 @@
         "erp",
         "distributor-status",
         "erp-partner",
-        "field-visits"
+        "field-visits",
+        "receivables"
       ],
       "triggers": [
+        "invalid UUID",
         "canonical ERP identifier",
+        "erp_id",
+        "z.uuid",
         "Zod UUID validation"
       ],
       "risk": [
