@@ -21,6 +21,8 @@
     "context:resolve": "node scripts/engineering/context.mjs",
     "context:test": "node scripts/engineering/context.test.mjs",
     "semantic:graph": "node scripts/engineering/semantic-graph.mjs",
+    "impact:compile": "node scripts/engineering/impact.mjs",
+    "proof:plan": "node scripts/engineering/proof-plan.mjs",
     "graphify:sync": "node scripts/engineering/graphify-sync.mjs",
     "graphify:verify": "node scripts/engineering/graphify-verify.mjs",
     "vercel-build": "npm run test && next build"
