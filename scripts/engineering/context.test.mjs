@@ -22,7 +22,7 @@ const includes = (pack, id, key = "id") => pack[key].some((item) => (typeof item
 const assert = (path, capability, lessons) => { const pack = parsed("--path", path); if (!includes(pack, capability, "capabilities") || lessons.some((id) => !includes(pack, id, "lessons"))) throw new Error(`knowledge retrieval failed: ${path}`); };
 assert("src/app/api/call-logs/confirm/route.ts", "canonical-call-confirmation", ["WRITE_READ_CLOSURE", "OFFLINE_COMPATIBILITY"]);
 assert("src/app/mappings/page.tsx", "mapping-standalone-persistence", ["ONE_FACT_ONE_AUTHORITY"]);
-assert("src/components/visits/CurrentErpBaselineEditor.tsx", "current-business-erp-intelligence", ["ERP_AUTHORITIES", "OFFLINE_COMPATIBILITY"]);
+assert("src/components/visits/CurrentErpBaselineEditor.tsx", "current-business-erp-intelligence", ["ERP_AUTHORITIES", "NO_FABRICATED_BACKFILL", "TRANSACTION_STAGING"]);
 assert("src/app/api/distributors/master-import/route.ts", "unified-distributor-master-import", ["ATOMIC_BATCH", "SPREADSHEET_COMMIT", "RESOLVED_PLAN_REVALIDATION"]);
 assert("src/app/api/receivables/commands/route.ts", "receivables-command-boundary", ["MONEY_TRUTH", "POSTGRES_WIRE_NORMALIZATION"]);
 assert("src/app/api/pipeline/create/route.ts", "pipeline-create-lead-boundary", ["SERVER_AUTHORIZATION"]);

@@ -28,6 +28,7 @@ jobs:
       - run: npm run quality:legacy
       - run: npm run quality:invariants
       - run: npm run context:test
+      - run: npm run os:acceptance -- --mode ci
       - name: Check changed diff integrity
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}

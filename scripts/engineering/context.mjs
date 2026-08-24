@@ -16,7 +16,7 @@ const paths = values("--path");
 const requestedEffects = values("--effect");
 const task = values("--task").at(-1) ?? "";
 const mode = values("--mode").at(-1) ?? "focused";
-const budgetValue = values("--budget").at(-1) ?? "900";
+const budgetValue = values("--budget").at(-1) ?? "1500";
 const budget = Number(budgetValue);
 if (!Number.isInteger(budget) || budget <= 0) stop("INVALID_BUDGET");
 if (!new Set(["focused", "platform"]).has(mode)) stop("INVALID_MODE");
@@ -85,7 +85,6 @@ for (const id of ids("lessonRefs")) { const lesson = lessons.find((item) => item
 const mandatory = new Set([...chosen.values()].filter(({ reasons }) => reasons.some((reason) => reason !== "domain")).map(({ lesson }) => lesson.id));
 const optional = [...chosen.values()].filter(({ lesson }) => !mandatory.has(lesson.id));
 const build = (entries, omittedLessons = []) => {
-  entries = entries.slice(0, 4);
   const lessonSelection = Object.fromEntries(entries.map(({ lesson, reasons }) => [lesson.id, [...new Set(reasons)]]));
   const pack = {
     mode: "focused", scope: domains.length === 1 ? "focused" : "cross-domain", budget,

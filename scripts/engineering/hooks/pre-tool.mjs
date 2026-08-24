@@ -1,0 +1,1 @@
+let input=""; for await(const c of process.stdin) input+=c; const text=JSON.stringify(JSON.parse(input||"{}")); const deny=/git reset --hard|git clean -[fd]|--force.*push|push.*main|gwfjkpsoaoherntwhdyf.*(?:db|sql|migration)|(?:docker|postgres).*install/i.test(text); if(deny) console.log(JSON.stringify({permissionDecision:"deny",reason:"SAFETY_CONFLICT"}));

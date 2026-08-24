@@ -1,0 +1,1 @@
+{"hooks":{"UserPromptSubmit":[{"command":"node scripts/engineering/hooks/user-prompt.mjs"}],"PreToolUse":[{"command":"node scripts/engineering/hooks/pre-tool.mjs"}],"PostToolUse":[{"command":"node scripts/engineering/hooks/post-tool.mjs"}],"Stop":[{"command":"node scripts/engineering/hooks/stop.mjs"}]}}

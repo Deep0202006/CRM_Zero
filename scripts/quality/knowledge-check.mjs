@@ -53,7 +53,8 @@ if (agents.length !== 1 || agents[0] !== "AGENTS.md") fail("exactly one tracked 
 if (read("CLAUDE.md").replaceAll("\r\n", "\n") !== "@AGENTS.md\n") fail("CLAUDE.md must be the exact root alias");
 const trackedFiles = tracked("");
 if (!isTrackedPathOrDescendant([".harness/foo"], ".harness") || isTrackedPathOrDescendant(["docs/engineering/INDEX.md"], ".harness")) fail("tracked retired-path helper self-eval failed");
-for (const path of [".agents", ".claude", ".cursor/rules", ".codex", ".clinerules", ".github/copilot-instructions.md", "GEMINI.md", ".crm-engineering", "tools/crm-graph", "docs/engineering-graph", "docs/os", ".harness", "scripts/harness", "docs/generated", "docs/exec-plans", "docs/field-visits-hardening", "harness.config.json", ".github/workflows/harness.yml"]) if (isTrackedPathOrDescendant(trackedFiles, path)) fail(`retired or alternate instruction path tracked: ${path}`);
+for (const path of [".agents", ".claude", ".cursor/rules", ".clinerules", ".github/copilot-instructions.md", "GEMINI.md", ".crm-engineering", "tools/crm-graph", "docs/engineering-graph", "docs/os", ".harness", "scripts/harness", "docs/generated", "docs/exec-plans", "docs/field-visits-hardening", "harness.config.json", ".github/workflows/harness.yml"]) if (isTrackedPathOrDescendant(trackedFiles, path)) fail(`retired or alternate instruction path tracked: ${path}`);
+for (const path of trackedFiles.filter((item) => item.startsWith(".codex/"))) if (!new Set([".codex/hooks.json", ".codex/rules/zerodata.rules"]).has(path)) fail(`unsanctioned codex path: ${path}`);
 for (const source of legacy.sources ?? []) for (const item of source.items ?? []) {
   const resolution = item.resolution ?? {};
   if (!resolution.type || !resolution.ref) fail(`legacy coverage resolution missing: ${item.legacyId}`);
