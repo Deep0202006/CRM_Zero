@@ -16,7 +16,10 @@ create table public.mapping_requests (
   status text not null default 'Pending', notes text, created_at timestamptz not null default timezone('utc',now()), completed_at timestamptz
 );
 alter table public.mapping_requests enable row level security;
-create role anon; create role authenticated;
+do $$ begin
+  if not exists(select 1 from pg_roles where rolname='anon') then create role anon; end if;
+  if not exists(select 1 from pg_roles where rolname='authenticated') then create role authenticated; end if;
+end $$;
 grant usage on schema public, auth to anon, authenticated;
 grant select,insert,update,delete on public.mapping_requests to authenticated;
 grant select on public.users, public.user_capabilities to authenticated;
