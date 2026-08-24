@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "proofs": [
+    {"id":"mapping-unit","kind":"unit","domains":["mappings"],"effects":["UI","OFFLINE"],"runner":"jest","paths":["src/lib/__tests__/mappingStandaloneContract.test.ts"]},
+    {"id":"mapping-e2e","kind":"e2e","domains":["mappings"],"effects":["UI","OFFLINE"],"runner":"playwright","paths":["e2e/mappings"]},
+    {"id":"mapping-postgres","kind":"postgres","domains":["mappings"],"effects":["DATABASE","AUTHORIZATION","SECURITY"],"runner":"bash-postgres","paths":["scripts/mappings-db/run-integration.sh"],"dependencies":["supabase/manual/precheck_051_mapping_attribution_visibility.sql","supabase/manual/verify_051_mapping_attribution_visibility.sql"]}
+  ]
+}

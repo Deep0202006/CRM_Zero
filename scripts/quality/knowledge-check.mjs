@@ -68,5 +68,10 @@ if (meta.lastAppliedOwnerMigration < baseMeta.lastAppliedOwnerMigration || meta.
 const changed = execFileSync("git", ["diff", "--name-only", `${base}...HEAD`, "--", "supabase/migrations"], { cwd: root, encoding: "utf8" }).trim().split(/\r?\n/).filter(Boolean);
 const number = (path) => Number(/^supabase\/migrations\/(\d+)_/.exec(path)?.[1]);
 for (const file of changed) if (number(file) <= baseMeta.immutableThrough) fail(`immutable migration changed: ${file}`);
-if (meta.lastAppliedOwnerMigration === baseMeta.lastAppliedOwnerMigration + 1 && !changed.some((file) => number(file) === meta.lastAppliedOwnerMigration)) fail("boundary increment lacks additive migration");
+if (meta.lastAppliedOwnerMigration === baseMeta.lastAppliedOwnerMigration + 1) {
+  const certified = meta.lastAppliedOwnerMigration;
+  const baseMigrations = execFileSync("git", ["ls-tree", "-r", "--name-only", base, "supabase/migrations"], { cwd: root, encoding: "utf8" }).trim().split(/\r?\n/).filter(Boolean);
+  if (!baseMigrations.some((file) => number(file) === certified)) fail("certification boundary references nonexistent migration");
+  if (changed.some((file) => number(file) <= certified)) fail("certification boundary edited immutable migration");
+}
 if (!process.exitCode) console.log(`Knowledge checks passed (${domains.length} domains, ${lessons.length} lessons).`);

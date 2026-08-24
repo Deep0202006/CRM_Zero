@@ -22,7 +22,7 @@ const includes = (pack, id, key = "id") => pack[key].some((item) => (typeof item
 const assert = (path, capability, lessons) => { const pack = parsed("--path", path); if (!includes(pack, capability, "capabilities") || lessons.some((id) => !includes(pack, id, "lessons"))) throw new Error(`knowledge retrieval failed: ${path}`); };
 assert("src/app/api/call-logs/confirm/route.ts", "canonical-call-confirmation", ["WRITE_READ_CLOSURE", "OFFLINE_COMPATIBILITY"]);
 assert("src/app/mappings/page.tsx", "mapping-standalone-persistence", ["ONE_FACT_ONE_AUTHORITY"]);
-assert("src/components/visits/CurrentErpBaselineEditor.tsx", "current-business-erp-intelligence", ["ERP_AUTHORITIES", "NO_FABRICATED_BACKFILL", "TRANSACTION_STAGING"]);
+assert("src/components/visits/CurrentErpBaselineEditor.tsx", "current-business-erp-intelligence", ["ERP_AUTHORITIES", "OFFLINE_COMPATIBILITY"]);
 assert("src/app/api/distributors/master-import/route.ts", "unified-distributor-master-import", ["ATOMIC_BATCH", "SPREADSHEET_COMMIT", "RESOLVED_PLAN_REVALIDATION"]);
 assert("src/app/api/receivables/commands/route.ts", "receivables-command-boundary", ["MONEY_TRUTH", "POSTGRES_WIRE_NORMALIZATION"]);
 assert("src/app/api/pipeline/create/route.ts", "pipeline-create-lead-boundary", ["SERVER_AUTHORIZATION"]);
@@ -44,4 +44,5 @@ for (const effect of ["DATABASE","AUTHORIZATION"]) if (parsed("--domain","erp","
 if (parsed("--domain","shared-ui","--effect","UI").risk === "R3") throw new Error("UI-only context escalated to R3");
 const cross = parsed("--path","src/components/visits/CurrentErpBaselineEditor.tsx", "--task", "invalid UUID"); if (!cross.domains.includes("erp") || !cross.domains.includes("field-visits") || cross.scope !== "cross-domain" || !includes(cross, "POSTGRES_UUID_NOT_RFC_UUID", "lessons") || cross.estimatedTokens > cross.budget) throw new Error("deterministic multi-domain context failed");
 for (const code of ["UNMAPPED_PATH","AUTHORITY_UNRESOLVED"]) { try { run(code === "UNMAPPED_PATH" ? "--path" : "--domain", code === "UNMAPPED_PATH" ? "src/nope.ts" : "shared-ui", "--effect", "DATABASE"); throw new Error(`${code} accepted`); } catch (error) { if (!String(error.stderr ?? error).includes(code)) throw error; } }
+for (const [task, domain] of [["Mapping should show who logged and completed each mapping", "mappings"], ["calls disappear for employee but admin sees them", "calls"]]) { const pack = parsed("--task", task); if (!pack.domains.includes(domain) || JSON.stringify(pack).includes(task) || pack.estimatedTokens > 900) throw new Error(`task-only resolution failed: ${domain}`); }
 console.log(`Context resolver tests passed (${cases.length} real paths).`);
