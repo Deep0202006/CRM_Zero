@@ -340,6 +340,27 @@
       "expectedBlocker": "CUTOVER_ENV_PARITY_REQUIRED"
     },
     {
+      "id": "platform-client-cutover-blocker",
+      "kind": "blocker",
+      "inputTask": "During Supabase cutover resume writes without proving old browsers reload and offline queues converge",
+      "requiredClaims": ["CLIENT_CUTOVER_RELOAD_REQUIRED", "OFFLINE_QUEUE_CUTOVER_CONVERGENCE_REQUIRED", "SOURCE_LATE_WRITE_RECONCILIATION_REQUIRED"],
+      "expectedBlocker": "CLIENT_CUTOVER_COMPATIBILITY_NOT_RUN"
+    },
+    {
+      "id": "platform-snapshot-blocker",
+      "kind": "blocker",
+      "inputTask": "Certify target parity using a live inventory unrelated to the restored source dump",
+      "requiredClaims": ["SOURCE_SNAPSHOT_BOUND"],
+      "expectedBlocker": "SOURCE_SNAPSHOT_UNBOUND"
+    },
+    {
+      "id": "platform-rollback-availability-blocker",
+      "kind": "blocker",
+      "inputTask": "Cut over without an Owner decision keeping the managed source available for rollback",
+      "requiredClaims": ["SOURCE_ROLLBACK_AVAILABILITY_PLAN"],
+      "expectedBlocker": "SOURCE_ROLLBACK_AVAILABILITY_PLAN"
+    },
+    {
       "id": "platform-rollback-blocker",
       "kind": "blocker",
       "inputTask": "Rollback after target accepted writes by simply pointing Vercel back",

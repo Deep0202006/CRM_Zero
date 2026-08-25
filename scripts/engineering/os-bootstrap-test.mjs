@@ -8,7 +8,7 @@ import {
 } from "node:fs";
 import { resolve } from "node:path";
 import { tmpdir } from "node:os";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { resolveProofPath } from "./proof-path.mjs";
 const root = resolve(import.meta.dirname, "../.."),
   acceptanceFixture = JSON.stringify({
@@ -43,6 +43,23 @@ const config = JSON.parse(readFileSync(resolve(root, ".codex/hooks.json"))),
     "PostToolUse",
     "Stop",
   ];
+const acceptanceText = readFileSync(
+    resolve(root, "docs/engineering/OS_V3_ACCEPTANCE.json"),
+    "utf8",
+  ),
+  acceptanceLock = JSON.parse(
+    readFileSync(
+      resolve(root, "docs/engineering/OS_V3_ACCEPTANCE.lock.json"),
+      "utf8",
+    ),
+  ),
+  portableAcceptanceHash = createHash("sha256")
+    .update(acceptanceText.replace(/\r\n/g, "\n"))
+    .digest("hex");
+assert(
+  portableAcceptanceHash === acceptanceLock.acceptanceSha256,
+  "ACCEPTANCE_LOCK_NOT_LINE_ENDING_PORTABLE",
+);
 const valid = events.every((e) =>
   config.hooks[e]?.every(
     (g) =>
@@ -386,6 +403,20 @@ const platformImpact = parse(
     "scripts/engineering/proof-plan.mjs",
     {},
     { ZEROGRAPH_IMPACT_PATHS: '["scripts/handover/check.mjs"]' },
+  ),
+  proofRegistry = JSON.parse(
+    readFileSync(resolve(root, "docs/engineering/PROOFS.json")),
+  ),
+  handoverMissing = runWithEnv(
+    "scripts/engineering/proof-plan.mjs",
+    {},
+    {
+      ZEROGRAPH_IMPACT_PATHS: '["scripts/handover/check.mjs"]',
+      ZEROGRAPH_PROOFS_JSON: JSON.stringify({
+        ...proofRegistry,
+        proofs: proofRegistry.proofs.filter((proof) => proof.kind !== "handover"),
+      }),
+    },
   );
 assert(
   platformImpact.domains.includes("platform-handover") &&
@@ -394,8 +425,15 @@ assert(
   "PLATFORM_HANDOVER_IMPACT_MISSING",
 );
 assert(
-  handoverPlan.status !== 0 &&
-    `${handoverPlan.stdout}${handoverPlan.stderr}`.includes(
+  handoverPlan.status === 0 &&
+    parse(handoverPlan).handoverProofs.some(
+      (proof) => proof.id === "supabase-handover-readiness",
+    ),
+  "HANDOVER_PROOF_NOT_SELECTED",
+);
+assert(
+  handoverMissing.status !== 0 &&
+    `${handoverMissing.stdout}${handoverMissing.stderr}`.includes(
       "HANDOVER_PROOF_UNMAPPED",
     ),
   "HANDOVER_PROOF_FAIL_CLOSED_MISSING",

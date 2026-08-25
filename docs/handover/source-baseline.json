@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "projectRef": "gwfjkpsoaoherntwhdyf",
+  "classification": "SOURCE_BASELINE",
+  "evidence": "OWNER_PROVIDED_READ_ONLY_SNAPSHOT",
+  "sourceStatus": "ACTIVE_HEALTHY",
+  "volatile": true,
+  "freshInventoryOverrides": true,
+  "observed": {
+    "postgresVersion": "17.6",
+    "publicTables": 45,
+    "publicViews": 6,
+    "publicFunctions": 72,
+    "publicPolicies": 84,
+    "authUsers": 7,
+    "storageBuckets": 1,
+    "storageObjects": 121,
+    "realtimePublicationTables": 11,
+    "extensions": 6,
+    "cronJobs": 3,
+    "vaultSecrets": 0,
+    "edgeFunctions": 0
+  }
+}

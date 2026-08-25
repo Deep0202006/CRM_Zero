@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "defaultStatus": "MANUAL_OWNER_EVIDENCE_REQUIRED",
+  "valuesRecorded": false,
+  "items": [
+    "GitHub admin/owner access",
+    "Supabase organization access",
+    "Vercel team/project access",
+    "target cloud/IaaS owner/admin access",
+    "DNS registrar access",
+    "database superuser credential custody",
+    "Supabase/JWT/API-key custody",
+    "Storage/S3 credential custody",
+    "backup encryption key custody",
+    "backup destination control",
+    "monitoring/log access"
+  ]
+}

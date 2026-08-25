@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "values": "never-recorded",
+  "items": [
+    { "setting": "pinned self-hosted release and image tags/digests", "evidence": "NOT_RUN_UNTIL_REHEARSAL" },
+    { "setting": "PostgreSQL 17 and required extensions", "evidence": "NOT_RUN_UNTIL_REHEARSAL" },
+    { "setting": "API gateway, PostgREST/Data API and RPC behavior", "evidence": "NOT_RUN_UNTIL_REHEARSAL" },
+    { "setting": "RLS, grants, roles and Supavisor/pooling", "evidence": "NOT_RUN_UNTIL_REHEARSAL" },
+    { "setting": "SUPABASE_PUBLIC_URL", "evidence": "MANUAL_DASHBOARD_EVIDENCE" },
+    { "setting": "API_EXTERNAL_URL", "evidence": "MANUAL_DASHBOARD_EVIDENCE" },
+    { "setting": "Auth SITE_URL and redirect URLs", "evidence": "MANUAL_DASHBOARD_EVIDENCE" },
+    { "setting": "Auth password, sign-up, JWT expiry and refresh", "evidence": "MANUAL_DASHBOARD_EVIDENCE" },
+    { "setting": "SMTP presence/configuration", "evidence": "MANUAL_DASHBOARD_EVIDENCE" },
+    { "setting": "PGRST_DB_SCHEMAS and PGRST_DB_MAX_ROWS", "evidence": "MANUAL_DASHBOARD_EVIDENCE" },
+    { "setting": "Realtime publication/logical replication/Postgres Changes/private Broadcast/JWT/REALTIME_DB_ENC_KEY", "evidence": "MANUAL_DASHBOARD_EVIDENCE" },
+    { "setting": "STORAGE_PUBLIC_URL and S3 configuration", "evidence": "MANUAL_DASHBOARD_EVIDENCE" },
+    { "setting": "backup and restore configuration", "evidence": "MANUAL_DASHBOARD_EVIDENCE" },
+    { "setting": "TLS, DNS, CORS and WebSocket proxy", "evidence": "MANUAL_DASHBOARD_EVIDENCE" },
+    { "setting": "Edge Function transfer behavior when source count is nonzero", "evidence": "HANDOVER_EDGE_FUNCTION_EVIDENCE_REQUIRED_IF_PRESENT" },
+    { "setting": "Vault migration plan when source count is nonzero", "evidence": "HANDOVER_VAULT_EVIDENCE_REQUIRED_IF_PRESENT" },
+    { "setting": "source snapshot/dump/target restore binding", "evidence": "SOURCE_SNAPSHOT_UNBOUND" },
+    { "setting": "client reload and durable queue cutover convergence", "evidence": "CLIENT_CUTOVER_COMPATIBILITY_NOT_RUN" },
+    { "setting": "managed source rollback availability", "evidence": "SOURCE_ROLLBACK_AVAILABILITY_PLAN" }
+  ]
+}

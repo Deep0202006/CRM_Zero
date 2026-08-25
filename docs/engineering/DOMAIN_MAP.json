@@ -51,7 +51,7 @@
         "PRODUCTION_DISCIPLINE",
         "R3_RUNTIME_PROOF"
       ],
-      "proofRefs": [],
+      "proofRefs": ["supabase-handover-readiness"],
       "requiredProofKinds": ["handover"],
       "criticalTests": [],
       "mustNotWriteAuthorityRefs": [

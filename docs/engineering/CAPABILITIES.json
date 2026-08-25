@@ -3,11 +3,11 @@
   "capabilities": [
     {
       "id": "supabase-handover-certification",
-      "status": "PLANNED",
+      "status": "ACTIVE",
       "authorityRefs": ["platform_runtime_placement"],
       "reuse": "required",
       "notes": [
-        "PR82 will supply concrete implementation and handover proof registration; PR84 defines fail-closed platform semantics only."
+        "PR82 supplies deterministic source-read-only readiness checks and a domain-matched handover proof. Target parity and production cutover remain Owner-gated and are not production-certified."
       ]
     },
     {

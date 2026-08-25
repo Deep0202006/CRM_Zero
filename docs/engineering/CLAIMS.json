@@ -186,6 +186,36 @@
       "evalRefs": ["platform-handover"]
     },
     {
+      "id": "CLIENT_CUTOVER_RELOAD_REQUIRED",
+      "statement": "Clients must load the target-bound deployment before production writes resume",
+      "severity": "CRITICAL",
+      "domains": ["platform-handover"],
+      "positiveMatchers": ["client cutover reload required", "old browser bundle retains source endpoint", "target-bound deployment before writes resume"],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/handover/check.mjs"],
+      "evalRefs": ["platform-client-cutover-blocker"]
+    },
+    {
+      "id": "OFFLINE_QUEUE_CUTOVER_CONVERGENCE_REQUIRED",
+      "statement": "Durable offline queues survive cutover and converge exactly once without clearing",
+      "severity": "CRITICAL",
+      "domains": ["platform-handover"],
+      "positiveMatchers": ["offline queue cutover convergence required", "durable offline queues survive cutover", "converge exactly once without clearing"],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/handover/check.mjs"],
+      "evalRefs": ["platform-client-cutover-blocker"]
+    },
+    {
+      "id": "SOURCE_SNAPSHOT_BOUND",
+      "statement": "Source manifest dump and target restore must bind to the same source snapshot",
+      "severity": "CRITICAL",
+      "domains": ["platform-handover"],
+      "positiveMatchers": ["source snapshot bound", "manifest dump and target restore bind to the same source snapshot", "mutable source snapshot consistency"],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/handover/check.mjs"],
+      "evalRefs": ["platform-snapshot-blocker"]
+    },
+    {
       "id": "DATABASE_DUMP_NOT_STORAGE_TRANSFER",
       "statement": "Database dumps do not transfer Storage object bytes",
       "severity": "CRITICAL",
@@ -949,6 +979,26 @@
       "negativeMatchers": [],
       "enforcementRefs": ["scripts/engineering/proof-plan.mjs"],
       "evalRefs": ["platform-handover"]
+    },
+    {
+      "id": "SOURCE_LATE_WRITE_RECONCILIATION_REQUIRED",
+      "statement": "Late writes reaching the managed source during cutover must be detected and reconciled",
+      "severity": "CRITICAL",
+      "domains": ["platform-handover"],
+      "positiveMatchers": ["source late write reconciliation required", "late writes reaching the managed source", "detected and reconciled"],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/handover/check.mjs"],
+      "evalRefs": ["platform-client-cutover-blocker"]
+    },
+    {
+      "id": "SOURCE_ROLLBACK_AVAILABILITY_PLAN",
+      "statement": "Owner must choose and evidence managed-source rollback availability before cutover",
+      "severity": "CRITICAL",
+      "domains": ["platform-handover"],
+      "positiveMatchers": ["source rollback availability plan", "managed source remains active rollback authority", "owner accepts pause restore rto"],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/handover/check.mjs"],
+      "evalRefs": ["platform-rollback-availability-blocker"]
     },
     {
       "id": "ROOT_CAUSE_SHARED_FIX",

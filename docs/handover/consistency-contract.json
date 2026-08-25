@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "sourceMutableUntilOwnerCutover": true,
+  "states": ["LIVE_BULK_COPY", "SNAPSHOT_BOUND", "WRITE_QUIESCED_FINAL", "DELTA_RECONCILED"],
+  "rehearsal": {
+    "bulkCopyWhileSourceActive": true,
+    "g2Requires": ["SOURCE_SNAPSHOT_BOUND", "dumpArtifactSha256", "sourceSnapshotId", "targetRestoreBoundToSourceSnapshot"]
+  },
+  "cutover": {
+    "blockerUntilComplete": "CUTOVER_WRITERS_NOT_QUIESCED",
+    "writers": ["browser/client", "offline queues/recovery", "Vercel API routes", "Vercel Cron", "pg_cron", "Auth mutation", "Storage mutation"],
+    "requiredClientEvidence": ["CLIENT_CUTOVER_RELOAD_REQUIRED", "OFFLINE_QUEUE_CUTOVER_CONVERGENCE_REQUIRED", "SOURCE_LATE_WRITE_RECONCILIATION_REQUIRED"],
+    "offlineFlows": ["Mapping", "Calls", "Field Visit/Attendance recovery", "Pipeline idempotent operations"],
+    "queueClearProhibited": true
+  },
+  "storage": {
+    "phases": ["BULK_STORAGE_COPY", "FINAL_STORAGE_DELTA"],
+    "directVolumeCopyProhibited": true,
+    "certification": ["bucket configuration", "object count", "total bytes", "every object content", "aggregate fingerprint", "zero mismatches"]
+  },
+  "rollback": {
+    "requiredGate": "SOURCE_ROLLBACK_AVAILABILITY_PLAN",
+    "safeDefault": "KEEP_MANAGED_SOURCE_ACTIVE",
+    "allowedOwnerDecisions": ["KEEP_MANAGED_SOURCE_ACTIVE", "OWNER_ACCEPTS_PAUSE_RESTORE_RTO"],
+    "costApprovalRequiredWhenGuaranteeHasCost": true,
+    "lateTargetWritesRequire": "ROLLBACK_WRITE_RECONCILIATION_REQUIRED"
+  }
+}

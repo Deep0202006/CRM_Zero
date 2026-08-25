@@ -44,4 +44,5 @@ next-env.d.ts
 .archive/
 graphify-out/
 .graphify-venv/
+.handover/
 .zerograph-evidence/

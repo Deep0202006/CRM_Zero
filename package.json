@@ -35,6 +35,7 @@
     "os:bootstrap-test": "node scripts/engineering/os-bootstrap-test.mjs",
     "graphify:sync": "node scripts/engineering/graphify-sync.mjs",
     "graphify:verify": "node scripts/engineering/graphify-verify.mjs",
+    "handover:check": "node scripts/handover/check.mjs",
     "graphify:impact": "node scripts/engineering/graphify-impact.mjs",
     "vercel-build": "npm run test && next build"
   },

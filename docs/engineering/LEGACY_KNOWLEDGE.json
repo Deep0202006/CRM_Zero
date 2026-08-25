@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "generatedFrom": "git rev-list --objects --all + targeted filesystem scan",
   "summary": {
-    "sourceBlobCount": 1142,
+    "sourceBlobCount": 1154,
     "filesystemGovernanceSources": 57,
     "ledgerVersionCount": 21,
     "rawLessonRowCount": 221,
@@ -112,6 +112,7 @@
     "1190ab0cb5982d230bb1de79995576369bfc832f375b4e4fcd7c5de3faa04589",
     "11ca15b22b24c0ef7fa59a9400110db36d92aae0da3963fe7a51514730172127",
     "128fe97012c55fd0c484f853ce32297a1650ee9d844f266f9d467d3fad933570",
+    "130aa2ece48cbdda8d0e9d154b9530dbead455be845ce66bcee68447f7b97c12",
     "137e3aa548bdac0e419b047d89309c09dbc268821cb310b546cffcca316ab460",
     "13b8a5c0740143a1323a26dbc8509651318a2415819f4cac8126df69359d0c51",
     "140194ea50eb58904668c4206340798dfca99c035e3bb63a59b9087b2fe330bd",
@@ -308,6 +309,7 @@
     "3fd6dc5d802fd112f75934c4c168c3f03e25275b70e1e403eb670cbf7447e4e7",
     "3fe3ce7eb6a042dde5f97f00d910be86470ea2fc13e8e02cad1c509da7db53a0",
     "3ffe530148553be89c330664a48585dc574c7617d64f1902d2bb9d3e1b045be5",
+    "4069637e884725da061e266b10847e5679bd1ec7151abcf2f1fb67c651f08d55",
     "4104f9d745c0aa8733d184e4b4b887c40269b4c5ee8d1bf745730530688bd3ca",
     "412bb57ed787a75df32b38b854cf02d1fa32f6121fafcd5e8573d6e75fae187a",
     "41605cfcf037cfa7eb8d20fd9efa2eb48a0c15e78d79505bbd32dd080d45f862",
@@ -333,9 +335,11 @@
     "444d54e58e8a5b8becc5f77b6f25333514a1bf1b735d450320247acbe304e2b2",
     "44f464df311b8a9831320f1d4118f04a252c71d974850e014296aae0cfaa47d6",
     "450c3a8e8849429e90eee4132cb25c5fe801de007ef64e1238630fdb1fcab930",
+    "454139db3a3b822b217dd165acf09295f2d4fe6378916c676117b4186879b8d9",
     "454c72ec5e0cb5ca0e78e1287ee24be9982c43df077301564d30095362c9a2f8",
     "4555943781b4c6df8495e15b799629858ff723c19378b30e4fd05d474c7b5378",
     "4574517eb3def1cbd26d2a55d909a07b0c2249f7cb09f5e2549c0767b232428f",
+    "45808c00b628c5508bfedaa8f2eba802a2545eaeb0817b3fb6ddb6805762d851",
     "45b15fa495ab1693f38f23bd1e7bbf4007422744c50f0c501c13edaf30be1d04",
     "4621e57f5648bfd245324b0d611a78969182664e0a0b412a7a3f1ba9f82fe03d",
     "463458e912fe5cbbd96c5df8ff7a9cbf36bba332467deb9cf53075925d065c2a",
@@ -514,6 +518,7 @@
     "6e250582e473eb807c796141b5a98ad9169511bca534059ed55dca6709579320",
     "6eb5031154add0c668e76c6a1cd136fe66cd31210a076f2ea38d84d31a5645c8",
     "6ed6cea9aef351f8ec58351be35c0427c93a7fdbed9a911728855873cc65de69",
+    "6f4ccd09ac2aaf6008a835a713bce0a53eb89bce1d1c200c74dcf0e34d52bdc4",
     "6f9f6c6dd3b60ee0bbdd25362ea87d776486f7e75708d1de326599f4b5d7ed71",
     "6faecf091b0907028131703babc254ad15082ed95d045027faccf59bfbef9b6e",
     "6fbcad75b61795a2c485c14e70dd62434cc9d51b9c14abba40b9231d2be31f9d",
@@ -526,6 +531,7 @@
     "7168dfd27c732cf1618a9a6f359cdaf561cbff69702b19466e1a2b5d03a1b3a0",
     "71dfd407b63d9fd6b90529f04f2e982c2a6d94ebf01d32e875f3493e6268128e",
     "722f461bc994845c0f8f9c42baa4b9d5db247c7b07a48913a9fa80896826506f",
+    "72bd253145d159d06548a6672d581876fa0d8761eda934a1bbaf49bfdb3ae773",
     "72c2f380865a7878ab8ceec72b55e6550f514e191368540a96842feb2109585e",
     "735a155dace646c32f3fa52c9e25092aa0b59cc221d6080c443a40487d8fd0ba",
     "737cab19d78c0e5d4fdbe4c70b0f0e0b78ad828a3993e0109fbc1de18d4e4949",
@@ -600,6 +606,7 @@
     "819585382c560406fa52684257e57b79d59db4b880a70beb47a2ca6392d11b75",
     "81c133f51adb2f45f92818f2525c85bb075fb7abff1abfbf8b969abebc702782",
     "81d8fcc17186a77216a809f7e82870d77eb37f6639533c23c94ddbb02fa383e0",
+    "81ed3cd3ba6825c372124dcfaf01b69265cea881a3f9368e78b07fbd5b20632c",
     "81f4ad3c0538d357360fb346aeb640995ad1a34bab19ce9ed51ef1c48ce67529",
     "82adcd64bc8163823f1b6bb3110a64f6e540c38937bafaad6912d4ee30ff4958",
     "82f682563c43d789dfdbc30ae61740c8fe3519c19e03b27e54d42e24e1c4b83f",
@@ -686,6 +693,7 @@
     "93918baf408a50e48ba707a685a99afad983f061b7242a95f9b89c85103f7dbb",
     "940489f1d31590adf93d4ed68f3dae9fc57deae2cd111b330017ba8c43b447c4",
     "95029c00ef9b0ebaee399111105b0ae3831773b728b6498bdbaf346cd8dae38b",
+    "953276cd4d05075b792733e7b95db3c1a92c5dd7fb4fe90704e2f3799b3d489f",
     "957b663f61de47d07870a0e5bb39560edfec0cfcb95de6216c3e45182f529e35",
     "95ab35fa09fef4a2afd2017c078dfdf57479cb708f955270ed963dcaab408e47",
     "95b6d17dcd251b0a8ac5cada40bbd55c1547b6c5cc2acea11fef1d258f5c4099",
@@ -824,6 +832,7 @@
     "b3b2a9a2c8207cb4ae0fd4efa5daadf2034249d83200965420c239292e51544d",
     "b3c70b2a5067a754a4768f2fb3955f3103d4f7e8158b3a78b710b231938eee08",
     "b3dc442f0c80b1f441d3423535760a64938b440fc108ecc8992fd29074d23417",
+    "b4485f037d9aa57613a02d8ff01189a8929c18168191c865477d0b9cc951e03b",
     "b4588a7bd64b3cf9714cfd1d6acc66b1a7c2127abdc30f42a7f33eb641eec84b",
     "b45b1954f462bde8924b122d21f0b5df8778aaad277a68165874a5de34fa48c2",
     "b4b2b9e05a249c181a6080bc1a87cba0205bb096eb865e8d527967107d44b8d5",
@@ -1054,6 +1063,7 @@
     "e48efdc3f693b22f968683a5fdca6bfc265290ac6e48ebe7db259153f765a8de",
     "e4a85ea0608b1486f9399db12b211bc7359bab49cef1804bb7bfe7c5fd846c87",
     "e4cefaf72d8af8b80c142c8eaae2fed6c20f92a889f13d0b6803c5be59696d3e",
+    "e52f90ee2367a0043464aaa9044c9b8d7c8f3fe483e5bc809a5a9d0c20dc83b1",
     "e531e19e897c7782dc402b3dce146edec86bdf5eebc66cd03152502cda9ed554",
     "e57dfa78ad04d38d7631175bd8009659a1de7c9b14769c85ed7cf5092d7876d1",
     "e590d9b8e4ae04e5f5bd305b793b75b766b24edf56e603af42a8e9429151757d",
@@ -1117,11 +1127,13 @@
     "f22b452f8db477b72de37e154ac1428911cbce7e63bdccfc0ca6fcd2100d7158",
     "f23a77b8339890be6da6b3c339d93eacdb640e9e847f196964a753e50fd42930",
     "f23d1d93f89d46f25e928196c17e8e5cb642622df2cf14d7a4f5a2e92e9d13eb",
+    "f2fc1e0e3644a2b92471827090a80fe992cf871a0b17659537122a3515bf444b",
     "f30a3d855457dd67b68ff83fda60133c409c50646b29bc696259638bfee5d72c",
     "f344b2453ccb0096a948adc38933945139d65d52e40dd81b9bb3a9dd600df681",
     "f352d9a7a132bc89f2f481eba934f4e08c135f21425e4612cab8c722bc16692d",
     "f3dea634eb8d18221a826e139b83e32d46e136bb1814af888ca705b3632fd849",
     "f4c010e41ceac55b19a19aec828e970d0ef0c2fd762d05270711e605abc815ee",
+    "f4dabae09975a7d33e2446c2008c300c609c1a1f628d5cabb6c9863305cd346b",
     "f50bfeaeb7ffeba1b0fa55fcebb5f908c29400ecc2da359013d7546720ca85e3",
     "f51e264b58bba9824dacf69655f7c695891cdb9538337d634dcc8682e4b64f0d",
     "f5223607ad5d4e28912661333e7ce697b1cfaa070959c7e86e15a07bda645373",
@@ -5799,6 +5811,12 @@
       "extractedRecordCount": 0
     },
     {
+      "blobHash": "72bd253145d159d06548a6672d581876fa0d8761eda934a1bbaf49bfdb3ae773",
+      "path": "docs/engineering/CAPABILITIES.json",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
       "blobHash": "739f3787fda557fdce8bf3ed8e190d7d1743b708fa0ba5ea58632c0720f34784",
       "path": "docs/engineering/CAPABILITIES.json",
       "classification": "SUPPORTING_EVIDENCE",
@@ -5812,6 +5830,12 @@
     },
     {
       "blobHash": "74a7944112b742298da5675ea7a710b0a27b94d6c75f8e812dc0f7134ce3e645",
+      "path": "docs/engineering/CLAIMS.json",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "f4dabae09975a7d33e2446c2008c300c609c1a1f628d5cabb6c9863305cd346b",
       "path": "docs/engineering/CLAIMS.json",
       "classification": "SUPPORTING_EVIDENCE",
       "extractedRecordCount": 0
@@ -5847,6 +5871,12 @@
       "extractedRecordCount": 0
     },
     {
+      "blobHash": "454139db3a3b822b217dd165acf09295f2d4fe6378916c676117b4186879b8d9",
+      "path": "docs/engineering/DOMAIN_MAP.json",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
       "blobHash": "ac66c76f22c6fa1bd2f46b2d838347081c5c5c87755bad35dce874488c64530a",
       "path": "docs/engineering/DOMAIN_MAP.json",
       "classification": "SUPPORTING_EVIDENCE",
@@ -5866,6 +5896,12 @@
     },
     {
       "blobHash": "6712a6ffed73bd56724e9a5e0c2f2083ccc4f362396d19986296a7d4c6376e3b",
+      "path": "docs/engineering/ENGINEERING_GOLDEN_CASES.json",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "b4485f037d9aa57613a02d8ff01189a8929c18168191c865477d0b9cc951e03b",
       "path": "docs/engineering/ENGINEERING_GOLDEN_CASES.json",
       "classification": "SUPPORTING_EVIDENCE",
       "extractedRecordCount": 0
@@ -5949,6 +5985,12 @@
       "extractedRecordCount": 16
     },
     {
+      "blobHash": "6f4ccd09ac2aaf6008a835a713bce0a53eb89bce1d1c200c74dcf0e34d52bdc4",
+      "path": "docs/engineering/LESSONS.json",
+      "classification": "KNOWLEDGE_USED",
+      "extractedRecordCount": 28
+    },
+    {
       "blobHash": "ab3f72e1980f535d19dca84f37d071725211bf02a6af0858aa461d0752b0f7d3",
       "path": "docs/engineering/LESSONS.json",
       "classification": "KNOWLEDGE_USED",
@@ -6003,7 +6045,25 @@
       "extractedRecordCount": 0
     },
     {
+      "blobHash": "4069637e884725da061e266b10847e5679bd1ec7151abcf2f1fb67c651f08d55",
+      "path": "docs/engineering/PLATFORM_HANDOVER.md",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "81ed3cd3ba6825c372124dcfaf01b69265cea881a3f9368e78b07fbd5b20632c",
+      "path": "docs/engineering/PLATFORM_HANDOVER.md",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
       "blobHash": "237b3ec6232597343a2026a10be8b52f196b2752984d14cc282bce95ff87851e",
+      "path": "docs/engineering/PROOFS.json",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "45808c00b628c5508bfedaa8f2eba802a2545eaeb0817b3fb6ddb6805762d851",
       "path": "docs/engineering/PROOFS.json",
       "classification": "SUPPORTING_EVIDENCE",
       "extractedRecordCount": 0
@@ -6675,6 +6735,12 @@
       "extractedRecordCount": 8
     },
     {
+      "blobHash": "130aa2ece48cbdda8d0e9d154b9530dbead455be845ce66bcee68447f7b97c12",
+      "path": "scripts/engineering/context.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
       "blobHash": "2aff53e1f01b4f25259860dc64676593d75abc521cfe47ee7437a5ae0853b5bd",
       "path": "scripts/engineering/context.mjs",
       "classification": "SUPPORTING_EVIDENCE",
@@ -7041,6 +7107,12 @@
       "extractedRecordCount": 0
     },
     {
+      "blobHash": "953276cd4d05075b792733e7b95db3c1a92c5dd7fb4fe90704e2f3799b3d489f",
+      "path": "scripts/engineering/os-acceptance.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
       "blobHash": "b3b2a9a2c8207cb4ae0fd4efa5daadf2034249d83200965420c239292e51544d",
       "path": "scripts/engineering/os-acceptance.mjs",
       "classification": "SUPPORTING_EVIDENCE",
@@ -7060,6 +7132,12 @@
     },
     {
       "blobHash": "99b95cc51621281726b4499fcd2b10548c031509178f07af577ea86a49ea61ee",
+      "path": "scripts/engineering/os-bootstrap-test.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "e52f90ee2367a0043464aaa9044c9b8d7c8f3fe483e5bc809a5a9d0c20dc83b1",
       "path": "scripts/engineering/os-bootstrap-test.mjs",
       "classification": "SUPPORTING_EVIDENCE",
       "extractedRecordCount": 0
@@ -7090,6 +7168,12 @@
     },
     {
       "blobHash": "e03a92043ea880275244d7cc8711edae76f694f0eaebf4c9ef467ba52a39f3f4",
+      "path": "scripts/engineering/proof-plan.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "f2fc1e0e3644a2b92471827090a80fe992cf871a0b17659537122a3515bf444b",
       "path": "scripts/engineering/proof-plan.mjs",
       "classification": "SUPPORTING_EVIDENCE",
       "extractedRecordCount": 0
@@ -8046,7 +8130,7 @@
       "normalizedRule": "Derived alerts do not create work rows unless explicitly approved.",
       "legacyId": "DERIVED_ALERTS_NOT_WORK",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "09b16430bbe5c5455b51875111c5619cbec92d089803fe73f618a019b431af3b",
+      "sourceBlobHash": "6f4ccd09ac2aaf6008a835a713bce0a53eb89bce1d1c200c74dcf0e34d52bdc4",
       "ruleTextHash": "01f8ed59f1bd3df880c8e68a4481f04c03df624b2f9ff3e463e0f1d7f6b101d1",
       "claims": [
         "DERIVED_ALERTS_NOT_WRITES"
@@ -8408,7 +8492,7 @@
       "normalizedRule": "Call a failure pre-existing only when the same command fails on clean current main.",
       "legacyId": "PREEXISTING_FAILURE_PROOF",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "09b16430bbe5c5455b51875111c5619cbec92d089803fe73f618a019b431af3b",
+      "sourceBlobHash": "6f4ccd09ac2aaf6008a835a713bce0a53eb89bce1d1c200c74dcf0e34d52bdc4",
       "ruleTextHash": "14540260559c5b794bbbfc249178fff42557a15c35199dcdfaa1aafd042b2ee0",
       "claims": [
         "BASELINE_FAILURE_ABLATION"
@@ -8422,7 +8506,7 @@
       "normalizedRule": "One business fact has one writable authority; readers do not create duplicate truth.",
       "legacyId": "ONE_FACT_ONE_AUTHORITY",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "09b16430bbe5c5455b51875111c5619cbec92d089803fe73f618a019b431af3b",
+      "sourceBlobHash": "6f4ccd09ac2aaf6008a835a713bce0a53eb89bce1d1c200c74dcf0e34d52bdc4",
       "ruleTextHash": "146fb2c7e1c6875398677c149728836f49082bfac1fd7285b042c04ede65d7a0",
       "claims": [
         "ONE_FACT_ONE_AUTHORITY"
@@ -8452,7 +8536,7 @@
       "normalizedRule": "Preserve owner work, use a clean worktree, query Graphify before broad search, follow Ponytail minimum diff, and use one direct Codex. Diff is not progress; encode durable learning here, in a contract, or test.",
       "legacyId": "DIRECT_ENGINEERING",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "09b16430bbe5c5455b51875111c5619cbec92d089803fe73f618a019b431af3b",
+      "sourceBlobHash": "6f4ccd09ac2aaf6008a835a713bce0a53eb89bce1d1c200c74dcf0e34d52bdc4",
       "ruleTextHash": "151a658368e4798abb4cb639b7ee99a84e89ca5b4045a36497567bdef061f54d",
       "claims": [
         "DIRECT_ENGINEERING"
@@ -8696,7 +8780,7 @@
       "normalizedRule": "Support current and previous payloads; terminal deterministic 4xx does not retry, uncertain outcomes retry with bounded backoff and the same ID.",
       "legacyId": "OFFLINE_COMPATIBILITY",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "09b16430bbe5c5455b51875111c5619cbec92d089803fe73f618a019b431af3b",
+      "sourceBlobHash": "6f4ccd09ac2aaf6008a835a713bce0a53eb89bce1d1c200c74dcf0e34d52bdc4",
       "ruleTextHash": "1c9b68fab54f8ce8ca76d9cce66028bd7a701e7f6f42737cf1b800081ad6a783",
       "claims": [
         "OFFLINE_CONTRACT_COMPATIBILITY"
@@ -8776,7 +8860,7 @@
       "normalizedRule": "Do not ask a live coding-agent controller to rewrite its own execution engine; CRM has no coding-agent controller.",
       "legacyId": "NO_AUTONOMOUS_SELF_HOSTING",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "09b16430bbe5c5455b51875111c5619cbec92d089803fe73f618a019b431af3b",
+      "sourceBlobHash": "6f4ccd09ac2aaf6008a835a713bce0a53eb89bce1d1c200c74dcf0e34d52bdc4",
       "ruleTextHash": "224eb994c7268b769574e8ed9739f8b6715e548048404cf166f72cd507c2630c",
       "claims": [
         "NO_AUTONOMOUS_CONTROLLER"
@@ -8950,7 +9034,7 @@
       "normalizedRule": "Never create or delete production test rows. Owner alone applies reviewed pure-PostgreSQL SQL; postcheck is read-only and deployment never authorizes mutation.",
       "legacyId": "PRODUCTION_DISCIPLINE",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "09b16430bbe5c5455b51875111c5619cbec92d089803fe73f618a019b431af3b",
+      "sourceBlobHash": "6f4ccd09ac2aaf6008a835a713bce0a53eb89bce1d1c200c74dcf0e34d52bdc4",
       "ruleTextHash": "2de60ff4fb7adbc85992e50357f466680a2a9ca46d1df197e325dc928dc0adc1",
       "claims": [
         "NO_PRODUCTION_DUMMY_DATA",
@@ -8996,7 +9080,7 @@
       "normalizedRule": "Optional metrics or derived data cannot suppress valid authoritative history.",
       "legacyId": "OPTIONAL_FAILURE_ISOLATION",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "09b16430bbe5c5455b51875111c5619cbec92d089803fe73f618a019b431af3b",
+      "sourceBlobHash": "6f4ccd09ac2aaf6008a835a713bce0a53eb89bce1d1c200c74dcf0e34d52bdc4",
       "ruleTextHash": "302da60c82fc60bc6f3163ddcb475467e31cb7d3190d3d45660fa98942398d28",
       "claims": [
         "OPTIONAL_FAILURE_ISOLATION"
@@ -9075,7 +9159,7 @@
       "normalizedRule": "Unknown historical optional facts remain NULL unless authoritative evidence explicitly supports backfill.",
       "legacyId": "NO_FABRICATED_BACKFILL",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "09b16430bbe5c5455b51875111c5619cbec92d089803fe73f618a019b431af3b",
+      "sourceBlobHash": "6f4ccd09ac2aaf6008a835a713bce0a53eb89bce1d1c200c74dcf0e34d52bdc4",
       "ruleTextHash": "35315fa743a1a7737f50defd48fc36d5a27fe9b95e06c07346b85f760c00592b",
       "claims": [
         "ZERO_DATA_NO_FABRICATION"
@@ -9134,7 +9218,7 @@
       "normalizedRule": "Agent prose is a report, not proof; verify head, diff, CI, deployment, and required read-only facts independently.",
       "legacyId": "AGENT_REPORT_NOT_PROOF",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "09b16430bbe5c5455b51875111c5619cbec92d089803fe73f618a019b431af3b",
+      "sourceBlobHash": "6f4ccd09ac2aaf6008a835a713bce0a53eb89bce1d1c200c74dcf0e34d52bdc4",
       "ruleTextHash": "3b1f889e63bcf83924e648f4f46296674bf43ffe6ecf4daf12ad5586f5e9e52e",
       "claims": [
         "AGENT_REPORT_NOT_PROOF"
@@ -9404,7 +9488,7 @@
       "normalizedRule": "Reconcile legitimate local intent and never clear durable recovery state merely to make a test pass.",
       "legacyId": "OFFLINE_RECOVERY",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "09b16430bbe5c5455b51875111c5619cbec92d089803fe73f618a019b431af3b",
+      "sourceBlobHash": "6f4ccd09ac2aaf6008a835a713bce0a53eb89bce1d1c200c74dcf0e34d52bdc4",
       "ruleTextHash": "45fb27185a037fcb68a6de978f25f01fc6bea24c96d185065b16bec8844f2080",
       "claims": [
         "OFFLINE_RECOVERY_PRESERVES_INTENT"
@@ -9683,7 +9767,7 @@
       "normalizedRule": "Platform movement preserves business authority and requires independent source, target, Auth, Realtime, Storage, configuration, cutover, and rollback evidence.",
       "legacyId": "PLATFORM_HANDOVER_SAFETY",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "09b16430bbe5c5455b51875111c5619cbec92d089803fe73f618a019b431af3b",
+      "sourceBlobHash": "6f4ccd09ac2aaf6008a835a713bce0a53eb89bce1d1c200c74dcf0e34d52bdc4",
       "ruleTextHash": "54b50fa86a52496b664c3da2a0ce6d82bc4f485cb71a065348ac35b7895be9e8",
       "claims": [
         "PLATFORM_MIGRATION_PRESERVES_BUSINESS_AUTHORITY"
@@ -9884,7 +9968,7 @@
       "normalizedRule": "Lock outcome, user flow, authority, must-not-change, and risk before coding. A bug fix does not invent policy.",
       "legacyId": "LOCK_BEFORE_CHANGE",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "09b16430bbe5c5455b51875111c5619cbec92d089803fe73f618a019b431af3b",
+      "sourceBlobHash": "6f4ccd09ac2aaf6008a835a713bce0a53eb89bce1d1c200c74dcf0e34d52bdc4",
       "ruleTextHash": "5da23ee88b15387f4e27cf659885b7e77334ee502c1fd40402eec7ca60bbe98f",
       "claims": [
         "LOCK_BEFORE_CHANGE"
@@ -10164,7 +10248,7 @@
       "normalizedRule": "Call a failure pre-existing only when it reproduces on clean current main. Exact-head proof expires after relevant head changes; reuse still-valid proof instead of rerunning gratuitously.",
       "legacyId": "EXACT_HEAD_RELEASE",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "09b16430bbe5c5455b51875111c5619cbec92d089803fe73f618a019b431af3b",
+      "sourceBlobHash": "6f4ccd09ac2aaf6008a835a713bce0a53eb89bce1d1c200c74dcf0e34d52bdc4",
       "ruleTextHash": "6b232f6e11f2e11e2ca7324343ae2652232754295091c92c433922b8dccc37de",
       "claims": [
         "EXACT_HEAD_PROOF"
@@ -10472,7 +10556,7 @@
       "normalizedRule": "Applied migrations are immutable; correct forward only. CI must not contact production Supabase.",
       "legacyId": "MIGRATION_IMMUTABILITY",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "09b16430bbe5c5455b51875111c5619cbec92d089803fe73f618a019b431af3b",
+      "sourceBlobHash": "6f4ccd09ac2aaf6008a835a713bce0a53eb89bce1d1c200c74dcf0e34d52bdc4",
       "ruleTextHash": "7d515798b8ee087da77bb7ba60387cf43b84899525acc579a03f226500eb02ae",
       "claims": [
         "APPLIED_MIGRATION_IMMUTABLE"
@@ -10556,7 +10640,7 @@
       "normalizedRule": "Business rows and temporary media lifecycle are separate; evidence failure cannot undo confirmed work. Delete exact storage keys, use terminal purged state, and retry partial cleanup idempotently.",
       "legacyId": "MEDIA_LIFECYCLE",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "09b16430bbe5c5455b51875111c5619cbec92d089803fe73f618a019b431af3b",
+      "sourceBlobHash": "6f4ccd09ac2aaf6008a835a713bce0a53eb89bce1d1c200c74dcf0e34d52bdc4",
       "ruleTextHash": "803454c7e5c5d9266728426bedb121683e3d4fda5ec8550f8c503496b5abba96",
       "claims": [
         "MEDIA_LIFECYCLE"
@@ -10601,7 +10685,7 @@
       "normalizedRule": "Temporary transaction staging must tolerate repeated RPC invocation where the contract permits it.",
       "legacyId": "TRANSACTION_STAGING",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "09b16430bbe5c5455b51875111c5619cbec92d089803fe73f618a019b431af3b",
+      "sourceBlobHash": "6f4ccd09ac2aaf6008a835a713bce0a53eb89bce1d1c200c74dcf0e34d52bdc4",
       "ruleTextHash": "820d654e036f4765a92d489a97b6b63c9987e2edccce62e25709666224e84f28",
       "claims": [
         "TRANSACTION_STAGING"
@@ -10744,7 +10828,7 @@
       "normalizedRule": "Privileged authorization and partner scope are server/database enforced; service-role and VAPID private keys never enter browser code.",
       "legacyId": "SERVER_AUTHORIZATION",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "09b16430bbe5c5455b51875111c5619cbec92d089803fe73f618a019b431af3b",
+      "sourceBlobHash": "6f4ccd09ac2aaf6008a835a713bce0a53eb89bce1d1c200c74dcf0e34d52bdc4",
       "ruleTextHash": "88834c753717d7ac222729536e9ac1b9dc8a6b531a633bb6a1c0ce87a7ba3a16",
       "claims": [
         "AUTHZ_SERVER_ENFORCED",
@@ -10870,7 +10954,7 @@
       "normalizedRule": "Keep stable operation/business IDs across retry; use stable external identity, not display snapshots or fuzzy reconciliation.",
       "legacyId": "STABLE_IDENTITY",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "09b16430bbe5c5455b51875111c5619cbec92d089803fe73f618a019b431af3b",
+      "sourceBlobHash": "6f4ccd09ac2aaf6008a835a713bce0a53eb89bce1d1c200c74dcf0e34d52bdc4",
       "ruleTextHash": "8be4ba02e9f30340ad57668985f4fb9e9ca9fc206276e8e0fef4613bc38a9675",
       "claims": [
         "STABLE_RETRY_IDENTITY"
@@ -11213,7 +11297,7 @@
       "normalizedRule": "Every implementation task preserves its baseline, binds proof to its current tree and plan, closes reusable learning, and cannot stop as successful while local work remains.",
       "legacyId": "TASK_LIFECYCLE_ENFORCEMENT",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "09b16430bbe5c5455b51875111c5619cbec92d089803fe73f618a019b431af3b",
+      "sourceBlobHash": "6f4ccd09ac2aaf6008a835a713bce0a53eb89bce1d1c200c74dcf0e34d52bdc4",
       "ruleTextHash": "9be9c89f3811d1a1aa6fae1e0304da92f1f0b791624dc9400fc36aaafb8a35ea",
       "claims": [
         "ACCEPTANCE_EVIDENCE_BINDING"
@@ -11601,7 +11685,7 @@
       "normalizedRule": "If Graphify is unavailable use targeted search; if Ponytail hooks fail the root minimum-change policy remains active. Do not install infrastructure or rebuild a controller to continue delivery.",
       "legacyId": "TOOLING_DOES_NOT_BLOCK_DELIVERY",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "09b16430bbe5c5455b51875111c5619cbec92d089803fe73f618a019b431af3b",
+      "sourceBlobHash": "6f4ccd09ac2aaf6008a835a713bce0a53eb89bce1d1c200c74dcf0e34d52bdc4",
       "ruleTextHash": "b6d9cd94e7ee0c1f2e7c26791ab6b89aa49136332375cb3b8c9bcfb2ba4fe2fb",
       "claims": [
         "TOOLING_OPTIONAL"
@@ -11730,7 +11814,7 @@
       "normalizedRule": "ERP directory, Distributor assignment, visit observation, and Admin current baseline are distinct; None is not Not captured and baseline never rewrites history.",
       "legacyId": "ERP_AUTHORITIES",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "09b16430bbe5c5455b51875111c5619cbec92d089803fe73f618a019b431af3b",
+      "sourceBlobHash": "6f4ccd09ac2aaf6008a835a713bce0a53eb89bce1d1c200c74dcf0e34d52bdc4",
       "ruleTextHash": "bdc76b99d7aa4e438a78f79b0d47accea084da9c9b685727ad139c958f662236",
       "claims": [
         "ERP_AUTHORITY_SEPARATION"
@@ -11778,7 +11862,7 @@
       "normalizedRule": "Bounded rows do not justify quadratic accumulation; use set-based/indexed staging when scale requires it.",
       "legacyId": "BOUNDED_BATCH_SCALING",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "09b16430bbe5c5455b51875111c5619cbec92d089803fe73f618a019b431af3b",
+      "sourceBlobHash": "6f4ccd09ac2aaf6008a835a713bce0a53eb89bce1d1c200c74dcf0e34d52bdc4",
       "ruleTextHash": "c18a4269732c9a974f27c1d79d28d8315b0532b31f50978eb30cbece4ce49be1",
       "claims": [
         "SET_BASED_BATCH_SCALING"
@@ -11930,7 +12014,7 @@
       "normalizedRule": "External projections expose only minimum authorized data and require explicit authority for any cross-domain write.",
       "legacyId": "MINIMUM_EXTERNAL_PROJECTION",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "09b16430bbe5c5455b51875111c5619cbec92d089803fe73f618a019b431af3b",
+      "sourceBlobHash": "6f4ccd09ac2aaf6008a835a713bce0a53eb89bce1d1c200c74dcf0e34d52bdc4",
       "ruleTextHash": "c7a6ee1a898feaead2689a23c1fbc9881eaf4c3d12d724ce27c80740ecb26063",
       "claims": [
         "EXTERNAL_DATA_MINIMIZATION"
@@ -12558,7 +12642,7 @@
       "normalizedRule": "Committed counts and checkpoints are historical evidence only; current production claims need fresh read-only evidence.",
       "legacyId": "STATIC_SNAPSHOT_NOT_CURRENT_AUTHORITY",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "09b16430bbe5c5455b51875111c5619cbec92d089803fe73f618a019b431af3b",
+      "sourceBlobHash": "6f4ccd09ac2aaf6008a835a713bce0a53eb89bce1d1c200c74dcf0e34d52bdc4",
       "ruleTextHash": "de17ffcc33762b84dc91bab3c52e17114994acd370e2d651bca2b0a26b98d5f6",
       "claims": [
         "CURRENT_SOURCE_OVERRIDES_SNAPSHOT"
@@ -12644,7 +12728,7 @@
       "normalizedRule": "Owner applies reviewed SQL, then records a read-only postcheck; Git metadata alone is not production proof.",
       "legacyId": "OWNER_MIGRATION_CLOSEOUT",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "09b16430bbe5c5455b51875111c5619cbec92d089803fe73f618a019b431af3b",
+      "sourceBlobHash": "6f4ccd09ac2aaf6008a835a713bce0a53eb89bce1d1c200c74dcf0e34d52bdc4",
       "ruleTextHash": "e44c9a7765d0b92ddad67a351f03b6fe708e3d0eae09c4774defc69e94caceeb",
       "claims": [
         "OWNER_MIGRATION_CERTIFICATION",
@@ -12785,7 +12869,7 @@
       "normalizedRule": "A PostgreSQL uuid identifier whose generator does not enforce RFC version/variant bits must use the project's canonical GUID-shape validator, not RFC-strict z.uuid(). Keep RFC-strict validation for identifiers whose generator guarantees RFC UUID semantics.",
       "legacyId": "POSTGRES_UUID_NOT_RFC_UUID",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "09b16430bbe5c5455b51875111c5619cbec92d089803fe73f618a019b431af3b",
+      "sourceBlobHash": "6f4ccd09ac2aaf6008a835a713bce0a53eb89bce1d1c200c74dcf0e34d52bdc4",
       "ruleTextHash": "e94cdfcfa82b5e4a09980e53d6e6c83465185cd26b0fea5f9ded93226729d2cc",
       "claims": [
         "POSTGRES_UUID_NOT_RFC_UUID"
@@ -12951,7 +13035,7 @@
       "normalizedRule": "Receivables plus effective confirmed non-reversed payments are money truth; payment targets exact receivable_id and pending money never reduces outstanding.",
       "legacyId": "MONEY_TRUTH",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "09b16430bbe5c5455b51875111c5619cbec92d089803fe73f618a019b431af3b",
+      "sourceBlobHash": "6f4ccd09ac2aaf6008a835a713bce0a53eb89bce1d1c200c74dcf0e34d52bdc4",
       "ruleTextHash": "eca2f6feccca58025c02f82285388dc37a6df8eceae8107c0475af1a75b2b26e",
       "claims": [
         "FINANCIAL_STATE_DERIVED",

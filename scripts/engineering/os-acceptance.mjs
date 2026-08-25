@@ -12,7 +12,7 @@ const root = resolve(import.meta.dirname, "../.."),
   lock = JSON.parse(
     readFileSync(resolve(root, "docs/engineering/OS_V3_ACCEPTANCE.lock.json")),
   ),
-  acceptanceHash = hash(raw),
+  acceptanceHash = hash(raw.toString("utf8").replace(/\r\n/g, "\n")),
   mode = process.argv[process.argv.indexOf("--mode") + 1] ?? "stop",
   base = process.env.ZEROGRAPH_BASE_SHA ?? "origin/main",
   head = process.env.ZEROGRAPH_HEAD_SHA ?? "HEAD";
@@ -179,6 +179,10 @@ const domainMap = JSON.parse(
       env: {
         ...process.env,
         ZEROGRAPH_IMPACT_PATHS: '["docs/handover/fixture.md"]',
+        ZEROGRAPH_PROOFS_JSON: JSON.stringify({
+          schemaVersion: 2,
+          proofs: proofs.filter((proof) => proof.kind !== "handover"),
+        }),
       },
     },
   ),

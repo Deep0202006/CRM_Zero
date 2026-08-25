@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "classification": "SOURCE_BASELINE",
+  "captureMode": "OWNER_PROVIDED_READ_ONLY_OBSERVATION",
+  "sanitized": true,
+  "volatile": true,
+  "freshReadOnlyInventoryOverrides": true,
+  "findingClasses": [
+    "SECURITY_DEFINER_VIEW",
+    "MUTABLE_FUNCTION_SEARCH_PATH",
+    "SECURITY_DEFINER_RPC_EXPOSURE",
+    "LEAKED_PASSWORD_PROTECTION",
+    "RLS_NO_POLICY_INFORMATIONAL"
+  ],
+  "rule": "Existing findings are source baseline only and grant no authority to mutate production or silently harden target behavior.",
+  "futureHardening": "SEPARATE_OWNER_APPROVED_R3_TASK"
+}
