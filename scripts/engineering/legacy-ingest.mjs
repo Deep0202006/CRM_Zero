@@ -1,37 +1,384 @@
 import { createHash } from "node:crypto";
 import { execFileSync, spawnSync } from "node:child_process";
-import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
-import { basename, join, relative, resolve } from "node:path";
-
-const root = resolve(import.meta.dirname, "../.."), hash = (value) => createHash("sha256").update(value).digest("hex");
-const git = (...args) => execFileSync("git", args, { cwd: root, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 }).trim();
-const relevant = /(^|\/)(AGENTS\.md|docs\/(os|quality|architecture|contracts|engineering[^/]*|exec-plans|data-platform-repair)\/|\.harness\/|\.crm-engineering\/(manifest|policy|knowledge|tasks|proofs|schemas)\/|tools\/crm-graph\/|scripts\/[^/]*(engineering|harness)|\.archive\/.*(engineering|harness)|skills\/.*(zero|crm))/i;
-const excluded = /(^|\/)(node_modules|\.next|dist|coverage|playwright-report|test-results)(\/|$)|(^|\/)\.env|secret|credential|\.(png|jpe?g|gif|webp|zip|gz|pdf)$/i;
-const classify = (path) => excluded.test(path) ? "SENSITIVE_SKIPPED" : relevant.test(path) ? "KNOWLEDGE_USED" : /skills\//i.test(path) ? "GENERIC_TOOLING" : "NON_KNOWLEDGE";
-const candidates = git("rev-list", "--objects", "--all").split(/\r?\n/).map((line) => { const split = line.indexOf(" "); return split < 0 ? null : { blobHash: line.slice(0, split), path: line.slice(split + 1).replaceAll("\\", "/") }; }).filter(Boolean).filter(({ path }) => relevant.test(path) || /skills\//i.test(path));
-const types = spawnSync("git", ["cat-file", "--batch-check=%(objectname) %(objecttype)"], { cwd: root, encoding: "utf8", input: candidates.map(({ blobHash }) => blobHash).join("\n") }).stdout.split(/\r?\n/).reduce((map, line) => { const [id,type] = line.split(" "); if (id) map.set(id,type); return map; }, new Map());
-const objects = candidates.filter(({ blobHash }) => types.get(blobHash) === "blob");
-const byBlob = new Map(), sources = [], records = [], normalized = (value) => value.normalize("NFKC").replace(/\s+/g, " ").trim();
-for (const item of objects) {
-  const classification = classify(item.path);
-  if (byBlob.has(item.blobHash)) { sources.push({ ...item, classification: "DUPLICATE", duplicateOf: byBlob.get(item.blobHash) }); continue; }
-  byBlob.set(item.blobHash, item.path); let content = "";
-  if (classification === "KNOWLEDGE_USED") try { content = execFileSync("git", ["cat-file", "blob", item.blobHash], { cwd: root, encoding: "utf8", maxBuffer: 4 * 1024 * 1024 }); } catch { sources.push({ ...item, classification: "SENSITIVE_SKIPPED" }); continue; }
-  sources.push({ ...item, classification });
-  if (classification !== "KNOWLEDGE_USED") continue;
-  if (basename(item.path).toLowerCase() === "lessons_ledger.md") for (const line of content.split(/\r?\n/).filter((row) => /^\|\s*20\d\d-/.test(row))) {
-    const cells = line.split("|").map(normalized), rule = cells[5]; if (rule) records.push({ sourceRef: item.path, sourceBlobHash: item.blobHash, normalizedRule: rule });
+import {
+  existsSync,
+  readdirSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
+import { join, relative, resolve } from "node:path";
+const root = resolve(import.meta.dirname, "../.."),
+  hash = (value) => createHash("sha256").update(value).digest("hex"),
+  git = (...args) =>
+    execFileSync("git", args, {
+      cwd: root,
+      encoding: "utf8",
+      maxBuffer: 96 * 1024 * 1024,
+    }).trim(),
+  norm = (value) =>
+    String(value)
+      .normalize("NFKC")
+      .replace(/\s+/g, " ")
+      .replace(/^[-*#\d.)\s]+/, "")
+      .trim();
+const relevant =
+    /(^|\/)(AGENTS\.md|[^/]*(instructions?|rules?)\.md|docs\/(os|quality|architecture|contracts|engineering[^/]*|exec-plans|data-platform-repair)\/|\.harness\/|\.crm-engineering\/(manifest|policy|knowledge|tasks|proofs|schemas)\/|tools\/crm-graph\/|scripts\/[^/]*(engineering|harness)|\.archive\/.*(engineering|harness|incident)|skills\/.*(zero|crm))/i,
+  excluded =
+    /(^|\/)(\.git|\.worktrees|node_modules|\.next|dist|coverage|playwright-report|test-results|vendor)(\/|$)|(^|\/)\.env|secret|credential|\.(png|jpe?g|gif|webp|zip|gz|pdf|exe|dll)$/i,
+  normative =
+    /\b(must|never|required?|do not|cannot|may not|only when|one fact|owner|fail(?:s|ed)? closed|exact head|immutable|authorization|rls|rollback|retry|acceptance|evidence)\b/i;
+const generatedOutput =
+  /docs\/engineering\/(?:LEGACY_KNOWLEDGE|LEGACY_COVERAGE)\.json$/i;
+const extract = (path, content) => {
+  const rows = [],
+    add = (text, legacyId, knownRegistry = false) => {
+      const rule = norm(text),
+        modal =
+          /\b(must|never|required?|do not|cannot|may not|only when|one fact|fail(?:s|ed)? closed|immutable|exact head)\b/i;
+      if (
+        /^\[[ x]\]/i.test(rule) ||
+        /surviving POOJA record|do not revert PR #/i.test(rule) ||
+        rule.length < 12 ||
+        rule.length > 1200 ||
+        (!knownRegistry && !normative.test(rule)) ||
+        (!legacyId && !modal.test(rule))
+      )
+        return;
+      rows.push({ normalizedRule: rule, legacyId });
+    };
+  if (/LESSONS_LEDGER\.md$/i.test(path))
+    for (const line of content
+      .split(/\r?\n/)
+      .filter((x) => /^\|\s*20\d\d-/.test(x))) {
+      const cells = line.split("|").map(norm);
+      add(cells[5]);
+    }
+  if (/\.json$/i.test(path))
+    try {
+      const data = JSON.parse(content),
+        proofSource = /\.crm-engineering\/proofs\//i.test(path),
+        walk = (value, key = "") => {
+          if (Array.isArray(value))
+            return value.forEach((item) => walk(item, key));
+          if (value && typeof value === "object") {
+            const id = value.id ?? value.legacyId ?? value.ruleId;
+            for (const [k, v] of Object.entries(value))
+              if (
+                typeof v === "string" &&
+                (/(rule|lesson|invariant|accept|criterion|require)/i.test(k) ||
+                  (proofSource &&
+                    /(failure|retry|proof|title|name|reason)/i.test(k)))
+              )
+                add(v, id, proofSource);
+              else walk(v, k);
+            return;
+          }
+          if (
+            typeof value === "string" &&
+            /(accept|invariant|require|rule|proof)/i.test(key)
+          )
+            add(value);
+        };
+      walk(data);
+    } catch {}
+  if (/\.md$/i.test(path))
+    for (const line of content.split(/\r?\n/))
+      if (/^\s*(?:[-*]|\d+[.)]|#{1,6})\s+/.test(line) && normative.test(line))
+        add(line);
+  if (
+    /(test|spec|verify|guard|controller|harness).*(?:\.[cm]?[jt]s|\.py|\.sh)$/i.test(
+      path,
+    )
+  )
+    for (const match of content.matchAll(
+      /(?:test|it|describe)\s*\(\s*["'`]([^"'`]{12,300})/g,
+    ))
+      add(match[1], `TEST_${hash(match[1]).slice(0, 12)}`);
+  return [...new Map(rows.map((x) => [hash(x.normalizedRule), x])).values()];
+};
+const discovered = git("rev-list", "--objects", "--all")
+    .split(/\r?\n/)
+    .map((line) => {
+      const i = line.indexOf(" ");
+      return i < 0
+        ? null
+        : {
+            blobHash: line.slice(0, i),
+            path: line.slice(i + 1).replaceAll("\\", "/"),
+          };
+    })
+    .filter(Boolean)
+    .filter(
+      (x) =>
+        !generatedOutput.test(x.path) &&
+        (relevant.test(x.path) || /skills\//i.test(x.path)),
+    ),
+  types = spawnSync(
+    "git",
+    ["cat-file", "--batch-check=%(objectname) %(objecttype)"],
+    {
+      cwd: root,
+      encoding: "utf8",
+      input: discovered.map((x) => x.blobHash).join("\n"),
+    },
+  )
+    .stdout.split(/\r?\n/)
+    .reduce((m, line) => {
+      const [id, type] = line.split(" ");
+      if (id) m.set(id, type);
+      return m;
+    }, new Map()),
+  items = discovered.filter((x) => types.get(x.blobHash) === "blob"),
+  seen = new Map(),
+  sources = [],
+  records = [];
+const ingest = (item, content) => {
+  if (excluded.test(item.path)) {
+    sources.push({
+      ...item,
+      classification: "SENSITIVE_SKIPPED",
+      extractedRecordCount: 0,
+    });
+    return;
   }
-  if (/lessons-registry\.json$/i.test(item.path)) try { for (const lesson of JSON.parse(content).lessons ?? []) { const rule = normalized(lesson.rule ?? lesson.title ?? lesson.id); if (rule) records.push({ sourceRef: item.path, sourceBlobHash: item.blobHash, normalizedRule: rule, legacyId: lesson.id }); } } catch {}
-  if (/policy\/rules\.json$/i.test(item.path)) try { for (const ruleItem of JSON.parse(content).rules ?? []) { const rule = normalized(ruleItem.title ?? ruleItem.rule ?? ruleItem.id); if (rule) records.push({ sourceRef: item.path, sourceBlobHash: item.blobHash, normalizedRule: rule, legacyId: ruleItem.id }); } } catch {}
+  if (seen.has(item.blobHash)) {
+    sources.push({
+      ...item,
+      classification: "DUPLICATE",
+      duplicateOf: seen.get(item.blobHash),
+      extractedRecordCount: 0,
+    });
+    return;
+  }
+  seen.set(item.blobHash, item.path);
+  if (!relevant.test(item.path)) {
+    sources.push({
+      ...item,
+      classification: /skills\//i.test(item.path)
+        ? "GENERIC_TOOLING"
+        : "NON_KNOWLEDGE",
+      extractedRecordCount: 0,
+    });
+    return;
+  }
+  const extracted = extract(item.path, content);
+  sources.push({
+    ...item,
+    classification: extracted.length ? "KNOWLEDGE_USED" : "SUPPORTING_EVIDENCE",
+    extractedRecordCount: extracted.length,
+  });
+  for (const row of extracted)
+    records.push({
+      ...row,
+      sourceRef: item.path,
+      sourceBlobHash: item.blobHash,
+    });
+};
+for (const item of items) {
+  let content = "";
+  try {
+    content = execFileSync("git", ["cat-file", "blob", item.blobHash], {
+      cwd: root,
+      encoding: "utf8",
+      maxBuffer: 4 * 1024 * 1024,
+    });
+  } catch {
+    sources.push({
+      ...item,
+      classification: "SENSITIVE_SKIPPED",
+      extractedRecordCount: 0,
+    });
+    continue;
+  }
+  ingest(item, content);
 }
-const external = process.env.ZEROGRAPH_LEGACY_CORPUS;
-if (external) { const walk = (dir) => { for (const name of readdirSync(dir)) { const path = join(dir, name), rel = relative(external, path).replaceAll("\\", "/"); if (excluded.test(rel)) continue; if (statSync(path).isDirectory()) walk(path); else { const content = readFileSync(path); sources.push({ blobHash: hash(content), path: `external:${rel}`, classification: relevant.test(rel) ? "KNOWLEDGE_USED" : "NON_KNOWLEDGE" }); } } }; walk(resolve(external)); }
-const unique = [...new Map(records.map((record) => { const ruleTextHash = hash(record.normalizedRule); return [ruleTextHash, { legacyId: record.legacyId ?? `LEGACY_${ruleTextHash.slice(0, 16)}`, ...record, ruleTextHash, claims: [], domains: [], severity: null }]; })).values()];
-const ledgerBlobs = new Set(sources.filter((source) => /LESSONS_LEDGER\.md$/i.test(source.path) && source.classification === "KNOWLEDGE_USED").map((source) => source.blobHash));
-const sourceHashes = [...new Set(sources.map((source) => source.blobHash))].sort(), rawLessonRowCount = records.filter((record) => /LESSONS_LEDGER\.md$/i.test(record.sourceRef)).length;
-const summary = { sourceBlobCount: sourceHashes.length, ledgerVersionCount: ledgerBlobs.size, rawLessonRowCount, uniqueNormalizedRules: unique.length, corpusCanary: external ? { minimumRawRows: 384, status: rawLessonRowCount >= 384 ? "PASS" : "FAIL" } : { status: "NOT_APPLICABLE", reason: "ZEROGRAPH_LEGACY_CORPUS not supplied" } };
-if (summary.ledgerVersionCount < 20 || unique.length < 29 || summary.corpusCanary.status === "FAIL") { console.error(JSON.stringify({ code: "LEGACY_SOURCE_INCOMPLETE", ...summary })); process.exit(2); }
-const output = { schemaVersion: 1, generatedFrom: "git rev-list --objects --all", summary, sourceHashes, sources: sources.sort((a,b)=>a.path.localeCompare(b.path)||a.blobHash.localeCompare(b.blobHash)), records: unique.sort((a,b)=>a.ruleTextHash.localeCompare(b.ruleTextHash)) };
-if (process.argv.includes("--write")) writeFileSync(resolve(root, "docs/engineering/LEGACY_KNOWLEDGE.json"), `${JSON.stringify(output, null, 2)}\n`);
+const walk = (dir) => {
+  for (const name of readdirSync(dir)) {
+    const full = join(dir, name),
+      rel = relative(root, full).replaceAll("\\", "/");
+    if (excluded.test(rel) || generatedOutput.test(rel)) continue;
+    let stat;
+    try {
+      stat = statSync(full);
+    } catch {
+      continue;
+    }
+    if (stat.isDirectory()) walk(full);
+    else if (relevant.test(rel) && stat.size < 4 * 1024 * 1024) {
+      const content = readFileSync(full),
+        blobHash = hash(content);
+      if (!seen.has(blobHash))
+        ingest(
+          { blobHash, path: `filesystem:${rel}` },
+          content.toString("utf8"),
+        );
+    }
+  }
+};
+walk(root);
+if (
+  process.env.ZEROGRAPH_LEGACY_CORPUS &&
+  existsSync(process.env.ZEROGRAPH_LEGACY_CORPUS)
+) {
+  const external = resolve(process.env.ZEROGRAPH_LEGACY_CORPUS),
+    scan = (dir) => {
+      for (const name of readdirSync(dir)) {
+        const full = join(dir, name),
+          rel = relative(external, full).replaceAll("\\", "/");
+        if (excluded.test(rel) || generatedOutput.test(rel)) continue;
+        const stat = statSync(full);
+        if (stat.isDirectory()) scan(full);
+        else if (stat.size < 4 * 1024 * 1024)
+          ingest(
+            { blobHash: hash(readFileSync(full)), path: `external:${rel}` },
+            readFileSync(full, "utf8"),
+          );
+      }
+    };
+  scan(external);
+}
+// Curated legacy registries are semantic sources even when a rule omits a modal verb.
+for (const item of items.filter((entry) =>
+  /(lessons-registry|policy\/rules)\.json$/i.test(entry.path),
+)) {
+  try {
+    const data = JSON.parse(
+        execFileSync("git", ["cat-file", "blob", item.blobHash], {
+          cwd: root,
+          encoding: "utf8",
+        }),
+      ),
+      walk = (value) => {
+        if (Array.isArray(value)) return value.forEach(walk);
+        if (!value || typeof value !== "object") return;
+        if (typeof value.id === "string" && typeof value.rule === "string") {
+          const normalizedRule = norm(value.rule);
+          if (normalizedRule.length >= 12)
+            records.push({
+              normalizedRule,
+              legacyId: value.id,
+              sourceRef: item.path,
+              sourceBlobHash: item.blobHash,
+            });
+        }
+        Object.values(value).forEach(walk);
+      };
+    walk(data);
+  } catch {}
+}
+const byRule = new Map();
+for (const record of records) {
+  const ruleTextHash = hash(record.normalizedRule),
+    candidate = {
+      ...record,
+      legacyId: record.legacyId ?? `LEGACY_${ruleTextHash.slice(0, 16)}`,
+      ruleTextHash,
+      claims: [],
+      domains: [],
+      severity: null,
+    },
+    current = byRule.get(ruleTextHash);
+  if (
+    !current ||
+    (/_RULE$/.test(candidate.legacyId) && !/_RULE$/.test(current.legacyId))
+  )
+    byRule.set(ruleTextHash, candidate);
+}
+const unique = [...byRule.values()],
+  ledgerBlobs = new Set(
+    sources
+      .filter(
+        (x) =>
+          /LESSONS_LEDGER\.md$/i.test(x.path) &&
+          x.classification === "KNOWLEDGE_USED",
+      )
+      .map((x) => x.blobHash),
+  ),
+  summary = {
+    sourceBlobCount: new Set(sources.map((x) => x.blobHash)).size,
+    filesystemGovernanceSources: sources.filter((x) =>
+      x.path.startsWith("filesystem:"),
+    ).length,
+    ledgerVersionCount: ledgerBlobs.size,
+    rawLessonRowCount: records.filter((x) =>
+      /LESSONS_LEDGER\.md$/i.test(x.sourceRef),
+    ).length,
+    uniqueNormalizedRules: unique.length,
+    knowledgeUsedWithoutSemantics: sources.filter(
+      (x) => x.classification === "KNOWLEDGE_USED" && !x.extractedRecordCount,
+    ).length,
+    parserFamilies: [
+      "ledger",
+      "golden-principles",
+      "protocol",
+      "agents",
+      "policy-rules",
+      "lesson-registry",
+      "task-acceptance",
+      "proof-record",
+      "harness-test",
+      "exec-plan",
+    ],
+  };
+if (
+  summary.ledgerVersionCount < 20 ||
+  unique.length < 29 ||
+  summary.knowledgeUsedWithoutSemantics
+) {
+  console.error(
+    JSON.stringify({ code: "LEGACY_SOURCE_INCOMPLETE", ...summary }),
+  );
+  process.exit(2);
+}
+const output = {
+  schemaVersion: 2,
+  generatedFrom: "git rev-list --objects --all + targeted filesystem scan",
+  summary,
+  sourceHashes: [...new Set(sources.map((x) => x.blobHash))].sort(),
+  sources: sources.sort(
+    (a, b) =>
+      a.path.localeCompare(b.path) || a.blobHash.localeCompare(b.blobHash),
+  ),
+  records: unique.sort((a, b) => a.ruleTextHash.localeCompare(b.ruleTextHash)),
+};
+if (process.argv.includes("--check")) {
+  const tracked = JSON.parse(
+      readFileSync(
+        resolve(root, "docs/engineering/LEGACY_KNOWLEDGE.json"),
+        "utf8",
+      ),
+    ),
+    project = (value) => ({
+      schemaVersion: value.schemaVersion,
+      generatedFrom: value.generatedFrom,
+      summary: value.summary,
+      sourceHashes: value.sourceHashes,
+      sources: value.sources,
+      records: value.records.map(
+        ({
+          legacyId,
+          sourceRef,
+          sourceBlobHash,
+          ruleTextHash,
+          normalizedRule,
+        }) => ({
+          legacyId,
+          sourceRef,
+          sourceBlobHash,
+          ruleTextHash,
+          normalizedRule,
+        }),
+      ),
+    });
+  if (JSON.stringify(project(output)) !== JSON.stringify(project(tracked))) {
+    console.error("LEGACY_SOURCE_STALE");
+    process.exit(2);
+  }
+}
+if (process.argv.includes("--write"))
+  writeFileSync(
+    resolve(root, "docs/engineering/LEGACY_KNOWLEDGE.json"),
+    `${JSON.stringify(output, null, 2)}\n`,
+  );
 console.log(JSON.stringify(summary));

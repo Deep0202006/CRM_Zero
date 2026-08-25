@@ -17,3 +17,6 @@
   repository certificate. Generic green product CI is not OS acceptance.
 - Generated graph and test selection may self-repair. Human-authored expected
   behavior, authorization, RLS, money truth, assertions and required proofs may not.
+- Platform handover is R3 and preserves Vercel placement and all CRM business
+  authorities. Database dumps, Auth/config, Realtime, Storage bytes, service
+  configuration, cutover parity, and rollback reconciliation require distinct evidence.

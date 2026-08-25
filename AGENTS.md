@@ -1,4 +1,5 @@
 <!-- BEGIN:nextjs-agent-rules -->
+
 # This is NOT the Next.js you know
 
 The installed Next.js version is authority. Before changing its APIs, routing,
@@ -16,14 +17,14 @@ Run task-only resolution first:
 
 `npm run context:resolve -- --task "<outcome>"`
 
-Then follow: Task → Resolve → open current source → Authority → Reuse → minimum
-diff → Impact → Prove → exact-head Certify → Learn. Current source/tests are
+Then follow: Task -> Resolve -> open current source -> Authority -> Reuse -> minimum
+diff -> Impact -> Prove -> exact-head Certify -> Learn -> End. Current source/tests are
 behavior evidence, contracts are intended invariants, AUTHORITIES owns facts,
 CAPABILITIES identifies reuse, and PROOFS determines evidence. One fact has one
 writable authority. If evidence conflicts, fresh source and read-only deployed
 fact outrank docs; correct stale docs in scope.
 
-After implementation run `impact:compile` and `proof:plan`; actual diff effects
+After implementation run `impact:compile`, `proof:plan`, and `task:close`; actual diff effects
 may raise risk. R3 database/auth/security work requires its mapped disposable
 PostgreSQL and Owner pre/post proof. `verify:affected` never substitutes related
 tests for a declared contract proof. GitHub re-certifies every exact PR head.
@@ -37,6 +38,8 @@ immutable. Never create production dummy data, expose service-role/private
 keys to client code, delete protected history, clear durable browser recovery,
 or bypass approved server confirmation for Calls and Field Visits.
 
+Every implementation task keeps its baseline and current proof in Git-metadata
+session state. A green OS installation never certifies a later unfinished task.
 Prevent recurrence in this order: shared implementation, invariant/validation,
 regression proof, then a durable lesson only for reusable judgment. Close R2/R3
 through `learn:close`; do not duplicate known lesson prose. Self-healing may

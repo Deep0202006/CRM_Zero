@@ -28,6 +28,8 @@
     "legacy:reconcile": "node scripts/engineering/legacy-reconcile.mjs",
     "engineering:eval": "node scripts/engineering/engineering-eval.mjs",
     "learn:close": "node scripts/engineering/learn-close.mjs",
+    "task:evidence": "node scripts/engineering/task-evidence.mjs",
+    "task:close": "node scripts/engineering/task-close.mjs",
     "quality:release": "node scripts/engineering/os-acceptance.mjs --mode release",
     "os:acceptance": "node scripts/engineering/os-acceptance.mjs",
     "os:bootstrap-test": "node scripts/engineering/os-bootstrap-test.mjs",

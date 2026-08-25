@@ -1,0 +1,1369 @@
+{
+  "schemaVersion": 1,
+  "claims": [
+    {
+      "id": "ACCEPTANCE_EVIDENCE_BINDING",
+      "statement": "Acceptance evidence is bound to head tree and proof plan",
+      "severity": "CRITICAL",
+      "domains": ["engineering-control"],
+      "positiveMatchers": [
+        "acceptance evidence binding",
+        "acceptance evidence is bound to head tree and proof plan",
+        "acceptance evidence is bound to head tree",
+        "proof plan",
+        "durable evidence",
+        "release acceptance",
+        "production gate fails closed",
+        "worker pass requires evidence",
+        "verification validation fails while required implementation remains incomplete",
+        "raw circular comparisons never imply progress",
+        "workflow uses dynamic task discovery and never hard codes a historical task"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/task-close.mjs"],
+      "evalRefs": ["task-lifecycle-hardening"]
+    },
+    {
+      "id": "AGENT_REPORT_NOT_PROOF",
+      "statement": "Agent prose is a report, not proof",
+      "severity": "HIGH",
+      "domains": ["all"],
+      "positiveMatchers": [
+        "agent report not proof",
+        "agent prose is a report, not proof",
+        "agent prose is a report",
+        "not proof",
+        "worker output cannot emit the controller readiness phrase",
+        "owner gate controller is the only source phrase emitter"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/engineering-eval.mjs"],
+      "evalRefs": ["repository-proof"]
+    },
+    {
+      "id": "APPLIED_MIGRATION_IMMUTABLE",
+      "statement": "Applied migrations are immutable",
+      "severity": "CRITICAL",
+      "domains": ["all"],
+      "positiveMatchers": [
+        "applied migration immutable",
+        "applied migrations are immutable",
+        "immutable migrations",
+        "owner applied migrations",
+        "migration hash immutable boundary",
+        "do not contact production supabase from ci"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/quality/knowledge-check.mjs"],
+      "evalRefs": ["production-safety"]
+    },
+    {
+      "id": "ATOMIC_BATCH_ROLLBACK",
+      "statement": "Validate the complete plan write-free before mutation",
+      "severity": "HIGH",
+      "domains": ["imports", "erp", "receivables"],
+      "positiveMatchers": [
+        "atomic batch rollback",
+        "validate the complete plan write-free before mutation",
+        "complete write free validation"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/engineering-eval.mjs"],
+      "evalRefs": ["import-atomicity"]
+    },
+    {
+      "id": "AUTH_CONFIGURATION_PARITY_REQUIRED",
+      "statement": "Auth users credentials and service configuration require parity",
+      "severity": "CRITICAL",
+      "domains": ["platform-handover"],
+      "positiveMatchers": [
+        "auth configuration parity required",
+        "auth users credentials and service configuration require parity",
+        "auth users credentials",
+        "service configuration require parity"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/proof-plan.mjs"],
+      "evalRefs": ["platform-handover"]
+    },
+    {
+      "id": "AUTHZ_SERVER_ENFORCED",
+      "statement": "Privileged authorization and partner scope are server/database enforced",
+      "severity": "CRITICAL",
+      "domains": ["auth", "erp-partner", "receivables"],
+      "positiveMatchers": [
+        "authz server enforced",
+        "privileged authorization and partner scope are server/database enforced",
+        "privileged authorization",
+        "partner scope are server/database enforced",
+        "service role credentials",
+        "authenticated identity owns sender",
+        "clients cannot forge",
+        "server side scope",
+        "exclusive external partner",
+        "production secrets service roles browser",
+        "active users access membership",
+        "sender is derived from the authenticated session",
+        "visibility never grants mutation authority",
+        "admin normal actions require assignment exactly like every other active user"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/engineering-eval.mjs"],
+      "evalRefs": ["calls-visibility", "external-partner"]
+    },
+    {
+      "id": "BASELINE_FAILURE_ABLATION",
+      "statement": "Call a failure pre-existing only when the same command fails on clean current main",
+      "severity": "HIGH",
+      "domains": ["all"],
+      "positiveMatchers": [
+        "baseline failure ablation",
+        "call a failure pre-existing only when the same command fails on clean current main",
+        "main ci must remain green",
+        "baseline repair separate"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/engineering-eval.mjs"],
+      "evalRefs": ["repository-proof"]
+    },
+    {
+      "id": "CONTENT_SENSITIVE_WORKTREE",
+      "statement": "Worktree evidence fingerprints file content not status labels only",
+      "severity": "CRITICAL",
+      "domains": ["engineering-control"],
+      "positiveMatchers": [
+        "content sensitive worktree",
+        "worktree evidence fingerprints file content not status labels only",
+        "content fingerprint"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/task-close.mjs"],
+      "evalRefs": ["task-lifecycle-hardening"]
+    },
+    {
+      "id": "CRITICAL_PRIORITY_CONFIRMATION",
+      "statement": "Critical durable work may use exact-item confirmation through its existing outbox",
+      "severity": "HIGH",
+      "domains": ["calls", "field-visits"],
+      "positiveMatchers": [
+        "critical priority confirmation",
+        "critical durable work may use exact-item confirmation through its existing outbox"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/engineering-eval.mjs"],
+      "evalRefs": ["calls-visibility"]
+    },
+    {
+      "id": "CURRENT_SOURCE_OVERRIDES_SNAPSHOT",
+      "statement": "Committed counts and checkpoints are historical evidence only",
+      "severity": "HIGH",
+      "domains": ["all"],
+      "positiveMatchers": [
+        "current source overrides snapshot",
+        "committed counts and checkpoints are historical evidence only",
+        "committed counts",
+        "checkpoints are historical evidence only",
+        "local migrations evidence not production proof",
+        "production logs no response bodies",
+        "do not reconstruct workflow from docs os archived worktrees or old chat prompts",
+        "admin baseline must never rewrite historical visits"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/engineering-eval.mjs"],
+      "evalRefs": ["erp-filter"]
+    },
+    {
+      "id": "CUTOVER_ENV_PARITY_REQUIRED",
+      "statement": "Vercel backend variables change only after target parity is proven",
+      "severity": "CRITICAL",
+      "domains": ["platform-handover"],
+      "positiveMatchers": [
+        "cutover env parity required",
+        "vercel backend variables change only after target parity is proven"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/proof-plan.mjs"],
+      "evalRefs": ["platform-handover"]
+    },
+    {
+      "id": "DATABASE_DUMP_NOT_STORAGE_TRANSFER",
+      "statement": "Database dumps do not transfer Storage object bytes",
+      "severity": "CRITICAL",
+      "domains": ["platform-handover"],
+      "positiveMatchers": [
+        "database dump not storage transfer",
+        "database dumps do not transfer storage object bytes"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/proof-plan.mjs"],
+      "evalRefs": ["platform-handover"]
+    },
+    {
+      "id": "DERIVED_ALERTS_NOT_WRITES",
+      "statement": "Derived alerts do not create work rows unless explicitly approved",
+      "severity": "HIGH",
+      "domains": ["followups", "renewals"],
+      "positiveMatchers": [
+        "derived alerts not writes",
+        "derived alerts do not create work rows unless explicitly approved"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/engineering-eval.mjs"],
+      "evalRefs": ["distributor-renewal"]
+    },
+    {
+      "id": "DIRECT_ENGINEERING",
+      "statement": "Preserve owner work, use a clean worktree, query Graphify before broad search, follow Ponytail minimum diff, and use one direct Codex",
+      "severity": "CRITICAL",
+      "domains": ["all"],
+      "positiveMatchers": [
+        "direct engineering",
+        "preserve owner work, use a clean worktree, query graphify before broad search, follow ponytail minimum diff, and use one direct codex",
+        "preserve owner work",
+        "use a clean worktree",
+        "query graphify before broad search",
+        "follow ponytail minimum diff",
+        "use one direct codex",
+        "never push directly main",
+        "force push",
+        "reset clean prune",
+        "clean reviewed git metadata",
+        "locate and reuse the existing working implementation",
+        "do not redesign typography or upgrade the framework unless direct evidence proves it necessary"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/engineering-eval.mjs"],
+      "evalRefs": ["repository-proof"]
+    },
+    {
+      "id": "EMPLOYEE_IDENTITY_SEPARATION",
+      "statement": "Auth login identity and public profile identity may differ",
+      "severity": "CRITICAL",
+      "domains": ["auth", "imports"],
+      "positiveMatchers": [
+        "employee identity separation",
+        "auth login identity and public profile identity may differ",
+        "auth login identity",
+        "public profile identity may differ",
+        "external partner viewer exclusive",
+        "employee assignment attendance queues"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/engineering-eval.mjs"],
+      "evalRefs": ["external-partner"]
+    },
+    {
+      "id": "ERP_AUTHORITY_SEPARATION",
+      "statement": "ERP directory, Distributor assignment, visit observation, and Admin current baseline are distinct",
+      "severity": "CRITICAL",
+      "domains": ["erp", "erp-partner", "field-visits", "distributor-status"],
+      "positiveMatchers": [
+        "erp authority separation",
+        "erp directory, distributor assignment, visit observation, and admin current baseline are distinct",
+        "erp directory",
+        "distributor assignment",
+        "visit observation",
+        "admin current baseline are distinct",
+        "erp partner viewer",
+        "current historical erp",
+        "new erp contract visits require explicit erp or none"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/engineering-eval.mjs"],
+      "evalRefs": ["erp-filter"]
+    },
+    {
+      "id": "ERP_CANONICAL_WRITE",
+      "statement": "Canonical dimensions resolve/create only at the authoritative write boundary",
+      "severity": "CRITICAL",
+      "domains": ["erp"],
+      "positiveMatchers": [
+        "erp canonical write",
+        "canonical dimensions resolve/create only at the authoritative write boundary"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/engineering-eval.mjs"],
+      "evalRefs": ["erp-filter"]
+    },
+    {
+      "id": "EXACT_COMPATIBILITY_CONTRACT",
+      "statement": "Keep exact prior serialized compatibility",
+      "severity": "HIGH",
+      "domains": ["field-visits", "attendance", "pipeline"],
+      "positiveMatchers": [
+        "exact compatibility contract",
+        "keep exact prior serialized compatibility",
+        "new visit business field must ride the existing create read admin export payloads",
+        "new visit ui and current command require trimmed non empty bounded text pincode"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/engineering-eval.mjs"],
+      "evalRefs": ["pipeline-retry"]
+    },
+    {
+      "id": "EXACT_HEAD_PROOF",
+      "statement": "Call a failure pre-existing only when it reproduces on clean current main",
+      "severity": "HIGH",
+      "domains": ["all"],
+      "positiveMatchers": [
+        "exact head proof",
+        "call a failure pre-existing only when it reproduces on clean current main",
+        "remote release facts",
+        "mutable local certification",
+        "certified head sha",
+        "current main ci",
+        "graph only fast ci must pass before closeout merge"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": [".github/workflows/product-verification.yml"],
+      "evalRefs": ["repository-proof"]
+    },
+    {
+      "id": "EXPLICIT_OPERATION_STATES",
+      "statement": "Keep empty, unauthorized, capability-missing, and server-error states distinct",
+      "severity": "CRITICAL",
+      "domains": ["all"],
+      "positiveMatchers": [
+        "explicit operation states",
+        "keep empty, unauthorized, capability-missing, and server-error states distinct",
+        "keep empty",
+        "server-error states distinct",
+        "pending never confirmed",
+        "local only completed synced",
+        "completed status is required for success",
+        "user input request fails closed with typed error",
+        "deployment before schema activation fails closed"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/engineering-eval.mjs"],
+      "evalRefs": ["attendance-confirmation"]
+    },
+    {
+      "id": "EXTERNAL_DATA_MINIMIZATION",
+      "statement": "External projections expose only minimum authorized data and require explicit authority for any cross-domain write",
+      "severity": "CRITICAL",
+      "domains": ["erp-partner"],
+      "positiveMatchers": [
+        "external data minimization",
+        "external projections expose only minimum authorized data and require explicit authority for any cross-domain write",
+        "external projections expose only minimum authorized data",
+        "require explicit authority for any cross-domain write",
+        "minimum authorized fields"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/engineering-eval.mjs"],
+      "evalRefs": ["external-partner"]
+    },
+    {
+      "id": "EXTERNAL_IDENTITY_NOT_EMPLOYEE",
+      "statement": "Auth login identity and public profile identity may differ",
+      "severity": "CRITICAL",
+      "domains": ["auth", "imports"],
+      "positiveMatchers": [
+        "external identity not employee",
+        "auth login identity and public profile identity may differ",
+        "auth login identity",
+        "public profile identity may differ",
+        "external viewer capabilities are excluded from employee assignment attendance work queues and internal synchronization"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/engineering-eval.mjs"],
+      "evalRefs": ["external-partner"]
+    },
+    {
+      "id": "FINANCIAL_STATE_DERIVED",
+      "statement": "Receivables plus effective confirmed non-reversed payments are money truth",
+      "severity": "CRITICAL",
+      "domains": ["receivables"],
+      "positiveMatchers": [
+        "financial state derived",
+        "receivables plus effective confirmed non-reversed payments are money truth",
+        "billed unpaid",
+        "payment state projection",
+        "appearing in a collection view creates no financial obligation",
+        "mapped means installation training and mapping are done active inactive and billed remain overlapping projections"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/engineering-eval.mjs"],
+      "evalRefs": ["receivables-money"]
+    },
+    {
+      "id": "FRESH_PROOF_REUSE",
+      "statement": "Fresh proof may be reused only while its dependency fingerprint remains current",
+      "severity": "CRITICAL",
+      "domains": ["engineering-control"],
+      "positiveMatchers": [
+        "fresh proof reuse",
+        "fresh proof may be reused only while its dependency fingerprint remains current",
+        "contract changed after the prior proof invalidating proof reuse",
+        "exact head proof remains valid and no relevant implementation dependency input changed"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/task-close.mjs"],
+      "evalRefs": ["task-lifecycle-hardening"]
+    },
+    {
+      "id": "HANDOVER_ARTIFACT_CHECKSUM_REQUIRED",
+      "statement": "Every generated handover artifact is checksummed and verified",
+      "severity": "CRITICAL",
+      "domains": ["platform-handover"],
+      "positiveMatchers": [
+        "handover artifact checksum required",
+        "every generated handover artifact is checksummed and verified",
+        "every generated handover artifact is checksummed"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/proof-plan.mjs"],
+      "evalRefs": ["platform-handover"]
+    },
+    {
+      "id": "HANDOVER_SOURCE_IDENTITY_VERIFIED",
+      "statement": "Handover source project and live database identity are verified independently",
+      "severity": "CRITICAL",
+      "domains": ["platform-handover"],
+      "positiveMatchers": [
+        "handover source identity verified",
+        "handover source project and live database identity are verified independently",
+        "handover source project",
+        "live database identity are verified independently"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/proof-plan.mjs"],
+      "evalRefs": ["platform-handover"]
+    },
+    {
+      "id": "HONEST_VISUALIZATION",
+      "statement": "Visualization is presentation: state denominator, filters, timezone, and unit",
+      "severity": "HIGH",
+      "domains": ["team-kpi", "field-visits", "erp"],
+      "positiveMatchers": [
+        "honest visualization",
+        "visualization is presentation: state denominator, filters, timezone, and unit",
+        "visualization is presentation: state denominator",
+        "loading or request failure never becomes a fake zero chart"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/engineering-eval.mjs"],
+      "evalRefs": ["distributor-renewal"]
+    },
+    {
+      "id": "IMPLEMENT_BEFORE_BROAD_VERIFY",
+      "statement": "Complete focused implementation before broad verification",
+      "severity": "CRITICAL",
+      "domains": ["engineering-control"],
+      "positiveMatchers": [
+        "implement before broad verify",
+        "complete focused implementation before broad verification"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/task-close.mjs"],
+      "evalRefs": ["task-lifecycle-hardening"]
+    },
+    {
+      "id": "IMPORT_TEMPLATE_VERSION",
+      "statement": "A structural import-template change increments its format contract and fails with an explicit upgrade message",
+      "severity": "HIGH",
+      "domains": ["imports", "receivables"],
+      "positiveMatchers": [
+        "import template version",
+        "a structural import-template change increments its format contract and fails with an explicit upgrade message",
+        "a structural import-template change increments its format contract",
+        "fails with an explicit upgrade message"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/engineering-eval.mjs"],
+      "evalRefs": ["import-atomicity"]
+    },
+    {
+      "id": "INCOMPLETE_WORK_IS_NOT_EXTERNAL_BLOCKER",
+      "statement": "Locally implementable incomplete work is not an external blocker",
+      "severity": "CRITICAL",
+      "domains": ["engineering-control"],
+      "positiveMatchers": [
+        "incomplete work is not external blocker",
+        "locally implementable incomplete work is not an external blocker"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/task-close.mjs"],
+      "evalRefs": ["task-lifecycle-hardening"]
+    },
+    {
+      "id": "IST_BUSINESS_DATE",
+      "statement": "Use shared IST helpers for India business dates",
+      "severity": "HIGH",
+      "domains": ["attendance", "field-visits", "renewals"],
+      "positiveMatchers": [
+        "ist business date",
+        "use shared ist helpers for india business dates",
+        "business date time freeze clock",
+        "date equals the ist date derived from immutable clock in"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/engineering-eval.mjs"],
+      "evalRefs": ["attendance-confirmation"]
+    },
+    {
+      "id": "LABEL_NOT_IDENTITY_AUTHORITY",
+      "statement": "A label change does not silently alter storage authority",
+      "severity": "CRITICAL",
+      "domains": ["all"],
+      "positiveMatchers": [
+        "label not identity authority",
+        "a label change does not silently alter storage authority"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/engineering-eval.mjs"],
+      "evalRefs": ["mapping-attribution"]
+    },
+    {
+      "id": "LOCK_BEFORE_CHANGE",
+      "statement": "Lock outcome, user flow, authority, must-not-change, and risk before coding",
+      "severity": "CRITICAL",
+      "domains": ["all"],
+      "positiveMatchers": [
+        "lock before change",
+        "lock outcome, user flow, authority, must-not-change, and risk before coding",
+        "lock outcome",
+        "user flow",
+        "risk before coding",
+        "bug repair does not invent policy",
+        "explicit scope r3 controls",
+        "never invent business policy to close a bug"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/engineering-eval.mjs"],
+      "evalRefs": ["production-safety"]
+    },
+    {
+      "id": "MANAGED_INTERNALS_NOT_BLINDLY_CLONED",
+      "statement": "Supabase managed internals use supported configuration rather than blind cloning",
+      "severity": "CRITICAL",
+      "domains": ["platform-handover"],
+      "positiveMatchers": [
+        "managed internals not blindly cloned",
+        "supabase managed internals use supported configuration rather than blind cloning"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/proof-plan.mjs"],
+      "evalRefs": ["platform-handover"]
+    },
+    {
+      "id": "MEDIA_LIFECYCLE",
+      "statement": "Business rows and temporary media lifecycle are separate",
+      "severity": "HIGH",
+      "domains": ["field-visits", "attendance"],
+      "positiveMatchers": [
+        "media lifecycle",
+        "business rows and temporary media lifecycle are separate",
+        "business rows",
+        "temporary media lifecycle are separate",
+        "failed object deletion",
+        "evidence purged",
+        "business rows never cleanup targets",
+        "evidence failure cannot undo or block a confirmed field visit",
+        "evidence failure cannot block or undo a confirmed visit",
+        "new media uses storage with explicit retention",
+        "selfies or other visit evidence must never be copied into github actions artifacts"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/engineering-eval.mjs"],
+      "evalRefs": ["attendance-confirmation", "field-evidence"]
+    },
+    {
+      "id": "NO_AUTONOMOUS_CONTROLLER",
+      "statement": "Do not ask a live coding-agent controller to rewrite its own execution engine",
+      "severity": "HIGH",
+      "domains": ["all"],
+      "positiveMatchers": [
+        "no autonomous controller",
+        "do not ask a live coding-agent controller to rewrite its own execution engine",
+        "coding agent loop",
+        "graph thread",
+        "sqlite thread",
+        "graph only pull requests do not require a product schema task"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/engineering-eval.mjs"],
+      "evalRefs": ["control-plane-regressions"]
+    },
+    {
+      "id": "NO_END_WITH_INCOMPLETE_ACCEPTANCE",
+      "statement": "Incomplete required acceptance cannot end as success",
+      "severity": "CRITICAL",
+      "domains": ["engineering-control"],
+      "positiveMatchers": [
+        "no end with incomplete acceptance",
+        "incomplete required acceptance cannot end as success",
+        "verification validation fails while required implementation remains incomplete"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/task-close.mjs"],
+      "evalRefs": ["task-lifecycle-hardening"]
+    },
+    {
+      "id": "NO_PRODUCTION_DUMMY_DATA",
+      "statement": "Never create or delete production test rows",
+      "severity": "CRITICAL",
+      "domains": ["all"],
+      "positiveMatchers": [
+        "no production dummy data",
+        "never create or delete production test rows",
+        "never fabricate production records",
+        "production dummy",
+        "production test data",
+        "production testing must remain read only",
+        "tests and previews never create production messages subscriptions or users"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/quality/invariants.mjs"],
+      "evalRefs": ["production-safety"]
+    },
+    {
+      "id": "NO_REDUNDANT_LOCAL_TOOLCHAIN",
+      "statement": "Reuse authoritative CI/toolchain proof rather than downloading redundant infrastructure",
+      "severity": "CRITICAL",
+      "domains": ["all"],
+      "positiveMatchers": [
+        "no redundant local toolchain",
+        "reuse authoritative ci/toolchain proof rather than downloading redundant infrastructure",
+        "authoritative ci",
+        "local database install",
+        "database gate exhausted its job timeout downloading an already preinstalled postgresql client activate the runner toolchain",
+        "do not add live network package installation to the critical pr verification path"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/hooks/pre-tool.mjs"],
+      "evalRefs": ["control-plane-regressions"]
+    },
+    {
+      "id": "NO_SECRETS_IN_HANDOVER_ARTIFACTS",
+      "statement": "Tracked handover artifacts contain no secrets credentials or production dumps",
+      "severity": "CRITICAL",
+      "domains": ["platform-handover"],
+      "positiveMatchers": [
+        "no secrets in handover artifacts",
+        "tracked handover artifacts contain no secrets credentials or production dumps",
+        "backup and dump files must never be committed to git",
+        "unencrypted backups must never be placed in desktop or downloads",
+        "browser must not expose a database export backup feature"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/proof-plan.mjs"],
+      "evalRefs": ["platform-handover"]
+    },
+    {
+      "id": "OFFLINE_CONTRACT_COMPATIBILITY",
+      "statement": "Support current and previous payloads",
+      "severity": "HIGH",
+      "domains": ["attendance", "field-visits", "pipeline"],
+      "positiveMatchers": [
+        "offline contract compatibility",
+        "support current and previous payloads",
+        "support current",
+        "previous payloads",
+        "terminal failures retain repairable state",
+        "uncertain infrastructure outcomes retry",
+        "lost response retried same command",
+        "pending never presented as confirmed",
+        "new required fields preserve legacy row readability and offline payload upgrades"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/engineering-eval.mjs"],
+      "evalRefs": ["mapping-attribution", "attendance-confirmation"]
+    },
+    {
+      "id": "OFFLINE_RECOVERY_PRESERVES_INTENT",
+      "statement": "Reconcile legitimate local intent and never clear durable recovery state merely to make a test pass",
+      "severity": "HIGH",
+      "domains": ["attendance", "field-visits"],
+      "positiveMatchers": [
+        "offline recovery preserves intent",
+        "reconcile legitimate local intent and never clear durable recovery state merely to make a test pass",
+        "reconcile legitimate local intent",
+        "never clear durable recovery state merely to make a test pass",
+        "server confirmed rows win",
+        "durable local pending work remains",
+        "never clear browser databases",
+        "queue evidence never deleted",
+        "local only completed work",
+        "automatic production replay disabled",
+        "browser local evidence",
+        "never uploads a local table because a remote response is empty",
+        "permanent 4xx business errors terminate and never retry forever",
+        "deterministic terminal 4xx is passive evidence and must not auto replay",
+        "legacy generic status queue entries are preserved and never replayed with a null expected stage"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/engineering-eval.mjs"],
+      "evalRefs": ["mapping-attribution", "pipeline-retry"]
+    },
+    {
+      "id": "ONE_FACT_ONE_AUTHORITY",
+      "statement": "One business fact has one writable authority",
+      "severity": "CRITICAL",
+      "domains": ["all"],
+      "positiveMatchers": [
+        "one fact one authority",
+        "one business fact has one writable authority",
+        "never become a new authority",
+        "owns installation training activity",
+        "mapping never creates leads",
+        "pipeline events never calls",
+        "one canonical distributor import updates shared operational facts once",
+        "mapping cannot create a lead",
+        "pipeline transitions never create genuine call logs",
+        "realtime and push are delivery signals never the database authority",
+        "attendance rows are authority evidence lifecycle never changes presence",
+        "immutable team kpi projection"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/engineering-eval.mjs"],
+      "evalRefs": ["mapping-attribution", "distributor-renewal"]
+    },
+    {
+      "id": "ONE_FINANCIAL_AUTHORITY",
+      "statement": "Receivables plus effective confirmed non-reversed payments are money truth",
+      "severity": "CRITICAL",
+      "domains": ["receivables"],
+      "positiveMatchers": [
+        "one financial authority",
+        "receivables plus effective confirmed non-reversed payments are money truth",
+        "financial tables",
+        "payment done cannot write",
+        "bill amount confirmed payments",
+        "payments target exact receivable id",
+        "never flatten multiple payment events",
+        "receivable payments is immutable payment identity"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/engineering-eval.mjs"],
+      "evalRefs": ["receivables-money"]
+    },
+    {
+      "id": "OPTIONAL_FAILURE_ISOLATION",
+      "statement": "Optional metrics or derived data cannot suppress valid authoritative history",
+      "severity": "CRITICAL",
+      "domains": ["calls", "field-visits"],
+      "positiveMatchers": [
+        "optional failure isolation",
+        "optional metrics or derived data cannot suppress valid authoritative history",
+        "evidence failure cannot block or undo a confirmed visit"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/engineering-eval.mjs"],
+      "evalRefs": ["calls-visibility"]
+    },
+    {
+      "id": "OWNER_MIGRATION_CERTIFICATION",
+      "statement": "Owner applies reviewed SQL, then records a read-only postcheck",
+      "severity": "CRITICAL",
+      "domains": ["all"],
+      "positiveMatchers": [
+        "owner migration certification",
+        "owner applies reviewed sql, then records a read-only postcheck",
+        "owner applies reviewed sql",
+        "then records a read-only postcheck",
+        "owner must apply migrations",
+        "read only verification before migration approval",
+        "owner applies reviewed production migration",
+        "owner postcheck"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/engineering-eval.mjs"],
+      "evalRefs": ["production-safety"]
+    },
+    {
+      "id": "OWNER_POSTCHECK_REQUIRED",
+      "statement": "Owner production mutation requires a read-only postcheck",
+      "severity": "CRITICAL",
+      "domains": ["engineering-control"],
+      "positiveMatchers": [
+        "owner postcheck required",
+        "owner production mutation requires a read-only postcheck"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/task-close.mjs"],
+      "evalRefs": ["task-lifecycle-hardening"]
+    },
+    {
+      "id": "OWNER_PRODUCTION_HUMAN_GATE",
+      "statement": "Production mutation requires explicit Owner action",
+      "severity": "CRITICAL",
+      "domains": ["engineering-control"],
+      "positiveMatchers": [
+        "owner production human gate",
+        "production mutation requires explicit owner action",
+        "owner must apply",
+        "human interrupt checkpoint",
+        "do not apply migration"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/task-close.mjs"],
+      "evalRefs": ["task-lifecycle-hardening"]
+    },
+    {
+      "id": "OWNER_SQL_PURE_POSTGRESQL",
+      "statement": "Owner SQL artifacts are pure PostgreSQL and execute with reviewed pre/post evidence",
+      "severity": "CRITICAL",
+      "domains": ["engineering-control"],
+      "positiveMatchers": [
+        "owner sql pure postgresql",
+        "client meta command",
+        "psql meta commands",
+        "exact owner artifact",
+        "sql editor"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/quality/invariants.mjs"],
+      "evalRefs": ["production-safety"]
+    },
+    {
+      "id": "PLATFORM_MIGRATION_PRESERVES_BUSINESS_AUTHORITY",
+      "statement": "Moving platform services never redefines CRM business fact authority",
+      "severity": "CRITICAL",
+      "domains": ["platform-handover"],
+      "positiveMatchers": [
+        "platform migration preserves business authority",
+        "moving platform services never redefines crm business fact authority"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/proof-plan.mjs"],
+      "evalRefs": ["platform-handover"]
+    },
+    {
+      "id": "POSTGRES_UUID_NOT_RFC_UUID",
+      "statement": "A PostgreSQL uuid identifier whose generator does not enforce RFC version/variant bits must use the project's canonical GUID-shape validator, not RFC-strict z",
+      "severity": "HIGH",
+      "domains": [
+        "erp",
+        "distributor-status",
+        "erp-partner",
+        "field-visits",
+        "receivables"
+      ],
+      "positiveMatchers": [
+        "postgres uuid not rfc uuid",
+        "a postgresql uuid identifier whose generator does not enforce rfc version/variant bits must use the project's canonical guid-shape validator, not rfc-strict z",
+        "a postgresql uuid identifier whose generator does not enforce rfc version/variant bits must use the project's canonical guid-shape validator",
+        "not rfc-strict z"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/engineering-eval.mjs"],
+      "evalRefs": ["erp-filter"]
+    },
+    {
+      "id": "POSTGRES_WIRE_NORMALIZATION",
+      "statement": "Normalize PostgreSQL numeric JSON at the server/API boundary and make mocks mirror production wire types",
+      "severity": "CRITICAL",
+      "domains": ["receivables", "imports"],
+      "positiveMatchers": [
+        "postgres wire normalization",
+        "normalize postgresql numeric json at the server/api boundary and make mocks mirror production wire types",
+        "normalize postgresql numeric json at the server/api boundary",
+        "make mocks mirror production wire types",
+        "postgres numeric json"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/engineering-eval.mjs"],
+      "evalRefs": ["receivables-money"]
+    },
+    {
+      "id": "R3_DATABASE_RUNTIME_PROOF",
+      "statement": "R3 SQL needs disposable PostgreSQL runtime proof",
+      "severity": "HIGH",
+      "domains": ["all"],
+      "positiveMatchers": [
+        "r3 database runtime proof",
+        "r3 sql needs disposable postgresql runtime proof",
+        "schema rls auth destructive",
+        "additive production schema artifact requires r3",
+        "disposable runtime database",
+        "runtime db proof",
+        "risk may escalate automatically never silently downgrade"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/proof-plan.mjs"],
+      "evalRefs": ["production-safety"]
+    },
+    {
+      "id": "REALTIME_COMPATIBILITY_REQUIRED",
+      "statement": "Realtime publication broadcast authorization and websocket behavior require parity",
+      "severity": "CRITICAL",
+      "domains": ["platform-handover"],
+      "positiveMatchers": [
+        "realtime compatibility required",
+        "realtime publication broadcast authorization and websocket behavior require parity",
+        "realtime publication broadcast authorization",
+        "websocket behavior require parity"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/proof-plan.mjs"],
+      "evalRefs": ["platform-handover"]
+    },
+    {
+      "id": "RESOLVED_PLAN_REVALIDATION",
+      "statement": "Import confirmation revalidates the resolved execution plan/hash, not only raw workbook cells",
+      "severity": "HIGH",
+      "domains": ["imports"],
+      "positiveMatchers": [
+        "resolved plan revalidation",
+        "import confirmation revalidates the resolved execution plan/hash, not only raw workbook cells",
+        "import confirmation revalidates the resolved execution plan/hash",
+        "not only raw workbook cells"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/engineering-eval.mjs"],
+      "evalRefs": ["pipeline-retry"]
+    },
+    {
+      "id": "RESOURCE_BOUNDS",
+      "statement": "Filter before pagination",
+      "severity": "HIGH",
+      "domains": ["pipeline", "receivables", "renewals", "team-kpi"],
+      "positiveMatchers": [
+        "resource bounds",
+        "filter before pagination",
+        "explicit projections bounded page",
+        "select star",
+        "never polling",
+        "deduplicated targeted refetch",
+        "unbounded read",
+        "four database count requests",
+        "hidden pages do not poll",
+        "one bounded lead api request",
+        "no speculative indexes"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/engineering-eval.mjs"],
+      "evalRefs": ["receivables-money"]
+    },
+    {
+      "id": "ROLLBACK_WRITE_RECONCILIATION_REQUIRED",
+      "statement": "Rollback after target writes requires reconciliation before switching authority",
+      "severity": "CRITICAL",
+      "domains": ["platform-handover"],
+      "positiveMatchers": [
+        "rollback write reconciliation required",
+        "rollback after target writes requires reconciliation before switching authority"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/proof-plan.mjs"],
+      "evalRefs": ["platform-handover"]
+    },
+    {
+      "id": "ROOT_CAUSE_SHARED_FIX",
+      "statement": "Inspect relevant callers and prefer one correct shared-boundary repair over sibling patches",
+      "severity": "HIGH",
+      "domains": ["all"],
+      "positiveMatchers": [
+        "root cause shared fix",
+        "inspect relevant callers and prefer one correct shared-boundary repair over sibling patches",
+        "inspect relevant callers",
+        "prefer one correct shared-boundary repair over sibling patches"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/engineering-eval.mjs"],
+      "evalRefs": ["field-evidence"]
+    },
+    {
+      "id": "SERVICE_CONFIGURATION_PARITY_REQUIRED",
+      "statement": "Out-of-database Supabase service configuration requires explicit parity evidence",
+      "severity": "CRITICAL",
+      "domains": ["platform-handover"],
+      "positiveMatchers": [
+        "service configuration parity required",
+        "out-of-database supabase service configuration requires explicit parity evidence"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/proof-plan.mjs"],
+      "evalRefs": ["platform-handover"]
+    },
+    {
+      "id": "SET_BASED_BATCH_SCALING",
+      "statement": "Bounded rows do not justify quadratic accumulation",
+      "severity": "HIGH",
+      "domains": ["imports", "erp"],
+      "positiveMatchers": [
+        "set based batch scaling",
+        "bounded rows do not justify quadratic accumulation",
+        "input caps do not excuse quadratic validation"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/engineering-eval.mjs"],
+      "evalRefs": ["import-atomicity"]
+    },
+    {
+      "id": "SIDE_EFFECT_BUDGET",
+      "statement": "Declare exact mutation write-set and cross-domain side-effect budget",
+      "severity": "HIGH",
+      "domains": ["all"],
+      "positiveMatchers": [
+        "side effect budget",
+        "declare exact mutation write-set and cross-domain side-effect budget",
+        "declare exact mutation write-set",
+        "cross-domain side-effect budget",
+        "side effects outside pipeline",
+        "may not create leads",
+        "mapping cannot create a lead"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/engineering-eval.mjs"],
+      "evalRefs": ["distributor-renewal"]
+    },
+    {
+      "id": "SOURCE_PRODUCTION_READ_ONLY_UNTIL_CUTOVER",
+      "statement": "Source production remains read-only and canonical until controlled cutover",
+      "severity": "CRITICAL",
+      "domains": ["platform-handover"],
+      "positiveMatchers": [
+        "source production read only until cutover",
+        "source production remains read-only and canonical until controlled cutover",
+        "source production remains read-only",
+        "canonical until controlled cutover",
+        "production currently has zero distributor renewal rows production testing must remain read only"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/proof-plan.mjs"],
+      "evalRefs": ["platform-handover"]
+    },
+    {
+      "id": "SPREADSHEET_FORMULA_SAFETY",
+      "statement": "Preview is not authority: commit revalidates",
+      "severity": "CRITICAL",
+      "domains": ["imports", "receivables"],
+      "positiveMatchers": [
+        "spreadsheet formula safety",
+        "preview is not authority: commit revalidates",
+        "formula capable"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/engineering-eval.mjs"],
+      "evalRefs": ["receivables-money"]
+    },
+    {
+      "id": "STABLE_RETRY_IDENTITY",
+      "statement": "Keep stable operation/business IDs across retry",
+      "severity": "HIGH",
+      "domains": ["imports", "field-visits", "pipeline"],
+      "positiveMatchers": [
+        "stable retry identity",
+        "keep stable operation/business ids across retry",
+        "stable external import key",
+        "idempotency",
+        "stable operation ids",
+        "durable state machine retries preserve command identity expected state target state actor and conflict result",
+        "distributor reference identity",
+        "names never resolve identity",
+        "duplicate prevention race safe idempotent",
+        "retries preserve visit id and cannot create a second field visit",
+        "duplicate prevention uses deterministic normalized business name phone",
+        "repeat bind is idempotent and cannot rebaseline later dirty content"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/engineering-eval.mjs"],
+      "evalRefs": ["mapping-attribution", "pipeline-retry"]
+    },
+    {
+      "id": "STALE_WRITE_PROTECTION",
+      "statement": "Protect mutable aggregates with expected-version/state checks",
+      "severity": "HIGH",
+      "domains": ["pipeline", "distributor-status"],
+      "positiveMatchers": [
+        "stale write protection",
+        "protect mutable aggregates with expected-version/state checks",
+        "durable state machine retries preserve command identity expected state target state actor and conflict result",
+        "conflict never overwrites",
+        "server confirmed stage wins",
+        "expected and target stages are mandatory conflicts reconcile and never overwrite",
+        "generic row patches are not transition commands",
+        "stage transitions use the single canonical segment aware contract"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/engineering-eval.mjs"],
+      "evalRefs": ["pipeline-retry"]
+    },
+    {
+      "id": "STALL_RETRY_THEN_STRATEGY_CHANGE",
+      "statement": "Repeated no-progress attempts retry then change strategy and stop at a bounded stall limit",
+      "severity": "CRITICAL",
+      "domains": ["engineering-control"],
+      "positiveMatchers": [
+        "stall retry then strategy change",
+        "repeated no-progress attempts retry then change strategy and stop at a bounded stall limit",
+        "repeated no-progress attempts retry then change strategy",
+        "stop at a bounded stall limit",
+        "no progress iterations",
+        "human escalation",
+        "stall"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/task-close.mjs"],
+      "evalRefs": ["task-lifecycle-hardening"]
+    },
+    {
+      "id": "STATUS_PORTABILITY",
+      "statement": "Typed task statuses remain portable across execution environments",
+      "severity": "CRITICAL",
+      "domains": ["engineering-control"],
+      "positiveMatchers": [
+        "status portability",
+        "typed task statuses remain portable across execution environments",
+        "status cli loads task state when its bound worktree is unavailable"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/task-close.mjs"],
+      "evalRefs": ["task-lifecycle-hardening"]
+    },
+    {
+      "id": "STORAGE_FULL_INTEGRITY_REQUIRED",
+      "statement": "Every Storage object byte and logical bucket setting requires integrity certification",
+      "severity": "CRITICAL",
+      "domains": ["platform-handover"],
+      "positiveMatchers": [
+        "storage full integrity required",
+        "every storage object byte and logical bucket setting requires integrity certification",
+        "every storage object byte",
+        "logical bucket setting requires integrity certification"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/proof-plan.mjs"],
+      "evalRefs": ["platform-handover"]
+    },
+    {
+      "id": "TARGET_POSTGRES_COMPATIBILITY_VERIFIED",
+      "statement": "Target PostgreSQL major and Supabase service compatibility are verified",
+      "severity": "CRITICAL",
+      "domains": ["platform-handover"],
+      "positiveMatchers": [
+        "target postgres compatibility verified",
+        "target postgresql major and supabase service compatibility are verified",
+        "target postgresql major",
+        "supabase service compatibility are verified"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/proof-plan.mjs"],
+      "evalRefs": ["platform-handover"]
+    },
+    {
+      "id": "TASK_BASE_AND_DIRTY_BASELINE_KNOWN",
+      "statement": "Task base head tree and dirty baseline are preserved before implementation",
+      "severity": "CRITICAL",
+      "domains": ["engineering-control"],
+      "positiveMatchers": [
+        "task base and dirty baseline known",
+        "task base",
+        "dirty baseline known",
+        "task base head tree and dirty baseline are preserved before implementation",
+        "task base head tree",
+        "dirty baseline are preserved before implementation",
+        "task base dirty baseline",
+        "compare local head to canonical origin main before implementation",
+        "repeat bind is idempotent and cannot rebaseline later dirty content"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/task-close.mjs"],
+      "evalRefs": ["task-lifecycle-hardening"]
+    },
+    {
+      "id": "TEST_REAL_ROLE_SHAPES",
+      "statement": "Test every real role shape, affected contract, critical route, and time-sensitive behavior with a frozen clock where needed",
+      "severity": "HIGH",
+      "domains": ["auth", "attendance", "erp-partner"],
+      "positiveMatchers": [
+        "test real role shapes",
+        "test every real role shape, affected contract, critical route, and time-sensitive behavior with a frozen clock where needed",
+        "test every real role shape",
+        "affected contract",
+        "critical route",
+        "time-sensitive behavior with a frozen clock where needed",
+        "mocks preserve independent production authorities",
+        "role matrix",
+        "actual production routes",
+        "stale conceptual paths",
+        "new visit ui and current command require trimmed non empty bounded text pincode"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/engineering-eval.mjs"],
+      "evalRefs": ["repository-proof"]
+    },
+    {
+      "id": "TOOLING_OPTIONAL",
+      "statement": "If Graphify is unavailable use targeted search",
+      "severity": "HIGH",
+      "domains": ["all"],
+      "positiveMatchers": [
+        "tooling optional",
+        "if graphify is unavailable use targeted search",
+        "turbopack compiler panicked",
+        "webpack dev mode",
+        "harness verify",
+        "lesson ledger generated repository map"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/engineering-eval.mjs"],
+      "evalRefs": ["control-plane-regressions"]
+    },
+    {
+      "id": "TRANSACTION_STAGING",
+      "statement": "Temporary transaction staging must tolerate repeated RPC invocation where the contract permits it",
+      "severity": "HIGH",
+      "domains": ["erp", "imports"],
+      "positiveMatchers": [
+        "transaction staging",
+        "temporary transaction staging must tolerate repeated rpc invocation where the contract permits it",
+        "postgresql enum additions same migration transaction"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/engineering-eval.mjs"],
+      "evalRefs": ["import-atomicity"]
+    },
+    {
+      "id": "UI_FILTER_NOT_AUTHORIZATION",
+      "statement": "Privileged authorization and partner scope are server/database enforced",
+      "severity": "CRITICAL",
+      "domains": ["auth", "erp-partner", "receivables"],
+      "positiveMatchers": [
+        "ui filter not authorization",
+        "privileged authorization and partner scope are server/database enforced",
+        "privileged authorization",
+        "partner scope are server/database enforced"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/engineering-eval.mjs"],
+      "evalRefs": ["calls-visibility", "external-partner"]
+    },
+    {
+      "id": "UI_SYMPTOM_NOT_SCHEMA_EVIDENCE",
+      "statement": "An empty UI is not proof of missing schema",
+      "severity": "HIGH",
+      "domains": ["all"],
+      "positiveMatchers": [
+        "ui symptom not schema evidence",
+        "an empty ui is not proof of missing schema",
+        "no migration invented for ui",
+        "function only migration necessary"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/engineering-eval.mjs"],
+      "evalRefs": ["control-plane-regressions"]
+    },
+    {
+      "id": "UNKNOWN_DATA_PRESERVATION",
+      "statement": "Preserve unknown records and facts rather than guessing a value",
+      "severity": "HIGH",
+      "domains": ["all"],
+      "positiveMatchers": [
+        "unknown data preservation",
+        "preserve unknown records and facts rather than guessing a value",
+        "preserve unknown records",
+        "facts rather than guessing a value",
+        "blank import cells mean no change destructive clearing requires an explicit supported token",
+        "never delete field visits",
+        "never delete call logs",
+        "preserve and classify them instead of guessing",
+        "historical duplicates are never automatically merged deleted or rewritten"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/engineering-eval.mjs"],
+      "evalRefs": ["import-atomicity"]
+    },
+    {
+      "id": "VERCEL_RUNTIME_BOUNDARY_PRESERVED",
+      "statement": "Vercel retains the CRM web API cron push and deployment runtime",
+      "severity": "CRITICAL",
+      "domains": ["platform-handover"],
+      "positiveMatchers": [
+        "vercel runtime boundary preserved",
+        "vercel retains the crm web api cron push and deployment runtime",
+        "vercel retains the crm web api cron push",
+        "deployment runtime"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/proof-plan.mjs"],
+      "evalRefs": ["platform-handover"]
+    },
+    {
+      "id": "WORKER_RESULT_SCHEMA_VALIDATION",
+      "statement": "Worker and hook results must satisfy their declared wire schema",
+      "severity": "CRITICAL",
+      "domains": ["engineering-control"],
+      "positiveMatchers": [
+        "worker result schema validation",
+        "worker and hook results must satisfy their declared wire schema",
+        "hook results must satisfy their declared wire schema",
+        "invalid saved codex thread ids",
+        "worker result schema",
+        "worker rejects unknown acceptance id",
+        "owner gate controller is the only source phrase emitter"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/task-close.mjs"],
+      "evalRefs": ["task-lifecycle-hardening"]
+    },
+    {
+      "id": "WRITE_READ_CLOSURE",
+      "statement": "Local persistence is not confirmation: close important writes through every applicable personal, admin, report, and export reader",
+      "severity": "HIGH",
+      "domains": ["attendance", "field-visits", "calls"],
+      "positiveMatchers": [
+        "write read closure",
+        "local persistence is not confirmation: close important writes through every applicable personal, admin, report, and export reader",
+        "local persistence is not confirmation: close important writes through every applicable personal",
+        "export reader"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/engineering-eval.mjs"],
+      "evalRefs": [
+        "mapping-attribution",
+        "calls-visibility",
+        "attendance-confirmation",
+        "field-evidence"
+      ]
+    },
+    {
+      "id": "ZERO_DATA_NO_FABRICATION",
+      "statement": "Unknown historical optional facts remain NULL unless authoritative evidence explicitly supports backfill",
+      "severity": "CRITICAL",
+      "domains": ["field-visits", "erp"],
+      "positiveMatchers": [
+        "zero data no fabrication",
+        "unknown historical optional facts remain null unless authoritative evidence explicitly supports backfill",
+        "historic null",
+        "no backfill permitted",
+        "never fabricated values"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/engineering-eval.mjs"],
+      "evalRefs": ["import-atomicity"]
+    },
+    {
+      "id": "DURABLE_LEARNING_CLOSEOUT",
+      "statement": "Reusable failures must strengthen canonical enforcement or evaluation before task certification",
+      "severity": "CRITICAL",
+      "domains": ["engineering-control"],
+      "positiveMatchers": [
+        "durable learning closeout",
+        "task closure must persist reusable knowledge",
+        "novel failure or operational lesson",
+        "incident notes for trivial bugs"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/task-close.mjs"],
+      "evalRefs": ["task-lifecycle-hardening"]
+    },
+    {
+      "id": "ASSERTION_WEAKENING_FORBIDDEN",
+      "statement": "Automation must never weaken expectations or guards to turn a failure green",
+      "severity": "CRITICAL",
+      "domains": ["engineering-control"],
+      "positiveMatchers": [
+        "assertion weakening forbidden",
+        "do not weaken tests or guards to obtain green output",
+        "treat failures as evidence"
+      ],
+      "negativeMatchers": [],
+      "enforcementRefs": ["scripts/engineering/os-bootstrap-test.mjs"],
+      "evalRefs": ["control-plane-regressions"]
+    }
+  ]
+}

@@ -48,3 +48,9 @@ requested.
 Run `learn:close` for R2/R3 failures. Known rules strengthen their enforcement
 or eval; genuinely reusable unrepresented gaps add claim, enforcement and
 Golden evidence. Non-reusable mistakes do not create registry churn.
+
+`task:close` binds the task baseline, current impact, proof plan, proof evidence,
+and learning outcome. It returns local completion, remote-evidence waiting, a
+typed external/safety gate, or exact-head certification; it never accepts WIP as
+success. Low-confidence, close-margin, cross-domain tasks may use bounded
+Graphify navigation, whose sanitized outcome can only improve path ranking.
