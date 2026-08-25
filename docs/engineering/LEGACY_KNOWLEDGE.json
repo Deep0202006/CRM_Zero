@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "generatedFrom": "git rev-list --objects --all + targeted filesystem scan",
   "summary": {
-    "sourceBlobCount": 1166,
+    "sourceBlobCount": 1167,
     "filesystemGovernanceSources": 57,
     "ledgerVersionCount": 22,
     "rawLessonRowCount": 236,
@@ -587,6 +587,7 @@
     "7d90ce8b39680572d6b72fe16a43eb9612af6914e80a17d2b86b1a11ed7e28c4",
     "7d945a69e0763fd1be26ffdff65f1088cab555d80630ed4ad44313e5e6623036",
     "7d94eac6104fae5171cf7e4bb625e89df052b4662a4ca03e8281097afb726e6c",
+    "7d95e036f9e3ff1e570686e8ea167c85a539875a4a22a1b851326d1b85f483da",
     "7daff2497573d99f770d05e5f023d7f3d70b1c3abca14bcbc694c3aded152f2c",
     "7e24302e24462cacd7726b22d1e1850f8ca70cc56146a4619df562a550d855e5",
     "7e7e98fd431d160b00fc0bbb108b5a413b7c943cc59bbc8d61b22f84c076ab33",
@@ -7102,6 +7103,12 @@
     },
     {
       "blobHash": "4179f2d80ee7dd201f6bbb71b1e914ace7f44ae044a33300cb41e6a15db26c63",
+      "path": "scripts/engineering/impact.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "7d95e036f9e3ff1e570686e8ea167c85a539875a4a22a1b851326d1b85f483da",
       "path": "scripts/engineering/impact.mjs",
       "classification": "SUPPORTING_EVIDENCE",
       "extractedRecordCount": 0

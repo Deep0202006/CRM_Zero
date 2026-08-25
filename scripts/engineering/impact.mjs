@@ -11,7 +11,11 @@ const root = resolve(import.meta.dirname, "../.."),
   base = value("--base") ?? "origin/main",
   head = value("--head") ?? "HEAD",
   git = (...a) =>
-    execFileSync("git", a, { cwd: root, encoding: "utf8" }).trim();
+    execFileSync("git", a, {
+      cwd: root,
+      encoding: "utf8",
+      maxBuffer: 64 * 1024 * 1024,
+    }).trim();
 const fixturePaths = process.env.ZEROGRAPH_IMPACT_PATHS,
   paths = fixturePaths
     ? JSON.parse(fixturePaths)
