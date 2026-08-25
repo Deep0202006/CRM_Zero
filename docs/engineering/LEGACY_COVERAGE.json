@@ -1,10 +1,10 @@
 {
   "schemaVersion": 4,
   "sourceSummary": {
-    "sourceBlobCount": 1149,
+    "sourceBlobCount": 1142,
     "filesystemGovernanceSources": 57,
-    "ledgerVersionCount": 22,
-    "rawLessonRowCount": 236,
+    "ledgerVersionCount": 21,
+    "rawLessonRowCount": 221,
     "uniqueNormalizedRules": 345,
     "knowledgeUsedWithoutSemantics": 0,
     "parserFamilies": [

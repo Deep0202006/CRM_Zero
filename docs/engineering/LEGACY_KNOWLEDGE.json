@@ -2,10 +2,10 @@
   "schemaVersion": 2,
   "generatedFrom": "git rev-list --objects --all + targeted filesystem scan",
   "summary": {
-    "sourceBlobCount": 1149,
+    "sourceBlobCount": 1142,
     "filesystemGovernanceSources": 57,
-    "ledgerVersionCount": 22,
-    "rawLessonRowCount": 236,
+    "ledgerVersionCount": 21,
+    "rawLessonRowCount": 221,
     "uniqueNormalizedRules": 345,
     "knowledgeUsedWithoutSemantics": 0,
     "parserFamilies": [
@@ -26,7 +26,6 @@
     "002061357b91bcf3302562e12b445f504eae9ae0f4a7299d87647572d635a428",
     "004167dba479587b181947c50f85842589998f7503d0b48b74684e9ab67ec825",
     "004b7627e058acf6a192a03ab558caa39325d7200ffacab08fff2ea6cd41a7e8",
-    "0076736fa155b16513b423ab1245a406d7db810d4f83ef9c5bbbca9f627cf94b",
     "00c6f7d603d3a95ef3585e95cc8ecfb88785e89917c0cfcbefa4133f5ea67a3f",
     "00e94e0199bc12bd1b9904d6a44146de717ad537a92d5e013bda4970fc932eea",
     "00fa3f2417388d771e3e049b3e93fda77df18374c0823e78dfc3ad81c827f3ee",
@@ -157,7 +156,6 @@
     "1b41f6d8938a30d564120d653e24fcfbabcd6d60bd77cb3e3da3fa27c77d03ad",
     "1b928eb807b7b356af4525608e9cf7965459d7af8c40e58f53bd90138407cad7",
     "1bc2c87ca72651b20b8418f45c4eb561624efa6620db865ec059397bf1c713ba",
-    "1bf7da6cef524f45c2f074595330e9a00fdf2cc853b903ed57ce640fea4aada9",
     "1c2584c302f5ce4b3868015a2d1fa4c20a60d8025f37c5cf9ddd2d06bae8bd61",
     "1c5635797c27c30ad48593f87844138e4ed9da2a2ca80a6839c2f4ba91bdd776",
     "1ce235953b41acb52890938e3a1594f417740a9cd39e1173d75c39f2dc4a59ad",
@@ -214,7 +212,6 @@
     "2a304e7c52ebe32319f903be636349f5e68dc9a4ae0c1f492a8d4432e3e4e4f6",
     "2a41d31ef5ad71d4e05a00ba555fc25d60823df35950996907202ef010314aa9",
     "2a6d43d3029d57e9f3d11b754680383c06ea2fa6947ad99c034b2a0742b84f9e",
-    "2a8744a414362da78e8a3c2777144a52ba07938017744ee8b0340ec10a9245dc",
     "2a914d24f081923ee07fc95e02386e1dcf874e2d717ceb661ced75b045a01329",
     "2a9316db42a915ecca9914efec6eed2c41b369ede737b24eebd6e435dfaf294a",
     "2aff53e1f01b4f25259860dc64676593d75abc521cfe47ee7437a5ae0853b5bd",
@@ -527,7 +524,6 @@
     "713b99c678eb2e356d58c20825d397e3daa7338741a118c7730449c9b400ae16",
     "71528f302341a0fc71d68e7e34ca08d821134f2a6d06e4581b0d48af36069192",
     "7168dfd27c732cf1618a9a6f359cdaf561cbff69702b19466e1a2b5d03a1b3a0",
-    "71b9dc852a5e016d74fc34741b89171b6419a236668ed9742f10778330448cff",
     "71dfd407b63d9fd6b90529f04f2e982c2a6d94ebf01d32e875f3493e6268128e",
     "722f461bc994845c0f8f9c42baa4b9d5db247c7b07a48913a9fa80896826506f",
     "72c2f380865a7878ab8ceec72b55e6550f514e191368540a96842feb2109585e",
@@ -685,7 +681,6 @@
     "92728149a4d0c4ba8d8ac2d2d257d02d055cfc263ece4ec1137e9990c715045b",
     "92b50a7ad929263c9251e08aa872f27ab527cbc2081f092a28199771d18794cc",
     "92ee16af71d5e0088326869b0a211c50f94b9261eeae75656bc21f9bcfae2031",
-    "92f1e6bee2e8036867bdc5c88caf01fc246e70c722367f9860a1a7a616948356",
     "92f649ac9c1cb686332af0c2d3f1ff365680a167dfb2d9c1ea6822cce896cd91",
     "934897dbc5569a6969410c30a02dbdb6f244373ed7b6edc1c37d95d668e9222d",
     "93918baf408a50e48ba707a685a99afad983f061b7242a95f9b89c85103f7dbb",
@@ -1020,7 +1015,6 @@
     "dbea7ad6c28ea5539fd06faa8c3fd85696d5cc9afa0e09be1948e1c09c270c0d",
     "dc050c18045010cafa690b6f6dd67bcac5db2f66dc31bf8e604677c09274a72d",
     "dc11038f3e664d24329ef3b850744ad6a17aea421d85991fb7bbf1d21c32f9db",
-    "dc7237f044f4097d1bf73d8eca0d49ff232d68c5780a8957ea4b1db8dabf3c05",
     "dc778676ab7fe5f49fa2daba7b83383ae94bc42852912c254107a8cef0c3a528",
     "dc7985d5eff03ea4c4cccd7b6625f6eecaec809093fc8b69e5a9abeb84c9da8f",
     "dc7feb50a544387c67dffeef325e8295102359236bce4fd332c560c02d71ec66",
@@ -1120,7 +1114,6 @@
     "f0f5305533bb9a825ce5ac6c8fe2584587a621c35ce288d98cb27e4844aac845",
     "f0fbd9ea5d1c3ba3cade6c36bd3c8ace0cbd566dab52b065576abd51036d03c7",
     "f19fbb1e757752137ca725ae2bd2524530d710942d3d2a12f7680e6cd26a03b7",
-    "f2102ea163b0555f1ad10f67e31b3d90d467cd512edd7de9522fb601b53450bf",
     "f22b452f8db477b72de37e154ac1428911cbce7e63bdccfc0ca6fcd2100d7158",
     "f23a77b8339890be6da6b3c339d93eacdb640e9e847f196964a753e50fd42930",
     "f23d1d93f89d46f25e928196c17e8e5cb642622df2cf14d7a4f5a2e92e9d13eb",
@@ -5500,12 +5493,6 @@
       "extractedRecordCount": 4
     },
     {
-      "blobHash": "71b9dc852a5e016d74fc34741b89171b6419a236668ed9742f10778330448cff",
-      "path": "docs/contracts/ROLE_MATRIX.md",
-      "classification": "SUPPORTING_EVIDENCE",
-      "extractedRecordCount": 0
-    },
-    {
       "blobHash": "8cc217fe46fd113ec7640c4343e7e1275063b723579856ebf44fcdcacdc9b8ea",
       "path": "docs/contracts/ROLE_MATRIX.md",
       "classification": "SUPPORTING_EVIDENCE",
@@ -6160,18 +6147,6 @@
       "extractedRecordCount": 6
     },
     {
-      "blobHash": "1bf7da6cef524f45c2f074595330e9a00fdf2cc853b903ed57ce640fea4aada9",
-      "path": "docs/exec-plans/active/payment-collections-v2-distributor-status.md",
-      "classification": "KNOWLEDGE_USED",
-      "extractedRecordCount": 2
-    },
-    {
-      "blobHash": "2a8744a414362da78e8a3c2777144a52ba07938017744ee8b0340ec10a9245dc",
-      "path": "docs/exec-plans/active/payment-collections-v2-distributor-status.md",
-      "classification": "KNOWLEDGE_USED",
-      "extractedRecordCount": 2
-    },
-    {
       "blobHash": "63d786cb00cadf61028e5216bdd3a3ff73c84a681b59cde86825a05c8c7dc5f7",
       "path": "docs/exec-plans/active/payment-collections-v2-distributor-status.md",
       "classification": "SUPPORTING_EVIDENCE",
@@ -6496,12 +6471,6 @@
       "extractedRecordCount": 6
     },
     {
-      "blobHash": "92f1e6bee2e8036867bdc5c88caf01fc246e70c722367f9860a1a7a616948356",
-      "path": "docs/os/LESSONS_LEDGER.md",
-      "classification": "KNOWLEDGE_USED",
-      "extractedRecordCount": 15
-    },
-    {
       "blobHash": "9df022d8867496290cc905661d35ff0f513b90cc9809fb67dcfedffc515b866c",
       "path": "docs/os/LESSONS_LEDGER.md",
       "classification": "KNOWLEDGE_USED",
@@ -6622,12 +6591,6 @@
       "extractedRecordCount": 0
     },
     {
-      "blobHash": "dc7237f044f4097d1bf73d8eca0d49ff232d68c5780a8957ea4b1db8dabf3c05",
-      "path": "docs/os/PRODUCTION_CHECKPOINT.json",
-      "classification": "SUPPORTING_EVIDENCE",
-      "extractedRecordCount": 0
-    },
-    {
       "blobHash": "a1a7ea5a53240d5f6ea3d256877a486db3f0580155552e6a248bdda79360c46f",
       "path": "docs/os/PROMPTING.md",
       "classification": "SUPPORTING_EVIDENCE",
@@ -6710,12 +6673,6 @@
       "path": "docs/quality/GOLDEN_PRINCIPLES.md",
       "classification": "KNOWLEDGE_USED",
       "extractedRecordCount": 8
-    },
-    {
-      "blobHash": "f2102ea163b0555f1ad10f67e31b3d90d467cd512edd7de9522fb601b53450bf",
-      "path": "docs/quality/GOLDEN_PRINCIPLES.md",
-      "classification": "KNOWLEDGE_USED",
-      "extractedRecordCount": 15
     },
     {
       "blobHash": "2aff53e1f01b4f25259860dc64676593d75abc521cfe47ee7437a5ae0853b5bd",
@@ -7308,12 +7265,6 @@
     {
       "blobHash": "8fd6db6c585c3e34d7ae8086790de885a9edee060ad3d38e3ae7a947913a3345",
       "path": "scripts/harness/employee-directory-clock.cjs",
-      "classification": "SUPPORTING_EVIDENCE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "0076736fa155b16513b423ab1245a406d7db810d4f83ef9c5bbbca9f627cf94b",
-      "path": "scripts/harness/invariant-guard.mjs",
       "classification": "SUPPORTING_EVIDENCE",
       "extractedRecordCount": 0
     },
