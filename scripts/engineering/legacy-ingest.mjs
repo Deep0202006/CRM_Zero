@@ -10,6 +10,13 @@ import {
 import { join, relative, resolve } from "node:path";
 const root = resolve(import.meta.dirname, "../.."),
   hash = (value) => createHash("sha256").update(value).digest("hex"),
+  sourceHash = (value) =>
+    hash(
+      (Buffer.isBuffer(value) ? value.toString("utf8") : String(value)).replace(
+        /\r\n/g,
+        "\n",
+      ),
+    ),
   git = (...args) =>
     execFileSync("git", args, {
       cwd: root,
@@ -200,7 +207,7 @@ for (const item of items) {
     });
     continue;
   }
-  ingest({ blobHash: hash(content), path: item.path }, content);
+  ingest({ blobHash: sourceHash(content), path: item.path }, content);
 }
 const walk = (dir) => {
   for (const name of readdirSync(dir)) {
@@ -217,7 +224,7 @@ const walk = (dir) => {
     else if (relevant.test(rel) && stat.size < 4 * 1024 * 1024) {
       filesystemGovernanceSources++;
       const content = readFileSync(full),
-        blobHash = hash(content);
+        blobHash = sourceHash(content);
       if (!seen.has(blobHash))
         ingest({ blobHash, path: rel }, content.toString("utf8"));
     }
@@ -238,7 +245,10 @@ if (
         if (stat.isDirectory()) scan(full);
         else if (stat.size < 4 * 1024 * 1024)
           ingest(
-            { blobHash: hash(readFileSync(full)), path: `external:${rel}` },
+            {
+              blobHash: sourceHash(readFileSync(full)),
+              path: `external:${rel}`,
+            },
             readFileSync(full, "utf8"),
           );
       }
@@ -255,7 +265,7 @@ for (const item of items.filter((entry) =>
         encoding: "utf8",
       }),
       data = JSON.parse(content),
-      contentHash = hash(content),
+      contentHash = sourceHash(content),
       walk = (value) => {
         if (Array.isArray(value)) return value.forEach(walk);
         if (!value || typeof value !== "object") return;
@@ -303,7 +313,8 @@ const unique = [...byRule.values()],
       .map((x) => x.blobHash),
   ),
   summary = {
-    sourceBlobCount: new Set(sources.map((x) => x.blobHash)).size,
+    sourceBlobCount: new Set(sources.map((x) => x.blobHash).filter(Boolean))
+      .size,
     filesystemGovernanceSources,
     ledgerVersionCount: ledgerBlobs.size,
     rawLessonRowCount: records.filter((x) =>
@@ -340,7 +351,9 @@ const output = {
   schemaVersion: 2,
   generatedFrom: "git rev-list --objects --all + targeted filesystem scan",
   summary,
-  sourceHashes: [...new Set(sources.map((x) => x.blobHash))].sort(),
+  sourceHashes: [
+    ...new Set(sources.map((x) => x.blobHash).filter(Boolean)),
+  ].sort(),
   sources: sources.sort(
     (a, b) =>
       a.path.localeCompare(b.path) || a.blobHash.localeCompare(b.blobHash),

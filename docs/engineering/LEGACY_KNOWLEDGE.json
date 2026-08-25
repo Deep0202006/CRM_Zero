@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "generatedFrom": "git rev-list --objects --all + targeted filesystem scan",
   "summary": {
-    "sourceBlobCount": 1167,
+    "sourceBlobCount": 1149,
     "filesystemGovernanceSources": 57,
     "ledgerVersionCount": 22,
     "rawLessonRowCount": 236,
@@ -137,6 +137,7 @@
     "17e9b3ab0e349791b6e43868e2cee5d6394e50f0385c33ff768f26b73350ee7c",
     "184a28a45db1b26e01268ae277c8780789d34e5e439238cf51def8f01214b6ac",
     "184e247b4249c5d1a7e4278cf5460c0961dc5c2ab9b07a5033f35cfba5556755",
+    "18603fa0e96bb1fe4780f0339c06c9cd0103e5b8f789716264367bceeb10ee1c",
     "18cdc15d55ce2255115f2c21d57ad323c4cb9742f569a7c9f25c9d3f44ea0cbe",
     "19110ab667bfa93f2a2b225be71efc570a7bc7c9dbf2a191220d01ac071b95fb",
     "191fa3a7d87bcacc094821036934ff8b7b60f757f742b5bda865bf0aa50671d3",
@@ -148,7 +149,6 @@
     "1a4e91d00ffdbdd38d2dc2986cf764b6d7d4d9348fdce19f2c60e92fa4a564da",
     "1a8757ab3dadda6550a5fcfe563b19c45dc976cc5c79a3085e41fec9f12b4a6c",
     "1ad11eb77669a476a6f0bf2570389ab964803f5ee00e5dbf35f7fd0c17643091",
-    "1ad3c903dca6ebe691164a2ce20ead6ddedb46d6cdeb00dc973ad5c7f32c8ee1",
     "1ad5f344d285f76e203ea898820b52771f14eeb7c950e86f326b5270b9d80745",
     "1b028891377d27a2784ec1e22903a8b654d7c27f36cdc2f142deb0bb78a43aae",
     "1b0abc8a6162e62b13c61eb2af4c1a346a47c32678c72a85b71e5b792f991788",
@@ -266,7 +266,6 @@
     "34ef59670cde67e891f96a2f1d42ca275c037fee82bbf2b4119c7f676ac31a8b",
     "3504da3acac6b5bea4122c26f2e11839eb4e30b875ffd9a7713957036a00b424",
     "351d924b75ac7885fd315dcd0ff5bd058b3753da5a16d787e053102d050719b4",
-    "358428663b61d22a0f63df5048b47de3d957f1daecf5184a814e644b53f64cd9",
     "35e2c719397b0fac98eb5ceb42fca20777b64f36228d54085180a11c0a49bc2a",
     "363a6e218b29d117242b5c20dc7338dc1921e116fceb75e9877670cdb179dbf1",
     "368e46a7ae1b49b3bd5f2568b0a865c0a11433deee66e3e03ae9a12e2d981e60",
@@ -276,11 +275,9 @@
     "37c4bcc342c4a88d6921ebac3a1367974da1b48bd38aa628df894543d29a414c",
     "37e928e2308206359b8a2e01aed5bf08b1b39522e25168d8431fbe6672a8fc78",
     "380fbffc6610f2c99d308731bc6e5c8a483eeea32838290c29a03980e4a3386a",
-    "3814de331652fd31d8e943038dc962a96604d45fe5df4ec7ca56a8fd04d1f846",
     "381c4f7e8c86d346ff48655ea4e0f814127b87515fe48fac1ee3d9ef4975e2b6",
     "38206d4975f2c8956ac9cfa396387ad5242d219674d3b9fa4ee3b571d7f54837",
     "38787d39bbdde29562fc450915d72c2b998cbea0b2aca20e007a722c69b28e9f",
-    "393bf978e5ef672b672915d063ea90502e861aee34c60da390dd2da9778a28e6",
     "398a812339d38684c3dc907412096b49940f7dfb893fd4fe2fe4c4f9477b8c2f",
     "39e0c64f196548ebf88df4152b72adf25be89d340f5be595c6961c44c7f5654f",
     "3a0ebf95d6145331fbcb437b660484947d3569dca57e90abe3745d8f470f4747",
@@ -314,7 +311,6 @@
     "3fd6dc5d802fd112f75934c4c168c3f03e25275b70e1e403eb670cbf7447e4e7",
     "3fe3ce7eb6a042dde5f97f00d910be86470ea2fc13e8e02cad1c509da7db53a0",
     "3ffe530148553be89c330664a48585dc574c7617d64f1902d2bb9d3e1b045be5",
-    "4091e4c13f9086c7b9ca1315ce7ca7cedf0bf2518c1d98472cf82295f6960cd2",
     "4104f9d745c0aa8733d184e4b4b887c40269b4c5ee8d1bf745730530688bd3ca",
     "412bb57ed787a75df32b38b854cf02d1fa32f6121fafcd5e8573d6e75fae187a",
     "41605cfcf037cfa7eb8d20fd9efa2eb48a0c15e78d79505bbd32dd080d45f862",
@@ -387,6 +383,7 @@
     "4e98faff1f66bc589d9e245189bfc73e0c6ec1bbe1dfc28e2079e3918fc3ee0a",
     "4f1e466471801719528c4a9829ddf74294252faf93e1919a7b9893de6875d640",
     "4f3401502c6ed4754544595c811a1c6071c5e51806b7daa847b5bf93d5226ad2",
+    "4f467fcb757572551f4ccda952d3ca9de885dbe79965323e0d3d06ec66625185",
     "4f508042c50c8e391689e0a9d3aba108afd00d64b17ea7a4492d2a5aabfc35a3",
     "4f9f4ba9b1c537d62fde9c5aec24a6d31960cc52382c4ef8aecf9b19f91fa5bd",
     "50022de0f1544408f55eaec2db6ce7080a0c8becf02491e563125bcb64968c2d",
@@ -455,7 +452,6 @@
     "5d885cf8da57655b87cc8409a35bdab2475c6e1c11d5058517d6e79213ad8428",
     "5da65823526c6d3741bf2c650c642772a903bb7b4066ba2d57bec291ac32ce2c",
     "5dd9c551b0f4d5b7173ae85d4c7dcfe2575d1a8650f19f5e6969618fbc1fecd2",
-    "5de8c12f06251c2137518a5ab078677543079f30182f91157410a702100eb277",
     "5de9c6b05adf74b34e234cff2839c59f412db46da45e662cdef81ecd7f191791",
     "5df63f5f044eb23b97886aa14cb5c5f8ce48870e3919f5532baeeb55c4ace25b",
     "5e17fb5953fb6c3b3aee397db410b9c34e51180ca222c2a4bae3743ce0b8cf5a",
@@ -577,7 +573,6 @@
     "7b745ddec4554a2794b09599fc8d75b14d2dc6313c1c2f9cefae24145e9e871d",
     "7c00be6908b4bd4629042218ffbff8d91247fecb606c9885494f488dda45da3b",
     "7c265d6324b8abb26069c7a79ba004a5ce782d96957a6fdc104771fc4c68cfab",
-    "7c6ba7fd3443cf3585cd53bae959b8ce959b558fe9a8d3ed14c79b21cf8a5245",
     "7cc72d758e29ca6cc2c3c8f6402eb8254f51df0c27ad1fe588fa5601165bccc4",
     "7d0a5473fe8b0f46e0594b76e6d9dea2749f4498ae2816d45ca22b8cc9faaafd",
     "7d0d31689a6215b2bd71871e144ae95f8acb266e9e97cb9d831d965c465df5ba",
@@ -632,7 +627,6 @@
     "86030788b7abef747c3924d335b3916ab26aac47a0df1a3f5e64fec1d2ac27ee",
     "8676540e0d07dce631f7202d2b94b45b4d835a6ff48298b512c8ba6b7cb8e6f8",
     "86a3bd51d89143bc9b3a1c61354825fe27e63074a769c46d2e05b271f03e936c",
-    "8741d7cb75f63fdc1706fde49c356a6a30b9a0376469ec02fed616321b830b02",
     "877ae07e5a94dbd165cd379e1d611473ca64624a8f6cc324fb5edfa8ecfac561",
     "877f51520cd57ca6d05fc968cf7c13191541abd7a0696d7e9fe9a1fa9d08d054",
     "87c7c5be3fc136f9750f3f341edf26aed2206ab5f2fa0e4898623806b1ea3bb8",
@@ -643,7 +637,6 @@
     "886c51075514e08742e3f48ef957ef7ffb3d2f6b2bd34358db924629bd06b195",
     "887f5d1265beec0017dfed0d43e128c575eb2770b329081a8536805a5b14eb0c",
     "88a77d8a1ae80fd97608bcbb4d17b90d5f090d7fa60d5c6439ef2f1719fb06c8",
-    "88b22764dc4aa03971d0dfeb27128a79a702c2376cc1cf408b03c83a57110219",
     "88cec2294ce2884a4860954d94ebdc0b516dfd76c2a411cd93803b8f604d53f6",
     "88e7ada9370ba2a8d7e45ed288045697935775355227db9d8e51dc2e1f531c9b",
     "8934e5cdd6ad70d201db66f6317945b94ae41c5aef5f5cd4fc627b16249a2ffb",
@@ -670,7 +663,6 @@
     "8f3e91d9bed716305ae5672013a2a66aeeb563ad6d7729efa746529f353af739",
     "8f52f582c708e102e99e0807e6e088bf7b341e21575f43743f30be9fc5108f22",
     "8f71532e3567ba37f7cd61b1dafdf92884b0baf32e09285785f1fae4affc0e78",
-    "8fa33914e96eb6f92e2050df7acef6e0802d6159edb7d340b3baa2935c6e2423",
     "8fd6db6c585c3e34d7ae8086790de885a9edee060ad3d38e3ae7a947913a3345",
     "902b0e30a1cebddb863ca5264c27726b7caace90b34d585548bfd61db4b59095",
     "90396a78db3b967031013bf86f4c4519b023b1d31570a48806e6ef473f8b7c59",
@@ -698,8 +690,7 @@
     "934897dbc5569a6969410c30a02dbdb6f244373ed7b6edc1c37d95d668e9222d",
     "93918baf408a50e48ba707a685a99afad983f061b7242a95f9b89c85103f7dbb",
     "940489f1d31590adf93d4ed68f3dae9fc57deae2cd111b330017ba8c43b447c4",
-    "943356e5f4ff4149aeaf018be37528ea6e855976590c21f43a536ce87b9ec548",
-    "94e291fa87d521e2e1cc4d9eac2d5d783642896726b98bf5215ee6218a25a313",
+    "95029c00ef9b0ebaee399111105b0ae3831773b728b6498bdbaf346cd8dae38b",
     "957b663f61de47d07870a0e5bb39560edfec0cfcb95de6216c3e45182f529e35",
     "95ab35fa09fef4a2afd2017c078dfdf57479cb708f955270ed963dcaab408e47",
     "95b6d17dcd251b0a8ac5cada40bbd55c1547b6c5cc2acea11fef1d258f5c4099",
@@ -713,7 +704,6 @@
     "9928bd98d0add13ef4dea424b93030ee0317b8f6ad49b891aa6e474e308aa0cf",
     "992ae35640887a9fee715b7079d20f4825a2d38453cbe43b8ecb6dd3dff6a28d",
     "996069e1364a32bda16c8799ba72438482d3c720f6473d4ad7be98db196cf70f",
-    "996ded5ad6e6ccc86c942e5ac1fdc498edee7127673a2374382d36f5162fadd0",
     "9988a37eb79023ad162f52c5eacb4a77d0654d912a3a7555914bbb3dcd4a4815",
     "99969d07bcae38ad06a6cf12db3217966b28dfcb43541a30264fcf5c90b36370",
     "99b95cc51621281726b4499fcd2b10548c031509178f07af577ea86a49ea61ee",
@@ -735,7 +725,6 @@
     "9d145a86ea60143783646581d525a72c19692bb7287a5bb320e52439ba0645de",
     "9d1774e231b88881febf55ca916c021f4c3fc60ea65a65534fcafc14c96cc2ee",
     "9d56b26afce7105e1383d5507b2b9095979ec04ddf9cbc32ef6fa6af60e6de83",
-    "9dc381fbdbcd8da9e842c49f538e5de69bc279c57f3594e05317a4df0468675b",
     "9df022d8867496290cc905661d35ff0f513b90cc9809fb67dcfedffc515b866c",
     "9e06b37badf740f1c975bde5418e8bf4551f4edfe01a4420943f611bf4a0c5fa",
     "9e285d88c18d2aad8e00a4ba92910a67fcb02243100f5013acd4e40a4554073d",
@@ -854,6 +843,7 @@
     "b609e3e87f374d4d18fbbe76b5ab5401d9f6f1c15652b3cc21a0d17db1e64fe9",
     "b65363dbcf475dc30217d6d80b78ec078f1fee7e9c889f7a46580bcfc551e1fd",
     "b6612eb7e1054e1cfc56cde93d72104765fd4faf21f8668e2eeb5fab538746ea",
+    "b6af3f528a6069aa8aeec48760c1708a3d6e10be984a8b1eb632f2417dc9ba6f",
     "b6bbeeb303e9d7f59eee1dae357f560c4f0b2a5c8d991a62225d9c76b53b6129",
     "b6d9924aabf1abb72a10eecd266fb4d8a1aeb0557fe5eae206ba90fcc121dc3e",
     "b6edb6a2ced1c4cf109ec66870a332a0d75b3a05755f4fa71940e7b457d835df",
@@ -872,7 +862,6 @@
     "b98ccf22d252cbf721f33c5deaa4aa506332224609baaee4d1e5c61139a006b0",
     "b9bc0b2b3a6d3cfde7562d7117e0c4faa18335eb3508ae8fec1a4b55cc8a6133",
     "ba25c42f95906517287355731abe719d883543d7f03b0b2ab53bdf78fb56d6d1",
-    "ba612394dc382c5c51770059f9b28de8d2d0d1f5768d34f359e1d0c4a5d07450",
     "ba83e562fab0865615dcd16aed85926c5acc8dffd69683b112b78607635026d4",
     "baa1ee161e301f76e32534d2a78bacbd620977a636d26845cb9fdc347d962556",
     "badf65ea22f20953a39cc3f4651a5ee45444d575c2f5495152d207bc47446729",
@@ -928,7 +917,6 @@
     "c58008afdb31e0a8f862af4791bc08ae848ce6e2b1e739cbb81fafd6122dd47e",
     "c5b7b246a69613e527a65d13543a526f9e322323dc9f67851f7e465f4c409cdf",
     "c5bb044a9341243e39b21f959475085fc1fcd7376099b8a03f9627075edb6af1",
-    "c5d1fc3e8db6b50264ee26c7470a62e516db5ecf7cf9b6e4d3662ceaafce6101",
     "c5f41c5175da7e0855e99af545f60399efa26e45a29d1ecdc5a94adcabf4c7e7",
     "c6408183b7087157589fb756effec3e68bb27505308401df5aa33cbb96e678c8",
     "c663c87fd77c1e2ebb7fe99d79ff620d2166c5880d501c9d1ccb059256283e2b",
@@ -1007,7 +995,6 @@
     "d5355e024f04d5c07d490b96ab88c672e2828352698862014c4ff1e38f082d61",
     "d608459c550b5145ebd546ba6540cdfbd3f70de7d09b975bf680e348c3d2549e",
     "d637b7291546f41c999df4a05c21666e90662fbbb78c1ac75b4a53bae2937189",
-    "d67c570d1e52e55570cf92554ce6ade2a2ecd636296e67bbbb00e29d111e0fdf",
     "d6fd4b9a048e3d4258e9f6059c61c5fde400f88f3811588dcb972755323d782b",
     "d6fe705daba5305d5b6754927a907a75c064921618ab126bf9752768f1f46f13",
     "d70614caeceefb35b8d76cbaa2a6184e9e5042c482e35928b2bee2267542a34a",
@@ -1038,7 +1025,6 @@
     "dc7985d5eff03ea4c4cccd7b6625f6eecaec809093fc8b69e5a9abeb84c9da8f",
     "dc7feb50a544387c67dffeef325e8295102359236bce4fd332c560c02d71ec66",
     "dcbc184ed88721a8fdc138025af0936ba5693af089cc5ffdf2a595910181af68",
-    "dcc09bc628ede1644f8a2cb40dab09601bbd3f4155e29a0187c08777d42fb369",
     "dcc6761693de9e67e6098fa2cc1f3f7a0bd7d066e541af5c614c282daee7e73e",
     "dd151351d47450f7f451d4225526dcc4ccb27c182b967332cf7da160a82080a4",
     "ddb23d0f9fe4e0d1632da20332ce385edaaef889e2741202440bda2e342d41c3",
@@ -1060,11 +1046,9 @@
     "e06487298ad1baa7051c5b48a1d5b3105ce0f134ec4979b6cb25c2149a2ea735",
     "e0a396b1304d002e83880a780cf17e0704c3ada205f6f3f0d6e5e7cf5d15f340",
     "e1061bb7f982966170b98fc1a75c17637af27dfd2f23e8a49c1d4c7d7a8baf08",
-    "e10aee5462d81465a114bef51026d6f2cd19ec3e4d8f7f0d896210ab55fbf80b",
     "e145ff66409b2cbee9c1fb5ece79bfe5c81e3e6fa40515a0cb5a1724fb9e377c",
     "e1528e62c21a85b5966b96e4540f91d264ee4ead1395164aa13cce500aa00e76",
     "e1e545e8d32bd0a5dd86c88539002409ba0a0ee488c02dc1f33ceae2d9ddf50a",
-    "e262176a649fc09c2dd03f39fa232ead0b883e24b149d37017511fcac0d72cad",
     "e27dd0b3c5888c3a5a926dcfb7fb7d9279e1da6b5d55cb4ec9d811d7717bcdfa",
     "e2c6dc8a6bad7e0ea0c22081111c802084ae4083d6fc53d3041659f59945082c",
     "e31840393d963f8b7f061ffc8e2e70beee1e14c480bc8db5449182f8d43e3e57",
@@ -1137,13 +1121,13 @@
     "f0fbd9ea5d1c3ba3cade6c36bd3c8ace0cbd566dab52b065576abd51036d03c7",
     "f19fbb1e757752137ca725ae2bd2524530d710942d3d2a12f7680e6cd26a03b7",
     "f2102ea163b0555f1ad10f67e31b3d90d467cd512edd7de9522fb601b53450bf",
+    "f22b452f8db477b72de37e154ac1428911cbce7e63bdccfc0ca6fcd2100d7158",
     "f23a77b8339890be6da6b3c339d93eacdb640e9e847f196964a753e50fd42930",
     "f23d1d93f89d46f25e928196c17e8e5cb642622df2cf14d7a4f5a2e92e9d13eb",
     "f30a3d855457dd67b68ff83fda60133c409c50646b29bc696259638bfee5d72c",
     "f344b2453ccb0096a948adc38933945139d65d52e40dd81b9bb3a9dd600df681",
     "f352d9a7a132bc89f2f481eba934f4e08c135f21425e4612cab8c722bc16692d",
     "f3dea634eb8d18221a826e139b83e32d46e136bb1814af888ca705b3632fd849",
-    "f4625ac65e2b035eed230b14497f00c443ee58b7a66fe6b0e31bd9707fd83491",
     "f4c010e41ceac55b19a19aec828e970d0ef0c2fd762d05270711e605abc815ee",
     "f50bfeaeb7ffeba1b0fa55fcebb5f908c29400ecc2da359013d7546720ca85e3",
     "f51e264b58bba9824dacf69655f7c695891cdb9538337d634dcc8682e4b64f0d",
@@ -1179,7 +1163,6 @@
     "fb93a8bf1636ba8fb933b725bce9ceeaed0d65f40edf86ca9b1e7956b0419a85",
     "fbd172c8c1ff7be431d561df02c3e3d379029657f573aee5a4cb5c09f35c0935",
     "fbfe696b4b38e10268bdd54199b0c453e1edc721ee0091ab5c7a9f3e4f7b548c",
-    "fc17b6d7a0d93e9cabceb4ceee3b96648c0c59384460485155bde05e0ea88a26",
     "fc7bbb583a9e2da5d626103c519f807b19f1dd6a8bdd8d2b031d318099a2cebf",
     "fc89d6689062cdcbe2aef2136a18d0de601a3e8bc704f390f7f80e7845e4ba19",
     "fce660a3194ded78ffa6a22c28e48ba570f12da95bdf1fa00e5c092c10a3723d",
@@ -1187,8 +1170,7 @@
     "fd5723be26b1a98ddc1692b18496eb0e45ef239801f81e59ae3e70780696bd3c",
     "fd80cde8e901c5e68ad7ba9652a405d4035650e0a92f4220bbe7c7d2e560f0bf",
     "fe02984128627c5e778b9ad77881574ca168f14229a76e6451b819554d8fafbf",
-    "fe8e60f297d32487329354cc11e910df234f010c29e6229eecd7609fd956b088",
-    null
+    "fe8e60f297d32487329354cc11e910df234f010c29e6229eecd7609fd956b088"
   ],
   "sources": [
     {
@@ -3430,25 +3412,25 @@
       "extractedRecordCount": 0
     },
     {
-      "blobHash": "f4625ac65e2b035eed230b14497f00c443ee58b7a66fe6b0e31bd9707fd83491",
+      "blobHash": "95029c00ef9b0ebaee399111105b0ae3831773b728b6498bdbaf346cd8dae38b",
       "path": ".agents/skills/make-pdf/test/fixtures/diagram-assets/huge-noise.png",
       "classification": "SENSITIVE_SKIPPED",
       "extractedRecordCount": 0
     },
     {
-      "blobHash": "9dc381fbdbcd8da9e842c49f538e5de69bc279c57f3594e05317a4df0468675b",
+      "blobHash": "b6af3f528a6069aa8aeec48760c1708a3d6e10be984a8b1eb632f2417dc9ba6f",
       "path": ".agents/skills/make-pdf/test/fixtures/diagram-assets/red-box.png",
       "classification": "SENSITIVE_SKIPPED",
       "extractedRecordCount": 0
     },
     {
-      "blobHash": "996ded5ad6e6ccc86c942e5ac1fdc498edee7127673a2374382d36f5162fadd0",
+      "blobHash": "f22b452f8db477b72de37e154ac1428911cbce7e63bdccfc0ca6fcd2100d7158",
       "path": ".agents/skills/make-pdf/test/fixtures/diagram-assets/wide-arch.png",
       "classification": "SENSITIVE_SKIPPED",
       "extractedRecordCount": 0
     },
     {
-      "blobHash": "e262176a649fc09c2dd03f39fa232ead0b883e24b149d37017511fcac0d72cad",
+      "blobHash": "4f467fcb757572551f4ccda952d3ca9de885dbe79965323e0d3d06ec66625185",
       "path": ".agents/skills/make-pdf/test/fixtures/diagram-assets/wide-screenshot.png",
       "classification": "SENSITIVE_SKIPPED",
       "extractedRecordCount": 0
@@ -5218,12 +5200,6 @@
       "extractedRecordCount": 0
     },
     {
-      "blobHash": "1ad3c903dca6ebe691164a2ce20ead6ddedb46d6cdeb00dc973ad5c7f32c8ee1",
-      "path": "docs/contracts/attendance.md",
-      "classification": "SUPPORTING_EVIDENCE",
-      "extractedRecordCount": 0
-    },
-    {
       "blobHash": "41605cfcf037cfa7eb8d20fd9efa2eb48a0c15e78d79505bbd32dd080d45f862",
       "path": "docs/contracts/attendance.md",
       "classification": "SUPPORTING_EVIDENCE",
@@ -5260,12 +5236,6 @@
       "extractedRecordCount": 0
     },
     {
-      "blobHash": "d67c570d1e52e55570cf92554ce6ade2a2ecd636296e67bbbb00e29d111e0fdf",
-      "path": "docs/contracts/auth-session.md",
-      "classification": "SUPPORTING_EVIDENCE",
-      "extractedRecordCount": 0
-    },
-    {
       "blobHash": "d9df830c73834882058f7e242cbda686238a6620e8b8fc7afdd1c2341f090b16",
       "path": "docs/contracts/auth-session.md",
       "classification": "SUPPORTING_EVIDENCE",
@@ -5285,12 +5255,6 @@
     },
     {
       "blobHash": "8a21d1b62966901d22538de7584080f1a709d72a3168929d687ba2e879f8bd7f",
-      "path": "docs/contracts/calls.md",
-      "classification": "SUPPORTING_EVIDENCE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "94e291fa87d521e2e1cc4d9eac2d5d783642896726b98bf5215ee6218a25a313",
       "path": "docs/contracts/calls.md",
       "classification": "SUPPORTING_EVIDENCE",
       "extractedRecordCount": 0
@@ -5320,12 +5284,6 @@
       "extractedRecordCount": 0
     },
     {
-      "blobHash": "dcc09bc628ede1644f8a2cb40dab09601bbd3f4155e29a0187c08777d42fb369",
-      "path": "docs/contracts/DATA_LIFECYCLE.md",
-      "classification": "SUPPORTING_EVIDENCE",
-      "extractedRecordCount": 0
-    },
-    {
       "blobHash": "26aa8779497422ed269597404a640b7f27a0debf34b5f0b9c43f0c14aede55f6",
       "path": "docs/contracts/distributor-status.md",
       "classification": "KNOWLEDGE_USED",
@@ -5342,12 +5300,6 @@
       "path": "docs/contracts/distributor-status.md",
       "classification": "KNOWLEDGE_USED",
       "extractedRecordCount": 1
-    },
-    {
-      "blobHash": "8fa33914e96eb6f92e2050df7acef6e0802d6159edb7d340b3baa2935c6e2423",
-      "path": "docs/contracts/distributor-status.md",
-      "classification": "KNOWLEDGE_USED",
-      "extractedRecordCount": 4
     },
     {
       "blobHash": "b45b1954f462bde8924b122d21f0b5df8778aaad277a68165874a5de34fa48c2",
@@ -5386,20 +5338,8 @@
       "extractedRecordCount": 0
     },
     {
-      "blobHash": "943356e5f4ff4149aeaf018be37528ea6e855976590c21f43a536ce87b9ec548",
-      "path": "docs/contracts/field-visits.md",
-      "classification": "SUPPORTING_EVIDENCE",
-      "extractedRecordCount": 0
-    },
-    {
       "blobHash": "fa6881bd2ff74c022f64eb75cae30c40de1fed9a7445b18cdc91cf62e254100d",
       "path": "docs/contracts/field-visits.md",
-      "classification": "SUPPORTING_EVIDENCE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "4091e4c13f9086c7b9ca1315ce7ca7cedf0bf2518c1d98472cf82295f6960cd2",
-      "path": "docs/contracts/followups.md",
       "classification": "SUPPORTING_EVIDENCE",
       "extractedRecordCount": 0
     },
@@ -5422,12 +5362,6 @@
       "extractedRecordCount": 0
     },
     {
-      "blobHash": "5de8c12f06251c2137518a5ab078677543079f30182f91157410a702100eb277",
-      "path": "docs/contracts/mappings.md",
-      "classification": "SUPPORTING_EVIDENCE",
-      "extractedRecordCount": 0
-    },
-    {
       "blobHash": "d2c58fd790f0aa857aba5c049697ec94348d9c4d2487c46f41543e29cb8a419a",
       "path": "docs/contracts/mappings.md",
       "classification": "SUPPORTING_EVIDENCE",
@@ -5438,12 +5372,6 @@
       "path": "docs/contracts/pipeline.md",
       "classification": "KNOWLEDGE_USED",
       "extractedRecordCount": 8
-    },
-    {
-      "blobHash": "3814de331652fd31d8e943038dc962a96604d45fe5df4ec7ca56a8fd04d1f846",
-      "path": "docs/contracts/pipeline.md",
-      "classification": "KNOWLEDGE_USED",
-      "extractedRecordCount": 19
     },
     {
       "blobHash": "3f2228c85e4da2d5d104507fca24bf1cf4f196dd8d309ffb3af7ba9a1fbb96aa",
@@ -5472,12 +5400,6 @@
     {
       "blobHash": "fe8e60f297d32487329354cc11e910df234f010c29e6229eecd7609fd956b088",
       "path": "docs/contracts/pipeline.md",
-      "classification": "SUPPORTING_EVIDENCE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "7c6ba7fd3443cf3585cd53bae959b8ce959b558fe9a8d3ed14c79b21cf8a5245",
-      "path": "docs/contracts/queries.md",
       "classification": "SUPPORTING_EVIDENCE",
       "extractedRecordCount": 0
     },
@@ -5519,12 +5441,6 @@
     },
     {
       "blobHash": "8848da2cd82f746e89148cad1951a6afbd1207006b092ed3a5c72a0085172536",
-      "path": "docs/contracts/receivables.md",
-      "classification": "KNOWLEDGE_USED",
-      "extractedRecordCount": 7
-    },
-    {
-      "blobHash": "88b22764dc4aa03971d0dfeb27128a79a702c2376cc1cf408b03c83a57110219",
       "path": "docs/contracts/receivables.md",
       "classification": "KNOWLEDGE_USED",
       "extractedRecordCount": 7
@@ -5578,12 +5494,6 @@
       "extractedRecordCount": 4
     },
     {
-      "blobHash": "ba612394dc382c5c51770059f9b28de8d2d0d1f5768d34f359e1d0c4a5d07450",
-      "path": "docs/contracts/RESOURCE_BUDGET.md",
-      "classification": "KNOWLEDGE_USED",
-      "extractedRecordCount": 5
-    },
-    {
       "blobHash": "ccfd0a70a1d1c6bfccae433b706d7a337120177d0343d3a76dafa9a95e85d60b",
       "path": "docs/contracts/RESOURCE_BUDGET.md",
       "classification": "KNOWLEDGE_USED",
@@ -5608,40 +5518,16 @@
       "extractedRecordCount": 0
     },
     {
-      "blobHash": "fc17b6d7a0d93e9cabceb4ceee3b96648c0c59384460485155bde05e0ea88a26",
-      "path": "docs/contracts/ROLE_MATRIX.md",
-      "classification": "SUPPORTING_EVIDENCE",
-      "extractedRecordCount": 0
-    },
-    {
       "blobHash": "35e2c719397b0fac98eb5ceb42fca20777b64f36228d54085180a11c0a49bc2a",
       "path": "docs/contracts/team-chat.md",
       "classification": "KNOWLEDGE_USED",
       "extractedRecordCount": 5
     },
     {
-      "blobHash": "8741d7cb75f63fdc1706fde49c356a6a30b9a0376469ec02fed616321b830b02",
-      "path": "docs/contracts/team-chat.md",
-      "classification": "KNOWLEDGE_USED",
-      "extractedRecordCount": 5
-    },
-    {
-      "blobHash": "358428663b61d22a0f63df5048b47de3d957f1daecf5184a814e644b53f64cd9",
-      "path": "docs/contracts/team-kpi.md",
-      "classification": "SUPPORTING_EVIDENCE",
-      "extractedRecordCount": 0
-    },
-    {
       "blobHash": "cbd58ac2fc8a6dcac125d525ac4b26e9c4dcec0b9ee9e13adc60e7b4f1eea380",
       "path": "docs/contracts/team-kpi.md",
       "classification": "SUPPORTING_EVIDENCE",
       "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "393bf978e5ef672b672915d063ea90502e861aee34c60da390dd2da9778a28e6",
-      "path": "docs/contracts/visual-intelligence.md",
-      "classification": "KNOWLEDGE_USED",
-      "extractedRecordCount": 4
     },
     {
       "blobHash": "3f87196d3790342ac0d00a5d141cc70e898bbbd314fa2446ab4f04646571d042",
@@ -5879,12 +5765,6 @@
     },
     {
       "blobHash": "7fc19e1246bc8e630727e28ae9fd8d796db299fe109463a7797f4393b977e3e5",
-      "path": "docs/engineering/ARCHITECTURE.md",
-      "classification": "KNOWLEDGE_USED",
-      "extractedRecordCount": 1
-    },
-    {
-      "blobHash": "c5d1fc3e8db6b50264ee26c7470a62e516db5ecf7cf9b6e4d3662ceaafce6101",
       "path": "docs/engineering/ARCHITECTURE.md",
       "classification": "KNOWLEDGE_USED",
       "extractedRecordCount": 1
@@ -6988,12 +6868,6 @@
       "extractedRecordCount": 0
     },
     {
-      "blobHash": "e10aee5462d81465a114bef51026d6f2cd19ec3e4d8f7f0d896210ab55fbf80b",
-      "path": "scripts/engineering/graphify-verify.mjs",
-      "classification": "SUPPORTING_EVIDENCE",
-      "extractedRecordCount": 0
-    },
-    {
       "blobHash": "118ed004a12ab3426ca17bb40f46af6d729bc55ae9ff9de70ecc4141d2a61ff9",
       "path": "scripts/engineering/hooks/post-tool.mjs",
       "classification": "SUPPORTING_EVIDENCE",
@@ -7134,6 +7008,12 @@
     {
       "blobHash": "d2e03b96cff9d5545a259a8220a6ccae8b02dcf8831476128b9ccfc973e54718",
       "path": "scripts/engineering/learn-close.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "18603fa0e96bb1fe4780f0339c06c9cd0103e5b8f789716264367bceeb10ee1c",
+      "path": "scripts/engineering/legacy-ingest.mjs",
       "classification": "SUPPORTING_EVIDENCE",
       "extractedRecordCount": 0
     },
