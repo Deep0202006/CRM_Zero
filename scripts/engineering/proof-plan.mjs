@@ -20,17 +20,19 @@ const root = resolve(import.meta.dirname, "../.."),
       { cwd: root, encoding: "utf8" },
     ),
   ),
-  proofs = JSON.parse(
-    readFileSync(resolve(root, "docs/engineering/PROOFS.json")),
-  ).proofs;
+  proofs = process.env.ZEROGRAPH_PROOFS_JSON
+    ? JSON.parse(process.env.ZEROGRAPH_PROOFS_JSON).proofs
+    : JSON.parse(readFileSync(resolve(root, "docs/engineering/PROOFS.json")))
+        .proofs;
 const applicable = (p) =>
   impact.domains.some((d) => (p.domains ?? []).includes(d)) &&
   impact.effects.some((e) => (p.effects ?? []).includes(e));
 const required = proofs
-  .filter((p) =>
-    impact.domains.includes("engineering-control")
-      ? p.controlPlaneCoverage === true
-      : applicable(p),
+  .filter(
+    (p) =>
+      applicable(p) ||
+      (impact.domains.includes("engineering-control") &&
+        p.controlPlaneCoverage === true),
   )
   .map((proof) => ({
     ...proof,
