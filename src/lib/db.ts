@@ -87,6 +87,10 @@ export interface LocalMappingRequest {
   retailer_name_unregistered?: string | null;
   requested_by?: string | null;
   mapped_by?: string | null;
+  requested_by_id_snapshot?: string | null;
+  mapped_by_id_snapshot?: string | null;
+  requested_by_name_snapshot?: string | null;
+  mapped_by_name_snapshot?: string | null;
   status: "Pending" | "Completed";
   notes?: string | null;
   created_at: string;
@@ -1335,7 +1339,18 @@ async function processSyncQueueInternal(): Promise<void> {
             }
             throw new Error(`Supabase update failed for ${remoteTableName}: ${error.message}`);
           }
-          if (!data) throw new Error(`No ${remoteTableName} row was updated.`);
+          if (!data) {
+            if (item.table_name === "mapping_requests") {
+              const { data: canonical, error: readError } = await client.select("*").eq(primaryKey, primaryKeyValue).maybeSingle();
+              if (!readError && canonical?.status === "Completed") {
+                await db.mapping_requests.put(canonical as LocalMappingRequest);
+                await db.sync_queue.delete(item.id);
+                if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("zerodata:mapping-requests-changed"));
+                continue;
+              }
+            }
+            throw new Error(`No ${remoteTableName} row was updated.`);
+          }
         } else if (item.action === "DELETE") {
           if (primaryKeyValue === undefined || primaryKeyValue === null || primaryKeyValue === "") {
             throw new Error(`Missing ${primaryKey} for ${item.table_name} delete.`);
@@ -1355,6 +1370,7 @@ async function processSyncQueueInternal(): Promise<void> {
       if (item.table_name === "call_logs" && typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent("zerodata:call-logs-changed"));
       }
+      if (item.table_name === "mapping_requests" && typeof window !== "undefined") window.dispatchEvent(new CustomEvent("zerodata:mapping-requests-changed"));
 
       if (item.table_name === "field_visits") {
         const visitId = prepared.data.visit_id;
@@ -1650,6 +1666,7 @@ if (typeof window !== "undefined") {
                 if (tableName === "call_logs") {
                   window.dispatchEvent(new CustomEvent("zerodata:call-logs-changed"));
                 }
+                if (tableName === "mapping_requests") window.dispatchEvent(new CustomEvent("zerodata:mapping-requests-changed"));
               }
             } else if (payload.eventType === 'DELETE') {
               const oldRecord = payload.old;
@@ -1665,6 +1682,7 @@ if (typeof window !== "undefined") {
                 if (tableName === "call_logs") {
                   window.dispatchEvent(new CustomEvent("zerodata:call-logs-changed"));
                 }
+                if (tableName === "mapping_requests") window.dispatchEvent(new CustomEvent("zerodata:mapping-requests-changed"));
               }
             }
           } catch (err) {

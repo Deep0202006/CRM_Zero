@@ -10,7 +10,8 @@ psql -v ON_ERROR_STOP=1 <<'SQL'
 set request.jwt.claim.sub = '10000000-0000-4000-a000-000000000001';
 \i supabase/migrations/038_retailer_payment_to_converted.sql
 SQL
-psql -v ON_ERROR_STOP=1 -f scripts/pipeline-db/verify.sql | grep -q 'system-audit-ok'
+verify_output="$(psql -v ON_ERROR_STOP=1 -f scripts/pipeline-db/verify.sql)"
+grep -q 'system-audit-ok' <<<"$verify_output"
 psql -v ON_ERROR_STOP=1 -f scripts/pipeline-db/bootstrap-043.sql
 psql -v ON_ERROR_STOP=1 -f supabase/migrations/043_pipeline_creation_authority.sql
 psql -v ON_ERROR_STOP=1 -f scripts/pipeline-db/verify-043.sql | tee /tmp/pipeline-verify-043.out

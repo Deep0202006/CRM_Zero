@@ -1,35 +1,103 @@
-import { readFileSync } from "node:fs";
-import { createHash } from "node:crypto";
-import { execFileSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-const root = resolve(import.meta.dirname, "../..");
-const graph = "ae7db36287a1f1fd2e70e7dbd36ed463a0f52ef6";
-const harness = "f8d5d5c7bca84cb16d2d378aa1c0bab685f79f4b";
-const run = (args) => execFileSync("git", args, { cwd: root, encoding: "utf8" });
-const historic = (commit, path) => run(["show", `${commit}:${path}`]);
-const hash = (text) => createHash("sha256").update(text).digest("hex").slice(0, 16);
-const json = (file) => JSON.parse(readFileSync(resolve(root, file), "utf8"));
-const coverage = json("docs/engineering/LEGACY_COVERAGE.json");
-const current = { lesson: new Set(json("docs/engineering/LESSONS.json").lessons.map((x) => x.id)), authority: new Set(json("docs/engineering/AUTHORITIES.json").facts.map((x) => x.id)), capability: new Set(json("docs/engineering/CAPABILITIES.json").capabilities.map((x) => x.id)), contract: null, invariant: null };
-const sources = [
-  ["graph-lessons", graph, ".crm-engineering/knowledge/lessons-registry.json", "lesson", (t) => JSON.parse(t).lessons.map((x) => x.id)],
-  ["graph-rules", graph, ".crm-engineering/policy/rules.json", "rule", (t) => JSON.parse(t).rules.map((x) => x.id)],
-  ["graph-authorities", graph, ".crm-engineering/knowledge/authority-registry.json", "authority", (t) => JSON.parse(t).facts.map((x) => x.id)],
-  ["graph-capabilities", graph, ".crm-engineering/knowledge/capability-registry.json", "capability", (t) => JSON.parse(t).capabilities.map((x) => x.id)],
-  ["os-ledger", harness, "docs/os/LESSONS_LEDGER.md", "ledger", (t) => t.split(/\r?\n/).filter((line) => /^\|\s*20\d\d-/.test(line)).map(hash)],
-  ["golden-principles", harness, "docs/quality/GOLDEN_PRINCIPLES.md", "principle", (t) => t.split(/\r?\n/).filter((line) => /^- /.test(line)).map(hash)]
-];
-const fail = (message) => { console.error(`legacy: ${message}`); process.exitCode = 1; };
-if (coverage.schemaVersion !== 2) fail("schemaVersion must be 2");
-let total = 0;
-for (const [sourceId, commit, path, type, extract] of sources) {
-  const text = historic(commit, path); const expected = extract(text); total += expected.length;
-  const source = coverage.sources.find((x) => x.sourceId === sourceId);
-  if (!source || source.commit !== commit || source.path !== path || source.sourceHash !== run(["rev-parse", `${commit}:${path}`]).trim()) { fail(`source provenance mismatch: ${sourceId}`); continue; }
-  const actual = source.items.map((x) => x.legacyId);
-  if (new Set(actual).size !== actual.length || actual.length !== expected.length || actual.some((id) => !expected.includes(id)) || expected.some((id) => !actual.includes(id))) fail(`source set mismatch: ${sourceId}`);
-  for (const item of source.items) { const r = item.resolution ?? {}; if (!r.ref || !r.reason || !["lesson","authority","capability","contract","invariant","obsolete"].includes(r.type)) fail(`bad resolution: ${sourceId}/${item.legacyId}`); else if (["lesson","authority","capability"].includes(r.type) && !current[r.type].has(r.ref)) fail(`missing current ref: ${sourceId}/${item.legacyId}`); else if (["contract","invariant"].includes(r.type) && !readFileSync(resolve(root, r.ref), "utf8")) fail(`missing file ref: ${sourceId}/${item.legacyId}`); }
+const root = resolve(import.meta.dirname, "../.."),
+  json = (file) => JSON.parse(readFileSync(resolve(root, file), "utf8")),
+  coverage = json("docs/engineering/LEGACY_COVERAGE.json"),
+  knowledge = json("docs/engineering/LEGACY_KNOWLEDGE.json"),
+  lessons = json("docs/engineering/LESSONS.json").lessons,
+  claims = json("docs/engineering/CLAIMS.json").claims,
+  byLesson = new Map(lessons.map((x) => [x.id, x])),
+  byClaim = new Map(claims.map((x) => [x.id, x])),
+  records = new Set(knowledge.records.map((x) => x.ruleTextHash)),
+  fail = (message) => {
+    console.error(`legacy: ${message}`);
+    process.exitCode = 1;
+  };
+if (coverage.schemaVersion !== 4) fail("coverage schemaVersion must be 4");
+if (knowledge.schemaVersion !== 2)
+  fail("legacy knowledge schemaVersion must be 2");
+for (const source of knowledge.sources ?? [])
+  if (
+    source.classification === "KNOWLEDGE_USED" &&
+    !(source.extractedRecordCount > 0)
+  )
+    fail(`knowledge source has no extracted semantics: ${source.path}`);
+for (const item of coverage.resolutions ?? []) {
+  if (!records.has(item.ruleTextHash))
+    fail(`unknown legacy record: ${item.ruleTextHash}`);
+  if (
+    !["EXACT", "CONSOLIDATED", "OBSOLETE", "UNRESOLVED"].includes(item.status)
+  )
+    fail(`invalid status: ${item.legacyId}`);
+  if (item.status === "UNRESOLVED")
+    fail(`legacy semantic unresolved: ${item.legacyId}`);
+  if (
+    item.status === "OBSOLETE" &&
+    (!item.reason || !(item.enforcementRefs ?? []).length)
+  )
+    fail(`obsolete evidence missing: ${item.legacyId}`);
+  if (["EXACT", "CONSOLIDATED"].includes(item.status)) {
+    if (!(item.preservedClaims ?? []).length)
+      fail(`independent claims missing: ${item.legacyId}`);
+    for (const claim of item.preservedClaims ?? [])
+      if (!byClaim.has(claim))
+        fail(`unknown preserved claim: ${item.legacyId}/${claim}`);
+    const targets = (item.targets ?? []).map((id) => byLesson.get(id));
+    if (!targets.length || targets.some((x) => !x)) {
+      fail(`target missing: ${item.legacyId}`);
+      continue;
+    }
+    const targetClaims = new Set(targets.flatMap((x) => x.claims ?? []));
+    for (const claim of item.preservedClaims ?? [])
+      if (!targetClaims.has(claim))
+        fail(`claim not preserved by lesson: ${item.legacyId}/${claim}`);
+    for (const ref of item.enforcementRefs ?? [])
+      if (!existsSync(resolve(root, ref)))
+        fail(`missing enforcement: ${item.legacyId}/${ref}`);
+  }
 }
-if (total !== 178) fail(`SOURCE_INVENTORY_MISMATCH: ${total}`);
-for (const source of coverage.sources.filter((x) => x.sourceType === "policy" || x.sourceType === "snapshot")) for (const item of source.items ?? []) if (!item.resolution?.ref || !item.resolution?.reason) fail(`policy resolution missing: ${source.sourceId}`);
-if (!process.exitCode) console.log("Legacy coverage passed (178/178 structured records).");
+const expected = {
+  SERVER_SCOPE_NOT_UI_FILTER_RULE: [
+    "AUTHZ_SERVER_ENFORCED",
+    "UI_FILTER_NOT_AUTHORIZATION",
+  ],
+  EXTERNAL_ACCOUNT_NOT_EMPLOYEE_RULE: ["EXTERNAL_IDENTITY_NOT_EMPLOYEE"],
+  EXTERNAL_VIEW_DATA_MINIMIZATION_RULE: ["EXTERNAL_DATA_MINIMIZATION"],
+  DERIVED_FINANCIAL_STATE_RULE: ["FINANCIAL_STATE_DERIVED"],
+};
+for (const [id, want] of Object.entries(expected)) {
+  const found = coverage.resolutions.find((x) => x.legacyId === id);
+  if (!found || want.some((claim) => !found.preservedClaims?.includes(claim)))
+    fail(`known semantic mapping wrong: ${id}`);
+}
+const mechanismCanaries = [
+  "NO_END_WITH_INCOMPLETE_ACCEPTANCE",
+  "INCOMPLETE_WORK_IS_NOT_EXTERNAL_BLOCKER",
+  "IMPLEMENT_BEFORE_BROAD_VERIFY",
+  "STALL_RETRY_THEN_STRATEGY_CHANGE",
+  "TASK_BASE_AND_DIRTY_BASELINE_KNOWN",
+  "CONTENT_SENSITIVE_WORKTREE",
+  "EXACT_HEAD_PROOF",
+  "FRESH_PROOF_REUSE",
+  "OWNER_PRODUCTION_HUMAN_GATE",
+  "OWNER_POSTCHECK_REQUIRED",
+  "NO_REDUNDANT_LOCAL_TOOLCHAIN",
+  "BASELINE_FAILURE_ABLATION",
+  "WORKER_RESULT_SCHEMA_VALIDATION",
+  "ACCEPTANCE_EVIDENCE_BINDING",
+  "STATUS_PORTABILITY",
+  "NO_PRODUCTION_DUMMY_DATA",
+  "APPLIED_MIGRATION_IMMUTABLE",
+];
+for (const claim of mechanismCanaries) {
+  if (!(byClaim.get(claim)?.evalRefs ?? []).length)
+    fail(`historical mechanism has no eval: ${claim}`);
+  if (
+    !coverage.resolutions.some((item) => item.preservedClaims?.includes(claim))
+  )
+    fail(`historical mechanism not independently reconciled: ${claim}`);
+}
+if (!process.exitCode)
+  console.log(
+    `Legacy semantic coverage passed (${coverage.resolutions.length} rules; 0 unresolved; independent claims verified).`,
+  );

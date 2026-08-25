@@ -2,31 +2,299 @@
   "schemaVersion": 2,
   "repository": "Deep0202006/CRM_Zero",
   "facts": [
-    {"id":"erp_system","status":"PRODUCTION_CERTIFIED","authority":"public.erp_systems","identity":["erp_id","erp_key"],"owns":["canonical ERP identity and name"]},
-    {"id":"distributor_erp_assignment","status":"PRODUCTION_CERTIFIED","authority":"public.distributor_accounts.erp_id","identity":["distributor_id"],"owns":["official Distributor ERP assignment"],"rules":["Owned only by Distributor Status.","Renewal and financial readers join through canonical distributor_id."]},
-    {"id":"erp_partner_scope","status":"PRODUCTION_CERTIFIED","authority":"public.erp_partner_scopes","identity":["user_id","erp_id"],"owns":["ERP Partner Viewer authorization scope"],"mustNotOwn":["Distributor business facts","renewal facts","financial facts"]},
-    {"id":"employee_identity","authority":"auth.users.id == public.users.user_id","identity":["user_id"],"notes":["Auth login identity and public profile fields are independent authorities.","Imports resolve employee login identity through canonical resolver."]},
-    {"id":"attendance","authority":"public.attendance","identity":["user_id","attendance_date"],"writer":"server confirmation path","readers":["employee attendance","Admin Attendance","Team KPI"]},
-    {"id":"distributor_account","authority":"public.distributor_accounts","identity":["distributor_id"],"owns":["distributor operational identity","assigned_to","renewal_date","installation","training","mapping","activity","billing milestone"],"mustNotOwn":["financial paid/received/outstanding truth"]},
-    {"id":"receivable","authority":"public.receivables","identity":["receivable_id"],"owns":["financial obligation"]},
-    {"id":"payment","authority":"public.receivable_payments","identity":["payment_id"],"owns":["collection/payment events"],"financialRule":"Only effective confirmed non-reversed payments reduce outstanding."},
-    {"id":"renewal","authority":"public.distributor_accounts.renewal_date","identity":["distributor_id"]},
-    {"id":"pipeline_lead","authority":"public.leads via public.pipeline_create_lead_v1","identity":["lead_id"]},
-    {"id":"pipeline_stage","authority":"public.leads.status via public.transition_lead_stage_v2","identity":["lead_id"]},
-    {"id":"call_history","authority":"public.call_logs","identity":["log_id"]},
-    {"id":"field_visit","authority":"public.field_visits","identity":["visit_id"]},
-    {"id":"field_visit_erp_observation","status":"PRODUCTION_CERTIFIED","authority":"public.field_visits(erp_usage_state, erp_id)","identity":["visit_id"],"owns":["ERP observed during that exact Field Visit"],"writer":"service-only public.confirm_field_visit_erp_v1 transaction","readers":["My Visits","Admin Visits","Field Visit export","Field Visit ERP Intelligence"],"rules":["New ERP-contract visits require explicit erp or none.","Historical and pre-contract queued visits retain NULL as Not captured without backfill.","Retries preserve visit_id and cannot create a second Field Visit authority row."],"mustNotOwn":["Distributor canonical ERP assignment","Pipeline/Lead ERP authority","financial facts","renewal facts"]},
-    {"id":"field_business_erp_baseline","status":"PRODUCTION_CERTIFIED","authority":"public.field_business_erp_baselines","identity":["segment_type","business_ref"],"owns":["Admin-supplied current ERP enrichment for an exact visited business identity"],"writer":"Admin-authorized server boundary through service-only public.set_field_business_erp_baselines_v1 atomic batch transaction","readers":["Admin Visits current ERP editor","public.field_business_erp_current_v2","public.field_visit_erp_intelligence_v2"],"rules":["The table is created empty and Migration 049 performs no historical backfill.","A baseline set/None value participates in the V2 recency projection by updated_at; it is not a Field Visit observation.","Clear deletes only the exact manual baseline and reveals the latest visit-derived value or Not captured.","V1 Field Visit ERP observation and intelligence contracts remain unchanged."],"mustNotOwn":["Field Visit history or visit-time ERP observation","Distributor canonical ERP assignment","Pipeline/Lead ERP authority","financial facts","renewal facts"],"security":["RLS enabled","public/anon/authenticated direct DML and RPC execution denied","active Admin authorization is revalidated at server and database write boundaries"]},
-    {"id":"distributor_receivable_link","status":"PRODUCTION_CERTIFIED","authority":"public.receivables.distributor_id -> public.distributor_accounts.distributor_id","identity":["receivable_id","distributor_id"],"rules":["No fuzzy distributor matching.","Names/references are snapshots, not cross-domain authority.","Distributor reflection in Payment Collections is not a financial write.","Operational billed is not a financial obligation.","Payment targets exact receivable_id."]},
-    {"id":"unified_distributor_master_import_orchestration","status":"PRODUCTION_CERTIFIED","kind":"ORCHESTRATION_CAPABILITY_ONLY","authority":"No independent business authority; delegates to canonical Distributor, Renewal, Receivable, and Payment authorities in one transaction.","identity":["operation_id","resolved_plan_hash"],"mustNotOwn":["financial obligation","payment truth","PAID/PARTIALLY_PAID/UNPAID state","renewal date","distributor lifecycle"]},
-    {"id":"mapping_request","authority":"public.mapping_requests","identity":["mapping_id"],"owns":["standalone mapping request"],"writer":"Mapping server boundary","readers":["Mapping screen","Team KPI projection"],"mustNotOwn":["pipeline lead","client master identity"]},
-    {"id":"client_query","authority":"public.client_queries","identity":["query_id"],"owns":["client support/query lifecycle"],"writer":"Query server boundary","readers":["Support UI","exports","Team KPI projection"],"mustNotOwn":["pipeline lead","financial truth"]},
-    {"id":"team_chat_message","authority":"public.chat_messages","identity":["message_id"],"owns":["team-chat message history"],"writer":"authorized chat route","readers":["chat membership projection"],"mustNotOwn":["employee identity","business facts"]},
-    {"id":"team_chat_membership","authority":"public.team_chat_memberships","identity":["user_id","conversation_id"],"owns":["chat access membership"],"writer":"server authorization boundary","readers":["chat bootstrap","message reader"],"mustNotOwn":["message history"]},
-    {"id":"user_capability_assignment","authority":"public.user_capabilities","identity":["user_id","capability"],"owns":["assigned application capabilities"],"writer":"Admin user-management boundary","readers":["server authorization"],"mustNotOwn":["auth login identity"]},
-    {"id":"task_allocation","authority":"public.allocate_city_task_batch","identity":["operation_id"],"owns":["city task allocation command result"],"writer":"Task Allocation server boundary","readers":["manager task workspace"],"mustNotOwn":["pipeline lead","financial truth"]},
-    {"id":"followup_projection","kind":"DERIVED_PROJECTION","authority":"derived from canonical calls, visits, and receivables","identity":["source fact identity"],"owns":["no writable business fact"],"readers":["My Day","follow-up views"],"mustNotOwn":["call history","field visit","receivable"]},
-    {"id":"my_day_projection","kind":"DERIVED_PROJECTION","authority":"derived My Day read model","identity":["viewer_id","business_date"],"owns":["no writable business fact"],"readers":["My Day UI"],"mustNotOwn":["receivable","field visit","call history"]},
-    {"id":"team_kpi_projection","kind":"DERIVED_PROJECTION","authority":"server-side Team KPI projection","identity":["scope","business_date"],"owns":["no writable business fact"],"readers":["manager KPI UI"],"mustNotOwn":["attendance","field visit","call history"]}
+    {
+      "id": "platform_runtime_placement",
+      "status": "PLANNED",
+      "authority": "deployment and service configuration evidence",
+      "identity": ["source platform", "target platform", "cutover state"],
+      "owns": [
+        "where backend platform services run",
+        "platform configuration parity"
+      ],
+      "mustNotOwn": [
+        "CRM business facts",
+        "financial truth",
+        "employee identity",
+        "Mapping attribution"
+      ]
+    },
+    {
+      "id": "erp_system",
+      "status": "PRODUCTION_CERTIFIED",
+      "authority": "public.erp_systems",
+      "identity": ["erp_id", "erp_key"],
+      "owns": ["canonical ERP identity and name"]
+    },
+    {
+      "id": "distributor_erp_assignment",
+      "status": "PRODUCTION_CERTIFIED",
+      "authority": "public.distributor_accounts.erp_id",
+      "identity": ["distributor_id"],
+      "owns": ["official Distributor ERP assignment"],
+      "rules": [
+        "Owned only by Distributor Status.",
+        "Renewal and financial readers join through canonical distributor_id."
+      ]
+    },
+    {
+      "id": "erp_partner_scope",
+      "status": "PRODUCTION_CERTIFIED",
+      "authority": "public.erp_partner_scopes",
+      "identity": ["user_id", "erp_id"],
+      "owns": ["ERP Partner Viewer authorization scope"],
+      "mustNotOwn": [
+        "Distributor business facts",
+        "renewal facts",
+        "financial facts"
+      ]
+    },
+    {
+      "id": "employee_identity",
+      "authority": "auth.users.id == public.users.user_id",
+      "identity": ["user_id"],
+      "notes": [
+        "Auth login identity and public profile fields are independent authorities.",
+        "Imports resolve employee login identity through canonical resolver."
+      ]
+    },
+    {
+      "id": "attendance",
+      "authority": "public.attendance",
+      "identity": ["user_id", "attendance_date"],
+      "writer": "server confirmation path",
+      "readers": ["employee attendance", "Admin Attendance", "Team KPI"]
+    },
+    {
+      "id": "distributor_account",
+      "authority": "public.distributor_accounts",
+      "identity": ["distributor_id"],
+      "owns": [
+        "distributor operational identity",
+        "assigned_to",
+        "renewal_date",
+        "installation",
+        "training",
+        "mapping",
+        "activity",
+        "billing milestone"
+      ],
+      "mustNotOwn": ["financial paid/received/outstanding truth"]
+    },
+    {
+      "id": "receivable",
+      "authority": "public.receivables",
+      "identity": ["receivable_id"],
+      "owns": ["financial obligation"]
+    },
+    {
+      "id": "payment",
+      "authority": "public.receivable_payments",
+      "identity": ["payment_id"],
+      "owns": ["collection/payment events"],
+      "financialRule": "Only effective confirmed non-reversed payments reduce outstanding."
+    },
+    {
+      "id": "renewal",
+      "authority": "public.distributor_accounts.renewal_date",
+      "identity": ["distributor_id"]
+    },
+    {
+      "id": "pipeline_lead",
+      "authority": "public.leads via public.pipeline_create_lead_v1",
+      "identity": ["lead_id"]
+    },
+    {
+      "id": "pipeline_stage",
+      "authority": "public.leads.status via public.transition_lead_stage_v2",
+      "identity": ["lead_id"]
+    },
+    {
+      "id": "call_history",
+      "authority": "public.call_logs",
+      "identity": ["log_id"]
+    },
+    {
+      "id": "field_visit",
+      "authority": "public.field_visits",
+      "identity": ["visit_id"]
+    },
+    {
+      "id": "field_visit_erp_observation",
+      "status": "PRODUCTION_CERTIFIED",
+      "authority": "public.field_visits(erp_usage_state, erp_id)",
+      "identity": ["visit_id"],
+      "owns": ["ERP observed during that exact Field Visit"],
+      "writer": "service-only public.confirm_field_visit_erp_v1 transaction",
+      "readers": [
+        "My Visits",
+        "Admin Visits",
+        "Field Visit export",
+        "Field Visit ERP Intelligence"
+      ],
+      "rules": [
+        "New ERP-contract visits require explicit erp or none.",
+        "Historical and pre-contract queued visits retain NULL as Not captured without backfill.",
+        "Retries preserve visit_id and cannot create a second Field Visit authority row."
+      ],
+      "mustNotOwn": [
+        "Distributor canonical ERP assignment",
+        "Pipeline/Lead ERP authority",
+        "financial facts",
+        "renewal facts"
+      ]
+    },
+    {
+      "id": "field_business_erp_baseline",
+      "status": "PRODUCTION_CERTIFIED",
+      "authority": "public.field_business_erp_baselines",
+      "identity": ["segment_type", "business_ref"],
+      "owns": [
+        "Admin-supplied current ERP enrichment for an exact visited business identity"
+      ],
+      "writer": "Admin-authorized server boundary through service-only public.set_field_business_erp_baselines_v1 atomic batch transaction",
+      "readers": [
+        "Admin Visits current ERP editor",
+        "public.field_business_erp_current_v2",
+        "public.field_visit_erp_intelligence_v2"
+      ],
+      "rules": [
+        "The table is created empty and Migration 049 performs no historical backfill.",
+        "A baseline set/None value participates in the V2 recency projection by updated_at; it is not a Field Visit observation.",
+        "Clear deletes only the exact manual baseline and reveals the latest visit-derived value or Not captured.",
+        "V1 Field Visit ERP observation and intelligence contracts remain unchanged."
+      ],
+      "mustNotOwn": [
+        "Field Visit history or visit-time ERP observation",
+        "Distributor canonical ERP assignment",
+        "Pipeline/Lead ERP authority",
+        "financial facts",
+        "renewal facts"
+      ],
+      "security": [
+        "RLS enabled",
+        "public/anon/authenticated direct DML and RPC execution denied",
+        "active Admin authorization is revalidated at server and database write boundaries"
+      ]
+    },
+    {
+      "id": "distributor_receivable_link",
+      "status": "PRODUCTION_CERTIFIED",
+      "authority": "public.receivables.distributor_id -> public.distributor_accounts.distributor_id",
+      "identity": ["receivable_id", "distributor_id"],
+      "rules": [
+        "No fuzzy distributor matching.",
+        "Names/references are snapshots, not cross-domain authority.",
+        "Distributor reflection in Payment Collections is not a financial write.",
+        "Operational billed is not a financial obligation.",
+        "Payment targets exact receivable_id."
+      ]
+    },
+    {
+      "id": "unified_distributor_master_import_orchestration",
+      "status": "PRODUCTION_CERTIFIED",
+      "kind": "ORCHESTRATION_CAPABILITY_ONLY",
+      "authority": "No independent business authority; delegates to canonical Distributor, Renewal, Receivable, and Payment authorities in one transaction.",
+      "identity": ["operation_id", "resolved_plan_hash"],
+      "mustNotOwn": [
+        "financial obligation",
+        "payment truth",
+        "PAID/PARTIALLY_PAID/UNPAID state",
+        "renewal date",
+        "distributor lifecycle"
+      ]
+    },
+    {
+      "id": "mapping_request",
+      "authority": "public.mapping_requests",
+      "identity": ["request_id"],
+      "owns": [
+        "standalone mapping request",
+        "requester/logged-by attribution",
+        "completer/mapped-by attribution",
+        "completion timestamp"
+      ],
+      "rules": [
+        "requested_by is creation actor",
+        "mapped_by is completion actor",
+        "labels are display metadata",
+        "completed attribution is not fabricated",
+        "Mapping never creates Leads/Pipeline facts"
+      ],
+      "writer": "offline-first Mapping persistence synchronized to public.mapping_requests, with database attribution/RLS guard after Migration 051",
+      "readers": ["Mapping screen", "Team KPI projection"],
+      "mustNotOwn": ["pipeline lead", "client master identity"]
+    },
+    {
+      "id": "client_query",
+      "authority": "public.client_queries",
+      "identity": ["query_id"],
+      "owns": ["client support/query lifecycle"],
+      "writer": "Query server boundary",
+      "readers": ["Support UI", "exports", "Team KPI projection"],
+      "mustNotOwn": ["pipeline lead", "financial truth"]
+    },
+    {
+      "id": "team_chat_message",
+      "authority": "public.chat_messages",
+      "identity": ["message_id"],
+      "owns": ["team-chat message history"],
+      "writer": "authorized chat route",
+      "readers": ["chat membership projection"],
+      "mustNotOwn": ["employee identity", "business facts"]
+    },
+    {
+      "id": "team_chat_membership",
+      "authority": "public.team_chat_memberships",
+      "identity": ["user_id", "conversation_id"],
+      "owns": ["chat access membership"],
+      "writer": "server authorization boundary",
+      "readers": ["chat bootstrap", "message reader"],
+      "mustNotOwn": ["message history"]
+    },
+    {
+      "id": "user_capability_assignment",
+      "authority": "public.user_capabilities",
+      "identity": ["user_id", "capability"],
+      "owns": ["assigned application capabilities"],
+      "writer": "Admin user-management boundary",
+      "readers": ["server authorization"],
+      "mustNotOwn": ["auth login identity"]
+    },
+    {
+      "id": "task_allocation",
+      "authority": "public.allocate_city_task_batch",
+      "identity": ["operation_id"],
+      "owns": ["city task allocation command result"],
+      "writer": "Task Allocation server boundary",
+      "readers": ["manager task workspace"],
+      "mustNotOwn": ["pipeline lead", "financial truth"]
+    },
+    {
+      "id": "followup_projection",
+      "kind": "DERIVED_PROJECTION",
+      "authority": "derived from canonical calls, visits, and receivables",
+      "identity": ["source fact identity"],
+      "owns": ["no writable business fact"],
+      "readers": ["My Day", "follow-up views"],
+      "mustNotOwn": ["call history", "field visit", "receivable"]
+    },
+    {
+      "id": "my_day_projection",
+      "kind": "DERIVED_PROJECTION",
+      "authority": "derived My Day read model",
+      "identity": ["viewer_id", "business_date"],
+      "owns": ["no writable business fact"],
+      "readers": ["My Day UI"],
+      "mustNotOwn": ["receivable", "field visit", "call history"]
+    },
+    {
+      "id": "team_kpi_projection",
+      "kind": "DERIVED_PROJECTION",
+      "authority": "server-side Team KPI projection",
+      "identity": ["scope", "business_date"],
+      "owns": ["no writable business fact"],
+      "readers": ["manager KPI UI"],
+      "mustNotOwn": ["attendance", "field visit", "call history"]
+    }
   ]
 }

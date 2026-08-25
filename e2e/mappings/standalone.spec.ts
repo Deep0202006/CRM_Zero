@@ -61,8 +61,10 @@ test("Mapping accepts canonical suggestions and arbitrary text with zero Lead si
     retailer_lead_id: null,
     retailer_name_unregistered: "ABC MEDICAL & GENERAL STORE #42",
     requested_by: employeeId,
-    mapped_by: employeeId,
+    mapped_by: null,
   });
+  await expect(page.getByText("Logged by: Support Employee")).toBeVisible();
+  await expect(page.getByText("Completed by: —")).toBeVisible();
 
   await page.getByRole("button", { name: "Retailer", exact: true }).click();
   await page.getByPlaceholder("Search or type retailer").fill("Retailer 100 & Sons");
