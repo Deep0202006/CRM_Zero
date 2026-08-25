@@ -1,168 +1,227 @@
 name: CRM Product Verification
-
 on:
   pull_request:
     branches: [main]
-
 permissions:
   contents: read
+
+env:
+  NEXT_PUBLIC_SUPABASE_URL: https://e2e.supabase.co
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: e2e-anon-key
+  SUPABASE_SERVICE_ROLE_KEY: BUILD_TIME_PLACEHOLDER_KEY
 
 jobs:
   preflight:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    env:
-      NEXT_PUBLIC_SUPABASE_URL: https://e2e.supabase.co
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: e2e-anon-key
-      SUPABASE_SERVICE_ROLE_KEY: BUILD_TIME_PLACEHOLDER_KEY
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
       - uses: actions/setup-node@v4
-        with:
-          node-version: 24.13.0
-          cache: npm
+        with: { node-version: 24.13.0, cache: npm }
       - run: npm ci
       - run: npm run quality:knowledge
       - run: npm run quality:legacy
       - run: npm run quality:invariants
       - run: npm run context:test
+      - run: npm run os:bootstrap-test
+      - run: npm run engineering:eval
+      - run: npm run semantic:graph
+      - run: npm run os:acceptance -- --mode preflight
+      - name: Compile exact-head impact and proof plan
+        env:
+          {
+            BASE_SHA: "${{ github.event.pull_request.base.sha }}",
+            HEAD_SHA: "${{ github.event.pull_request.head.sha }}",
+          }
+        run: |
+          npm run impact:compile -- --base "$BASE_SHA" --head "$HEAD_SHA"
+          npm run proof:plan -- --base "$BASE_SHA" --head "$HEAD_SHA"
+          npm run verify:affected -- --kind unit --base "$BASE_SHA" --head "$HEAD_SHA"
+          npm run verify:affected -- --kind handover --execute --base "$BASE_SHA" --head "$HEAD_SHA"
       - name: Check changed diff integrity
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          {
+            BASE_SHA: "${{ github.event.pull_request.base.sha }}",
+            HEAD_SHA: "${{ github.event.pull_request.head.sha }}",
+          }
         run: git diff --check "$BASE_SHA" "$HEAD_SHA"
       - run: npm run typecheck
       - name: Run related Jest tests for changed source
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          {
+            BASE_SHA: "${{ github.event.pull_request.base.sha }}",
+            HEAD_SHA: "${{ github.event.pull_request.head.sha }}",
+          }
         run: |
           mapfile -d '' changed_source < <(git diff --name-only -z "$BASE_SHA" "$HEAD_SHA" -- src)
           affected=()
-          for candidate in "${changed_source[@]}"; do
-            case "$candidate" in
-              *.ts|*.tsx|*.js|*.jsx) affected+=("$candidate") ;;
-            esac
-          done
-          if [ "${#affected[@]}" -eq 0 ]; then
-            echo "No Jest-related source changes."
-          else
-            npm test -- --runInBand --findRelatedTests "${affected[@]}"
-          fi
+          for candidate in "${changed_source[@]}"; do case "$candidate" in *.ts|*.tsx|*.js|*.jsx) affected+=("$candidate");; esac; done
+          if [ "${#affected[@]}" -eq 0 ]; then echo "No Jest-related source changes."; else npm test -- --runInBand --findRelatedTests "${affected[@]}"; fi
+      - name: Write preflight evidence
+        env:
+          {
+            BASE_SHA: "${{ github.event.pull_request.base.sha }}",
+            HEAD_SHA: "${{ github.event.pull_request.head.sha }}",
+          }
+        run: node scripts/engineering/release-evidence.mjs --kind preflight --base "$BASE_SHA" --head "$HEAD_SHA" --output .zerograph-evidence/preflight.json
+      - uses: actions/upload-artifact@v4
+        with:
+          {
+            name: zerograph-preflight,
+            path: .zerograph-evidence/preflight.json,
+          }
 
-  verify:
+  unit-build:
     needs: preflight
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    env:
-      NEXT_PUBLIC_SUPABASE_URL: https://e2e.supabase.co
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: e2e-anon-key
-      SUPABASE_SERVICE_ROLE_KEY: BUILD_TIME_PLACEHOLDER_KEY
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
       - uses: actions/setup-node@v4
-        with:
-          node-version: 24.13.0
-          cache: npm
+        with: { node-version: 24.13.0, cache: npm }
       - run: npm ci
       - run: npm test -- --runInBand
       - run: npm run lint
       - run: npm run build
+      - name: Write unit/build evidence
+        env:
+          {
+            BASE_SHA: "${{ github.event.pull_request.base.sha }}",
+            HEAD_SHA: "${{ github.event.pull_request.head.sha }}",
+          }
+        run: node scripts/engineering/release-evidence.mjs --kind unit-build --base "$BASE_SHA" --head "$HEAD_SHA" --output .zerograph-evidence/unit-build.json
+      - uses: actions/upload-artifact@v4
+        with:
+          {
+            name: zerograph-unit-build,
+            path: .zerograph-evidence/unit-build.json,
+          }
 
   receivables-postgres:
     needs: preflight
+    if: always() && needs.preflight.result != 'cancelled'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     services:
       postgres:
         image: postgres:17.6-alpine
         env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: receivables_test
-        ports:
-          - 5432:5432
+          {
+            POSTGRES_USER: postgres,
+            POSTGRES_PASSWORD: postgres,
+            POSTGRES_DB: postgres,
+          }
+        ports: ["5432:5432"]
         options: >-
-          --health-cmd "pg_isready -U postgres -d receivables_test"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
     env:
-      PGHOST: localhost
-      PGPORT: 5432
-      PGDATABASE: receivables_test
-      PGUSER: postgres
-      PGPASSWORD: postgres
+      {
+        PGHOST: localhost,
+        PGPORT: 5432,
+        PGDATABASE: postgres,
+        PGUSER: postgres,
+        PGPASSWORD: postgres,
+      }
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
       - name: Activate preinstalled PostgreSQL client
         run: |
-          pg_bin="$(pg_config --bindir)"
-          test -x "$pg_bin/psql"
-          test -x "$pg_bin/createdb"
-          echo "$pg_bin" >> "$GITHUB_PATH"
-          "$pg_bin/psql" --version
-      - name: Prove financial fixtures refuse the production project
-        run: |
-          set +e
-          PGHOST=gwfjkpsoaoherntwhdyf.supabase.co bash scripts/receivables-db/run-integration.sh
-          status=$?
-          set -e
-          test "$status" -eq 86
-      - name: Apply migration and run Receivables database integration
-        run: bash scripts/receivables-db/run-integration.sh
-      - name: Fresh-apply Field Visits lifecycle migration and prove historic compatibility
-        run: createdb field_visits_test && PGDATABASE=field_visits_test bash scripts/field-visits-db/run-integration.sh
-      - name: Fresh-apply Migration 048 and prove Field Visit ERP observation invariants
-        run: createdb field_visit_erp_test && PGDATABASE=field_visit_erp_test bash scripts/field-visit-erp-db/run-integration.sh
-      - name: Fresh-apply Migration 049 and prove current ERP baseline invariants
-        run: createdb field_business_erp_test && PGDATABASE=field_business_erp_test bash scripts/field-business-erp-db/run-integration.sh
-      - name: Prove Attendance uniqueness and permanent-row evidence lifecycle
-        run: createdb attendance_test && PGDATABASE=attendance_test bash scripts/attendance-db/run-integration.sh
-      - name: Fresh-apply Pipeline authority migrations and prove isolation
-        run: createdb pipeline_test && PGDATABASE=pipeline_test bash scripts/pipeline-db/run-integration.sh
-      - name: Fresh-apply Distributor Status migration and prove concurrency, isolation, and 10k scale
-        run: createdb distributor_status_test && PGDATABASE=distributor_status_test bash scripts/distributor-status-db/run-integration.sh
-      - name: Fresh-apply Migrations 046-047 and prove master-import, ERP scope, and financial isolation
-        run: createdb distributor_master_test && CRM_MASTER_DB_DISPOSABLE=1 PGDATABASE=distributor_master_test bash scripts/distributor-master-db/run-integration.sh
-      - name: Fresh-apply Migration 051 and prove Mapping attribution/RLS
-        run: createdb mappings_test && PGDATABASE=mappings_test bash scripts/mappings-db/run-integration.sh
+          pg_bin="$(pg_config --bindir)"; test -x "$pg_bin/psql"; test -x "$pg_bin/createdb"; echo "$pg_bin" >> "$GITHUB_PATH"; "$pg_bin/psql" --version
+      - name: Run affected PostgreSQL proof plan
+        env:
+          {
+            CI: "true",
+            BASE_SHA: "${{ github.event.pull_request.base.sha }}",
+            HEAD_SHA: "${{ github.event.pull_request.head.sha }}",
+          }
+        run: node scripts/engineering/verify-affected.mjs --kind postgres --execute --base "$BASE_SHA" --head "$HEAD_SHA" --evidence .zerograph-evidence/evidence-postgres.json
+      - uses: actions/upload-artifact@v4
+        with:
+          {
+            name: zerograph-postgres,
+            path: .zerograph-evidence/evidence-postgres.json,
+          }
 
   e2e:
-    needs: [preflight, verify]
+    needs: [preflight, unit-build]
+    if: always() && needs.preflight.result != 'cancelled' && needs.unit-build.result != 'cancelled'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     container:
-      image: mcr.microsoft.com/playwright:v1.54.2-noble
-      options: --ipc=host
+      {
+        image: "mcr.microsoft.com/playwright:v1.54.2-noble",
+        options: --ipc=host,
+      }
     env:
-      NEXT_PUBLIC_SUPABASE_URL: https://e2e.supabase.co
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: e2e-anon-key
-      SUPABASE_SERVICE_ROLE_KEY: BUILD_TIME_PLACEHOLDER_KEY
-      PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
+      {
+        PLAYWRIGHT_BROWSERS_PATH: /ms-playwright,
+        CI: "true",
+        PLAYWRIGHT_E2E_WEBPACK: "true",
+      }
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
         with:
-          node-version: 24.13.0
-          cache: npm
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with: { node-version: 24.13.0, cache: npm }
+      - name: Trust the container-mounted exact-head checkout
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - run: npm ci
       - run: npm run build
-      - name: Run Receivables browser authorization and intake flows
-        run: npm run test:e2e:receivables
-      - name: Run Field Visits and Attendance evidence browser flows
-        run: npm run test:e2e:field-visits
-      - name: Run Distributor route and Attendance write-to-read closure flows
-        run: npx playwright test e2e/distributors e2e/attendance
+      - name: Run affected E2E proof plan and fail on flakes
         env:
-          PLAYWRIGHT_E2E_WEBPACK: "true"
-      - name: Run Pipeline visibility, ownership, creation, and request-budget flows
-        run: npm run test:e2e:pipeline
+          {
+            BASE_SHA: "${{ github.event.pull_request.base.sha }}",
+            HEAD_SHA: "${{ github.event.pull_request.head.sha }}",
+          }
+        run: node scripts/engineering/verify-affected.mjs --kind e2e --execute --base "$BASE_SHA" --head "$HEAD_SHA" --evidence .zerograph-evidence/evidence-e2e.json
+      - uses: actions/upload-artifact@v4
+        with:
+          { name: zerograph-e2e, path: .zerograph-evidence/evidence-e2e.json }
+
+  verify:
+    needs: [preflight, unit-build, receivables-postgres, e2e]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with: { node-version: 24.13.0, cache: npm }
+      - run: npm ci
+      - uses: actions/download-artifact@v4
+        with:
+          {
+            pattern: zerograph-*,
+            path: .zerograph-evidence,
+            merge-multiple: true,
+          }
+      - name: Require exact PR head and complete jobs
         env:
-          PLAYWRIGHT_E2E_WEBPACK: "true"
-      - name: Run Mapping team attribution and offline convergence flows
-        run: npm run test:e2e:mappings
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          test "${{ needs.preflight.result }}:${{ needs.unit-build.result }}:${{ needs.receivables-postgres.result }}:${{ needs.e2e.result }}" = "success:success:success:success"
+      - name: Emit final exact-head repository certificate
+        env:
+          ZEROGRAPH_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          ZEROGRAPH_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          ZEROGRAPH_EVIDENCE_DIR: .zerograph-evidence
+        run: |
+          result="$(npm run --silent quality:release)"
+          echo "$result"
+          echo "$result" | grep -q '"releaseReady":true'
+          echo "REPOSITORY_RELEASE_CANDIDATE_READY"

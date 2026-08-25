@@ -37,5 +37,11 @@ for (const absolute of sourceFiles(join(root, "src"))) {
   const source = strip(readFileSync(absolute, "utf8"));
   if (/\.from\(["']leads["']\)[\s\S]{0,300}?\.(?:insert|upsert)\s*\(/i.test(source) && relative !== "src/app/api/pipeline/create/route.ts") fail(`${relative} bypasses canonical Lead creation`);
 }
+for (const absolute of sourceFiles(join(root, "scripts/engineering"))) {
+  const relative = absolute.slice(root.length + 1).replaceAll("\\", "/");
+  const source = readFileSync(absolute, "utf8");
+  if (relative !== "scripts/engineering/os-acceptance.mjs" && /--updateSnapshot|--update-snapshot|updateSnapshot\s*\(/.test(source)) fail(`${relative} automates assertion/snapshot acceptance`);
+  if (/(?:execFileSync|spawnSync)[\s\S]{0,300}gwfjkpsoaoherntwhdyf[\s\S]{0,300}(?:push|reset|insert|update|delete|apply)/i.test(source)) fail(`${relative} contains a production mutation runner`);
+}
 if (process.exitCode) process.exit(process.exitCode);
 console.log("Invariant checks passed.");

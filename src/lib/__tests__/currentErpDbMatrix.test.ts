@@ -6,6 +6,7 @@ const fixture = read("pre-049.sql");
 const matrix = read("verify.sql");
 const runner = read("run-integration.sh");
 const workflow = fs.readFileSync(path.join(process.cwd(), ".github/workflows/product-verification.yml"), "utf8");
+const proofs = JSON.parse(fs.readFileSync(path.join(process.cwd(), "docs/engineering/PROOFS.json"), "utf8")).proofs;
 
 describe("Migration 049 disposable PostgreSQL matrix", () => {
   it("fixtures repeat identities, segment overlap, canonical ERP, and protected sentinels", () => {
@@ -28,8 +29,10 @@ describe("Migration 049 disposable PostgreSQL matrix", () => {
 
   it("runs the PostgreSQL 17 matrix before declaring the integration result", () => {
     expect(runner.indexOf("verify.sql")).toBeLessThan(runner.indexOf("result=PASS"));
-    expect(workflow).toContain("Fresh-apply Migration 049 and prove current ERP baseline invariants");
-    expect(workflow).toContain("scripts/field-business-erp-db/run-integration.sh");
-    expect(workflow).not.toContain("actions/upload-artifact@v4");
+    expect(proofs.find((proof: { id: string }) => proof.id === "erp-postgres")?.paths).toContain("scripts/field-business-erp-db/run-integration.sh");
+    expect(proofs.find((proof: { id: string }) => proof.id === "control-postgres-matrix")?.paths).toContain("scripts/field-business-erp-db/run-integration.sh");
+    expect(workflow).toContain("postgres:17.6-alpine");
+    expect(workflow).toContain("verify-affected.mjs --kind postgres --execute");
+    expect(workflow).toContain("zerograph-postgres");
   });
 });

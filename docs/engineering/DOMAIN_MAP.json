@@ -1,876 +1,595 @@
 {
-    "schemaVersion":  2,
-    "domains":  [
-                    {
-                        "id":  "auth",
-                        "aliases":  [
-
-                                    ],
-                        "riskFloor":  "R2",
-                        "riskEscalators":  [
-
-                                           ],
-                        "surfacePaths":  [
-                                             "src/app/login",
-                                             "src/app/onboarding",
-                                             "src/app/api/admin",
-                                             "src/app/api/push"
-                                         ],
-                        "codeRoots":  [
-                                          "src/context/AuthContext.tsx",
-                                          "src/app/login"
-                                      ],
-                        "serverBoundaries":  [
-
-                                             ],
-                        "contractPaths":  [
-                                              "docs/contracts/auth-session.md",
-                                              "docs/contracts/ROLE_MATRIX.md"
-                                          ],
-                        "authorityRefs":  [
-                                              "employee_identity"
-                                          ],
-                        "capabilityRefs":  [
-                                               "employee-import-identity"
-                                           ],
-                        "lessonRefs":  [
-                                           "AUTH_PROFILE_IDENTITY",
-                                           "SERVER_AUTHORIZATION"
-                                       ],
-                        "criticalTests":  [
-
-                                          ],
-                        "mustNotWriteAuthorityRefs":  [
-
-                                                      ]
-                    },
-                    {
-                        "id":  "attendance",
-                        "aliases":  [
-
-                                    ],
-                        "riskFloor":  "R2",
-                        "riskEscalators":  [
-
-                                           ],
-                        "surfacePaths":  [
-                                             "src/app/attendance",
-                                             "src/app/admin/attendance",
-                                             "src/app/api/attendance"
-                                         ],
-                        "codeRoots":  [
-                                          "src/lib/attendance",
-                                          "src/app/attendance"
-                                      ],
-                        "serverBoundaries":  [
-                                                 "src/app/api/attendance/confirm/route.ts"
-                                             ],
-                        "contractPaths":  [
-                                              "docs/contracts/attendance.md"
-                                          ],
-                        "authorityRefs":  [
-                                              "attendance"
-                                          ],
-                        "capabilityRefs":  [
-                                               "attendance-write-read-closure"
-                                           ],
-                        "lessonRefs":  [
-                                           "WRITE_READ_CLOSURE",
-                                           "OFFLINE_COMPATIBILITY",
-                                           "MEDIA_LIFECYCLE"
-                                       ],
-                        "criticalTests":  [
-                                              "src/lib/__tests__/attendanceAuthority.test.ts",
-                                              "e2e/attendance"
-                                          ],
-                        "mustNotWriteAuthorityRefs":  [
-
-                                                      ]
-                    },
-                    {
-                        "id":  "calls",
-                        "aliases":  [
-
-                                    ],
-                        "riskFloor":  "R2",
-                        "riskEscalators":  [
-
-                                           ],
-                        "surfacePaths":  [
-                                             "src/app/call-logs",
-                                             "src/app/api/call-logs"
-                                         ],
-                        "codeRoots":  [
-                                          "src/lib/callLogs",
-                                          "src/app/call-logs"
-                                      ],
-                        "serverBoundaries":  [
-                                                 "src/app/api/call-logs/confirm/route.ts"
-                                             ],
-                        "contractPaths":  [
-                                              "docs/contracts/calls.md"
-                                          ],
-                        "authorityRefs":  [
-                                              "call_history"
-                                          ],
-                        "capabilityRefs":  [
-                                               "canonical-call-confirmation"
-                                           ],
-                        "lessonRefs":  [
-                                           "WRITE_READ_CLOSURE",
-                                           "OFFLINE_COMPATIBILITY",
-                                           "OPTIONAL_FAILURE_ISOLATION"
-                                       ],
-                        "criticalTests":  [
-                                              "src/lib/__tests__/callLogContract.test.ts"
-                                          ],
-                        "mustNotWriteAuthorityRefs":  [
-
-                                                      ]
-                    },
-                    {
-                        "id":  "field-visits",
-                        "aliases":  [
-
-                                    ],
-                        "riskFloor":  "R2",
-                        "riskEscalators":  [
-
-                                           ],
-                        "surfacePaths":  [
-                                             "src/app/visits",
-                                             "src/app/api/field-visits",
-                                             "src/app/api/admin/visits",
-                                             "src/app/api/admin/export-visits",
-                                             "src/app/api/maintenance"
-                                         ],
-                        "codeRoots":  [
-                                          "src/lib/fieldVisits",
-                                          "src/app/visits",
-                                          "src/components/visits"
-                                      ],
-                        "serverBoundaries":  [
-                                                 "src/app/api/field-visits"
-                                             ],
-                        "contractPaths":  [
-                                              "docs/contracts/field-visits.md",
-                                              "docs/contracts/DATA_LIFECYCLE.md"
-                                          ],
-                        "authorityRefs":  [
-                                              "field_visit",
-                                              "field_visit_erp_observation",
-                                              "field_business_erp_baseline"
-                                          ],
-                        "capabilityRefs":  [
-                                               "canonical-field-visit-confirmation",
-                                               "field-visit-erp-intelligence",
-                                               "current-business-erp-intelligence"
-                                           ],
-                        "lessonRefs":  [
-                                           "ERP_AUTHORITIES",
-                                           "EXACT_COMPATIBILITY_CONTRACT",
-                                           "OFFLINE_COMPATIBILITY",
-                                           "MEDIA_LIFECYCLE",
-                                           "NO_FABRICATED_BACKFILL"
-                                       ],
-                        "criticalTests":  [
-                                              "src/lib/__tests__/fieldVisitZeroLossContract.test.ts",
-                                              "e2e/field-visits"
-                                          ],
-                        "mustNotWriteAuthorityRefs":  [
-
-                                                      ]
-                    },
-                    {
-                        "id":  "mappings",
-                        "aliases":  [
-
-                                    ],
-                        "riskFloor":  "R2",
-                        "riskEscalators":  [
-
-                                           ],
-                        "surfacePaths":  [
-                                             "src/app/mappings"
-                                         ],
-                        "codeRoots":  [
-                                          "src/app/mappings/page.tsx",
-                                          "src/lib/clientOptions.ts"
-                                      ],
-                        "serverBoundaries":  [
-
-                                             ],
-                        "contractPaths":  [
-                                              "docs/contracts/mappings.md"
-                                          ],
-                        "authorityRefs":  [
-                                              "mapping_request"
-                                          ],
-                        "capabilityRefs":  [
-                                               "mapping-standalone-persistence",
-                                               "canonical-client-suggestion-provider"
-                                           ],
-                        "lessonRefs":  [
-                                           "ONE_FACT_ONE_AUTHORITY",
-                                           "LABEL_NOT_AUTHORITY"
-                                       ],
-                        "criticalTests":  [
-                                              "src/lib/__tests__/mappingStandaloneContract.test.ts",
-                                              "e2e/mappings"
-                                          ],
-                        "mustNotWriteAuthorityRefs":  [
-
-                                                      ]
-                    },
-                    {
-                        "id":  "pipeline",
-                        "aliases":  [
-
-                                    ],
-                        "riskFloor":  "R2",
-                        "riskEscalators":  [
-
-                                           ],
-                        "surfacePaths":  [
-                                             "src/app/api/pipeline"
-                                         ],
-                        "codeRoots":  [
-                                          "src/lib/pipeline",
-                                          "src/app/onboarding"
-                                      ],
-                        "serverBoundaries":  [
-                                                 "src/app/api/pipeline/create/route.ts",
-                                                 "src/app/api/pipeline/transition/route.ts"
-                                             ],
-                        "contractPaths":  [
-                                              "docs/contracts/pipeline.md",
-                                              "docs/contracts/RESOURCE_BUDGET.md"
-                                          ],
-                        "authorityRefs":  [
-                                              "pipeline_lead",
-                                              "pipeline_stage"
-                                          ],
-                        "capabilityRefs":  [
-                                               "pipeline-create-lead-boundary",
-                                               "pipeline-authoritative-transition"
-                                           ],
-                        "lessonRefs":  [
-                                           "SERVER_AUTHORIZATION",
-                                           "ROOT_CAUSE_SHARED_FIX",
-                                           "RESOURCE_BOUNDS"
-                                       ],
-                        "criticalTests":  [
-                                              "src/lib/__tests__/pipeline/pipelineAuthority.test.ts",
-                                              "e2e/pipeline"
-                                          ],
-                        "mustNotWriteAuthorityRefs":  [
-
-                                                      ]
-                    },
-                    {
-                        "id":  "team-kpi",
-                        "aliases":  [
-
-                                    ],
-                        "riskFloor":  "R2",
-                        "riskEscalators":  [
-
-                                           ],
-                        "surfacePaths":  [
-                                             "src/app/manager/kpi",
-                                             "src/app/api/team-kpi"
-                                         ],
-                        "codeRoots":  [
-                                          "src/lib/teamKpi",
-                                          "src/app/manager/kpi"
-                                      ],
-                        "serverBoundaries":  [
-                                                 "src/app/api/team-kpi/route.ts"
-                                             ],
-                        "contractPaths":  [
-                                              "docs/contracts/team-kpi.md",
-                                              "docs/contracts/visual-intelligence.md"
-                                          ],
-                        "authorityRefs":  [
-                                              "attendance",
-                                              "field_visit"
-                                          ],
-                        "capabilityRefs":  [
-                                               "team-kpi-server-projection"
-                                           ],
-                        "lessonRefs":  [
-                                           "HONEST_VISUALIZATION",
-                                           "WRITE_READ_CLOSURE"
-                                       ],
-                        "criticalTests":  [
-                                              "src/lib/__tests__/teamKpiContract.test.ts"
-                                          ],
-                        "mustNotWriteAuthorityRefs":  [
-                                                          "attendance"
-                                                      ]
-                    },
-                    {
-                        "id":  "team-chat",
-                        "aliases":  [
-
-                                    ],
-                        "riskFloor":  "R1",
-                        "riskEscalators":  [
-
-                                           ],
-                        "surfacePaths":  [
-                                             "src/app/chat",
-                                             "src/app/api/chat"
-                                         ],
-                        "codeRoots":  [
-                                          "src/app/chat",
-                                          "src/lib/teamChat"
-                                      ],
-                        "serverBoundaries":  [
-
-                                             ],
-                        "contractPaths":  [
-                                              "docs/contracts/team-chat.md"
-                                          ],
-                        "authorityRefs":  [
-
-                                          ],
-                        "capabilityRefs":  [
-                                               "team-chat-boundary"
-                                           ],
-                        "lessonRefs":  [
-                                           "SERVER_AUTHORIZATION",
-                                           "MINIMUM_EXTERNAL_PROJECTION"
-                                       ],
-                        "criticalTests":  [
-                                              "src/lib/__tests__/teamChatContract.test.ts"
-                                          ],
-                        "mustNotWriteAuthorityRefs":  [
-
-                                                      ]
-                    },
-                    {
-                        "id":  "distributor-status",
-                        "aliases":  [
-
-                                    ],
-                        "riskFloor":  "R2",
-                        "riskEscalators":  [
-
-                                           ],
-                        "surfacePaths":  [
-                                             "src/app/payments/distributors",
-                                             "src/app/admin/payments/distributors",
-                                             "src/app/api/distributors/route.ts",
-                                             "src/app/api/distributors/[id]",
-                                             "src/app/api/distributors/commands",
-                                             "src/app/api/distributors/metrics"
-                                         ],
-                        "codeRoots":  [
-                                          "src/lib/distributors",
-                                          "src/components/distributors",
-                                          "src/components/analytics/ErpDistributionDonut.tsx"
-                                      ],
-                        "serverBoundaries":  [
-                                                 "src/app/api/distributors/commands/route.ts",
-                                                 "src/app/api/distributors/metrics/route.ts"
-                                             ],
-                        "contractPaths":  [
-                                              "docs/contracts/distributor-status.md",
-                                              "docs/contracts/RESOURCE_BUDGET.md"
-                                          ],
-                        "authorityRefs":  [
-                                              "distributor_account",
-                                              "distributor_erp_assignment",
-                                              "erp_system"
-                                          ],
-                        "capabilityRefs":  [
-                                               "distributor-command-boundary",
-                                               "distributor-renewal",
-                                               "distributor-erp-footprint"
-                                           ],
-                        "lessonRefs":  [
-                                           "ONE_FACT_ONE_AUTHORITY",
-                                           "ERP_AUTHORITIES",
-                                           "HONEST_VISUALIZATION",
-                                           "RESOURCE_BOUNDS"
-                                       ],
-                        "criticalTests":  [
-                                              "src/lib/__tests__/distributors/routeMatrix.test.ts",
-                                              "e2e/distributors"
-                                          ],
-                        "mustNotWriteAuthorityRefs":  [
-
-                                                      ]
-                    },
-                    {
-                        "id":  "receivables",
-                        "aliases":  [
-
-                                    ],
-                        "riskFloor":  "R3",
-                        "riskEscalators":  [
-
-                                           ],
-                        "surfacePaths":  [
-                         "src/app/payments/page.tsx",
-                         "src/app/admin/payments/page.tsx",
-                                             "src/app/api/receivables"
-                                         ],
-                        "codeRoots":  [
-                      "src/lib/receivables"
-                                      ],
-                        "serverBoundaries":  [
-                                                 "src/app/api/receivables/commands/route.ts"
-                                             ],
-                        "contractPaths":  [
-                                              "docs/contracts/receivables.md",
-                                              "docs/contracts/RESOURCE_BUDGET.md"
-                                          ],
-                        "authorityRefs":  [
-                                              "receivable",
-                                              "payment",
-                                              "distributor_receivable_link"
-                                          ],
-                        "capabilityRefs":  [
-                                               "receivables-command-boundary",
-                                               "receivables-money",
-                                               "canonical-distributor-receivables"
-                                           ],
-                        "lessonRefs":  [
-                                           "MONEY_TRUTH",
-                                           "POSTGRES_WIRE_NORMALIZATION",
-                                           "ATOMIC_BATCH"
-                                       ],
-                        "criticalTests":  [
-                                              "src/lib/__tests__/receivables/financialSqlContract.test.ts",
-                                              "e2e/receivables"
-                                          ],
-                        "mustNotWriteAuthorityRefs":  [
-
-                                                      ]
-                    },
-                    {
-                        "id":  "erp",
-                        "aliases":  [
-
-                                    ],
-                        "riskFloor":  "R3",
-                        "riskEscalators":  [
-
-                                           ],
-                        "surfacePaths":  [
-                                             "src/app/erp",
-                                             "src/app/api/erp-systems",
-                                             "src/app/api/admin/visits/erp-baselines",
-                                             "src/app/api/admin/visits/erp-analytics",
-                                             "src/app/api/field-visits/erp-options"
-                                         ],
-                        "codeRoots":  [
-                                          "src/lib/erp",
-                                          "src/components/analytics",
-                                          "src/components/visits/CurrentErpBaselineEditor.tsx"
-                                      ],
-                        "serverBoundaries":  [
-                                                 "src/app/api/erp-systems/route.ts",
-                                                 "src/app/api/admin/visits"
-                                             ],
-                        "contractPaths":  [
-                                              "docs/contracts/field-visits.md",
-                                              "docs/contracts/distributor-status.md"
-                                          ],
-                        "authorityRefs":  [
-                                              "erp_system",
-                                              "distributor_erp_assignment",
-                                              "field_visit_erp_observation",
-                                              "field_business_erp_baseline"
-                                          ],
-                        "capabilityRefs":  [
-                                               "erp-canonical-write-boundary",
-                                               "field-visit-erp-intelligence",
-                                               "current-business-erp-intelligence"
-                                           ],
-                        "lessonRefs":  [
-                                           "ERP_AUTHORITIES",
-                                           "ERP_CANONICAL_WRITE",
-                                           "NO_FABRICATED_BACKFILL",
-                                           "TRANSACTION_STAGING"
-                                       ],
-                        "criticalTests":  [
-                                              "src/lib/__tests__/fieldVisitErpIntelligence.test.ts"
-                                          ],
-                        "mustNotWriteAuthorityRefs":  [
-                                                          "renewal"
-                                                      ]
-                    },
-                    {
-                        "id":  "erp-partner",
-                        "aliases":  [
-
-                                    ],
-                        "riskFloor":  "R3",
-                        "riskEscalators":  [
-
-                                           ],
-                        "surfacePaths":  [
-                                             "src/app/api/erp-partner",
-                                             "src/app/api/admin/erp-partners"
-                                         ],
-                        "codeRoots":  [
-                                          "src/components/erpPartner",
-                                          "src/app/erp"
-                                      ],
-                        "serverBoundaries":  [
-                                                 "src/app/api/erp-partner/distributors/route.ts"
-                                             ],
-                        "contractPaths":  [
-                                              "docs/contracts/distributor-status.md",
-                                              "docs/contracts/ROLE_MATRIX.md"
-                                          ],
-                        "authorityRefs":  [
-                                              "erp_partner_scope",
-                                              "erp_system",
-                                              "distributor_erp_assignment"
-                                          ],
-                        "capabilityRefs":  [
-                                               "erp-partner-visibility"
-                                           ],
-                        "lessonRefs":  [
-                                           "SERVER_AUTHORIZATION",
-                                           "MINIMUM_EXTERNAL_PROJECTION",
-                                           "ERP_AUTHORITIES"
-                                       ],
-                        "criticalTests":  [
-                                              "src/lib/__tests__/erpVisibilityContract.test.ts"
-                                          ],
-                        "mustNotWriteAuthorityRefs":  [
-                                                          "renewal"
-                                                      ]
-                    },
-                    {
-                        "id":  "imports",
-                        "aliases":  [
-
-                                    ],
-                        "riskFloor":  "R3",
-                        "riskEscalators":  [
-
-                                           ],
-                        "surfacePaths":  [
-                                             "src/app/api/distributors/master-import",
-                                             "src/app/api/distributors/import"
-                                         ],
-                        "codeRoots":  [
-                                          "src/lib/distributorMaster",
-                                          "src/lib/distributors/import.ts"
-                                      ],
-                        "serverBoundaries":  [
-                                                 "src/app/api/distributors/master-import/route.ts"
-                                             ],
-                        "contractPaths":  [
-                                              "docs/contracts/distributor-status.md",
-                                              "docs/contracts/receivables.md"
-                                          ],
-                        "authorityRefs":  [
-                                              "unified_distributor_master_import_orchestration",
-                                              "employee_identity"
-                                          ],
-                        "capabilityRefs":  [
-                                               "unified-distributor-master-import",
-                                               "employee-import-identity"
-                                           ],
-                        "lessonRefs":  [
-                                           "ATOMIC_BATCH",
-                                           "SPREADSHEET_COMMIT",
-                                           "RESOLVED_PLAN_REVALIDATION",
-                                           "STABLE_IDENTITY",
-                                           "IMPORT_TEMPLATE_VERSION"
-                                       ],
-                        "criticalTests":  [
-                                              "src/lib/__tests__/distributorMaster/confirmation.test.ts",
-                                              "scripts/distributor-master-db/run-integration.sh"
-                                          ],
-                        "mustNotWriteAuthorityRefs":  [
-
-                                                      ]
-                    },
-                    {
-                        "id":  "renewals",
-                        "aliases":  [
-
-                                    ],
-                        "riskFloor":  "R2",
-                        "riskEscalators":  [
-
-                                           ],
-                        "surfacePaths":  [
-                                             "src/app/payments/renewals",
-                                             "src/app/admin/payments/renewals",
-                                             "src/app/api/distributors/renewals",
-                                             "src/app/api/erp-partner/renewals"
-                                         ],
-                        "codeRoots":  [
-                                          "src/components/distributors/PaymentRenewalsPage.tsx",
-                                          "src/app/payments/renewals"
-                                      ],
-                        "serverBoundaries":  [
-                                                 "src/app/api/distributors/renewals/route.ts"
-                                             ],
-                        "contractPaths":  [
-                                              "docs/contracts/distributor-status.md",
-                                              "docs/contracts/RESOURCE_BUDGET.md"
-                                          ],
-                        "authorityRefs":  [
-                                              "renewal",
-                                              "distributor_account"
-                                          ],
-                        "capabilityRefs":  [
-                                               "distributor-renewal"
-                                           ],
-                        "lessonRefs":  [
-                                           "ONE_FACT_ONE_AUTHORITY",
-                                           "RESOURCE_BOUNDS"
-                                       ],
-                        "criticalTests":  [
-                                              "src/lib/__tests__/distributors/routeMatrix.test.ts"
-                                          ],
-                        "mustNotWriteAuthorityRefs":  [
-
-                                                      ]
-                    },
-                    {
-                        "id":  "followups",
-                        "aliases":  [
-                                        "my-followups"
-                                    ],
-                        "riskFloor":  "R2",
-                        "riskEscalators":  [
-                                               "ANALYTICS"
-                                           ],
-                        "surfacePaths":  [
-                                             "src/app/api/my-day/payment-followups"
-                                         ],
-                        "codeRoots":  [
-                                          "src/lib/followUps.ts",
-                                          "src/lib/fieldVisits/paymentFollowUps.ts"
-                                      ],
-                        "serverBoundaries":  [
-                                                 "src/app/api/my-day/payment-followups/route.ts"
-                                             ],
-                        "contractPaths":  [
-                                              "docs/contracts/followups.md"
-                                          ],
-                        "authorityRefs":  [
-                                              "followup_projection"
-                                          ],
-                        "capabilityRefs":  [
-                                               "derived-followups"
-                                           ],
-                        "lessonRefs":  [
-                                           "ONE_FACT_ONE_AUTHORITY",
-                                           "WRITE_READ_CLOSURE"
-                                       ],
-                        "criticalTests":  [
-                                              "src/lib/__tests__/followUpContract.test.ts"
-                                          ],
-                        "mustNotWriteAuthorityRefs":  [
-                                                          "call_history",
-                                                          "field_visit",
-                                                          "receivable"
-                                                      ]
-                    },
-                    {
-                        "id":  "queries",
-                        "aliases":  [
-                                        "support",
-                                        "client-queries"
-                                    ],
-                        "riskFloor":  "R2",
-                        "riskEscalators":  [
-                                               "EXPORT"
-                                           ],
-                        "surfacePaths":  [
-                                             "src/app/support"
-                                         ],
-                        "codeRoots":  [
-                                          "src/lib/clientQueriesExport.ts"
-                                      ],
-                        "serverBoundaries":  [
-
-                                             ],
-                        "contractPaths":  [
-                                              "docs/contracts/queries.md"
-                                          ],
-                        "authorityRefs":  [
-                                              "client_query"
-                                          ],
-                        "capabilityRefs":  [
-                                               "query-resolution-export"
-                                           ],
-                        "lessonRefs":  [
-                                           "WRITE_READ_CLOSURE",
-                                           "SERVER_AUTHORIZATION"
-                                       ],
-                        "criticalTests":  [
-                                              "src/lib/__tests__/teamKpiLiveAggregation.test.ts"
-                                          ],
-                        "mustNotWriteAuthorityRefs":  [
-                                                          "pipeline_lead"
-                                                      ]
-                    },
-                    {
-                        "id":  "task-allocation",
-                        "aliases":  [
-                                        "city-allocation"
-                                    ],
-                        "riskFloor":  "R3",
-                        "riskEscalators":  [
-                                               "IMPORT",
-                                               "DATABASE"
-                                           ],
-                        "surfacePaths":  [
-                                             "src/app/manager/tasks",
-                                             "src/app/api/task-upload"
-                                         ],
-                        "codeRoots":  [
-                                          "src/components/TaskAllocationWorkspace.tsx",
-                                          "src/lib/taskAllocationApi.ts"
-                                      ],
-                        "serverBoundaries":  [
-                                                 "src/app/api/task-upload/route.ts"
-                                             ],
-                        "contractPaths":  [
-                                              "docs/contracts/queries.md"
-                                          ],
-                        "authorityRefs":  [
-                                              "task_allocation"
-                                          ],
-                        "capabilityRefs":  [
-                                               "task-allocation-batch-rpc"
-                                           ],
-                        "lessonRefs":  [
-                                           "ATOMIC_BATCH",
-                                           "STABLE_IDENTITY"
-                                       ],
-                        "criticalTests":  [
-                                              "src/lib/__tests__/taskAllocationValidation.test.ts"
-                                          ],
-                        "mustNotWriteAuthorityRefs":  [
-                                                          "pipeline_lead",
-                                                          "receivable"
-                                                      ]
-                    },
-                    {
-                        "id":  "my-day",
-                        "aliases":  [
-                                        "daily-orchestration"
-                                    ],
-                        "riskFloor":  "R2",
-                        "riskEscalators":  [
-                                               "ANALYTICS"
-                                           ],
-                        "surfacePaths":  [
-                                             "src/app/my-day",
-                                             "src/app/api/my-day"
-                                         ],
-                        "codeRoots":  [
-                                          "src/app/api/my-day"
-                                      ],
-                        "serverBoundaries":  [
-                                                 "src/app/api/my-day/daily-summary/route.ts"
-                                             ],
-                        "contractPaths":  [
-                                              "docs/contracts/followups.md"
-                                          ],
-                        "authorityRefs":  [
-                                              "my_day_projection"
-                                          ],
-                        "capabilityRefs":  [
-                                               "my-day-projection"
-                                           ],
-                        "lessonRefs":  [
-                                           "ONE_FACT_ONE_AUTHORITY",
-                                           "WRITE_READ_CLOSURE"
-                                       ],
-                        "criticalTests":  [
-                                              "src/lib/__tests__/followUpContract.test.ts"
-                                          ],
-                        "mustNotWriteAuthorityRefs":  [
-                                                          "receivable",
-                                                          "field_visit",
-                                                          "call_history"
-                                                      ]
-                    },
-                    {
-                        "id":  "shared-ui",
-                        "aliases":  [
-                                        "presentation"
-                                    ],
-                        "riskFloor":  "R0",
-                        "riskEscalators":  [
-
-                                           ],
-                        "surfacePaths":  [
-                                             "src/app/page.tsx",
-                                             "src/app/admin/page.tsx",
-                                             "src/app/admin/visits/page.tsx"
-                                         ],
-                        "codeRoots":  [
-                                          "src/app/globals.css",
-                                          "src/app/layout.tsx"
-                                      ],
-                        "serverBoundaries":  [
-
-                                             ],
-                        "contractPaths":  [
-                                              "docs/contracts/auth-session.md"
-                                          ],
-                        "authorityRefs":  [
-
-                                          ],
-                        "capabilityRefs":  [
-
-                                           ],
-                        "lessonRefs":  [
-                                           "LABEL_NOT_AUTHORITY"
-                                       ],
-                        "criticalTests":  [
-                                              "src/lib/__tests__/adminVisitAndLayoutContract.test.ts"
-                                          ],
-                        "mustNotWriteAuthorityRefs":  [
-
-                                                      ]
-                    }
-                ],
-    "effectLessonRefs":  {
-                             "UI":  [
-                                        "LABEL_NOT_AUTHORITY"
-                                    ],
-                             "API":  [
-                                         "WRITE_READ_CLOSURE"
-                                     ],
-                             "DATABASE":  [
-                                              "MIGRATION_IMMUTABILITY",
-                                              "R3_RUNTIME_PROOF"
-                                          ],
-                             "AUTHORIZATION":  [
-                                                   "SERVER_AUTHORIZATION"
-                                               ],
-                             "OFFLINE":  [
-                                             "OFFLINE_COMPATIBILITY"
-                                         ],
-                             "IMPORT":  [
-                                            "ATOMIC_BATCH",
-                                            "SPREADSHEET_COMMIT"
-                                        ],
-                             "ANALYTICS":  [
-                                               "HONEST_VISUALIZATION"
-                                           ],
-                             "EXPORT":  [
-                                            "SPREADSHEET_COMMIT"
-                                        ],
-                             "SECURITY":  [
-                                              "SERVER_AUTHORIZATION"
-                                          ]
-                         }
+  "schemaVersion": 2,
+  "domains": [
+    {
+      "id": "platform-handover",
+      "aliases": [
+        "supabase handover",
+        "supabase migration",
+        "self-hosted supabase",
+        "platform migration",
+        "backend migration",
+        "auth migration",
+        "auth users jwt configuration",
+        "database restore",
+        "database dump storage objects",
+        "storage transfer",
+        "realtime migration",
+        "move postgres realtime",
+        "backend variables",
+        "vercel backend variables",
+        "rollback backend",
+        "rollback target writes",
+        "cutover",
+        "rehearsal",
+        "restore"
+      ],
+      "riskFloor": "R3",
+      "defaultEffects": ["PLATFORM"],
+      "riskEscalators": [
+        "PLATFORM",
+        "DATABASE",
+        "AUTHORIZATION",
+        "SECURITY",
+        "STORAGE",
+        "REALTIME",
+        "CONFIGURATION"
+      ],
+      "surfacePaths": [],
+      "pathPatterns": [
+        "docs/handover/**",
+        "scripts/handover/**",
+        ".handover/**"
+      ],
+      "codeRoots": [],
+      "serverBoundaries": [],
+      "contractPaths": ["docs/engineering/PLATFORM_HANDOVER.md"],
+      "authorityRefs": ["platform_runtime_placement"],
+      "capabilityRefs": ["supabase-handover-certification"],
+      "lessonRefs": [
+        "PLATFORM_HANDOVER_SAFETY",
+        "PRODUCTION_DISCIPLINE",
+        "R3_RUNTIME_PROOF"
+      ],
+      "proofRefs": [],
+      "requiredProofKinds": ["handover"],
+      "criticalTests": [],
+      "mustNotWriteAuthorityRefs": [
+        "receivable",
+        "payment",
+        "pipeline_lead",
+        "call_history",
+        "field_visit",
+        "mapping_request"
+      ]
+    },
+    {
+      "id": "auth",
+      "aliases": ["employee authentication", "login authentication"],
+      "riskFloor": "R2",
+      "riskEscalators": [],
+      "surfacePaths": [
+        "src/app/login",
+        "src/app/onboarding",
+        "src/app/api/admin",
+        "src/app/api/push"
+      ],
+      "codeRoots": ["src/context/AuthContext.tsx", "src/app/login"],
+      "serverBoundaries": [],
+      "contractPaths": [
+        "docs/contracts/auth-session.md",
+        "docs/contracts/ROLE_MATRIX.md"
+      ],
+      "authorityRefs": ["employee_identity"],
+      "capabilityRefs": ["employee-import-identity"],
+      "lessonRefs": ["AUTH_PROFILE_IDENTITY", "SERVER_AUTHORIZATION"],
+      "criticalTests": [],
+      "mustNotWriteAuthorityRefs": []
+    },
+    {
+      "id": "attendance",
+      "aliases": [],
+      "riskFloor": "R2",
+      "riskEscalators": [],
+      "surfacePaths": [
+        "src/app/attendance",
+        "src/app/admin/attendance",
+        "src/app/api/attendance"
+      ],
+      "codeRoots": ["src/lib/attendance", "src/app/attendance"],
+      "serverBoundaries": ["src/app/api/attendance/confirm/route.ts"],
+      "contractPaths": ["docs/contracts/attendance.md"],
+      "authorityRefs": ["attendance"],
+      "capabilityRefs": ["attendance-write-read-closure"],
+      "lessonRefs": [
+        "WRITE_READ_CLOSURE",
+        "OFFLINE_COMPATIBILITY",
+        "MEDIA_LIFECYCLE"
+      ],
+      "criticalTests": [
+        "src/lib/__tests__/attendanceAuthority.test.ts",
+        "e2e/attendance"
+      ],
+      "mustNotWriteAuthorityRefs": []
+    },
+    {
+      "id": "calls",
+      "aliases": [],
+      "riskFloor": "R2",
+      "riskEscalators": [],
+      "surfacePaths": ["src/app/call-logs", "src/app/api/call-logs"],
+      "codeRoots": ["src/lib/callLogs", "src/app/call-logs"],
+      "serverBoundaries": ["src/app/api/call-logs/confirm/route.ts"],
+      "contractPaths": ["docs/contracts/calls.md"],
+      "authorityRefs": ["call_history"],
+      "capabilityRefs": ["canonical-call-confirmation"],
+      "lessonRefs": [
+        "WRITE_READ_CLOSURE",
+        "OFFLINE_COMPATIBILITY",
+        "OPTIONAL_FAILURE_ISOLATION"
+      ],
+      "criticalTests": ["src/lib/__tests__/callLogContract.test.ts"],
+      "mustNotWriteAuthorityRefs": []
+    },
+    {
+      "id": "field-visits",
+      "aliases": [],
+      "riskFloor": "R2",
+      "riskEscalators": [],
+      "surfacePaths": [
+        "src/app/visits",
+        "src/app/api/field-visits",
+        "src/app/api/admin/visits",
+        "src/app/api/admin/export-visits",
+        "src/app/api/maintenance"
+      ],
+      "codeRoots": [
+        "src/lib/fieldVisits",
+        "src/app/visits",
+        "src/components/visits"
+      ],
+      "serverBoundaries": ["src/app/api/field-visits"],
+      "contractPaths": [
+        "docs/contracts/field-visits.md",
+        "docs/contracts/DATA_LIFECYCLE.md"
+      ],
+      "authorityRefs": [
+        "field_visit",
+        "field_visit_erp_observation",
+        "field_business_erp_baseline"
+      ],
+      "capabilityRefs": [
+        "canonical-field-visit-confirmation",
+        "field-visit-erp-intelligence",
+        "current-business-erp-intelligence"
+      ],
+      "lessonRefs": [
+        "ERP_AUTHORITIES",
+        "EXACT_COMPATIBILITY_CONTRACT",
+        "OFFLINE_COMPATIBILITY",
+        "MEDIA_LIFECYCLE",
+        "NO_FABRICATED_BACKFILL"
+      ],
+      "criticalTests": [
+        "src/lib/__tests__/fieldVisitZeroLossContract.test.ts",
+        "e2e/field-visits"
+      ],
+      "mustNotWriteAuthorityRefs": []
+    },
+    {
+      "id": "mappings",
+      "aliases": [],
+      "riskFloor": "R2",
+      "riskEscalators": [],
+      "surfacePaths": ["src/app/mappings"],
+      "codeRoots": ["src/app/mappings/page.tsx", "src/lib/clientOptions.ts"],
+      "serverBoundaries": [],
+      "contractPaths": ["docs/contracts/mappings.md"],
+      "authorityRefs": ["mapping_request"],
+      "capabilityRefs": [
+        "mapping-standalone-persistence",
+        "canonical-client-suggestion-provider"
+      ],
+      "lessonRefs": [
+        "ONE_FACT_ONE_AUTHORITY",
+        "LABEL_NOT_AUTHORITY",
+        "WRITE_READ_CLOSURE",
+        "OFFLINE_COMPATIBILITY",
+        "OFFLINE_RECOVERY",
+        "STABLE_IDENTITY"
+      ],
+      "relevantEffects": ["UI", "OFFLINE", "EXPORT"],
+      "criticalTests": [
+        "src/lib/__tests__/mappingStandaloneContract.test.ts",
+        "e2e/mappings"
+      ],
+      "mustNotWriteAuthorityRefs": ["pipeline_lead"]
+    },
+    {
+      "id": "pipeline",
+      "aliases": [],
+      "riskFloor": "R2",
+      "riskEscalators": [],
+      "surfacePaths": ["src/app/api/pipeline"],
+      "codeRoots": ["src/lib/pipeline", "src/app/onboarding"],
+      "serverBoundaries": [
+        "src/app/api/pipeline/create/route.ts",
+        "src/app/api/pipeline/transition/route.ts"
+      ],
+      "contractPaths": [
+        "docs/contracts/pipeline.md",
+        "docs/contracts/RESOURCE_BUDGET.md"
+      ],
+      "authorityRefs": ["pipeline_lead", "pipeline_stage"],
+      "capabilityRefs": [
+        "pipeline-create-lead-boundary",
+        "pipeline-authoritative-transition"
+      ],
+      "lessonRefs": [
+        "SERVER_AUTHORIZATION",
+        "ROOT_CAUSE_SHARED_FIX",
+        "RESOURCE_BOUNDS"
+      ],
+      "criticalTests": [
+        "src/lib/__tests__/pipeline/pipelineAuthority.test.ts",
+        "e2e/pipeline"
+      ],
+      "mustNotWriteAuthorityRefs": []
+    },
+    {
+      "id": "team-kpi",
+      "aliases": [],
+      "riskFloor": "R2",
+      "riskEscalators": [],
+      "surfacePaths": ["src/app/manager/kpi", "src/app/api/team-kpi"],
+      "codeRoots": ["src/lib/teamKpi", "src/app/manager/kpi"],
+      "serverBoundaries": ["src/app/api/team-kpi/route.ts"],
+      "contractPaths": [
+        "docs/contracts/team-kpi.md",
+        "docs/contracts/visual-intelligence.md"
+      ],
+      "authorityRefs": ["attendance", "field_visit"],
+      "capabilityRefs": ["team-kpi-server-projection"],
+      "lessonRefs": ["HONEST_VISUALIZATION", "WRITE_READ_CLOSURE"],
+      "criticalTests": ["src/lib/__tests__/teamKpiContract.test.ts"],
+      "mustNotWriteAuthorityRefs": ["attendance"]
+    },
+    {
+      "id": "team-chat",
+      "aliases": [],
+      "riskFloor": "R1",
+      "riskEscalators": [],
+      "surfacePaths": ["src/app/chat", "src/app/api/chat"],
+      "codeRoots": ["src/app/chat", "src/lib/teamChat"],
+      "serverBoundaries": [],
+      "contractPaths": ["docs/contracts/team-chat.md"],
+      "authorityRefs": [],
+      "capabilityRefs": ["team-chat-boundary"],
+      "lessonRefs": ["SERVER_AUTHORIZATION", "MINIMUM_EXTERNAL_PROJECTION"],
+      "criticalTests": ["src/lib/__tests__/teamChatContract.test.ts"],
+      "mustNotWriteAuthorityRefs": []
+    },
+    {
+      "id": "distributor-status",
+      "aliases": [],
+      "riskFloor": "R2",
+      "riskEscalators": [],
+      "surfacePaths": [
+        "src/app/payments/distributors",
+        "src/app/admin/payments/distributors",
+        "src/app/api/distributors/route.ts",
+        "src/app/api/distributors/[id]",
+        "src/app/api/distributors/commands",
+        "src/app/api/distributors/metrics"
+      ],
+      "codeRoots": [
+        "src/lib/distributors",
+        "src/components/distributors",
+        "src/components/analytics/ErpDistributionDonut.tsx"
+      ],
+      "serverBoundaries": [
+        "src/app/api/distributors/commands/route.ts",
+        "src/app/api/distributors/metrics/route.ts"
+      ],
+      "contractPaths": [
+        "docs/contracts/distributor-status.md",
+        "docs/contracts/RESOURCE_BUDGET.md"
+      ],
+      "authorityRefs": [
+        "distributor_account",
+        "distributor_erp_assignment",
+        "erp_system"
+      ],
+      "capabilityRefs": [
+        "distributor-command-boundary",
+        "distributor-renewal",
+        "distributor-erp-footprint"
+      ],
+      "lessonRefs": [
+        "ONE_FACT_ONE_AUTHORITY",
+        "ERP_AUTHORITIES",
+        "HONEST_VISUALIZATION",
+        "RESOURCE_BOUNDS"
+      ],
+      "criticalTests": [
+        "src/lib/__tests__/distributors/routeMatrix.test.ts",
+        "e2e/distributors"
+      ],
+      "mustNotWriteAuthorityRefs": []
+    },
+    {
+      "id": "receivables",
+      "aliases": [],
+      "riskFloor": "R3",
+      "riskEscalators": [],
+      "surfacePaths": [
+        "src/app/payments/page.tsx",
+        "src/app/admin/payments/page.tsx",
+        "src/app/api/receivables"
+      ],
+      "codeRoots": ["src/lib/receivables"],
+      "serverBoundaries": ["src/app/api/receivables/commands/route.ts"],
+      "contractPaths": [
+        "docs/contracts/receivables.md",
+        "docs/contracts/RESOURCE_BUDGET.md"
+      ],
+      "authorityRefs": ["receivable", "payment", "distributor_receivable_link"],
+      "capabilityRefs": [
+        "receivables-command-boundary",
+        "receivables-money",
+        "canonical-distributor-receivables"
+      ],
+      "lessonRefs": [
+        "MONEY_TRUTH",
+        "POSTGRES_WIRE_NORMALIZATION",
+        "ATOMIC_BATCH"
+      ],
+      "criticalTests": [
+        "src/lib/__tests__/receivables/financialSqlContract.test.ts",
+        "e2e/receivables"
+      ],
+      "mustNotWriteAuthorityRefs": []
+    },
+    {
+      "id": "erp",
+      "aliases": [],
+      "riskFloor": "R3",
+      "riskEscalators": [],
+      "surfacePaths": [
+        "src/app/erp",
+        "src/app/api/erp-systems",
+        "src/app/api/admin/visits/erp-baselines",
+        "src/app/api/admin/visits/erp-analytics",
+        "src/app/api/field-visits/erp-options"
+      ],
+      "codeRoots": [
+        "src/lib/erp",
+        "src/components/analytics",
+        "src/components/visits/CurrentErpBaselineEditor.tsx"
+      ],
+      "serverBoundaries": [
+        "src/app/api/erp-systems/route.ts",
+        "src/app/api/admin/visits"
+      ],
+      "contractPaths": [
+        "docs/contracts/field-visits.md",
+        "docs/contracts/distributor-status.md"
+      ],
+      "authorityRefs": [
+        "erp_system",
+        "distributor_erp_assignment",
+        "field_visit_erp_observation",
+        "field_business_erp_baseline"
+      ],
+      "capabilityRefs": [
+        "erp-canonical-write-boundary",
+        "field-visit-erp-intelligence",
+        "current-business-erp-intelligence"
+      ],
+      "lessonRefs": [
+        "ERP_AUTHORITIES",
+        "NO_FABRICATED_BACKFILL",
+        "TRANSACTION_STAGING",
+        "ERP_CANONICAL_WRITE"
+      ],
+      "criticalTests": ["src/lib/__tests__/fieldVisitErpIntelligence.test.ts"],
+      "mustNotWriteAuthorityRefs": ["renewal"]
+    },
+    {
+      "id": "erp-partner",
+      "aliases": [],
+      "riskFloor": "R3",
+      "riskEscalators": [],
+      "surfacePaths": [
+        "src/app/api/erp-partner",
+        "src/app/api/admin/erp-partners"
+      ],
+      "codeRoots": ["src/components/erpPartner", "src/app/erp"],
+      "serverBoundaries": ["src/app/api/erp-partner/distributors/route.ts"],
+      "contractPaths": [
+        "docs/contracts/distributor-status.md",
+        "docs/contracts/ROLE_MATRIX.md"
+      ],
+      "authorityRefs": [
+        "erp_partner_scope",
+        "erp_system",
+        "distributor_erp_assignment"
+      ],
+      "capabilityRefs": ["erp-partner-visibility"],
+      "lessonRefs": [
+        "SERVER_AUTHORIZATION",
+        "MINIMUM_EXTERNAL_PROJECTION",
+        "ERP_AUTHORITIES"
+      ],
+      "criticalTests": ["src/lib/__tests__/erpVisibilityContract.test.ts"],
+      "mustNotWriteAuthorityRefs": ["renewal"]
+    },
+    {
+      "id": "imports",
+      "aliases": [],
+      "riskFloor": "R3",
+      "riskEscalators": [],
+      "surfacePaths": [
+        "src/app/api/distributors/master-import",
+        "src/app/api/distributors/import"
+      ],
+      "codeRoots": [
+        "src/lib/distributorMaster",
+        "src/lib/distributors/import.ts"
+      ],
+      "serverBoundaries": ["src/app/api/distributors/master-import/route.ts"],
+      "contractPaths": [
+        "docs/contracts/distributor-status.md",
+        "docs/contracts/receivables.md"
+      ],
+      "authorityRefs": [
+        "unified_distributor_master_import_orchestration",
+        "employee_identity"
+      ],
+      "capabilityRefs": [
+        "unified-distributor-master-import",
+        "employee-import-identity"
+      ],
+      "lessonRefs": [
+        "ATOMIC_BATCH",
+        "SPREADSHEET_COMMIT",
+        "RESOLVED_PLAN_REVALIDATION",
+        "STABLE_IDENTITY",
+        "IMPORT_TEMPLATE_VERSION"
+      ],
+      "criticalTests": [
+        "src/lib/__tests__/distributorMaster/confirmation.test.ts",
+        "scripts/distributor-master-db/run-integration.sh"
+      ],
+      "mustNotWriteAuthorityRefs": []
+    },
+    {
+      "id": "renewals",
+      "aliases": [],
+      "riskFloor": "R2",
+      "riskEscalators": [],
+      "surfacePaths": [
+        "src/app/payments/renewals",
+        "src/app/admin/payments/renewals",
+        "src/app/api/distributors/renewals",
+        "src/app/api/erp-partner/renewals"
+      ],
+      "codeRoots": [
+        "src/components/distributors/PaymentRenewalsPage.tsx",
+        "src/app/payments/renewals"
+      ],
+      "serverBoundaries": ["src/app/api/distributors/renewals/route.ts"],
+      "contractPaths": [
+        "docs/contracts/distributor-status.md",
+        "docs/contracts/RESOURCE_BUDGET.md"
+      ],
+      "authorityRefs": ["renewal", "distributor_account"],
+      "capabilityRefs": ["distributor-renewal"],
+      "lessonRefs": ["ONE_FACT_ONE_AUTHORITY", "RESOURCE_BOUNDS"],
+      "criticalTests": ["src/lib/__tests__/distributors/routeMatrix.test.ts"],
+      "mustNotWriteAuthorityRefs": []
+    },
+    {
+      "id": "followups",
+      "aliases": ["my-followups"],
+      "riskFloor": "R2",
+      "riskEscalators": ["ANALYTICS"],
+      "surfacePaths": ["src/app/api/my-day/payment-followups"],
+      "codeRoots": [
+        "src/lib/followUps.ts",
+        "src/lib/fieldVisits/paymentFollowUps.ts"
+      ],
+      "serverBoundaries": ["src/app/api/my-day/payment-followups/route.ts"],
+      "contractPaths": ["docs/contracts/followups.md"],
+      "authorityRefs": ["followup_projection"],
+      "capabilityRefs": ["derived-followups"],
+      "lessonRefs": ["ONE_FACT_ONE_AUTHORITY", "WRITE_READ_CLOSURE"],
+      "criticalTests": ["src/lib/__tests__/followUpContract.test.ts"],
+      "mustNotWriteAuthorityRefs": ["call_history", "field_visit", "receivable"]
+    },
+    {
+      "id": "queries",
+      "aliases": ["support", "client-queries"],
+      "riskFloor": "R2",
+      "riskEscalators": ["EXPORT"],
+      "surfacePaths": ["src/app/support"],
+      "codeRoots": ["src/lib/clientQueriesExport.ts"],
+      "serverBoundaries": [],
+      "contractPaths": ["docs/contracts/queries.md"],
+      "authorityRefs": ["client_query"],
+      "capabilityRefs": ["query-resolution-export"],
+      "lessonRefs": ["WRITE_READ_CLOSURE", "SERVER_AUTHORIZATION"],
+      "criticalTests": ["src/lib/__tests__/teamKpiLiveAggregation.test.ts"],
+      "mustNotWriteAuthorityRefs": ["pipeline_lead"]
+    },
+    {
+      "id": "task-allocation",
+      "aliases": ["city-allocation"],
+      "riskFloor": "R3",
+      "riskEscalators": ["IMPORT", "DATABASE"],
+      "surfacePaths": ["src/app/manager/tasks", "src/app/api/task-upload"],
+      "codeRoots": [
+        "src/components/TaskAllocationWorkspace.tsx",
+        "src/lib/taskAllocationApi.ts"
+      ],
+      "serverBoundaries": ["src/app/api/task-upload/route.ts"],
+      "contractPaths": ["docs/contracts/queries.md"],
+      "authorityRefs": ["task_allocation"],
+      "capabilityRefs": ["task-allocation-batch-rpc"],
+      "lessonRefs": ["ATOMIC_BATCH", "STABLE_IDENTITY"],
+      "criticalTests": ["src/lib/__tests__/taskAllocationValidation.test.ts"],
+      "mustNotWriteAuthorityRefs": ["pipeline_lead", "receivable"]
+    },
+    {
+      "id": "my-day",
+      "aliases": ["daily-orchestration"],
+      "riskFloor": "R2",
+      "riskEscalators": ["ANALYTICS"],
+      "surfacePaths": ["src/app/my-day", "src/app/api/my-day"],
+      "codeRoots": ["src/app/api/my-day"],
+      "serverBoundaries": ["src/app/api/my-day/daily-summary/route.ts"],
+      "contractPaths": ["docs/contracts/followups.md"],
+      "authorityRefs": ["my_day_projection"],
+      "capabilityRefs": ["my-day-projection"],
+      "lessonRefs": ["ONE_FACT_ONE_AUTHORITY", "WRITE_READ_CLOSURE"],
+      "criticalTests": ["src/lib/__tests__/followUpContract.test.ts"],
+      "mustNotWriteAuthorityRefs": ["receivable", "field_visit", "call_history"]
+    },
+    {
+      "id": "shared-ui",
+      "aliases": ["presentation"],
+      "riskFloor": "R0",
+      "riskEscalators": [],
+      "surfacePaths": [
+        "src/app/page.tsx",
+        "src/app/admin/page.tsx",
+        "src/app/admin/visits/page.tsx"
+      ],
+      "codeRoots": ["src/app/globals.css", "src/app/layout.tsx"],
+      "serverBoundaries": [],
+      "contractPaths": ["docs/contracts/auth-session.md"],
+      "authorityRefs": [],
+      "capabilityRefs": [],
+      "lessonRefs": ["LABEL_NOT_AUTHORITY"],
+      "criticalTests": [
+        "src/lib/__tests__/adminVisitAndLayoutContract.test.ts"
+      ],
+      "mustNotWriteAuthorityRefs": []
+    }
+  ],
+  "effectLessonRefs": {
+    "UI": ["LABEL_NOT_AUTHORITY"],
+    "API": ["WRITE_READ_CLOSURE"],
+    "DATABASE": ["MIGRATION_IMMUTABILITY", "R3_RUNTIME_PROOF"],
+    "AUTHORIZATION": ["SERVER_AUTHORIZATION"],
+    "OFFLINE": ["OFFLINE_COMPATIBILITY"],
+    "IMPORT": ["ATOMIC_BATCH", "SPREADSHEET_COMMIT"],
+    "ANALYTICS": ["HONEST_VISUALIZATION"],
+    "EXPORT": ["SPREADSHEET_COMMIT"],
+    "SECURITY": ["SERVER_AUTHORIZATION"],
+    "PLATFORM": ["PLATFORM_HANDOVER_SAFETY"],
+    "STORAGE": ["PLATFORM_HANDOVER_SAFETY"],
+    "REALTIME": ["PLATFORM_HANDOVER_SAFETY"],
+    "CONFIGURATION": ["PLATFORM_HANDOVER_SAFETY"]
+  }
 }
