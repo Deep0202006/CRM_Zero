@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "approvalAuthority": "Owner",
+  "agentApprovalSynthesisProhibited": true,
+  "gates": [
+    {
+      "id": "G0",
+      "name": "SOURCE_READ_ONLY",
+      "status": "READ_ONLY_TOOLING_ALLOWED",
+      "allows": ["sanitized catalog, count and fingerprint inventory"],
+      "requires": ["verified source identity", "read-only database transaction"],
+      "prohibits": ["source schema mutation", "source data mutation", "dummy production data"]
+    },
+    {
+      "id": "G1",
+      "name": "OWNER_REHEARSAL_APPROVAL",
+      "status": "MANUAL_OWNER_EVIDENCE_REQUIRED",
+      "requiredBefore": ["target infrastructure mutation", "target service configuration", "rehearsal restore"]
+    },
+    {
+      "id": "G2",
+      "name": "PARITY_CERTIFIED",
+      "status": "NOT_RUN_UNTIL_REHEARSAL",
+      "requires": ["complete MUST_EQUAL evidence", "complete MUST_BE_COMPATIBLE evidence", "full Storage integrity"],
+      "grantsProductionAuthority": false
+    },
+    {
+      "id": "G3",
+      "name": "OWNER_CUTOVER_APPROVAL",
+      "status": "MANUAL_OWNER_EVIDENCE_REQUIRED",
+      "requiredBefore": ["Vercel Supabase environment mutation", "DNS mutation", "production routing", "target promotion"],
+      "permitsSourceDecommission": false
+    },
+    {
+      "id": "G4",
+      "name": "OWNER_SOURCE_DECOMMISSION",
+      "status": "MANUAL_OWNER_EVIDENCE_REQUIRED",
+      "requiredBefore": ["source pause", "source deletion", "source key rotation or disposal"],
+      "independentOf": "G3"
+    }
+  ]
+}

@@ -15,6 +15,7 @@ const countList = (args) => { const [, ...cliArgs] = supabaseArgv(args); const v
 const quote = (name) => `"${name.replaceAll('"', '""')}"`;
 
 const inventorySql = readFileSync(sqlFile, 'utf8').trim();
+const sourceAdvisorBaseline = JSON.parse(readFileSync(resolve(root, 'docs/handover/source-advisor-baseline.json'), 'utf8'));
 if (!/^begin read only;[\s\S]*commit;$/i.test(inventorySql)) throw new Error('HANDOVER_INVENTORY_NOT_READ_ONLY');
 const result = query(['--file', sqlFile]);
 const inventory = result.rows?.[0]?.inventory;
@@ -41,6 +42,7 @@ const manifest = {
   edgeFunctionCount: countList(['functions', 'list', '--project-ref', identity.expectedProjectRef, '--output', 'json']),
   edgeFunctionSecretCount: countList(['secrets', 'list', '--project-ref', identity.expectedProjectRef, '--output', 'json']),
   vaultSecretCount: Number(vault),
+  sourceAdvisorBaseline,
   freeTierBudget: { verifiedAt: '2026-08-24', database: { usedBytes: inventory.database.bytes, limitBytes: 500_000_000, classification: classifyBudget(inventory.database.bytes, 500_000_000) }, storage: { usedBytes: inventory.storage.objectBytes, limitBytes: 1_000_000_000, classification: classifyBudget(inventory.storage.objectBytes, 1_000_000_000) }, manualDashboardEvidence: ['egress', 'cachedEgress', 'realtimeMonthlyMessages', 'realtimeConnections'] },
   semantic: inventory.semantic,
   realtime: inventory.realtime,

@@ -41,7 +41,7 @@ export function supabaseArgv(args) {
 }
 
 export const classifyBudget = (used, limit) => used / limit < 0.5 ? 'GREEN' : used / limit <= 0.7 ? 'YELLOW' : 'RED';
-export const requiredCapabilities = ['postgresql17', 'apiGateway', 'auth', 'postgrest', 'realtime', 'storage', 'supavisor', 'backups', 'tlsEndpoints'];
+export const requiredCapabilities = ['postgresql17', 'apiGateway', 'auth', 'authConfiguration', 'postgrest', 'rpc', 'rlsGrantsRoles', 'realtime', 'storage', 's3Transfer', 'supavisor', 'pgCron', 'extensions', 'tlsEndpoints', 'backups', 'serviceConfiguration'];
 
 export function compareManifests(source, target) {
   if (!requiredCapabilities.every((key) => target.capabilities?.[key] === true)) return { status: 'TARGET_PLATFORM_INCOMPATIBLE', mismatches: requiredCapabilities.filter((key) => target.capabilities?.[key] !== true) };

@@ -5,7 +5,7 @@ import { resolve } from 'node:path';
 const root = process.cwd();
 const dir = resolve(root, '.handover');
 const sumFile = resolve(dir, 'SHA256SUMS');
-const artifacts = () => readdirSync(dir).filter((name) => name !== 'SHA256SUMS' && /^(?:source|target)-inventory\.json$|^(?:roles|schema|data|platform-policies)\.sql$|^(?:storage-transfer-manifest|comparison-report|dump-coverage)\.json$|^(?:storage-transfer)\.(?:tar|zip|json)$/i.test(name)).sort();
+const artifacts = () => readdirSync(dir).filter((name) => name !== 'SHA256SUMS' && /^(?:source|target)-inventory\.json$|^source-advisor-inventory\.json$|^(?:roles|schema|data|platform-policies)\.sql$|^(?:storage-transfer-manifest|comparison-report|dump-coverage)\.json$|^(?:storage-transfer)\.(?:tar|zip|json)$/i.test(name)).sort();
 const line = (name) => `${createHash('sha256').update(readFileSync(resolve(dir, name))).digest('hex')}  ${name}`;
 
 if (process.argv.includes('--verify')) {
