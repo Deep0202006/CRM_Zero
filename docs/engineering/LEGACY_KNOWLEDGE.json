@@ -2,11 +2,11 @@
   "schemaVersion": 2,
   "generatedFrom": "git rev-list --objects --all + targeted filesystem scan",
   "summary": {
-    "sourceBlobCount": 1167,
+    "sourceBlobCount": 1202,
     "filesystemGovernanceSources": 57,
     "ledgerVersionCount": 22,
     "rawLessonRowCount": 236,
-    "uniqueNormalizedRules": 343,
+    "uniqueNormalizedRules": 345,
     "knowledgeUsedWithoutSemantics": 0,
     "parserFamilies": [
       "ledger",
@@ -59,6 +59,7 @@
     "060c4e77e474a6f694742d0119bdb5f2de64bbe2",
     "066016546fb104b1a83d2887d5d4a73f47432733",
     "066c1d1b302176ff84126d3cfefaf722acf35bf1",
+    "067b271c496edb00b6136f51e5ed9f6c7157e0bc",
     "068ac4fe54bcb46572295d48263b11bd38fcde18",
     "06995cc419430fd80e59b42ec6dec98aae99f536",
     "06a3d6e52c5b86b23e1dc9d69e2eec4fbf2fb8d8",
@@ -79,6 +80,8 @@
     "08da1632f85b4239186f3b6d80d0bbd5954132ca",
     "0936b08c4cbcc5f2e2e5760efde37b47e3f03ba9",
     "094ba668fabbaddc72c8ec8ae6233428b0ba3c07",
+    "09b16430bbe5c5455b51875111c5619cbec92d089803fe73f618a019b431af3b",
+    "09f580ec84951343871bd70b622b37f7fae32fbc",
     "0a453a43a8ac9e7c5c5977d5aa8604e8e9d87bce",
     "0a65407d42ae559e2c5919fbe56c3430f1dbb059",
     "0a840ebea01fe9bf20ae1dd057ce1e2083be2db4",
@@ -152,9 +155,11 @@
     "1d3a025ddaadfd16a181ffb8abc0d7ef310e4bea",
     "1d5be0e6f47f0896ee831b53c56818850b1dcfe4",
     "1d888db0ce2171ebe372a06f8797c5aaca4a954e",
+    "1da0f035a8552059e116742b8d3cfaf3c73e354a",
     "1da1f8ed6ae419d80672d876948a3127c5e3e9e8",
     "1dd367ebe596a5b4a06a5cb1e6df073058d1ec8b",
     "1e5a1f5f17456bde340634c6a1e07119501ec1f6",
+    "1ed7fd26c832e82f5ceb50995d9d6c3b69c9fb0a",
     "1ee09804af4f75c73de8cf7a2661be8085d6d174",
     "1ef723c10997a08ef87940daceb08bf8d60dd810",
     "1f29a6ed8c1bb3f965e8c9dea5e509ceb01a2538",
@@ -166,7 +171,6 @@
     "20275df6666a458d4a8e8ba7d747a89d439bf8c9",
     "202a235894b1e241a2e27a384b42867f2b0f4f69",
     "202c1d5d1e1dade460757a82819c96901514d834",
-    "203750d8087640975bddd3dbca4cb16dfb351934ea200c09f0df4f68b3728fdd",
     "2051b711b0c01dc53f5fb5220ade09db75acd947",
     "209e08ad829c5193f25848c2748be6e92e737471",
     "20a32da8bb2576fa8b7b3edef4acb776e112ebb1",
@@ -177,6 +181,7 @@
     "21b2d6c22f1dd1f66edb13d465493508b27eb704",
     "21fb2f503e3d40683fa782b21abf05a8f0fef69b",
     "2248786075b302527380197d81c8a1e68428d205",
+    "22988751dfb362795878f5e00ab99a9fca919dbb",
     "22aa696f6337583ef88abed1f8a5349daa9ce0aa",
     "22ac0d668ba8f2a15c7f9416508d81727c5114e0",
     "22cf2fae6d23dd52e32f325818ae097c88b53f11",
@@ -184,6 +189,7 @@
     "230dbc2922f05bf272bf5168a958a12604fac1bc",
     "23403f675667a095adc48da1e26d245adc6c04000e67769d769e4e259bae0dea",
     "2341f8782c356d3d33d808283ee1d647889af6a7",
+    "234266f04e4adb70bf9814cbf5ae781e920c71eb",
     "237b3ec6232597343a2026a10be8b52f196b2752984d14cc282bce95ff87851e",
     "237dc2ad40b30deab47f7ac137c3d77ebcbb9742",
     "23856ec22adb76defc101b2cf980bd9fe93312b7",
@@ -293,9 +299,9 @@
     "397e15847fcaafe0862e4c0cb735c0d8bdffd102",
     "3993181972de7f44e7c92f766190057ce4fc2115",
     "399901854150c4048d5ac142dc389984e80ca908",
-    "3a1b4d969d3694a39c01f87efbefb91f6be29c4aa5c9624571631fee4ad59184",
     "3a64481a99fab0d7247c23df0a07c428c1c5f3da",
     "3aa1c2839ebc4a2b30a0921f36d73354520950ea",
+    "3aa83359f3644221374fbdcf7b2ade639d0e7cfb",
     "3ab652ac06e4a0ab156f186ddcb6f884b4fc218c",
     "3acf75a177d52f24cb67281c8b6277491fcdb27b",
     "3ad83c0403132efe15305d701f02c67d790e45e0",
@@ -304,6 +310,7 @@
     "3c0459a042d97c6e098c9d19064a95de695c67eb",
     "3c0805f5d6db1ee0d9567624a5b33159750fc672",
     "3c1d67adb8311a59d662380defd93053a1c2200b",
+    "3c3877ce50e2e7f8fa33cdc5132a440b3251468e",
     "3c427f4211f15b0d861c11f22a5e1a4b883e2ed6",
     "3c6e92f1123f8fe465c8b9f93db3208950a66ef5",
     "3c7c89d0294b78adfb3df4679ffc42b31a9b1efc",
@@ -344,6 +351,7 @@
     "42faa262a170d4166f5cc5b1d69c24066377299c",
     "430b5eab63e77f46cd4862f90a7863b1b01f8cb7",
     "435464f00aa85bc68543786b576f2f46fda656d7",
+    "435aa42e46b44e37a68b61edd4697196dc6cf30c",
     "435f575469537b1691964de611455e8bb7ba0a81",
     "43a97e133a3bea8638d12052e2ed3c2653801ad1",
     "43ca4d6b2bb302bca87b25ca451175a627b09c22",
@@ -449,6 +457,7 @@
     "5c128a00e180bec4fad281486d3ca8c02dc67e7e",
     "5c62a8a5aed9ce4c69d90e33831532f0c7c74abf",
     "5c655ce785c65b9f80e0b462e501ceaeadd9128f",
+    "5cd6a5ed628de43cf7fe55856ae88cf504a46402",
     "5cdb51e81ce7f4f5f7a2782e361ad98c3b35797a",
     "5cea4f9b8a94feedfa4c1b0ee346574a021a8ce4",
     "5cf7502e134ae3c2b5d3d50675ba2db61380f9ad",
@@ -477,6 +486,7 @@
     "6062be4494c63c738484e72fc03027218e7bed9b",
     "60bc0ed88b6332072cd0034f7920a96ef3aae77b",
     "60de38148d088b3836444ff1b19c29374072357d",
+    "60e4800a8f06142fe94cf32065bb238d43e6d171068072053d79ea7fbbbff88e",
     "6100ef86382a53fb808643e90f1a496ac98e02cc",
     "612aa285d69a3c73da37e766a8da6de489c41a6d",
     "61537f4ffb11f8152c342951527adf87a7b95117",
@@ -487,6 +497,7 @@
     "620ace1039b4867c76ef6be8b1793c57fb6368a2",
     "621496e71cc4d96a900eeaa2693e226bc0ef577784872018dadaa9c157a4a9b0",
     "6232f672b3902a57e8bae0bfda16ccd1f767e8f2",
+    "623ee2a62ab324d52a7635f4b4f60a6fc50289ad",
     "62bd99980fb47858c15e68a4b7d2263cd525beb2",
     "62c5ba544dad101c1c21f7bbfee45948fd24a3ca",
     "63229629332cd0bf9b5d145630a3143bcafe09f9",
@@ -528,6 +539,7 @@
     "6c916a7f054dad1acf2d12f095d696630977b7d0",
     "6cd720272e7670780083034eb133e26ab574dc5c",
     "6ce77ef0c32ea412487ed3ce658f30e398c1e766",
+    "6d8756031819d8d3bd6575c64c5931646fb04254",
     "6d89a062c7c876b3e8fa92d50a8ff30cfb49d6a6",
     "6d8cbb2aeae8808fcc7c55d614f730f8c34f3201",
     "6dbe912582b8cbfc06a42c23ec763a524be1c9b4",
@@ -561,6 +573,7 @@
     "748499b8c7df694e3dd798c181a3d1ff89502a1f",
     "74a544611fae18b69fc94974298d3fdc7084816c",
     "74a7944112b742298da5675ea7a710b0a27b94d6c75f8e812dc0f7134ce3e645",
+    "74aaa49f3ef0804ae071597acbc95dab32a64bd5",
     "74ced5efd08f8b378d67188a61298151fc9cc48f",
     "75356911e6e13c1803e7beed9d500837473bd018",
     "7536a783d73e6da64f029d888ea4daf4d2f5e38a",
@@ -576,17 +589,21 @@
     "7656c17972ab6578f74d1a4546c27aa9482ea75c",
     "768176c869fea0e52957d8d7671eb3aba286d10f",
     "76cac5933ea792f90f7554d64c8ca49ee480ac0b",
+    "76e384180eb7b277caf49186a8b88f40087d4438",
     "7732af4ce8d3c0e0f43324737d80a16df3fe1fdd",
     "77df27da2cdb3aa2a09c83f7d335f386fb998a75",
+    "7825f9179ac37431083c490d80ec534a87ea229b",
     "782a8ea1f54c89edb9882eb3d1edaabea8aa95fa",
     "782a8eece89e63d56f6f5d0f19fa90986adcbf3c",
     "78a205aea3f20c393f6d531599a24b175d3fc2ff",
+    "78ecf31cf46428b371d2d10abb965e55e6611c6a",
     "790f2d7c5df5d5be61026e4f523b5d597aeb2d78",
     "7919bcebadb083ff4bfc38d7bee7563b088a2c5b",
     "79fd2efeba24544a7f66978d74ef9f948c4292c3",
     "7b8f39a0eaad834ae7131055b9ccfb6d2416b9fd",
     "7b97d09ea1652dd7a06595ed8a410374cb203854",
     "7bf9418ffc7f6f46a47a6abd5cdbcd4333d481df",
+    "7c13cdcbfc85fe070c3eeaf1aa91bd4e71834cee",
     "7c6ba7fd3443cf3585cd53bae959b8ce959b558fe9a8d3ed14c79b21cf8a5245",
     "7c7d61af46e62703941ffca904ad1b71e9b428f2",
     "7ca25dfabe89bd220df01f69b045e4862b1cd21b",
@@ -651,6 +668,7 @@
     "87fedd0ebb4c38d23123104fcec8b308b8821cbd3cd8edcb43d87bde90e82bf8",
     "8871fe471bb6d46cabfeb3a7a76354d8b2574a2f",
     "889c2d46e60a40b21432fd3b55a8ee0fe2873de0",
+    "88ae82b867c2d2f2790f6b636196329d3286c159",
     "88b22764dc4aa03971d0dfeb27128a79a702c2376cc1cf408b03c83a57110219",
     "88b4cf6337eb682f00f6e0aabd81964f5f14671f",
     "88d6bd319478c7b86b6f989b8cef60e7334f094d",
@@ -695,6 +713,7 @@
     "91d50dcef267834d731b38ee766387d37797bd3b",
     "921ae481608d090081160624a2776de892396477",
     "92525a71137cdd392c0515f7ec9d28de092bfae1",
+    "9305d270b3c82f547bcafec5f6fa5b9af48320b4",
     "933f1aa131b96a06f86e924d33b88150b435c543",
     "9357d90869f21d403b8add62a95e5f9c132b4fce",
     "93768543bc0829c5d6904d2cd7727f4311157539",
@@ -718,6 +737,7 @@
     "97ef2ab4e5d4753cf5a64ae0de34db200f80ff49",
     "9808c05723ded50a7327cfdb67b2c95bcc86756f",
     "982a2a4b54e3ca42f0c2fbf213ca1f3b818c3799",
+    "9841eb9611f18d7c829650968e2e51fb430805fe",
     "988e204449ef8147fa483d250b5ffd237d0dd72d",
     "98976ad020d541d251cc7e34802a13458ddc88e2",
     "98c1f325cffca34d886d676e047b52d3fbecd43f",
@@ -788,6 +808,7 @@
     "a4d96652ee92dd5eeb3166f4973e3e4e503167dc",
     "a57e20e6295fba1baa6a754741a823421304dbc1",
     "a5d4575d4394a02f722af6a940a3291a63a9aac1",
+    "a5d551c96723c672f760183c796a3de2a1047f7a",
     "a5e781d1e2d3b01a54eb45f05ad7247515048dd6",
     "a6a70d481c70ee3313a0c6f97293f6ddfc74bb30",
     "a6d7d81529ad93a5e14b14ddd4a52ee291bcca68",
@@ -818,11 +839,14 @@
     "ac135f6e107c321bdc30419b1539c29c1e277f70",
     "ac571fa0df98db787bf10bd2e98ddaa9c31d2511",
     "acc51b2af3bba218745372be5ac71e5a7eb2fdfa",
+    "ad947bfa2a8c04dd178a0cdb56fe315df28b29f5",
     "ade9ceecce63e4d7e3548645c6af7529dfc38490",
+    "adf2e058b53868ae234251d2edcf5d0cb47a131e",
     "ae045b7d0abd5024272585c4dac0dec87b5d54b0",
     "ae14bbf7fd1b17539e1c426481bb2e74f324803d",
     "ae480da3d25f47101649659d87163f279b215e4c",
     "af1eba2c2b3853d9ff9d68eece69429f739dda32",
+    "af3ab5d295814461570554d7150a96ce443d4da8",
     "af6a79a3b807c4b338266ea2fcca1e77518d3dec",
     "af82961f183f28a319aa92a7e98f813c9f2d59e5",
     "af88ab40f817cd6b94355b20b56b28b0ec88edcb",
@@ -840,6 +864,7 @@
     "b1a86e72a46068096bfb35eb51486866ccbaa70e",
     "b1d2b4a10535359316cfdddf1de5d7fd7331ba99",
     "b1d2e30c1ff0cc83d5d4e4e4f4fe5b1f4bd581e2",
+    "b1ec2c44e9383ffdce25098705bc0f59cfd9a501",
     "b1fdb8e130fb810f724248606819434066c3e8f2",
     "b25d988050f47982947e401ebd57394b5ed6b019",
     "b293869eb33def0942568b48ece28057427daa88",
@@ -848,6 +873,7 @@
     "b2d7a180d8e8f206bccc7d56764ab3bc8493af38",
     "b2ea12e57c882ef307daee1abaa7066429b4425f",
     "b2eaca9fde8f46001bea9961b8ed651d0f6f9e13",
+    "b309583389170bdb9846e982ccf6049c9df73c11",
     "b325d7a1078e79f6f77b34a8a60829b43d600723",
     "b366b1d3750a3c574074e16081092a64d39702f9",
     "b36ab64e3033fc79a22aff8a7e407f3c7f3b9bd1",
@@ -865,6 +891,7 @@
     "b6ae9bec2dbcb0b085e676b0508b48cb6fdd6fb7",
     "b6c747dd6096a2a1088e682f35b8b56c325fdeb8",
     "b6e546388d05b65ffbeb88c555490af768177100",
+    "b7462da34a72996cfd41d84d46f9f9ef6d78d8aa",
     "b7622befa2a05177e4d26e429ddb1944fefd497c",
     "b7b54b9f355ffffc85256555906536ea7ac842a4",
     "b89ed8ed2cb8ecf73fa49f1cda76cbd279a7b87e",
@@ -917,6 +944,7 @@
     "c29f4ef9541df363cb4e8c11ba87119578f5876a",
     "c2a8317357ffa2d7577db21a28f297cbac910441",
     "c2dbc3687e045c15d16f9ae1240f95a7670803a6",
+    "c2f35458780e53a18d9662150c66226d6d1aef24",
     "c34e7f26ad5a6da08c83f5d7354a6e67f41d8c55",
     "c3962e57f02a1f5bd1fc9719bd5fa0294b9b4c7f",
     "c40d9dedccbdc7270afe5d55be312f3d9f607d91",
@@ -935,6 +963,7 @@
     "c787b47a764e4e610d51c401dd285dbf9177d3b9",
     "c7b2321d1c35f21eed4ffcf35fd949f4ccde08e5",
     "c7fb46c01371e02f798d547431703200f425e60a",
+    "c8aac30d6d63b9e59d72f0995f994c2d7ae82b9b",
     "c95a5b3dacee3500e3cf8ae40b7c1dac5e604460",
     "c9cec2ff348126da800fde173cdbc05974b55815",
     "cad2d30c3fe03dae839ddd1b44b084a160a5de2e",
@@ -1100,6 +1129,7 @@
     "ebc92d6fa9600225bec69f4edbb70815ab311881",
     "ebee442e09ab01638dd8b83e9ad9e554d0f34df5",
     "ec1024f20674c750e1476fcefee99b57db8a2f21",
+    "ec25911c2cf10e92a68e16c79e5a68cae63c36e9",
     "ec2797889cd5016b1adca1db40565d8fd1815cb6",
     "ec3b845174a7315f2fb7b0d3c803590bcd4a0bbd",
     "ec4355edbceab2b047bdd26bd3688e9f024b16f7",
@@ -1114,6 +1144,7 @@
     "ee0d41c43ed850064a817e8bbcf0f9a7536f263d",
     "ee1696eb99481b300429d1acf712417a3fce7b17",
     "ee18beb0cfba2e027bc04a1752afeecb4b09e316",
+    "ee3454764694b66145213cb995c359a799e0a1da",
     "ee959442d4c851c6a2ac795d8989067f150806bd",
     "ee9686ebfbb0c6e2804d0ac806f6bb2654fca53d",
     "ee9f16fe04270d72cb4b788c2530a438d83cb84f",
@@ -1136,6 +1167,7 @@
     "f242e67fb4d75c4d54baa1abd88d7fdd8e564dcc",
     "f24ee35101f151b3ce3b9f4c168fe915d39e8482",
     "f2530de65a85e57e02f6d2da5ede58bc56c5c07c",
+    "f2bd0f2650dadecf84c041349041e40ef81dbe35",
     "f2d1d1bb9237555c9983109890c33e8cddab1dae",
     "f2f8ae0e6fe5f31a9dc940d2e47af2a259e4d574",
     "f3e16539ba668cba1805aa01065a4628721c4ef3",
@@ -1165,10 +1197,12 @@
     "f899fc92b51be84e5996a4357897cc0300f3b906",
     "f8a899616fb40b6a7c4a90d889fa8098e16386f5",
     "f8ac68ed49fe7c100973aa99874da5986ab36ade",
+    "f8cdeff02e8957223a56616ccd46377afa633bf8",
     "f92eb7347ec4f77dd8dbf464d63fcdf6a3459908",
     "f9b75930255000f656e9c837f3a7d2615425c68c",
     "f9f3317b51543f3c60736bc4f03bbd444b13daf4",
     "fa7f21f231d1526ec47ecbab2fe4b0bfe10cc4fd",
+    "fa9c681f3de1e07132343b6586717ef9b33d097e",
     "faf26ee6b2398cd709ebc3aa479cc0e8bab092c3",
     "faf38499b4c48d18414eb8a2e21251c48a27043a",
     "fb1ce73ce8602dba55034ba72a8bc1fcb8a9bf3c",
@@ -1181,6 +1215,7 @@
     "fc4c97b958cdc77355a7ade7c7149818be45e317",
     "fc89d6689062cdcbe2aef2136a18d0de601a3e8bc704f390f7f80e7845e4ba19",
     "fce50993951373d20fdce0aac3177e3d727d384c",
+    "fd8d5133a05684d65c8b1082f7425251ff278448",
     "fd8ff89919b488224da56ebcd4851cba654a06c6",
     "fddefdf04765df63e2a4f8de784ff243424416fe",
     "fde4b79f9542660e754dbc75749e2801c91f3f3d",
@@ -5062,6 +5097,12 @@
       "extractedRecordCount": 2
     },
     {
+      "blobHash": "1da0f035a8552059e116742b8d3cfaf3c73e354a",
+      "path": "AGENTS.md",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
       "blobHash": "320a6214591d2fc62ee4f64ca24a51f5b9f568d7",
       "path": "AGENTS.md",
       "classification": "SUPPORTING_EVIDENCE",
@@ -5117,6 +5158,12 @@
     },
     {
       "blobHash": "d44fad57c1c0fe17b8a2b4c322a97f672f4016bc",
+      "path": "AGENTS.md",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "dc778676ab7fe5f49fa2daba7b83383ae94bc42852912c254107a8cef0c3a528",
       "path": "AGENTS.md",
       "classification": "SUPPORTING_EVIDENCE",
       "extractedRecordCount": 0
@@ -5206,6 +5253,12 @@
       "extractedRecordCount": 0
     },
     {
+      "blobHash": "1ad3c903dca6ebe691164a2ce20ead6ddedb46d6cdeb00dc973ad5c7f32c8ee1",
+      "path": "docs/contracts/attendance.md",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
       "blobHash": "1da1f8ed6ae419d80672d876948a3127c5e3e9e8",
       "path": "docs/contracts/attendance.md",
       "classification": "SUPPORTING_EVIDENCE",
@@ -5254,6 +5307,12 @@
       "extractedRecordCount": 0
     },
     {
+      "blobHash": "d67c570d1e52e55570cf92554ce6ade2a2ecd636296e67bbbb00e29d111e0fdf",
+      "path": "docs/contracts/auth-session.md",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
       "blobHash": "10061670e9543efac488d644bb55ef6dc7347a9e",
       "path": "docs/contracts/calls.md",
       "classification": "SUPPORTING_EVIDENCE",
@@ -5267,6 +5326,12 @@
     },
     {
       "blobHash": "4c4d4860e0bfe1bf9af432590f945bfe628ee783",
+      "path": "docs/contracts/calls.md",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "94e291fa87d521e2e1cc4d9eac2d5d783642896726b98bf5215ee6218a25a313",
       "path": "docs/contracts/calls.md",
       "classification": "SUPPORTING_EVIDENCE",
       "extractedRecordCount": 0
@@ -5296,10 +5361,22 @@
       "extractedRecordCount": 0
     },
     {
+      "blobHash": "dcc09bc628ede1644f8a2cb40dab09601bbd3f4155e29a0187c08777d42fb369",
+      "path": "docs/contracts/DATA_LIFECYCLE.md",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
       "blobHash": "5d0bd68602270c6d6651bb093803e711f558c625",
       "path": "docs/contracts/distributor-status.md",
       "classification": "KNOWLEDGE_USED",
       "extractedRecordCount": 1
+    },
+    {
+      "blobHash": "8fa33914e96eb6f92e2050df7acef6e0802d6159edb7d340b3baa2935c6e2423",
+      "path": "docs/contracts/distributor-status.md",
+      "classification": "KNOWLEDGE_USED",
+      "extractedRecordCount": 4
     },
     {
       "blobHash": "95deeffa2bdfe0e3a3b848721ae49a0277c91423",
@@ -5344,6 +5421,12 @@
       "extractedRecordCount": 0
     },
     {
+      "blobHash": "943356e5f4ff4149aeaf018be37528ea6e855976590c21f43a536ce87b9ec548",
+      "path": "docs/contracts/field-visits.md",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
       "blobHash": "b658eba634ade5c51d3a80b7ae15bba90c0e04dc",
       "path": "docs/contracts/field-visits.md",
       "classification": "SUPPORTING_EVIDENCE",
@@ -5352,6 +5435,12 @@
     {
       "blobHash": "cad2d30c3fe03dae839ddd1b44b084a160a5de2e",
       "path": "docs/contracts/field-visits.md",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "4091e4c13f9086c7b9ca1315ce7ca7cedf0bf2518c1d98472cf82295f6960cd2",
+      "path": "docs/contracts/followups.md",
       "classification": "SUPPORTING_EVIDENCE",
       "extractedRecordCount": 0
     },
@@ -5374,10 +5463,22 @@
       "extractedRecordCount": 0
     },
     {
+      "blobHash": "5de8c12f06251c2137518a5ab078677543079f30182f91157410a702100eb277",
+      "path": "docs/contracts/mappings.md",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
       "blobHash": "8d12468e0d18cac19ac72eb786dc8f1d78307b29",
       "path": "docs/contracts/mappings.md",
       "classification": "SUPPORTING_EVIDENCE",
       "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "3814de331652fd31d8e943038dc962a96604d45fe5df4ec7ca56a8fd04d1f846",
+      "path": "docs/contracts/pipeline.md",
+      "classification": "KNOWLEDGE_USED",
+      "extractedRecordCount": 19
     },
     {
       "blobHash": "9d177c91e757afa8c72f920cf73b4e9e27fe5f14",
@@ -5422,6 +5523,12 @@
       "extractedRecordCount": 0
     },
     {
+      "blobHash": "7c6ba7fd3443cf3585cd53bae959b8ce959b558fe9a8d3ed14c79b21cf8a5245",
+      "path": "docs/contracts/queries.md",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
       "blobHash": "13ab785775613943882ae221e6344b4be93a51ad",
       "path": "docs/contracts/receivables.md",
       "classification": "KNOWLEDGE_USED",
@@ -5441,6 +5548,12 @@
     },
     {
       "blobHash": "7ff972953f7a9d8182bd268199db6a1fafb5f477",
+      "path": "docs/contracts/receivables.md",
+      "classification": "KNOWLEDGE_USED",
+      "extractedRecordCount": 7
+    },
+    {
+      "blobHash": "88b22764dc4aa03971d0dfeb27128a79a702c2376cc1cf408b03c83a57110219",
       "path": "docs/contracts/receivables.md",
       "classification": "KNOWLEDGE_USED",
       "extractedRecordCount": 7
@@ -5512,6 +5625,12 @@
       "extractedRecordCount": 5
     },
     {
+      "blobHash": "ba612394dc382c5c51770059f9b28de8d2d0d1f5768d34f359e1d0c4a5d07450",
+      "path": "docs/contracts/RESOURCE_BUDGET.md",
+      "classification": "KNOWLEDGE_USED",
+      "extractedRecordCount": 5
+    },
+    {
       "blobHash": "028af9450768c9d46f0ad19c48fbff7487965ca9",
       "path": "docs/contracts/ROLE_MATRIX.md",
       "classification": "SUPPORTING_EVIDENCE",
@@ -5530,16 +5649,40 @@
       "extractedRecordCount": 0
     },
     {
+      "blobHash": "fc17b6d7a0d93e9cabceb4ceee3b96648c0c59384460485155bde05e0ea88a26",
+      "path": "docs/contracts/ROLE_MATRIX.md",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "8741d7cb75f63fdc1706fde49c356a6a30b9a0376469ec02fed616321b830b02",
+      "path": "docs/contracts/team-chat.md",
+      "classification": "KNOWLEDGE_USED",
+      "extractedRecordCount": 5
+    },
+    {
       "blobHash": "a21da0c9513d4d9973d53bec677ec10fe1e793b4",
       "path": "docs/contracts/team-chat.md",
       "classification": "KNOWLEDGE_USED",
       "extractedRecordCount": 5
     },
     {
+      "blobHash": "358428663b61d22a0f63df5048b47de3d957f1daecf5184a814e644b53f64cd9",
+      "path": "docs/contracts/team-kpi.md",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
       "blobHash": "5ed62cb56cb00b398c86ddf2cfb9c1d8e65021d8",
       "path": "docs/contracts/team-kpi.md",
       "classification": "SUPPORTING_EVIDENCE",
       "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "393bf978e5ef672b672915d063ea90502e861aee34c60da390dd2da9778a28e6",
+      "path": "docs/contracts/visual-intelligence.md",
+      "classification": "KNOWLEDGE_USED",
+      "extractedRecordCount": 4
     },
     {
       "blobHash": "60bc0ed88b6332072cd0034f7920a96ef3aae77b",
@@ -5782,6 +5925,12 @@
       "extractedRecordCount": 1
     },
     {
+      "blobHash": "c5d1fc3e8db6b50264ee26c7470a62e516db5ecf7cf9b6e4d3662ceaafce6101",
+      "path": "docs/engineering/ARCHITECTURE.md",
+      "classification": "KNOWLEDGE_USED",
+      "extractedRecordCount": 1
+    },
+    {
       "blobHash": "eaa36d50cb5dc996da0438e59fc3ace4677382c9",
       "path": "docs/engineering/ARCHITECTURE.md",
       "classification": "KNOWLEDGE_USED",
@@ -5800,10 +5949,22 @@
       "extractedRecordCount": 3
     },
     {
+      "blobHash": "55d96bfa1704cdcadc48a32e7da6c7edc1d0a356630755dcc4784838c18d3970",
+      "path": "docs/engineering/AUTHORITIES.json",
+      "classification": "KNOWLEDGE_USED",
+      "extractedRecordCount": 3
+    },
+    {
       "blobHash": "eaf71b279d219ce93f45914cf04482e922be6a26",
       "path": "docs/engineering/AUTHORITIES.json",
       "classification": "KNOWLEDGE_USED",
       "extractedRecordCount": 2
+    },
+    {
+      "blobHash": "fd8d5133a05684d65c8b1082f7425251ff278448",
+      "path": "docs/engineering/AUTHORITIES.json",
+      "classification": "KNOWLEDGE_USED",
+      "extractedRecordCount": 3
     },
     {
       "blobHash": "0a65407d42ae559e2c5919fbe56c3430f1dbb059",
@@ -5824,6 +5985,36 @@
       "extractedRecordCount": 0
     },
     {
+      "blobHash": "5f594cd99720a68d0caaf69a416cb520877601f6ced8c3626704c253c6bff78b",
+      "path": "docs/engineering/CAPABILITIES.json",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "af3ab5d295814461570554d7150a96ce443d4da8",
+      "path": "docs/engineering/CAPABILITIES.json",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "3c3877ce50e2e7f8fa33cdc5132a440b3251468e",
+      "path": "docs/engineering/CLAIMS.json",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "74a7944112b742298da5675ea7a710b0a27b94d6c75f8e812dc0f7134ce3e645",
+      "path": "docs/engineering/CLAIMS.json",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "0454ad78b09dbece9c962cc1403339c8dd6fdab93ebd8183772f35d36e643a08",
+      "path": "docs/engineering/DOMAIN_MAP.json",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
       "blobHash": "27fd531f1f901f946c6ac7533037bcf8db8d921d",
       "path": "docs/engineering/DOMAIN_MAP.json",
       "classification": "SUPPORTING_EVIDENCE",
@@ -5837,6 +6028,12 @@
     },
     {
       "blobHash": "66ee64605f1cb77a215a9c3414e24a2fd6f74137",
+      "path": "docs/engineering/DOMAIN_MAP.json",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "88ae82b867c2d2f2790f6b636196329d3286c159",
       "path": "docs/engineering/DOMAIN_MAP.json",
       "classification": "SUPPORTING_EVIDENCE",
       "extractedRecordCount": 0
@@ -5872,7 +6069,31 @@
       "extractedRecordCount": 0
     },
     {
+      "blobHash": "e06487298ad1baa7051c5b48a1d5b3105ce0f134ec4979b6cb25c2149a2ea735",
+      "path": "docs/engineering/ENGINEERING_GOLDEN_CASES.json",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "ec25911c2cf10e92a68e16c79e5a68cae63c36e9",
+      "path": "docs/engineering/ENGINEERING_GOLDEN_CASES.json",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "59cc28b171710d2281cfefd7df1b22296be35bf017dcd746835b2ebe674e8495",
+      "path": "docs/engineering/INDEX.md",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
       "blobHash": "6ce77ef0c32ea412487ed3ce658f30e398c1e766",
+      "path": "docs/engineering/INDEX.md",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "78ecf31cf46428b371d2d10abb965e55e6611c6a",
       "path": "docs/engineering/INDEX.md",
       "classification": "SUPPORTING_EVIDENCE",
       "extractedRecordCount": 0
@@ -5896,10 +6117,34 @@
       "extractedRecordCount": 3
     },
     {
+      "blobHash": "4f508042c50c8e391689e0a9d3aba108afd00d64b17ea7a4492d2a5aabfc35a3",
+      "path": "docs/engineering/INVARIANTS.md",
+      "classification": "KNOWLEDGE_USED",
+      "extractedRecordCount": 3
+    },
+    {
+      "blobHash": "5cd6a5ed628de43cf7fe55856ae88cf504a46402",
+      "path": "docs/engineering/INVARIANTS.md",
+      "classification": "KNOWLEDGE_USED",
+      "extractedRecordCount": 3
+    },
+    {
       "blobHash": "ccd2028af5bdfad62ea60fb69331d0ea668f08d8",
       "path": "docs/engineering/INVARIANTS.md",
       "classification": "KNOWLEDGE_USED",
       "extractedRecordCount": 2
+    },
+    {
+      "blobHash": "09b16430bbe5c5455b51875111c5619cbec92d089803fe73f618a019b431af3b",
+      "path": "docs/engineering/LESSONS.json",
+      "classification": "KNOWLEDGE_USED",
+      "extractedRecordCount": 28
+    },
+    {
+      "blobHash": "09f580ec84951343871bd70b622b37f7fae32fbc",
+      "path": "docs/engineering/LESSONS.json",
+      "classification": "KNOWLEDGE_USED",
+      "extractedRecordCount": 28
     },
     {
       "blobHash": "202a235894b1e241a2e27a384b42867f2b0f4f69",
@@ -5956,7 +6201,19 @@
       "extractedRecordCount": 0
     },
     {
+      "blobHash": "cdea8cf544e7d334dc8bfa538bd2023fcc140c2f497bb599cb802363ea50933b",
+      "path": "docs/engineering/OS_V3_ACCEPTANCE.json",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
       "blobHash": "5737091ad7f3cb52d6cc1fa279fae69181b2f821",
+      "path": "docs/engineering/OS_V3_ACCEPTANCE.lock.json",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "a82c36bc1ee46acf9a7069119d5aff5e483f191bb3e3a639d715473594d9dec7",
       "path": "docs/engineering/OS_V3_ACCEPTANCE.lock.json",
       "classification": "SUPPORTING_EVIDENCE",
       "extractedRecordCount": 0
@@ -5964,6 +6221,24 @@
     {
       "blobHash": "b2c00b5cf65d107039b7c2f75d19ff9abc37dfe3",
       "path": "docs/engineering/OS_V3_ACCEPTANCE.lock.json",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "23403f675667a095adc48da1e26d245adc6c04000e67769d769e4e259bae0dea",
+      "path": "docs/engineering/PLATFORM_HANDOVER.md",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "a5d551c96723c672f760183c796a3de2a1047f7a",
+      "path": "docs/engineering/PLATFORM_HANDOVER.md",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "237b3ec6232597343a2026a10be8b52f196b2752984d14cc282bce95ff87851e",
+      "path": "docs/engineering/PROOFS.json",
       "classification": "SUPPORTING_EVIDENCE",
       "extractedRecordCount": 0
     },
@@ -5986,6 +6261,12 @@
       "extractedRecordCount": 0
     },
     {
+      "blobHash": "463458e912fe5cbbd96c5df8ff7a9cbf36bba332467deb9cf53075925d065c2a",
+      "path": "docs/engineering/WORKFLOW.md",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
       "blobHash": "9ddb994d0567f6f8339046924ff94b71a4e37cba",
       "path": "docs/engineering/WORKFLOW.md",
       "classification": "SUPPORTING_EVIDENCE",
@@ -5999,6 +6280,12 @@
     },
     {
       "blobHash": "a8a6d1cf02cb09f8a84ed292d68c030e94bd5db4",
+      "path": "docs/engineering/WORKFLOW.md",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "c2f35458780e53a18d9662150c66226d6d1aef24",
       "path": "docs/engineering/WORKFLOW.md",
       "classification": "SUPPORTING_EVIDENCE",
       "extractedRecordCount": 0
@@ -6664,348 +6951,6 @@
       "extractedRecordCount": 16
     },
     {
-      "blobHash": "dc778676ab7fe5f49fa2daba7b83383ae94bc42852912c254107a8cef0c3a528",
-      "path": "filesystem:AGENTS.md",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "1ad3c903dca6ebe691164a2ce20ead6ddedb46d6cdeb00dc973ad5c7f32c8ee1",
-      "path": "filesystem:docs/contracts/attendance.md",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "d67c570d1e52e55570cf92554ce6ade2a2ecd636296e67bbbb00e29d111e0fdf",
-      "path": "filesystem:docs/contracts/auth-session.md",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "94e291fa87d521e2e1cc4d9eac2d5d783642896726b98bf5215ee6218a25a313",
-      "path": "filesystem:docs/contracts/calls.md",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "dcc09bc628ede1644f8a2cb40dab09601bbd3f4155e29a0187c08777d42fb369",
-      "path": "filesystem:docs/contracts/DATA_LIFECYCLE.md",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "8fa33914e96eb6f92e2050df7acef6e0802d6159edb7d340b3baa2935c6e2423",
-      "path": "filesystem:docs/contracts/distributor-status.md",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "943356e5f4ff4149aeaf018be37528ea6e855976590c21f43a536ce87b9ec548",
-      "path": "filesystem:docs/contracts/field-visits.md",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "4091e4c13f9086c7b9ca1315ce7ca7cedf0bf2518c1d98472cf82295f6960cd2",
-      "path": "filesystem:docs/contracts/followups.md",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "5de8c12f06251c2137518a5ab078677543079f30182f91157410a702100eb277",
-      "path": "filesystem:docs/contracts/mappings.md",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "3814de331652fd31d8e943038dc962a96604d45fe5df4ec7ca56a8fd04d1f846",
-      "path": "filesystem:docs/contracts/pipeline.md",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "7c6ba7fd3443cf3585cd53bae959b8ce959b558fe9a8d3ed14c79b21cf8a5245",
-      "path": "filesystem:docs/contracts/queries.md",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "88b22764dc4aa03971d0dfeb27128a79a702c2376cc1cf408b03c83a57110219",
-      "path": "filesystem:docs/contracts/receivables.md",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "ba612394dc382c5c51770059f9b28de8d2d0d1f5768d34f359e1d0c4a5d07450",
-      "path": "filesystem:docs/contracts/RESOURCE_BUDGET.md",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "fc17b6d7a0d93e9cabceb4ceee3b96648c0c59384460485155bde05e0ea88a26",
-      "path": "filesystem:docs/contracts/ROLE_MATRIX.md",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "8741d7cb75f63fdc1706fde49c356a6a30b9a0376469ec02fed616321b830b02",
-      "path": "filesystem:docs/contracts/team-chat.md",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "358428663b61d22a0f63df5048b47de3d957f1daecf5184a814e644b53f64cd9",
-      "path": "filesystem:docs/contracts/team-kpi.md",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "393bf978e5ef672b672915d063ea90502e861aee34c60da390dd2da9778a28e6",
-      "path": "filesystem:docs/contracts/visual-intelligence.md",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "c5d1fc3e8db6b50264ee26c7470a62e516db5ecf7cf9b6e4d3662ceaafce6101",
-      "path": "filesystem:docs/engineering/ARCHITECTURE.md",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "55d96bfa1704cdcadc48a32e7da6c7edc1d0a356630755dcc4784838c18d3970",
-      "path": "filesystem:docs/engineering/AUTHORITIES.json",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "5f594cd99720a68d0caaf69a416cb520877601f6ced8c3626704c253c6bff78b",
-      "path": "filesystem:docs/engineering/CAPABILITIES.json",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "74a7944112b742298da5675ea7a710b0a27b94d6c75f8e812dc0f7134ce3e645",
-      "path": "filesystem:docs/engineering/CLAIMS.json",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "0454ad78b09dbece9c962cc1403339c8dd6fdab93ebd8183772f35d36e643a08",
-      "path": "filesystem:docs/engineering/DOMAIN_MAP.json",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "e06487298ad1baa7051c5b48a1d5b3105ce0f134ec4979b6cb25c2149a2ea735",
-      "path": "filesystem:docs/engineering/ENGINEERING_GOLDEN_CASES.json",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "59cc28b171710d2281cfefd7df1b22296be35bf017dcd746835b2ebe674e8495",
-      "path": "filesystem:docs/engineering/INDEX.md",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "4f508042c50c8e391689e0a9d3aba108afd00d64b17ea7a4492d2a5aabfc35a3",
-      "path": "filesystem:docs/engineering/INVARIANTS.md",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "203750d8087640975bddd3dbca4cb16dfb351934ea200c09f0df4f68b3728fdd",
-      "path": "filesystem:docs/engineering/LESSONS.json",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "cdea8cf544e7d334dc8bfa538bd2023fcc140c2f497bb599cb802363ea50933b",
-      "path": "filesystem:docs/engineering/OS_V3_ACCEPTANCE.json",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "a82c36bc1ee46acf9a7069119d5aff5e483f191bb3e3a639d715473594d9dec7",
-      "path": "filesystem:docs/engineering/OS_V3_ACCEPTANCE.lock.json",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "23403f675667a095adc48da1e26d245adc6c04000e67769d769e4e259bae0dea",
-      "path": "filesystem:docs/engineering/PLATFORM_HANDOVER.md",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "237b3ec6232597343a2026a10be8b52f196b2752984d14cc282bce95ff87851e",
-      "path": "filesystem:docs/engineering/PROOFS.json",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "463458e912fe5cbbd96c5df8ff7a9cbf36bba332467deb9cf53075925d065c2a",
-      "path": "filesystem:docs/engineering/WORKFLOW.md",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "7d90ce8b39680572d6b72fe16a43eb9612af6914e80a17d2b86b1a11ed7e28c4",
-      "path": "filesystem:scripts/engineering/context.mjs",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "e3ff009157ba225b68621c575b8ec6727c411e7bfb3e4fd8bbf3f6e747cdf01d",
-      "path": "filesystem:scripts/engineering/context.test.mjs",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "5e17fb5953fb6c3b3aee397db410b9c34e51180ca222c2a4bae3743ce0b8cf5a",
-      "path": "filesystem:scripts/engineering/engineering-eval.mjs",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "f51e264b58bba9824dacf69655f7c695891cdb9538337d634dcc8682e4b64f0d",
-      "path": "filesystem:scripts/engineering/graphify-impact.mjs",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "9079da8cc933c5b23938058cce82b1f2c31b20f747f50064c224277e923361ab",
-      "path": "filesystem:scripts/engineering/graphify-sync.mjs",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "e10aee5462d81465a114bef51026d6f2cd19ec3e4d8f7f0d896210ab55fbf80b",
-      "path": "filesystem:scripts/engineering/graphify-verify.mjs",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "c258384ae86a380b07798028eb8eeb1c5adad5d59a4104804069dc09ee6e93e2",
-      "path": "filesystem:scripts/engineering/hooks/post-tool.mjs",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "476df7af58e17ba3fde9b7ec5c55b6bd1e5d6dd161f7894c7be1289f22d135d6",
-      "path": "filesystem:scripts/engineering/hooks/pre-tool.mjs",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "4afbc3fe8ccdb3b4537e611af4558c1dbb690de280b1311f85016598a7e302df",
-      "path": "filesystem:scripts/engineering/hooks/session-start.mjs",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "f4c010e41ceac55b19a19aec828e970d0ef0c2fd762d05270711e605abc815ee",
-      "path": "filesystem:scripts/engineering/hooks/state.mjs",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "621496e71cc4d96a900eeaa2693e226bc0ef577784872018dadaa9c157a4a9b0",
-      "path": "filesystem:scripts/engineering/hooks/stop.mjs",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "bb615d2f620d5cf7daba3b3660f37916fc25cd0d833602b88570db2b0d31f9b2",
-      "path": "filesystem:scripts/engineering/hooks/user-prompt.mjs",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "004167dba479587b181947c50f85842589998f7503d0b48b74684e9ab67ec825",
-      "path": "filesystem:scripts/engineering/impact.mjs",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "87fedd0ebb4c38d23123104fcec8b308b8821cbd3cd8edcb43d87bde90e82bf8",
-      "path": "filesystem:scripts/engineering/learn-close.mjs",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "3a1b4d969d3694a39c01f87efbefb91f6be29c4aa5c9624571631fee4ad59184",
-      "path": "filesystem:scripts/engineering/legacy-ingest.mjs",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "d290f686f15b47a0106c53b1c5711d0ffe2d75ee6a075305e17b0f8e13eab54c",
-      "path": "filesystem:scripts/engineering/legacy-reconcile.mjs",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "903c141d8653ca392bb1d7d1f7769aecfb68f41d46b397213b21b8f1f558dc87",
-      "path": "filesystem:scripts/engineering/os-acceptance.mjs",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "99b95cc51621281726b4499fcd2b10548c031509178f07af577ea86a49ea61ee",
-      "path": "filesystem:scripts/engineering/os-bootstrap-test.mjs",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "4104f9d745c0aa8733d184e4b4b887c40269b4c5ee8d1bf745730530688bd3ca",
-      "path": "filesystem:scripts/engineering/proof-path.mjs",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "e03a92043ea880275244d7cc8711edae76f694f0eaebf4c9ef467ba52a39f3f4",
-      "path": "filesystem:scripts/engineering/proof-plan.mjs",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "57ba7ba351729564744079bfee61b61561a3a91223c4081291abc38eef1052a7",
-      "path": "filesystem:scripts/engineering/release-evidence.mjs",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "daa39dd3ca8cba2e7d50b8286b3f62a9f988a818a6b18d423dfb4271397933f6",
-      "path": "filesystem:scripts/engineering/repository-evidence.mjs",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "cb320d9545afb1f19f5d67d6c78cfb325dbb5cfb607f47a5c253cf66a3f12d14",
-      "path": "filesystem:scripts/engineering/semantic-graph.mjs",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "e9f04ad607ebbed73ca227cbfec546147336f1c47327320f902e4c504aafbf9b",
-      "path": "filesystem:scripts/engineering/task-close.mjs",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "fc89d6689062cdcbe2aef2136a18d0de601a3e8bc704f390f7f80e7845e4ba19",
-      "path": "filesystem:scripts/engineering/task-evidence.mjs",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
-      "blobHash": "6fbcad75b61795a2c485c14e70dd62434cc9d51b9c14abba40b9231d2be31f9d",
-      "path": "filesystem:scripts/engineering/verify-affected.mjs",
-      "classification": "NON_KNOWLEDGE",
-      "extractedRecordCount": 0
-    },
-    {
       "blobHash": "06995cc419430fd80e59b42ec6dec98aae99f536",
       "path": "scripts/engineering/context.mjs",
       "classification": "SUPPORTING_EVIDENCE",
@@ -7013,6 +6958,12 @@
     },
     {
       "blobHash": "6b0c1e285a9980bbbe5bacda8141f8c1b135116e",
+      "path": "scripts/engineering/context.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "7d90ce8b39680572d6b72fe16a43eb9612af6914e80a17d2b86b1a11ed7e28c4",
       "path": "scripts/engineering/context.mjs",
       "classification": "SUPPORTING_EVIDENCE",
       "extractedRecordCount": 0
@@ -7048,7 +6999,19 @@
       "extractedRecordCount": 0
     },
     {
+      "blobHash": "f8cdeff02e8957223a56616ccd46377afa633bf8",
+      "path": "scripts/engineering/context.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
       "blobHash": "043b9945f0f1e3050c4b6d0fa37d5a125c3102cc",
+      "path": "scripts/engineering/context.test.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "1ed7fd26c832e82f5ceb50995d9d6c3b69c9fb0a",
       "path": "scripts/engineering/context.test.mjs",
       "classification": "SUPPORTING_EVIDENCE",
       "extractedRecordCount": 0
@@ -7061,6 +7024,12 @@
     },
     {
       "blobHash": "49b273a5d10e1638e64064bb7357647838790077",
+      "path": "scripts/engineering/context.test.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "e3ff009157ba225b68621c575b8ec6727c411e7bfb3e4fd8bbf3f6e747cdf01d",
       "path": "scripts/engineering/context.test.mjs",
       "classification": "SUPPORTING_EVIDENCE",
       "extractedRecordCount": 0
@@ -7084,8 +7053,26 @@
       "extractedRecordCount": 0
     },
     {
+      "blobHash": "5e17fb5953fb6c3b3aee397db410b9c34e51180ca222c2a4bae3743ce0b8cf5a",
+      "path": "scripts/engineering/engineering-eval.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "c8aac30d6d63b9e59d72f0995f994c2d7ae82b9b",
+      "path": "scripts/engineering/engineering-eval.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
       "blobHash": "d393a2c002bc73477d1e9f683f587eb70115792e",
       "path": "scripts/engineering/engineering-eval.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "76e384180eb7b277caf49186a8b88f40087d4438",
+      "path": "scripts/engineering/graphify-impact.mjs",
       "classification": "SUPPORTING_EVIDENCE",
       "extractedRecordCount": 0
     },
@@ -7096,7 +7083,25 @@
       "extractedRecordCount": 0
     },
     {
+      "blobHash": "f51e264b58bba9824dacf69655f7c695891cdb9538337d634dcc8682e4b64f0d",
+      "path": "scripts/engineering/graphify-impact.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
       "blobHash": "7d20ef94e834e14a71db48acf3ac21f6a8dd9a25",
+      "path": "scripts/engineering/graphify-sync.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "9079da8cc933c5b23938058cce82b1f2c31b20f747f50064c224277e923361ab",
+      "path": "scripts/engineering/graphify-sync.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "b1ec2c44e9383ffdce25098705bc0f59cfd9a501",
       "path": "scripts/engineering/graphify-sync.mjs",
       "classification": "SUPPORTING_EVIDENCE",
       "extractedRecordCount": 0
@@ -7126,7 +7131,25 @@
       "extractedRecordCount": 0
     },
     {
+      "blobHash": "e10aee5462d81465a114bef51026d6f2cd19ec3e4d8f7f0d896210ab55fbf80b",
+      "path": "scripts/engineering/graphify-verify.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "adf2e058b53868ae234251d2edcf5d0cb47a131e",
+      "path": "scripts/engineering/hooks/post-tool.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
       "blobHash": "b67cf6573c215d34a1d30201c1da068cd62201cc",
+      "path": "scripts/engineering/hooks/post-tool.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "c258384ae86a380b07798028eb8eeb1c5adad5d59a4104804069dc09ee6e93e2",
       "path": "scripts/engineering/hooks/post-tool.mjs",
       "classification": "SUPPORTING_EVIDENCE",
       "extractedRecordCount": 0
@@ -7138,7 +7161,19 @@
       "extractedRecordCount": 0
     },
     {
+      "blobHash": "476df7af58e17ba3fde9b7ec5c55b6bd1e5d6dd161f7894c7be1289f22d135d6",
+      "path": "scripts/engineering/hooks/pre-tool.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
       "blobHash": "60de38148d088b3836444ff1b19c29374072357d",
+      "path": "scripts/engineering/hooks/pre-tool.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "9305d270b3c82f547bcafec5f6fa5b9af48320b4",
       "path": "scripts/engineering/hooks/pre-tool.mjs",
       "classification": "SUPPORTING_EVIDENCE",
       "extractedRecordCount": 0
@@ -7146,6 +7181,18 @@
     {
       "blobHash": "b6217b9aebcf37dccf316378549cb6bb0f374d72",
       "path": "scripts/engineering/hooks/pre-tool.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "4afbc3fe8ccdb3b4537e611af4558c1dbb690de280b1311f85016598a7e302df",
+      "path": "scripts/engineering/hooks/session-start.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "7825f9179ac37431083c490d80ec534a87ea229b",
+      "path": "scripts/engineering/hooks/session-start.mjs",
       "classification": "SUPPORTING_EVIDENCE",
       "extractedRecordCount": 0
     },
@@ -7162,7 +7209,31 @@
       "extractedRecordCount": 0
     },
     {
+      "blobHash": "74aaa49f3ef0804ae071597acbc95dab32a64bd5",
+      "path": "scripts/engineering/hooks/state.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "f4c010e41ceac55b19a19aec828e970d0ef0c2fd762d05270711e605abc815ee",
+      "path": "scripts/engineering/hooks/state.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
       "blobHash": "2a0b85c42ab65f680c68606e75ed43ec40b7a361",
+      "path": "scripts/engineering/hooks/stop.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "621496e71cc4d96a900eeaa2693e226bc0ef577784872018dadaa9c157a4a9b0",
+      "path": "scripts/engineering/hooks/stop.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "6d8756031819d8d3bd6575c64c5931646fb04254",
       "path": "scripts/engineering/hooks/stop.mjs",
       "classification": "SUPPORTING_EVIDENCE",
       "extractedRecordCount": 0
@@ -7180,6 +7251,18 @@
       "extractedRecordCount": 0
     },
     {
+      "blobHash": "9841eb9611f18d7c829650968e2e51fb430805fe",
+      "path": "scripts/engineering/hooks/user-prompt.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "bb615d2f620d5cf7daba3b3660f37916fc25cd0d833602b88570db2b0d31f9b2",
+      "path": "scripts/engineering/hooks/user-prompt.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
       "blobHash": "cddf494d05ca3f4731edf1eace1b12045f398893",
       "path": "scripts/engineering/hooks/user-prompt.mjs",
       "classification": "SUPPORTING_EVIDENCE",
@@ -7188,6 +7271,12 @@
     {
       "blobHash": "ed714426de2204abb271976b6d01563de9217430",
       "path": "scripts/engineering/hooks/user-prompt.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "004167dba479587b181947c50f85842589998f7503d0b48b74684e9ab67ec825",
+      "path": "scripts/engineering/impact.mjs",
       "classification": "SUPPORTING_EVIDENCE",
       "extractedRecordCount": 0
     },
@@ -7210,8 +7299,32 @@
       "extractedRecordCount": 0
     },
     {
+      "blobHash": "b309583389170bdb9846e982ccf6049c9df73c11",
+      "path": "scripts/engineering/impact.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "3aa83359f3644221374fbdcf7b2ade639d0e7cfb",
+      "path": "scripts/engineering/learn-close.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
       "blobHash": "822026e9fa03f1ffeef73b1576e1f13d0157463d",
       "path": "scripts/engineering/learn-close.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "87fedd0ebb4c38d23123104fcec8b308b8821cbd3cd8edcb43d87bde90e82bf8",
+      "path": "scripts/engineering/learn-close.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "60e4800a8f06142fe94cf32065bb238d43e6d171068072053d79ea7fbbbff88e",
+      "path": "scripts/engineering/legacy-ingest.mjs",
       "classification": "SUPPORTING_EVIDENCE",
       "extractedRecordCount": 0
     },
@@ -7222,7 +7335,25 @@
       "extractedRecordCount": 0
     },
     {
+      "blobHash": "f2bd0f2650dadecf84c041349041e40ef81dbe35",
+      "path": "scripts/engineering/legacy-ingest.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
       "blobHash": "4a24e0f4c1a2b0968199eaf3c4cce6848825c724",
+      "path": "scripts/engineering/legacy-reconcile.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "ad947bfa2a8c04dd178a0cdb56fe315df28b29f5",
+      "path": "scripts/engineering/legacy-reconcile.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "d290f686f15b47a0106c53b1c5711d0ffe2d75ee6a075305e17b0f8e13eab54c",
       "path": "scripts/engineering/legacy-reconcile.mjs",
       "classification": "SUPPORTING_EVIDENCE",
       "extractedRecordCount": 0
@@ -7235,6 +7366,18 @@
     },
     {
       "blobHash": "5720dda07e33d3f978eac27be691a071a9042785",
+      "path": "scripts/engineering/os-acceptance.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "623ee2a62ab324d52a7635f4b4f60a6fc50289ad",
+      "path": "scripts/engineering/os-acceptance.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "903c141d8653ca392bb1d7d1f7769aecfb68f41d46b397213b21b8f1f558dc87",
       "path": "scripts/engineering/os-acceptance.mjs",
       "classification": "SUPPORTING_EVIDENCE",
       "extractedRecordCount": 0
@@ -7264,7 +7407,37 @@
       "extractedRecordCount": 0
     },
     {
+      "blobHash": "99b95cc51621281726b4499fcd2b10548c031509178f07af577ea86a49ea61ee",
+      "path": "scripts/engineering/os-bootstrap-test.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "fa9c681f3de1e07132343b6586717ef9b33d097e",
+      "path": "scripts/engineering/os-bootstrap-test.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "4104f9d745c0aa8733d184e4b4b887c40269b4c5ee8d1bf745730530688bd3ca",
+      "path": "scripts/engineering/proof-path.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "ee3454764694b66145213cb995c359a799e0a1da",
+      "path": "scripts/engineering/proof-path.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
       "blobHash": "9b604905235950424ad2bbdc2a95dcdcb1ce3386",
+      "path": "scripts/engineering/proof-plan.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "b7462da34a72996cfd41d84d46f9f9ef6d78d8aa",
       "path": "scripts/engineering/proof-plan.mjs",
       "classification": "SUPPORTING_EVIDENCE",
       "extractedRecordCount": 0
@@ -7282,13 +7455,37 @@
       "extractedRecordCount": 0
     },
     {
+      "blobHash": "e03a92043ea880275244d7cc8711edae76f694f0eaebf4c9ef467ba52a39f3f4",
+      "path": "scripts/engineering/proof-plan.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "57ba7ba351729564744079bfee61b61561a3a91223c4081291abc38eef1052a7",
+      "path": "scripts/engineering/release-evidence.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
       "blobHash": "a85ef0caccc21403b14ed5aae44fe7faf37526b8",
       "path": "scripts/engineering/release-evidence.mjs",
       "classification": "SUPPORTING_EVIDENCE",
       "extractedRecordCount": 0
     },
     {
+      "blobHash": "435aa42e46b44e37a68b61edd4697196dc6cf30c",
+      "path": "scripts/engineering/repository-evidence.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
       "blobHash": "c3962e57f02a1f5bd1fc9719bd5fa0294b9b4c7f",
+      "path": "scripts/engineering/repository-evidence.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "daa39dd3ca8cba2e7d50b8286b3f62a9f988a818a6b18d423dfb4271397933f6",
       "path": "scripts/engineering/repository-evidence.mjs",
       "classification": "SUPPORTING_EVIDENCE",
       "extractedRecordCount": 0
@@ -7300,8 +7497,50 @@
       "extractedRecordCount": 0
     },
     {
+      "blobHash": "22988751dfb362795878f5e00ab99a9fca919dbb",
+      "path": "scripts/engineering/semantic-graph.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
       "blobHash": "73eb4f758a24a031084c2238327a698e2ae05e74",
       "path": "scripts/engineering/semantic-graph.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "cb320d9545afb1f19f5d67d6c78cfb325dbb5cfb607f47a5c253cf66a3f12d14",
+      "path": "scripts/engineering/semantic-graph.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "7c13cdcbfc85fe070c3eeaf1aa91bd4e71834cee",
+      "path": "scripts/engineering/task-close.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "e9f04ad607ebbed73ca227cbfec546147336f1c47327320f902e4c504aafbf9b",
+      "path": "scripts/engineering/task-close.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "234266f04e4adb70bf9814cbf5ae781e920c71eb",
+      "path": "scripts/engineering/task-evidence.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "fc89d6689062cdcbe2aef2136a18d0de601a3e8bc704f390f7f80e7845e4ba19",
+      "path": "scripts/engineering/task-evidence.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "067b271c496edb00b6136f51e5ed9f6c7157e0bc",
+      "path": "scripts/engineering/verify-affected.mjs",
       "classification": "SUPPORTING_EVIDENCE",
       "extractedRecordCount": 0
     },
@@ -7313,6 +7552,12 @@
     },
     {
       "blobHash": "66b9c8dcba125aa987b87070407f6affb6cc78fd",
+      "path": "scripts/engineering/verify-affected.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "6fbcad75b61795a2c485c14e70dd62434cc9d51b9c14abba40b9231d2be31f9d",
       "path": "scripts/engineering/verify-affected.mjs",
       "classification": "SUPPORTING_EVIDENCE",
       "extractedRecordCount": 0
@@ -8215,7 +8460,7 @@
       "normalizedRule": "Derived alerts do not create work rows unless explicitly approved.",
       "legacyId": "DERIVED_ALERTS_NOT_WORK",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "509ddcac6fd731df95bbb59bf7f604d0512d3ba1",
+      "sourceBlobHash": "09f580ec84951343871bd70b622b37f7fae32fbc",
       "ruleTextHash": "01f8ed59f1bd3df880c8e68a4481f04c03df624b2f9ff3e463e0f1d7f6b101d1",
       "claims": [
         "DERIVED_ALERTS_NOT_WRITES"
@@ -8560,7 +8805,7 @@
       "normalizedRule": "New ERP-contract visits require explicit erp or none.",
       "legacyId": "LEGACY_13a92cee5377799b",
       "sourceRef": "docs/engineering/AUTHORITIES.json",
-      "sourceBlobHash": "5224d29a3faf286aa8fbe91dfeaec850efbf8929",
+      "sourceBlobHash": "fd8d5133a05684d65c8b1082f7425251ff278448",
       "ruleTextHash": "13a92cee5377799bc17d406315e164ad736a101f44124105044fd3e0a9b53f1b",
       "claims": [
         "ERP_AUTHORITY_SEPARATION"
@@ -8577,7 +8822,7 @@
       "normalizedRule": "Call a failure pre-existing only when the same command fails on clean current main.",
       "legacyId": "PREEXISTING_FAILURE_PROOF",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "509ddcac6fd731df95bbb59bf7f604d0512d3ba1",
+      "sourceBlobHash": "09f580ec84951343871bd70b622b37f7fae32fbc",
       "ruleTextHash": "14540260559c5b794bbbfc249178fff42557a15c35199dcdfaa1aafd042b2ee0",
       "claims": [
         "BASELINE_FAILURE_ABLATION"
@@ -8591,7 +8836,7 @@
       "normalizedRule": "One business fact has one writable authority; readers do not create duplicate truth.",
       "legacyId": "ONE_FACT_ONE_AUTHORITY",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "509ddcac6fd731df95bbb59bf7f604d0512d3ba1",
+      "sourceBlobHash": "09f580ec84951343871bd70b622b37f7fae32fbc",
       "ruleTextHash": "146fb2c7e1c6875398677c149728836f49082bfac1fd7285b042c04ede65d7a0",
       "claims": [
         "ONE_FACT_ONE_AUTHORITY"
@@ -8621,7 +8866,7 @@
       "normalizedRule": "Preserve owner work, use a clean worktree, query Graphify before broad search, follow Ponytail minimum diff, and use one direct Codex. Diff is not progress; encode durable learning here, in a contract, or test.",
       "legacyId": "DIRECT_ENGINEERING",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "509ddcac6fd731df95bbb59bf7f604d0512d3ba1",
+      "sourceBlobHash": "09f580ec84951343871bd70b622b37f7fae32fbc",
       "ruleTextHash": "151a658368e4798abb4cb639b7ee99a84e89ca5b4045a36497567bdef061f54d",
       "claims": [
         "DIRECT_ENGINEERING"
@@ -8865,7 +9110,7 @@
       "normalizedRule": "Support current and previous payloads; terminal deterministic 4xx does not retry, uncertain outcomes retry with bounded backoff and the same ID.",
       "legacyId": "OFFLINE_COMPATIBILITY",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "509ddcac6fd731df95bbb59bf7f604d0512d3ba1",
+      "sourceBlobHash": "09f580ec84951343871bd70b622b37f7fae32fbc",
       "ruleTextHash": "1c9b68fab54f8ce8ca76d9cce66028bd7a701e7f6f42737cf1b800081ad6a783",
       "claims": [
         "OFFLINE_CONTRACT_COMPATIBILITY"
@@ -8945,7 +9190,7 @@
       "normalizedRule": "Do not ask a live coding-agent controller to rewrite its own execution engine; CRM has no coding-agent controller.",
       "legacyId": "NO_AUTONOMOUS_SELF_HOSTING",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "509ddcac6fd731df95bbb59bf7f604d0512d3ba1",
+      "sourceBlobHash": "09f580ec84951343871bd70b622b37f7fae32fbc",
       "ruleTextHash": "224eb994c7268b769574e8ed9739f8b6715e548048404cf166f72cd507c2630c",
       "claims": [
         "NO_AUTONOMOUS_CONTROLLER"
@@ -9119,7 +9364,7 @@
       "normalizedRule": "Never create or delete production test rows. Owner alone applies reviewed pure-PostgreSQL SQL; postcheck is read-only and deployment never authorizes mutation.",
       "legacyId": "PRODUCTION_DISCIPLINE",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "509ddcac6fd731df95bbb59bf7f604d0512d3ba1",
+      "sourceBlobHash": "09f580ec84951343871bd70b622b37f7fae32fbc",
       "ruleTextHash": "2de60ff4fb7adbc85992e50357f466680a2a9ca46d1df197e325dc928dc0adc1",
       "claims": [
         "NO_PRODUCTION_DUMMY_DATA",
@@ -9165,7 +9410,7 @@
       "normalizedRule": "Optional metrics or derived data cannot suppress valid authoritative history.",
       "legacyId": "OPTIONAL_FAILURE_ISOLATION",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "509ddcac6fd731df95bbb59bf7f604d0512d3ba1",
+      "sourceBlobHash": "09f580ec84951343871bd70b622b37f7fae32fbc",
       "ruleTextHash": "302da60c82fc60bc6f3163ddcb475467e31cb7d3190d3d45660fa98942398d28",
       "claims": [
         "OPTIONAL_FAILURE_ISOLATION"
@@ -9244,7 +9489,7 @@
       "normalizedRule": "Unknown historical optional facts remain NULL unless authoritative evidence explicitly supports backfill.",
       "legacyId": "NO_FABRICATED_BACKFILL",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "509ddcac6fd731df95bbb59bf7f604d0512d3ba1",
+      "sourceBlobHash": "09f580ec84951343871bd70b622b37f7fae32fbc",
       "ruleTextHash": "35315fa743a1a7737f50defd48fc36d5a27fe9b95e06c07346b85f760c00592b",
       "claims": [
         "ZERO_DATA_NO_FABRICATION"
@@ -9303,7 +9548,7 @@
       "normalizedRule": "Agent prose is a report, not proof; verify head, diff, CI, deployment, and required read-only facts independently.",
       "legacyId": "AGENT_REPORT_NOT_PROOF",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "509ddcac6fd731df95bbb59bf7f604d0512d3ba1",
+      "sourceBlobHash": "09f580ec84951343871bd70b622b37f7fae32fbc",
       "ruleTextHash": "3b1f889e63bcf83924e648f4f46296674bf43ffe6ecf4daf12ad5586f5e9e52e",
       "claims": [
         "AGENT_REPORT_NOT_PROOF"
@@ -9573,7 +9818,7 @@
       "normalizedRule": "Reconcile legitimate local intent and never clear durable recovery state merely to make a test pass.",
       "legacyId": "OFFLINE_RECOVERY",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "509ddcac6fd731df95bbb59bf7f604d0512d3ba1",
+      "sourceBlobHash": "09f580ec84951343871bd70b622b37f7fae32fbc",
       "ruleTextHash": "45fb27185a037fcb68a6de978f25f01fc6bea24c96d185065b16bec8844f2080",
       "claims": [
         "OFFLINE_RECOVERY_PRESERVES_INTENT"
@@ -9602,7 +9847,7 @@
       "normalizedRule": "One fact has one authority; cross-domain readers do not become writers.",
       "legacyId": "LEGACY_467701d575d48d33",
       "sourceRef": "docs/engineering/INVARIANTS.md",
-      "sourceBlobHash": "0f4fc3ad0c7d84b6ec11b7a6b255603becce4e6d",
+      "sourceBlobHash": "5cd6a5ed628de43cf7fe55856ae88cf504a46402",
       "ruleTextHash": "467701d575d48d332b2bd4741590b48a81c2d9f1ed96515f8f1aebd3832b6a9e",
       "claims": [
         "ONE_FACT_ONE_AUTHORITY"
@@ -9849,6 +10094,20 @@
       "severity": "NORMAL"
     },
     {
+      "normalizedRule": "Platform movement preserves business authority and requires independent source, target, Auth, Realtime, Storage, configuration, cutover, and rollback evidence.",
+      "legacyId": "PLATFORM_HANDOVER_SAFETY",
+      "sourceRef": "docs/engineering/LESSONS.json",
+      "sourceBlobHash": "09f580ec84951343871bd70b622b37f7fae32fbc",
+      "ruleTextHash": "54b50fa86a52496b664c3da2a0ce6d82bc4f485cb71a065348ac35b7895be9e8",
+      "claims": [
+        "PLATFORM_MIGRATION_PRESERVES_BUSINESS_AUTHORITY"
+      ],
+      "domains": [
+        "platform-handover"
+      ],
+      "severity": "NORMAL"
+    },
+    {
       "normalizedRule": "Never invent business policy to close a bug when the current contract already defines the requested flow.",
       "legacyId": "LEGACY_5531aa329a9e2537",
       "sourceRef": "docs/quality/GOLDEN_PRINCIPLES.md",
@@ -10039,7 +10298,7 @@
       "normalizedRule": "Lock outcome, user flow, authority, must-not-change, and risk before coding. A bug fix does not invent policy.",
       "legacyId": "LOCK_BEFORE_CHANGE",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "509ddcac6fd731df95bbb59bf7f604d0512d3ba1",
+      "sourceBlobHash": "09f580ec84951343871bd70b622b37f7fae32fbc",
       "ruleTextHash": "5da23ee88b15387f4e27cf659885b7e77334ee502c1fd40402eec7ca60bbe98f",
       "claims": [
         "LOCK_BEFORE_CHANGE"
@@ -10319,7 +10578,7 @@
       "normalizedRule": "Call a failure pre-existing only when it reproduces on clean current main. Exact-head proof expires after relevant head changes; reuse still-valid proof instead of rerunning gratuitously.",
       "legacyId": "EXACT_HEAD_RELEASE",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "509ddcac6fd731df95bbb59bf7f604d0512d3ba1",
+      "sourceBlobHash": "09f580ec84951343871bd70b622b37f7fae32fbc",
       "ruleTextHash": "6b232f6e11f2e11e2ca7324343ae2652232754295091c92c433922b8dccc37de",
       "claims": [
         "EXACT_HEAD_PROOF"
@@ -10627,7 +10886,7 @@
       "normalizedRule": "Applied migrations are immutable; correct forward only. CI must not contact production Supabase.",
       "legacyId": "MIGRATION_IMMUTABILITY",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "509ddcac6fd731df95bbb59bf7f604d0512d3ba1",
+      "sourceBlobHash": "09f580ec84951343871bd70b622b37f7fae32fbc",
       "ruleTextHash": "7d515798b8ee087da77bb7ba60387cf43b84899525acc579a03f226500eb02ae",
       "claims": [
         "APPLIED_MIGRATION_IMMUTABLE"
@@ -10711,7 +10970,7 @@
       "normalizedRule": "Business rows and temporary media lifecycle are separate; evidence failure cannot undo confirmed work. Delete exact storage keys, use terminal purged state, and retry partial cleanup idempotently.",
       "legacyId": "MEDIA_LIFECYCLE",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "509ddcac6fd731df95bbb59bf7f604d0512d3ba1",
+      "sourceBlobHash": "09f580ec84951343871bd70b622b37f7fae32fbc",
       "ruleTextHash": "803454c7e5c5d9266728426bedb121683e3d4fda5ec8550f8c503496b5abba96",
       "claims": [
         "MEDIA_LIFECYCLE"
@@ -10756,7 +11015,7 @@
       "normalizedRule": "Temporary transaction staging must tolerate repeated RPC invocation where the contract permits it.",
       "legacyId": "TRANSACTION_STAGING",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "509ddcac6fd731df95bbb59bf7f604d0512d3ba1",
+      "sourceBlobHash": "09f580ec84951343871bd70b622b37f7fae32fbc",
       "ruleTextHash": "820d654e036f4765a92d489a97b6b63c9987e2edccce62e25709666224e84f28",
       "claims": [
         "TRANSACTION_STAGING"
@@ -10803,7 +11062,7 @@
       "normalizedRule": "Retries preserve visit_id and cannot create a second Field Visit authority row.",
       "legacyId": "LEGACY_84de0dd935a9d7d5",
       "sourceRef": "docs/engineering/AUTHORITIES.json",
-      "sourceBlobHash": "5224d29a3faf286aa8fbe91dfeaec850efbf8929",
+      "sourceBlobHash": "fd8d5133a05684d65c8b1082f7425251ff278448",
       "ruleTextHash": "84de0dd935a9d7d5c21ccb22f9ff0bb7dad454fcbaf2a10ad769a25e4ff96c95",
       "claims": [
         "STABLE_RETRY_IDENTITY"
@@ -10899,7 +11158,7 @@
       "normalizedRule": "Privileged authorization and partner scope are server/database enforced; service-role and VAPID private keys never enter browser code.",
       "legacyId": "SERVER_AUTHORIZATION",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "509ddcac6fd731df95bbb59bf7f604d0512d3ba1",
+      "sourceBlobHash": "09f580ec84951343871bd70b622b37f7fae32fbc",
       "ruleTextHash": "88834c753717d7ac222729536e9ac1b9dc8a6b531a633bb6a1c0ce87a7ba3a16",
       "claims": [
         "AUTHZ_SERVER_ENFORCED",
@@ -11025,7 +11284,7 @@
       "normalizedRule": "Keep stable operation/business IDs across retry; use stable external identity, not display snapshots or fuzzy reconciliation.",
       "legacyId": "STABLE_IDENTITY",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "509ddcac6fd731df95bbb59bf7f604d0512d3ba1",
+      "sourceBlobHash": "09f580ec84951343871bd70b622b37f7fae32fbc",
       "ruleTextHash": "8be4ba02e9f30340ad57668985f4fb9e9ca9fc206276e8e0fef4613bc38a9675",
       "claims": [
         "STABLE_RETRY_IDENTITY"
@@ -11361,6 +11620,20 @@
       "domains": [
         "field-visits",
         "attendance"
+      ],
+      "severity": "NORMAL"
+    },
+    {
+      "normalizedRule": "Every implementation task preserves its baseline, binds proof to its current tree and plan, closes reusable learning, and cannot stop as successful while local work remains.",
+      "legacyId": "TASK_LIFECYCLE_ENFORCEMENT",
+      "sourceRef": "docs/engineering/LESSONS.json",
+      "sourceBlobHash": "09f580ec84951343871bd70b622b37f7fae32fbc",
+      "ruleTextHash": "9be9c89f3811d1a1aa6fae1e0304da92f1f0b791624dc9400fc36aaafb8a35ea",
+      "claims": [
+        "ACCEPTANCE_EVIDENCE_BINDING"
+      ],
+      "domains": [
+        "engineering-control"
       ],
       "severity": "NORMAL"
     },
@@ -11742,7 +12015,7 @@
       "normalizedRule": "If Graphify is unavailable use targeted search; if Ponytail hooks fail the root minimum-change policy remains active. Do not install infrastructure or rebuild a controller to continue delivery.",
       "legacyId": "TOOLING_DOES_NOT_BLOCK_DELIVERY",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "509ddcac6fd731df95bbb59bf7f604d0512d3ba1",
+      "sourceBlobHash": "09f580ec84951343871bd70b622b37f7fae32fbc",
       "ruleTextHash": "b6d9cd94e7ee0c1f2e7c26791ab6b89aa49136332375cb3b8c9bcfb2ba4fe2fb",
       "claims": [
         "TOOLING_OPTIONAL"
@@ -11871,7 +12144,7 @@
       "normalizedRule": "ERP directory, Distributor assignment, visit observation, and Admin current baseline are distinct; None is not Not captured and baseline never rewrites history.",
       "legacyId": "ERP_AUTHORITIES",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "509ddcac6fd731df95bbb59bf7f604d0512d3ba1",
+      "sourceBlobHash": "09f580ec84951343871bd70b622b37f7fae32fbc",
       "ruleTextHash": "bdc76b99d7aa4e438a78f79b0d47accea084da9c9b685727ad139c958f662236",
       "claims": [
         "ERP_AUTHORITY_SEPARATION"
@@ -11919,7 +12192,7 @@
       "normalizedRule": "Bounded rows do not justify quadratic accumulation; use set-based/indexed staging when scale requires it.",
       "legacyId": "BOUNDED_BATCH_SCALING",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "509ddcac6fd731df95bbb59bf7f604d0512d3ba1",
+      "sourceBlobHash": "09f580ec84951343871bd70b622b37f7fae32fbc",
       "ruleTextHash": "c18a4269732c9a974f27c1d79d28d8315b0532b31f50978eb30cbece4ce49be1",
       "claims": [
         "SET_BASED_BATCH_SCALING"
@@ -11962,7 +12235,7 @@
       "normalizedRule": "Proof belongs to one exact head/tree/plan hash; any head move invalidates the",
       "legacyId": "LEGACY_c240201dc8e5ad79",
       "sourceRef": "docs/engineering/INVARIANTS.md",
-      "sourceBlobHash": "0f4fc3ad0c7d84b6ec11b7a6b255603becce4e6d",
+      "sourceBlobHash": "5cd6a5ed628de43cf7fe55856ae88cf504a46402",
       "ruleTextHash": "c240201dc8e5ad79aaf29b6ac62cfd969b2164caf8ed68ca187c68063c898ade",
       "claims": [
         "EXACT_HEAD_PROOF",
@@ -12071,7 +12344,7 @@
       "normalizedRule": "External projections expose only minimum authorized data and require explicit authority for any cross-domain write.",
       "legacyId": "MINIMUM_EXTERNAL_PROJECTION",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "509ddcac6fd731df95bbb59bf7f604d0512d3ba1",
+      "sourceBlobHash": "09f580ec84951343871bd70b622b37f7fae32fbc",
       "ruleTextHash": "c7a6ee1a898feaead2689a23c1fbc9881eaf4c3d12d724ce27c80740ecb26063",
       "claims": [
         "EXTERNAL_DATA_MINIMIZATION"
@@ -12477,7 +12750,7 @@
       "normalizedRule": "Schema, RLS, auth, destructive, and foundational persistence changes require",
       "legacyId": "LEGACY_d56c6bf058168d3c",
       "sourceRef": "docs/engineering/INVARIANTS.md",
-      "sourceBlobHash": "0f4fc3ad0c7d84b6ec11b7a6b255603becce4e6d",
+      "sourceBlobHash": "5cd6a5ed628de43cf7fe55856ae88cf504a46402",
       "ruleTextHash": "d56c6bf058168d3ccf58d3ecae9e35c5524bafd424bc0d47253df2a385a14109",
       "claims": [
         "R3_DATABASE_RUNTIME_PROOF"
@@ -12699,7 +12972,7 @@
       "normalizedRule": "Committed counts and checkpoints are historical evidence only; current production claims need fresh read-only evidence.",
       "legacyId": "STATIC_SNAPSHOT_NOT_CURRENT_AUTHORITY",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "509ddcac6fd731df95bbb59bf7f604d0512d3ba1",
+      "sourceBlobHash": "09f580ec84951343871bd70b622b37f7fae32fbc",
       "ruleTextHash": "de17ffcc33762b84dc91bab3c52e17114994acd370e2d651bca2b0a26b98d5f6",
       "claims": [
         "CURRENT_SOURCE_OVERRIDES_SNAPSHOT"
@@ -12729,7 +13002,7 @@
       "normalizedRule": "Mapping never creates Leads/Pipeline facts",
       "legacyId": "LEGACY_e004bcf578e932b3",
       "sourceRef": "docs/engineering/AUTHORITIES.json",
-      "sourceBlobHash": "5224d29a3faf286aa8fbe91dfeaec850efbf8929",
+      "sourceBlobHash": "fd8d5133a05684d65c8b1082f7425251ff278448",
       "ruleTextHash": "e004bcf578e932b33f31ebbe1f078a2c764a077e132028f12713a2f3bd573649",
       "claims": [
         "ONE_FACT_ONE_AUTHORITY"
@@ -12785,7 +13058,7 @@
       "normalizedRule": "Owner applies reviewed SQL, then records a read-only postcheck; Git metadata alone is not production proof.",
       "legacyId": "OWNER_MIGRATION_CLOSEOUT",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "509ddcac6fd731df95bbb59bf7f604d0512d3ba1",
+      "sourceBlobHash": "09f580ec84951343871bd70b622b37f7fae32fbc",
       "ruleTextHash": "e44c9a7765d0b92ddad67a351f03b6fe708e3d0eae09c4774defc69e94caceeb",
       "claims": [
         "OWNER_MIGRATION_CERTIFICATION",
@@ -12926,7 +13199,7 @@
       "normalizedRule": "A PostgreSQL uuid identifier whose generator does not enforce RFC version/variant bits must use the project's canonical GUID-shape validator, not RFC-strict z.uuid(). Keep RFC-strict validation for identifiers whose generator guarantees RFC UUID semantics.",
       "legacyId": "POSTGRES_UUID_NOT_RFC_UUID",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "509ddcac6fd731df95bbb59bf7f604d0512d3ba1",
+      "sourceBlobHash": "09f580ec84951343871bd70b622b37f7fae32fbc",
       "ruleTextHash": "e94cdfcfa82b5e4a09980e53d6e6c83465185cd26b0fea5f9ded93226729d2cc",
       "claims": [
         "POSTGRES_UUID_NOT_RFC_UUID"
@@ -13092,7 +13365,7 @@
       "normalizedRule": "Receivables plus effective confirmed non-reversed payments are money truth; payment targets exact receivable_id and pending money never reduces outstanding.",
       "legacyId": "MONEY_TRUTH",
       "sourceRef": "docs/engineering/LESSONS.json",
-      "sourceBlobHash": "509ddcac6fd731df95bbb59bf7f604d0512d3ba1",
+      "sourceBlobHash": "09f580ec84951343871bd70b622b37f7fae32fbc",
       "ruleTextHash": "eca2f6feccca58025c02f82285388dc37a6df8eceae8107c0475af1a75b2b26e",
       "claims": [
         "FINANCIAL_STATE_DERIVED",

@@ -69,6 +69,7 @@
         "LEGACY_c7e90b5bb89c0779",
         "LEGACY_cbba5d3ed68ec587",
         "LEGACY_ccfb7bb6feacf122",
+        "TASK_LIFECYCLE_ENFORCEMENT",
         "TEST_1361c3030964",
         "TEST_16e024373277",
         "TEST_172baafc6135",
@@ -152,7 +153,8 @@
         "LEGACY_4d7fe69f44ddcb5f",
         "LEGACY_6a4666a073215390",
         "LEGACY_6d36ccf990ff843c",
-        "P0-045-V01-EA1217D-DB-PSQL-UNAVAILABLE"
+        "P0-045-V01-EA1217D-DB-PSQL-UNAVAILABLE",
+        "PLATFORM_HANDOVER_SAFETY"
       ],
       "loadByDefault": false
     },

@@ -133,6 +133,7 @@ const discovered = git("rev-list", "--objects", "--all")
   seen = new Map(),
   sources = [],
   records = [];
+let filesystemGovernanceSources = 0;
 const ingest = (item, content) => {
   if (excluded.test(item.path)) {
     sources.push({
@@ -206,13 +207,11 @@ const walk = (dir) => {
     }
     if (stat.isDirectory()) walk(full);
     else if (relevant.test(rel) && stat.size < 4 * 1024 * 1024) {
+      filesystemGovernanceSources++;
       const content = readFileSync(full),
         blobHash = hash(content);
       if (!seen.has(blobHash))
-        ingest(
-          { blobHash, path: `filesystem:${rel}` },
-          content.toString("utf8"),
-        );
+        ingest({ blobHash, path: rel }, content.toString("utf8"));
     }
   }
 };
@@ -297,9 +296,7 @@ const unique = [...byRule.values()],
   ),
   summary = {
     sourceBlobCount: new Set(sources.map((x) => x.blobHash)).size,
-    filesystemGovernanceSources: sources.filter((x) =>
-      x.path.startsWith("filesystem:"),
-    ).length,
+    filesystemGovernanceSources,
     ledgerVersionCount: ledgerBlobs.size,
     rawLessonRowCount: records.filter((x) =>
       /LESSONS_LEDGER\.md$/i.test(x.sourceRef),

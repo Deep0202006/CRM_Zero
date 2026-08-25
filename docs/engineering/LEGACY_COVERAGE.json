@@ -1,11 +1,11 @@
 {
   "schemaVersion": 4,
   "sourceSummary": {
-    "sourceBlobCount": 1167,
+    "sourceBlobCount": 1202,
     "filesystemGovernanceSources": 57,
     "ledgerVersionCount": 22,
     "rawLessonRowCount": 236,
-    "uniqueNormalizedRules": 343,
+    "uniqueNormalizedRules": 345,
     "knowledgeUsedWithoutSemantics": 0,
     "parserFamilies": [
       "ledger",
@@ -2444,6 +2444,27 @@
       "margin": 0.8363636363636364
     },
     {
+      "legacyId": "PLATFORM_HANDOVER_SAFETY",
+      "ruleTextHash": "54b50fa86a52496b664c3da2a0ce6d82bc4f485cb71a065348ac35b7895be9e8",
+      "status": "EXACT",
+      "targets": [
+        "PLATFORM_HANDOVER_SAFETY"
+      ],
+      "preservedClaims": [
+        "PLATFORM_MIGRATION_PRESERVES_BUSINESS_AUTHORITY"
+      ],
+      "enforcementRefs": [
+        "scripts/engineering/proof-plan.mjs"
+      ],
+      "evalRefs": [
+        "platform-handover"
+      ],
+      "reason": "Independent CLAIMS matcher semantics preserve this rule before lesson targets are selected.",
+      "severity": "NORMAL",
+      "confidence": 0.6821052631578949,
+      "margin": 0.12771929824561423
+    },
+    {
       "legacyId": "LEGACY_5531aa329a9e2537",
       "ruleTextHash": "5531aa329a9e253749c406a0425369a03d943499527cf539d340e3db698765f9",
       "status": "EXACT",
@@ -4640,6 +4661,27 @@
       "severity": "NORMAL",
       "confidence": 0.8333333333333334,
       "margin": 0.8333333333333334
+    },
+    {
+      "legacyId": "TASK_LIFECYCLE_ENFORCEMENT",
+      "ruleTextHash": "9be9c89f3811d1a1aa6fae1e0304da92f1f0b791624dc9400fc36aaafb8a35ea",
+      "status": "EXACT",
+      "targets": [
+        "TASK_LIFECYCLE_ENFORCEMENT"
+      ],
+      "preservedClaims": [
+        "ACCEPTANCE_EVIDENCE_BINDING"
+      ],
+      "enforcementRefs": [
+        "scripts/engineering/task-close.mjs"
+      ],
+      "evalRefs": [
+        "task-lifecycle-hardening"
+      ],
+      "reason": "Independent CLAIMS matcher semantics preserve this rule before lesson targets are selected.",
+      "severity": "NORMAL",
+      "confidence": 0.8166666666666668,
+      "margin": 0.31166666666666676
     },
     {
       "legacyId": "TEST_9d1e9dbfa927",
