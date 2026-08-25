@@ -129,6 +129,11 @@
         "NO_SECRETS_IN_HANDOVER_ARTIFACTS",
         "HANDOVER_ARTIFACT_CHECKSUM_REQUIRED",
         "CUTOVER_ENV_PARITY_REQUIRED",
+        "CLIENT_CUTOVER_RELOAD_REQUIRED",
+        "OFFLINE_QUEUE_CUTOVER_CONVERGENCE_REQUIRED",
+        "SOURCE_SNAPSHOT_BOUND",
+        "SOURCE_LATE_WRITE_RECONCILIATION_REQUIRED",
+        "SOURCE_ROLLBACK_AVAILABILITY_PLAN",
         "ROLLBACK_WRITE_RECONCILIATION_REQUIRED"
       ],
       "kind": "mechanical",
@@ -145,6 +150,9 @@
         "platform-auth-blocker",
         "platform-realtime-blocker",
         "platform-cutover-blocker",
+        "platform-client-cutover-blocker",
+        "platform-snapshot-blocker",
+        "platform-rollback-availability-blocker",
         "platform-rollback-blocker"
       ],
       "legacyRefs": [

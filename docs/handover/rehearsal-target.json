@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "status": "NOT_CREATED",
+  "providerDecision": "G1_OWNER_DECISION_REQUIRED",
+  "requirements": [
+    "Owner-controlled cloud/IaaS account",
+    "Linux server",
+    "Docker Engine/Compose on server only",
+    "pinned current self-hosted Supabase release",
+    "pinned image tags and digests",
+    "PostgreSQL 17",
+    "default Envoy gateway unless supported Kong compatibility is proven",
+    "TLS/HTTPS and stable endpoint",
+    "restricted firewall with no public PostgreSQL port",
+    "Owner-controlled SSH/admin",
+    "durable database disk",
+    "durable S3-compatible Storage backend",
+    "independent encrypted backup destination",
+    "monitoring and log access",
+    "restore drill",
+    "current official recommended self-host resources"
+  ],
+  "forbiddenBeforeG1": ["infrastructure creation", "service configuration mutation", "rehearsal restore"]
+}

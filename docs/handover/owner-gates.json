@@ -21,7 +21,7 @@
       "id": "G2",
       "name": "PARITY_CERTIFIED",
       "status": "NOT_RUN_UNTIL_REHEARSAL",
-      "requires": ["complete MUST_EQUAL evidence", "complete MUST_BE_COMPATIBLE evidence", "full Storage integrity"],
+      "requires": ["complete MUST_EQUAL evidence", "complete MUST_BE_COMPATIBLE evidence", "SOURCE_SNAPSHOT_BOUND", "full Storage integrity including FINAL_STORAGE_DELTA"],
       "grantsProductionAuthority": false
     },
     {
@@ -29,6 +29,8 @@
       "name": "OWNER_CUTOVER_APPROVAL",
       "status": "MANUAL_OWNER_EVIDENCE_REQUIRED",
       "requiredBefore": ["Vercel Supabase environment mutation", "DNS mutation", "production routing", "target promotion"],
+      "prerequisites": ["SOURCE_SNAPSHOT_BOUND", "CUTOVER_WRITERS_QUIESCED", "CLIENT_CUTOVER_COMPATIBILITY_PROVEN", "FINAL_STORAGE_DELTA_CERTIFIED", "SOURCE_ROLLBACK_AVAILABILITY_PLAN", "VERCEL_ENV_HANDOFF_REQUIRED satisfied", "OWNER_ACCESS_CHECKLIST satisfied"],
+      "currentBlockers": ["CUTOVER_WRITERS_NOT_QUIESCED", "CLIENT_CUTOVER_COMPATIBILITY_NOT_RUN", "SOURCE_ROLLBACK_AVAILABILITY_PLAN"],
       "permitsSourceDecommission": false
     },
     {

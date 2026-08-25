@@ -15,6 +15,11 @@
     { "setting": "Realtime publication/logical replication/Postgres Changes/private Broadcast/JWT/REALTIME_DB_ENC_KEY", "evidence": "MANUAL_DASHBOARD_EVIDENCE" },
     { "setting": "STORAGE_PUBLIC_URL and S3 configuration", "evidence": "MANUAL_DASHBOARD_EVIDENCE" },
     { "setting": "backup and restore configuration", "evidence": "MANUAL_DASHBOARD_EVIDENCE" },
-    { "setting": "TLS, DNS, CORS and WebSocket proxy", "evidence": "MANUAL_DASHBOARD_EVIDENCE" }
+    { "setting": "TLS, DNS, CORS and WebSocket proxy", "evidence": "MANUAL_DASHBOARD_EVIDENCE" },
+    { "setting": "Edge Function transfer behavior when source count is nonzero", "evidence": "HANDOVER_EDGE_FUNCTION_EVIDENCE_REQUIRED_IF_PRESENT" },
+    { "setting": "Vault migration plan when source count is nonzero", "evidence": "HANDOVER_VAULT_EVIDENCE_REQUIRED_IF_PRESENT" },
+    { "setting": "source snapshot/dump/target restore binding", "evidence": "SOURCE_SNAPSHOT_UNBOUND" },
+    { "setting": "client reload and durable queue cutover convergence", "evidence": "CLIENT_CUTOVER_COMPATIBILITY_NOT_RUN" },
+    { "setting": "managed source rollback availability", "evidence": "SOURCE_ROLLBACK_AVAILABILITY_PLAN" }
   ]
 }

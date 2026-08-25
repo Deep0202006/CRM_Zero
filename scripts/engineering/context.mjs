@@ -234,6 +234,18 @@ const blocker = selected.has("platform-handover")
         "CUTOVER_ENV_PARITY_REQUIRED",
       ],
       [
+        /(?:old browsers|browser bundles|offline queues).*(?:reload|converge)|resume writes.*(?:old browsers|offline queues)/,
+        "CLIENT_CUTOVER_COMPATIBILITY_NOT_RUN",
+      ],
+      [
+        /(?:live inventory|source manifest).*(?:unrelated|different).*(?:dump|snapshot)|parity.*unrelated.*(?:dump|snapshot)/,
+        "SOURCE_SNAPSHOT_UNBOUND",
+      ],
+      [
+        /cut over.*without.*(?:managed source|rollback).*(?:available|availability|decision)/,
+        "SOURCE_ROLLBACK_AVAILABILITY_PLAN",
+      ],
+      [
         /rollback.*target.*writes.*(?:pointing|switch)/,
         "ROLLBACK_WRITE_RECONCILIATION_REQUIRED",
       ],

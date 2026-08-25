@@ -17,6 +17,8 @@
     "storageObjects": 121,
     "realtimePublicationTables": 11,
     "extensions": 6,
-    "cronJobs": 3
+    "cronJobs": 3,
+    "vaultSecrets": 0,
+    "edgeFunctions": 0
   }
 }
