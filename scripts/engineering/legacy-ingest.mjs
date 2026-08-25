@@ -104,7 +104,7 @@ const discovered = git("rev-list", "--objects", "--all")
       return i < 0
         ? null
         : {
-            blobHash: line.slice(0, i),
+            objectHash: line.slice(0, i),
             path: line.slice(i + 1).replaceAll("\\", "/"),
           };
     })
@@ -120,7 +120,7 @@ const discovered = git("rev-list", "--objects", "--all")
     {
       cwd: root,
       encoding: "utf8",
-      input: discovered.map((x) => x.blobHash).join("\n"),
+      input: discovered.map((x) => x.objectHash).join("\n"),
     },
   )
     .stdout.split(/\r?\n/)
@@ -129,7 +129,7 @@ const discovered = git("rev-list", "--objects", "--all")
       if (id) m.set(id, type);
       return m;
     }, new Map()),
-  items = discovered.filter((x) => types.get(x.blobHash) === "blob"),
+  items = discovered.filter((x) => types.get(x.objectHash) === "blob"),
   seen = new Map(),
   sources = [],
   records = [];
@@ -179,7 +179,7 @@ const ingest = (item, content) => {
 for (const item of items) {
   let content = "";
   try {
-    content = execFileSync("git", ["cat-file", "blob", item.blobHash], {
+    content = execFileSync("git", ["cat-file", "blob", item.objectHash], {
       cwd: root,
       encoding: "utf8",
       maxBuffer: 4 * 1024 * 1024,
@@ -192,7 +192,7 @@ for (const item of items) {
     });
     continue;
   }
-  ingest(item, content);
+  ingest({ blobHash: hash(content), path: item.path }, content);
 }
 const walk = (dir) => {
   for (const name of readdirSync(dir)) {
@@ -242,12 +242,12 @@ for (const item of items.filter((entry) =>
   /(lessons-registry|policy\/rules)\.json$/i.test(entry.path),
 )) {
   try {
-    const data = JSON.parse(
-        execFileSync("git", ["cat-file", "blob", item.blobHash], {
-          cwd: root,
-          encoding: "utf8",
-        }),
-      ),
+    const content = execFileSync("git", ["cat-file", "blob", item.objectHash], {
+        cwd: root,
+        encoding: "utf8",
+      }),
+      data = JSON.parse(content),
+      contentHash = hash(content),
       walk = (value) => {
         if (Array.isArray(value)) return value.forEach(walk);
         if (!value || typeof value !== "object") return;
@@ -258,7 +258,7 @@ for (const item of items.filter((entry) =>
               normalizedRule,
               legacyId: value.id,
               sourceRef: item.path,
-              sourceBlobHash: item.blobHash,
+              sourceBlobHash: contentHash,
             });
         }
         Object.values(value).forEach(walk);
@@ -369,7 +369,23 @@ if (process.argv.includes("--check")) {
       ),
     });
   if (JSON.stringify(project(output)) !== JSON.stringify(project(tracked))) {
-    console.error("LEGACY_SOURCE_STALE");
+    const currentHashes = new Set(output.sourceHashes),
+      trackedHashes = new Set(tracked.sourceHashes);
+    console.error(
+      JSON.stringify({
+        code: "LEGACY_SOURCE_STALE",
+        currentSummary: output.summary,
+        trackedSummary: tracked.summary,
+        addedSourceHashes: [...currentHashes].filter(
+          (value) => !trackedHashes.has(value),
+        ),
+        removedSourceHashes: [...trackedHashes].filter(
+          (value) => !currentHashes.has(value),
+        ),
+        currentRecords: output.records.length,
+        trackedRecords: tracked.records.length,
+      }),
+    );
     process.exit(2);
   }
 }
