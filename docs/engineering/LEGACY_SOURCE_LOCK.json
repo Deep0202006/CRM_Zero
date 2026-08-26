@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "frozenAtMainSha": "932bc6d613992071518175e2a86d9e254169a800",
-  "legacyKnowledgeSha256": "67db2a5b5d76918f68c0db7e4d38548c666947515a01362ef6785d17742a1f7a",
-  "legacyCoverageSha256": "6d058b761f1fd4ce012cbdd5e3d280f767de706843520ef4a0d9392b9c84f57b",
+  "legacyKnowledgeSha256": "1f40b743b75d93214427e692ec920f1846257b420650528c509f42db5a9d25c8",
+  "legacyCoverageSha256": "f5e8a0a72296d436eb75a332f0e188187d043990c56da1ca54df57585b6cbde7",
   "refreshPolicy": "Frozen for ordinary PRs. Only an explicit dedicated legacy-maintenance change may refresh this corpus."
 }
