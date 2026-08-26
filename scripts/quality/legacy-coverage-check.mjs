@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 const root = resolve(import.meta.dirname, "../.."),
@@ -13,6 +14,7 @@ const root = resolve(import.meta.dirname, "../.."),
     console.error(`legacy: ${message}`);
     process.exitCode = 1;
   };
+try { execFileSync("node", ["scripts/engineering/legacy-ingest.mjs", "--check"], { cwd: root, stdio: "pipe" }); } catch { fail("frozen corpus drift"); }
 if (coverage.schemaVersion !== 4) fail("coverage schemaVersion must be 4");
 if (knowledge.schemaVersion !== 2)
   fail("legacy knowledge schemaVersion must be 2");

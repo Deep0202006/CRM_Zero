@@ -70,6 +70,18 @@ const main = () => {
       code: String(e.stderr ?? e.message).trim(),
     });
   }
+  let contract = null;
+  if (plan.risk === "R3" || plan.domains.includes("engineering-control") || plan.domains.includes("platform-handover")) {
+    try {
+      contract = JSON.parse(execFileSync("node", ["scripts/engineering/task-contract.mjs", "--check", "--base", state.taskBaseHeadSha, "--head", "HEAD"], { cwd: root, encoding: "utf8" }));
+    } catch (error) {
+      return void out("IMPLEMENTATION_INCOMPLETE", "TASK_CONTRACT_REQUIRED", { code: String(error.stderr ?? error.message).trim() });
+    }
+    if (state.originalTaskHash !== contract.taskHash || state.taskBaseHeadSha !== contract.baseSha)
+      return void out("IMPLEMENTATION_INCOMPLETE", "TASK_CONTRACT_BASELINE_MISMATCH");
+    if (!contract.domains.every((domain) => state.resolvedDomains.includes(domain)))
+      return void out("IMPLEMENTATION_INCOMPLETE", "TASK_CONTRACT_DOMAIN_MISMATCH");
+  }
   const mandatory = [
       ...plan.unitProofs,
       ...plan.postgresProofs,
@@ -95,6 +107,12 @@ const main = () => {
       `Run required proof: ${missing[0]}`,
       { planHash: plan.planHash, missing },
     );
+  const incompleteCriterion = contract?.criteria.find((criterion) => {
+    const evidence = state.taskAcceptanceEvidence?.[criterion.id];
+    return !evidence || evidence.status !== "PASS" || evidence.headSha !== repo.currentHeadSha || evidence.treeSha !== repo.currentTreeSha || evidence.planHash !== plan.planHash;
+  });
+  if (incompleteCriterion)
+    return void out("IMPLEMENTATION_INCOMPLETE", incompleteCriterion.id, { planHash: plan.planHash });
   const changedPaths = new Set(plan.changedPaths),
     learning = state.learning ?? [];
   const unclassifiedFailure = (state.failureSignatures ?? []).find(

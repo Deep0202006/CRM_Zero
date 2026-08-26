@@ -43,5 +43,9 @@ for (const absolute of sourceFiles(join(root, "scripts/engineering"))) {
   if (relative !== "scripts/engineering/os-acceptance.mjs" && /--updateSnapshot|--update-snapshot|updateSnapshot\s*\(/.test(source)) fail(`${relative} automates assertion/snapshot acceptance`);
   if (/(?:execFileSync|spawnSync)[\s\S]{0,300}gwfjkpsoaoherntwhdyf[\s\S]{0,300}(?:push|reset|insert|update|delete|apply)/i.test(source)) fail(`${relative} contains a production mutation runner`);
 }
+for (const absolute of sourceFiles(join(root, "scripts/engineering"))) {
+  const relative = absolute.slice(root.length + 1).replaceAll("\\", "/"), source = readFileSync(absolute, "utf8");
+  if (/\bgh\s+pr\s+(?:checks|view)\s+\d+\b|gh\s+pr\s+checks\s+\d+\b/i.test(source)) fail(`GENERIC_OS_PR_NUMBER_HARDCODED: ${relative}`);
+}
 if (process.exitCode) process.exit(process.exitCode);
 console.log("Invariant checks passed.");

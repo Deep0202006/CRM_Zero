@@ -7,7 +7,7 @@
       "authorityRefs": ["platform_runtime_placement"],
       "reuse": "required",
       "notes": [
-        "PR82 supplies deterministic source-read-only readiness checks and a domain-matched handover proof. Target parity and production cutover remain Owner-gated and are not production-certified."
+        "The handover controls supply deterministic source-read-only readiness checks and a domain-matched proof. Target parity and production cutover remain Owner-gated and are not production-certified."
       ]
     },
     {

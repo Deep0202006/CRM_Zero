@@ -28,6 +28,10 @@ jobs:
       - run: npm run context:test
       - run: npm run os:bootstrap-test
       - run: npm run engineering:eval
+      - name: Require immutable R3 task contract
+        env:
+          { BASE_SHA: "${{ github.event.pull_request.base.sha }}", HEAD_SHA: "${{ github.event.pull_request.head.sha }}" }
+        run: npm run task:contract:check -- --base "$BASE_SHA" --head "$HEAD_SHA"
       - run: npm run semantic:graph
       - run: npm run os:acceptance -- --mode preflight
       - name: Compile exact-head impact and proof plan
@@ -221,6 +225,8 @@ jobs:
           ZEROGRAPH_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           ZEROGRAPH_EVIDENCE_DIR: .zerograph-evidence
         run: |
+          npm run task:contract:check -- --acceptance --base "$ZEROGRAPH_BASE_SHA" --head "$ZEROGRAPH_HEAD_SHA"
+          echo "TASK_ACCEPTANCE_COMPLETE"
           result="$(npm run --silent quality:release)"
           echo "$result"
           echo "$result" | grep -q '"releaseReady":true'

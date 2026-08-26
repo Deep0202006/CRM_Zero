@@ -678,7 +678,7 @@ const headSha = git("rev-parse", "HEAD"),
     "agents-map": "npm run quality:knowledge",
     "incident-replay": "npm run engineering:eval",
     "exact-head": "npm run quality:release",
-    "release-matrix": "gh pr checks 84 --watch",
+    "release-matrix": "npm run remote:certify",
   },
   output = {
     schemaVersion: 2,

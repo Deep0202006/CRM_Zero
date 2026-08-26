@@ -193,19 +193,12 @@ assert(
   s1.decision === "block" && s1.reason.startsWith("ZEROGRAPH_CONTINUE|"),
   "STOP_CONTINUATION_FAILED",
 );
-assert(s2.reason.includes("strategy-change"), "STOP_STRATEGY_CHANGE_FAILED");
+assert(s2.reason.includes("focused-retry"), "STOP_FOCUSED_RETRY_FAILED");
 assert(
-  s3.reason.startsWith("ZEROGRAPH_STALL_REPORT|"),
-  "STOP_STALL_REPORT_FAILED",
+  s3.reason.includes("strategy-change"),
+  "STOP_STRATEGY_CHANGE_FAILED",
 );
 assert(s4.stopReason === "STALL_LIMIT", "STOP_LOOP_UNBOUNDED");
-assert(
-  run("scripts/engineering/hooks/stop.mjs", {
-    session_id,
-    stop_hook_active: true,
-  }).stdout === "",
-  "STOP_ACTIVE_IGNORED",
-);
 const workflow = readFileSync(
     resolve(root, ".github/workflows/product-verification.yml"),
     "utf8",
@@ -238,6 +231,7 @@ const greenAcceptance = JSON.stringify({
     status: "IMPLEMENTATION_INCOMPLETE",
     nextAction: "Run the missing domain proof",
   }),
+  activeStop = parse(runWithEnv("scripts/engineering/hooks/stop.mjs", { session_id: `active-${randomUUID()}`, stop_hook_active: true }, { ZEROGRAPH_ACCEPTANCE_FIXTURE: greenAcceptance, ZEROGRAPH_TASK_CLOSE_FIXTURE: unfinishedTask })),
   futureStop = parse(
     runWithEnv(
       "scripts/engineering/hooks/stop.mjs",
@@ -248,6 +242,7 @@ const greenAcceptance = JSON.stringify({
       },
     ),
   );
+assert(activeStop?.decision === "block", "STOP_ACTIVE_CONTINUATION_BYPASSED");
 assert(
   futureStop?.decision === "block" &&
     futureStop.reason.includes("Run the missing domain proof"),
@@ -276,6 +271,11 @@ const taskState = {
     effects: ["UI"],
     risk: "R2",
   }),
+  remoteMissingPlan = parse(runWithEnv("scripts/engineering/task-close.mjs", {}, {
+    ZEROGRAPH_TASK_FIXTURE: JSON.stringify({ ...taskState, failureSignatures: [], learning: [], remoteEvidence: { status: "PASS", headSha: "head", treeSha: "tree" } }),
+    ZEROGRAPH_REPOSITORY_FIXTURE: repositoryFixture,
+    ZEROGRAPH_TASK_PLAN_FIXTURE: planFixture,
+  })),
   close = (learning) =>
     parse(
       runWithEnv(
@@ -288,6 +288,11 @@ const taskState = {
         },
       ),
     );
+assert(remoteMissingPlan.status !== "TASK_CERTIFIED", "REMOTE_PLAN_HASH_NOT_REQUIRED");
+const remoteFailure = runWithEnv("scripts/engineering/remote-evidence.mjs", {}, { ZEROGRAPH_REMOTE_FIXTURE: JSON.stringify({ checks: [{ name: "preflight", state: "FAILURE", link: "https://example.invalid/check" }] }) });
+assert(parse(remoteFailure).status === "REMOTE_EVIDENCE_FAILED", "REMOTE_FAILURE_MISCLASSIFIED");
+const falseGreen = runWithEnv("scripts/engineering/task-contract.mjs", {}, { ZEROGRAPH_TASK_ACCEPTANCE_FIXTURE: JSON.stringify({ STOP_ACTIVE_CONTINUATION_FIXED: "PASS", REMOTE_PLAN_HASH_BOUND: "PASS", REMOTE_FAILURE_CLASSIFIED: "PASS", PR_NUMBER_HARDCODE_REMOVED: "PASS", R3_TASK_CONTRACT_REQUIRED: "PASS", TASK_CONTRACT_IMMUTABLE: "PASS", CI_TASK_ACCEPTANCE_ENFORCED: "PASS", PR85_FALSE_GREEN_REGRESSION: "FAIL", LEGACY_BASELINE_FROZEN: "PASS" }) });
+assert(falseGreen.status !== 0 && parse(falseGreen).TASK_ACCEPTANCE_COMPLETE === false, "PR85_FALSE_GREEN_CERTIFIED");
 assert(
   close([
     {

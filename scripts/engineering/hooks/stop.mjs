@@ -1,7 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { loadState, readInput, root, saveState, sha } from "./state.mjs";
 const input = await readInput();
-if (input.stop_hook_active) process.exit(0);
 const session_id = input.session_id ?? "unknown",
   state = loadState(session_id),
   acceptance = process.env.ZEROGRAPH_ACCEPTANCE_FIXTURE
@@ -40,14 +39,7 @@ if (!acceptance.localComplete) {
   );
   if (["NO_CHANGE_REQUIRED", "TASK_CERTIFIED"].includes(status))
     process.exit(0);
-  if (
-    [
-      "AWAITING_REMOTE_EVIDENCE",
-      "HUMAN_APPROVAL_REQUIRED",
-      "EXTERNAL_DEPENDENCY",
-      "SAFETY_CONFLICT",
-    ].includes(status)
-  ) {
+  if (["HUMAN_APPROVAL_REQUIRED", "EXTERNAL_DEPENDENCY", "SAFETY_CONFLICT"].includes(status)) {
     console.log(
       JSON.stringify({
         stopReason: status,
@@ -56,7 +48,7 @@ if (!acceptance.localComplete) {
     );
     process.exit(0);
   }
-  if (status === "TASK_LOCAL_COMPLETE") {
+  if (["TASK_LOCAL_COMPLETE", "AWAITING_REMOTE_EVIDENCE", "REMOTE_EVIDENCE_REQUIRED", "REMOTE_EVIDENCE_PENDING", "REMOTE_EVIDENCE_FAILED"].includes(status)) {
     console.log(
       JSON.stringify({
         decision: "block",
@@ -80,9 +72,9 @@ if (stallCount >= 3)
 else {
   const prefix =
     stallCount === 2
-      ? "ZEROGRAPH_STALL_REPORT"
+      ? "ZEROGRAPH_CONTINUE|strategy-change"
       : stallCount === 1
-        ? "ZEROGRAPH_CONTINUE|strategy-change"
+        ? "ZEROGRAPH_CONTINUE|focused-retry"
         : "ZEROGRAPH_CONTINUE";
   console.log(
     JSON.stringify({

@@ -29,6 +29,19 @@ const root = resolve(import.meta.dirname, "../.."),
       .replace(/\s+/g, " ")
       .replace(/^[-*#\d.)\s]+/, "")
       .trim();
+const lockPath = resolve(root, "docs/engineering/LEGACY_SOURCE_LOCK.json"),
+  frozen = !process.argv.includes("--refresh"),
+  frozenLock = existsSync(lockPath) ? JSON.parse(readFileSync(lockPath, "utf8")) : null;
+if (frozen && frozenLock) {
+  const knowledge = sourceHash(readFileSync(resolve(root, "docs/engineering/LEGACY_KNOWLEDGE.json"))),
+    coverage = sourceHash(readFileSync(resolve(root, "docs/engineering/LEGACY_COVERAGE.json")));
+  if (knowledge !== frozenLock.legacyKnowledgeSha256 || coverage !== frozenLock.legacyCoverageSha256) {
+    console.error("LEGACY_REFRESH_REQUIRES_DEDICATED_MAINTENANCE");
+    process.exit(2);
+  }
+  console.log(JSON.stringify({ status: "LEGACY_SOURCE_LOCK_PASS", frozenAtMainSha: frozenLock.frozenAtMainSha }));
+  process.exit(0);
+}
 const relevant =
     /(^|\/)(AGENTS\.md|[^/]*(instructions?|rules?)\.md|docs\/(os|quality|architecture|contracts|engineering[^/]*|exec-plans|data-platform-repair)\/|\.harness\/|\.crm-engineering\/(manifest|policy|knowledge|tasks|proofs|schemas)\/|tools\/crm-graph\/|scripts\/[^/]*(engineering|harness)|\.archive\/.*(engineering|harness|incident)|skills\/.*(zero|crm))/i,
   excluded =
