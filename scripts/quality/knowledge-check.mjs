@@ -287,7 +287,6 @@ for (const path of [
   ".harness",
   "scripts/harness",
   "docs/generated",
-  "docs/exec-plans",
   "docs/field-visits-hardening",
   "harness.config.json",
   ".github/workflows/harness.yml",
