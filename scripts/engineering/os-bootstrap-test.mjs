@@ -366,6 +366,12 @@ assert(
   closeWithEvidence("PASS", "current-dirty").status === "TASK_LOCAL_COMPLETE",
   "CURRENT_PROOF_NOT_ACCEPTED",
 );
+const closeCertified = parse(runWithEnv("scripts/engineering/task-close.mjs", {}, {
+  ZEROGRAPH_TASK_FIXTURE: JSON.stringify({ ...taskState, failureSignatures: [], learning: [], proofEvidenceHashes: { "calls-unit": { status: "PASS", headSha: "head", treeSha: "tree", dirtyFingerprint: "current-dirty", planHash: "plan" } }, remoteEvidence: { status: "PASS", headSha: "head", treeSha: "tree", planHash: "plan" } }),
+  ZEROGRAPH_REPOSITORY_FIXTURE: repositoryFixture,
+  ZEROGRAPH_TASK_PLAN_FIXTURE: proofPlanFixture,
+}));
+assert(closeCertified.status === "TASK_CERTIFIED", "REMOTE_PLAN_HASH_EXACT_NOT_CERTIFIED");
 
 const unresolved = parse(
     spawnSync(
