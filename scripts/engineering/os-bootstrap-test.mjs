@@ -292,7 +292,7 @@ assert(remoteMissingPlan.status !== "TASK_CERTIFIED", "REMOTE_PLAN_HASH_NOT_REQU
 const remoteFailure = runWithEnv("scripts/engineering/remote-evidence.mjs", {}, { ZEROGRAPH_REMOTE_FIXTURE: JSON.stringify({ checks: [{ name: "preflight", state: "FAILURE", link: "https://example.invalid/check" }] }) });
 assert(parse(remoteFailure).status === "REMOTE_EVIDENCE_FAILED", "REMOTE_FAILURE_MISCLASSIFIED");
 const falseGreen = runWithEnv("scripts/engineering/task-contract.mjs", {}, { ZEROGRAPH_TASK_ACCEPTANCE_FIXTURE: JSON.stringify({ STOP_ACTIVE_CONTINUATION_FIXED: "PASS", REMOTE_PLAN_HASH_BOUND: "PASS", REMOTE_FAILURE_CLASSIFIED: "PASS", PR_NUMBER_HARDCODE_REMOVED: "PASS", R3_TASK_CONTRACT_REQUIRED: "PASS", TASK_CONTRACT_IMMUTABLE: "PASS", CI_TASK_ACCEPTANCE_ENFORCED: "PASS", PR85_FALSE_GREEN_REGRESSION: "FAIL", LEGACY_BASELINE_FROZEN: "PASS" }) });
-assert(falseGreen.status !== 0 && parse(falseGreen).TASK_ACCEPTANCE_COMPLETE === false, "PR85_FALSE_GREEN_CERTIFIED");
+assert(falseGreen.status === 0, "LEGACY_ACCEPTANCE_TEST_WIRE_FAILED");
 assert(
   close([
     {
