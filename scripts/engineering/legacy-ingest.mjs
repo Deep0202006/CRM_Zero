@@ -9,6 +9,7 @@ import {
 } from "node:fs";
 import { join, relative, resolve } from "node:path";
 const root = resolve(import.meta.dirname, "../.."),
+  FROZEN_LEGACY_BASE = "932bc6d613992071518175e2a86d9e254169a800",
   hash = (value) => createHash("sha256").update(value).digest("hex"),
   sourceHash = (value) =>
     hash(
@@ -29,6 +30,56 @@ const root = resolve(import.meta.dirname, "../.."),
       .replace(/\s+/g, " ")
       .replace(/^[-*#\d.)\s]+/, "")
       .trim();
+// LEGACY_KNOWLEDGE / LEGACY_COVERAGE are certified historical inputs; new work
+// belongs in the current engineering registries, not this historical corpus.
+const refresh = process.argv.includes("--refresh"),
+  check = process.argv.includes("--check"),
+  write = process.argv.includes("--write"),
+  frozenFiles = [
+    "docs/engineering/LEGACY_KNOWLEDGE.json",
+    "docs/engineering/LEGACY_COVERAGE.json",
+  ],
+  fail = (code) => {
+    console.error(JSON.stringify({ code }));
+    process.exit(2);
+  };
+if (write && !refresh) fail("LEGACY_REFRESH_REQUIRES_EXPLICIT_MODE");
+if (check && !refresh) {
+  if (
+    spawnSync("git", ["merge-base", "--is-ancestor", FROZEN_LEGACY_BASE, "HEAD"], {
+      cwd: root,
+    }).status !== 0
+  )
+    fail("LEGACY_FROZEN_BASE_NOT_ANCESTOR");
+  const frozen = frozenFiles.map((path) =>
+      execFileSync("git", ["show", `${FROZEN_LEGACY_BASE}:${path}`], {
+        cwd: root,
+      }),
+    ),
+    current = frozenFiles.map((path) => readFileSync(resolve(root, path))),
+    frozenJson = frozen.map((content) => JSON.parse(content)),
+    currentJson = current.map((content) => JSON.parse(content));
+  if (
+    frozenJson.some(
+      (value, index) =>
+        !Number.isInteger(value.schemaVersion) ||
+        currentJson[index].schemaVersion !== value.schemaVersion,
+    )
+  )
+    fail("LEGACY_FROZEN_BASELINE_DRIFT");
+  const frozenHashes = frozen.map(sourceHash), currentHashes = current.map(sourceHash);
+  if (frozenHashes.some((value, index) => value !== currentHashes[index]))
+    fail("LEGACY_FROZEN_BASELINE_DRIFT");
+  console.log(
+    JSON.stringify({
+      code: "LEGACY_FROZEN_BASELINE_PASS",
+      frozenBaseSha: FROZEN_LEGACY_BASE,
+      knowledgeSha256: currentHashes[0],
+      coverageSha256: currentHashes[1],
+    }),
+  );
+  process.exit(0);
+}
 const relevant =
     /(^|\/)(AGENTS\.md|[^/]*(instructions?|rules?)\.md|docs\/(os|quality|architecture|contracts|engineering[^/]*|exec-plans|data-platform-repair)\/|\.harness\/|\.crm-engineering\/(manifest|policy|knowledge|tasks|proofs|schemas)\/|tools\/crm-graph\/|scripts\/[^/]*(engineering|harness)|\.archive\/.*(engineering|harness|incident)|skills\/.*(zero|crm))/i,
   excluded =
@@ -360,7 +411,7 @@ const output = {
   ),
   records: unique.sort((a, b) => a.ruleTextHash.localeCompare(b.ruleTextHash)),
 };
-if (process.argv.includes("--check")) {
+if (check) {
   const tracked = JSON.parse(
       readFileSync(
         resolve(root, "docs/engineering/LEGACY_KNOWLEDGE.json"),
@@ -410,7 +461,7 @@ if (process.argv.includes("--check")) {
     process.exit(2);
   }
 }
-if (process.argv.includes("--write"))
+if (write)
   writeFileSync(
     resolve(root, "docs/engineering/LEGACY_KNOWLEDGE.json"),
     `${JSON.stringify(output, null, 2)}\n`,

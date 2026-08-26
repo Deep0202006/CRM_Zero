@@ -321,6 +321,76 @@ assert(
   "REMOTE_OVERRULED_INCOMPLETE_TASK",
 );
 
+const legacyStatusBefore = execFileSync("git", ["status", "--porcelain"], {
+    cwd: root,
+    encoding: "utf8",
+  }),
+  legacyCheck = (...args) =>
+    spawnSync("node", ["scripts/engineering/legacy-ingest.mjs", ...args], {
+      cwd: root,
+      encoding: "utf8",
+    }),
+  legacyFailure = (result, code) =>
+    result.status === 2 && `${result.stdout}${result.stderr}`.includes(code),
+  legacyFixtureRoot = mkdtempSync(resolve(tmpdir(), "zerograph-a07-")),
+  legacyFixtureIndex = resolve(legacyFixtureRoot, "index"),
+  legacyFixtureRef = "refs/remotes/origin/zerograph-a07-fixture",
+  legacyGit = (args, options = {}) =>
+    execFileSync("git", args, {
+      cwd: root,
+      encoding: "utf8",
+      env: { ...process.env, GIT_INDEX_FILE: legacyFixtureIndex },
+      ...options,
+    });
+try {
+  legacyGit(["read-tree", "HEAD"]);
+  const blob = legacyGit(["hash-object", "-w", "--stdin"], {
+      input: "# temporary governance fixture\nThis rule must never affect A07.\n",
+    }).trim();
+  legacyGit([
+    "update-index",
+    "--add",
+    "--cacheinfo",
+    `100644,${blob},docs/engineering/zerograph-a07-governance.md`,
+  ]);
+  const tree = legacyGit(["write-tree"]).trim(),
+    commit = legacyGit(["commit-tree", tree, "-p", "HEAD", "-m", "A07 fixture"]).trim();
+  execFileSync("git", ["update-ref", legacyFixtureRef, commit], { cwd: root });
+  assert(
+    legacyCheck("--check").status === 0,
+    "LEGACY_REMOTE_REF_AFFECTED_FROZEN_CHECK",
+  );
+  for (const path of [
+    "docs/engineering/LEGACY_KNOWLEDGE.json",
+    "docs/engineering/LEGACY_COVERAGE.json",
+  ]) {
+    const fullPath = resolve(root, path), original = readFileSync(fullPath);
+    try {
+      writeFileSync(fullPath, Buffer.concat([original, Buffer.from("\n")]));
+      assert(
+        legacyFailure(legacyCheck("--check"), "LEGACY_FROZEN_BASELINE_DRIFT"),
+        `LEGACY_FROZEN_DRIFT_NOT_DETECTED:${path}`,
+      );
+    } finally {
+      writeFileSync(fullPath, original);
+    }
+  }
+  assert(
+    legacyFailure(legacyCheck("--write"), "LEGACY_REFRESH_REQUIRES_EXPLICIT_MODE"),
+    "LEGACY_REFRESH_MODE_NOT_REQUIRED",
+  );
+} finally {
+  execFileSync("git", ["update-ref", "-d", legacyFixtureRef], {
+    cwd: root,
+  });
+  rmSync(legacyFixtureRoot, { recursive: true, force: true });
+}
+assert(
+  execFileSync("git", ["status", "--porcelain"], { cwd: root, encoding: "utf8" }) ===
+    legacyStatusBefore,
+  "LEGACY_FIXTURE_DIRTY_STATE_LEAKED",
+);
+
 const taskState = {
     originalTaskHash: "task",
     taskBaseHeadSha: "base",
