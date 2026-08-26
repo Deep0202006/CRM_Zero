@@ -1,0 +1,41 @@
+name: Sealed migration operator package
+on:
+  workflow_dispatch:
+    inputs:
+      target_encryption_public_key_pem_base64:
+        description: Base64 target migration public key
+        required: true
+        type: string
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+jobs:
+  package:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: supabase-handover-owner
+    env:
+      TARGET_ENCRYPTION_PUBLIC_KEY_SHA256: ${{ secrets.TARGET_ENCRYPTION_PUBLIC_KEY_SHA256 }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: ${{ github.sha }}, fetch-depth: 0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 24.13.0, cache: npm }
+      - run: npm ci
+      - name: Bind approved target public key
+        env: { TARGET_ENCRYPTION_PUBLIC_KEY_PEM_BASE64: ${{ inputs.target_encryption_public_key_pem_base64 }} }
+        run: |
+          umask 077
+          printf '%s' "$TARGET_ENCRYPTION_PUBLIC_KEY_PEM_BASE64" | base64 --decode > "$RUNNER_TEMP/target-migration-public.pem"
+          echo "TARGET_ENCRYPTION_PUBLIC_KEY=$RUNNER_TEMP/target-migration-public.pem" >> "$GITHUB_ENV"
+      - run: npm run handover:sealed:check
+      - run: npm run handover:sealed:build
+      - run: npm run handover:sealed:verify -- "dist/handover/ZeroData-Supabase-Migration-Operator-$(git rev-parse HEAD).tar.gz"
+      - uses: actions/attest@v4
+        with:
+          subject-path: dist/handover/ZeroData-Supabase-Migration-Operator-*.tar.gz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zerodata-sealed-operator-package
+          path: dist/handover/

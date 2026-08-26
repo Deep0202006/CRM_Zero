@@ -464,6 +464,68 @@
       "candidatePathsAnyOf": ["src/app/manager/tasks"]
     },
     {
+      "id": "sealed-migration-operator",
+      "kind": "resolve",
+      "inputTask": "Create an Owner-authorized encrypted sealed Supabase mirror payload for an SFTP-only migration operator",
+      "expectedDomains": ["platform-handover"],
+      "minimumRisk": "R3",
+      "requiredClaims": ["MIGRATION_OPERATOR_NOT_ADMIN","DOCKER_ACCESS_IS_ADMIN","OPERATOR_PACKAGE_CONTAINS_NO_SECRETS","SOURCE_CREDENTIALS_OWNER_ONLY","TARGET_RUNTIME_SECRETS_OWNER_ONLY","RECIPIENT_NO_GITHUB_AUTHORITY","RECIPIENT_NO_VERCEL_AUTHORITY","RECIPIENT_NO_SOURCE_SUPABASE_AUTHORITY","SEALED_EXECUTOR_ROOT_OWNED","OPERATOR_CANNOT_SUPPLY_EXECUTABLE_CODE","OWNER_AUTHORIZES_PAYLOAD_HASH","PACKAGE_PROVENANCE_REQUIRED","PAYLOAD_ENCRYPTION_REQUIRED","OWNER_RECOVERY_CUSTODY_REQUIRED","POST_MIGRATION_OPERATOR_WRITE_REVOKED","SOURCE_REMAINS_AUTHORITATIVE","SEALED_MIRROR_NOT_PRODUCTION","NO_DUAL_MASTER","REFRESH_REQUIRES_NEW_OWNER_AUTHORIZATION"],
+      "requiredAuthorities": ["platform_runtime_placement"],
+      "forbiddenAuthorities": ["receivable","payment","pipeline_lead"],
+      "requiredProofKinds": ["handover"],
+      "candidatePathsAnyOf": ["docs/engineering/PLATFORM_HANDOVER.md"],
+      "expectedEffects": ["PLATFORM"]
+    },
+    {
+      "id": "sealed-operator-docker-blocker",
+      "kind": "blocker",
+      "inputTask": "Give contractor Docker access so he can migrate",
+      "requiredClaims": ["MIGRATION_OPERATOR_NOT_ADMIN","DOCKER_ACCESS_IS_ADMIN"],
+      "expectedBlocker": "MIGRATION_OPERATOR_NOT_ADMIN"
+    },
+    {
+      "id": "sealed-operator-source-password-blocker",
+      "kind": "blocker",
+      "inputTask": "Give contractor source Postgres password",
+      "requiredClaims": ["SOURCE_CREDENTIALS_OWNER_ONLY"],
+      "expectedBlocker": "MIGRATION_OPERATOR_NOT_ADMIN"
+    },
+    {
+      "id": "sealed-operator-service-role-blocker",
+      "kind": "blocker",
+      "inputTask": "Give contractor service-role key",
+      "requiredClaims": ["SOURCE_CREDENTIALS_OWNER_ONLY"],
+      "expectedBlocker": "MIGRATION_OPERATOR_NOT_ADMIN"
+    },
+    {
+      "id": "sealed-operator-compose-blocker",
+      "kind": "blocker",
+      "inputTask": "Let contractor edit docker-compose on target",
+      "requiredClaims": ["OPERATOR_CANNOT_SUPPLY_EXECUTABLE_CODE"],
+      "expectedBlocker": "MIGRATION_OPERATOR_NOT_ADMIN"
+    },
+    {
+      "id": "sealed-payload-authorization-blocker",
+      "kind": "blocker",
+      "inputTask": "Use a payload whose SHA does not match Owner authorization",
+      "requiredClaims": ["OWNER_AUTHORIZES_PAYLOAD_HASH"],
+      "expectedBlocker": "PAYLOAD_NOT_AUTHORIZED"
+    },
+    {
+      "id": "sealed-payload-replay-blocker",
+      "kind": "blocker",
+      "inputTask": "Use an older successfully-used payload again",
+      "requiredClaims": ["REFRESH_REQUIRES_NEW_OWNER_AUTHORIZATION"],
+      "expectedBlocker": "MIGRATION_PAYLOAD_REPLAY_DENIED"
+    },
+    {
+      "id": "sealed-mirror-no-cutover",
+      "kind": "blocker",
+      "inputTask": "Target is migrated; automatically switch Vercel",
+      "requiredClaims": ["SEALED_MIRROR_NOT_PRODUCTION"],
+      "expectedBlocker": "SEALED_MIRROR_NOT_PRODUCTION"
+    },
+    {
       "id": "domain-my-day",
       "kind": "resolve",
       "inputTask": "daily work orchestration",

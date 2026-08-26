@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "role": "MIGRATION_OPERATOR",
+  "owns": [],
+  "allowed": ["receive encrypted payload", "SFTP upload payload and request marker", "read redacted certificate"],
+  "denied": ["managed source", "GitHub", "Vercel", "target cloud", "root", "sudo", "Docker", "PostgreSQL admin", "Studio admin", "runtime secrets", "Storage administration", "Realtime secrets", "backup keys", "operator-supplied executable code"],
+  "account": "zerodata-migrator",
+  "terminal": "no interactive shell",
+  "targetState": "SEALED_MIRROR"
+}

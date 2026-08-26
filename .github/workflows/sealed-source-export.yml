@@ -1,0 +1,45 @@
+name: Owner-controlled sealed source export
+on:
+  workflow_dispatch:
+    inputs:
+      target_encryption_public_key_pem_base64:
+        description: Base64 target migration public key
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  export:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: supabase-handover-owner
+    permissions: { contents: read }
+    env:
+      HANDOVER_RCLONE_VERSION: v1.69.1
+      HANDOVER_SOURCE_DB_URL: ${{ secrets.HANDOVER_SOURCE_DB_URL }}
+      HANDOVER_SOURCE_S3_ACCESS_KEY: ${{ secrets.HANDOVER_SOURCE_S3_ACCESS_KEY }}
+      HANDOVER_SOURCE_S3_SECRET_KEY: ${{ secrets.HANDOVER_SOURCE_S3_SECRET_KEY }}
+      TARGET_ENCRYPTION_PUBLIC_KEY_SHA256: ${{ secrets.TARGET_ENCRYPTION_PUBLIC_KEY_SHA256 }}
+      TARGET_ENCRYPTION_PUBLIC_KEY_PEM_BASE64: ${{ inputs.target_encryption_public_key_pem_base64 }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: ${{ github.sha }}, fetch-depth: 0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 24.13.0, cache: npm }
+      - uses: supabase/setup-cli@v1
+        with: { version: 2.45.5 }
+      - name: Install pinned rclone
+        run: |
+          curl --fail --silent --show-error --location --output rclone.zip https://downloads.rclone.org/v1.69.1/rclone-v1.69.1-linux-amd64.zip
+          unzip -q rclone.zip
+          sudo install -m 0755 rclone-v1.69.1-linux-amd64/rclone /usr/local/bin/rclone
+          rclone version | grep -F 'v1.69.1'
+      - run: npm ci
+      - name: Export read-only source to ephemeral encrypted payload
+        run: node scripts/handover/sealed/source-export.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zerodata-encrypted-payload-only
+          path: |
+            .handover/sealed/*.zdp
+            .handover/sealed/*.public.json

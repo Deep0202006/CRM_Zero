@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ZeroData sealed payload envelope",
+  "type": "object",
+  "required": ["formatVersion", "cipher", "keyWrapAlgorithm", "recipientPublicKeyFingerprint", "sourceSnapshotId", "plaintextManifestSha256", "ciphertextSha256", "createdAt", "repositorySha"],
+  "properties": {
+    "formatVersion": {"const": 1},
+    "cipher": {"const": "AES-256-GCM"},
+    "keyWrapAlgorithm": {"const": "RSA-OAEP-SHA256"},
+    "recipientPublicKeyFingerprint": {"pattern": "^[a-f0-9]{64}$"},
+    "sourceSnapshotId": {"pattern": "^[A-Za-z0-9._-]{16,128}$"},
+    "plaintextManifestSha256": {"pattern": "^[a-f0-9]{64}$"},
+    "ciphertextSha256": {"pattern": "^[a-f0-9]{64}$"},
+    "createdAt": {"format": "date-time"},
+    "repositorySha": {"pattern": "^[a-f0-9]{40}$"}
+  },
+  "additionalProperties": true
+}

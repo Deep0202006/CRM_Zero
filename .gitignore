@@ -23,6 +23,8 @@
 # misc
 .DS_Store
 *.pem
+!docs/handover/fixtures/
+!docs/handover/fixtures/target-migration-public.pem
 
 # debug
 npm-debug.log*
@@ -45,4 +47,7 @@ next-env.d.ts
 graphify-out/
 .graphify-venv/
 .handover/
+.handover-owner/
+dist/handover/
+.harness/
 .zerograph-evidence/

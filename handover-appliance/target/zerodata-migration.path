@@ -1,0 +1,10 @@
+[Unit]
+Description=Watch approved encrypted ZeroData payloads
+
+[Path]
+PathExistsGlob=/srv/zerodata-migrator/incoming/*.zdp
+PathChanged=/srv/zerodata-migrator/incoming/request.json
+Unit=zerodata-migration.service
+
+[Install]
+WantedBy=multi-user.target

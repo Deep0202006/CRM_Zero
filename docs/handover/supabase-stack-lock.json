@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "officialRepository": "https://github.com/supabase/supabase",
+  "upstreamRef": "self-hosted/v0.8.0",
+  "upstreamCommit": "e1af732589cd468edb49500ebc04e4367d4c56ad",
+  "verifiedAt": "2026-08-26",
+  "defaultGateway": "Envoy",
+  "postgresMajor": 17,
+  "executionRule": "Only this reviewed lock may be installed; no latest tags or runtime upgrades.",
+  "requiredConfigurationFileGitBlobSha1": {
+    ".env.example": "fe428f5091de533544aa8c6c9515ad815166866d",
+    "docker-compose.yml": "33972e9b13691de594274433eae8a75576512ede",
+    "volumes/api/envoy/cds.yaml": "2d47842d6b44dfc0e05619086c00a5a17d28fcd1",
+    "volumes/api/envoy/envoy.yaml": "def443b68817921d98180b58d558006a2f86233f",
+    "volumes/api/envoy/lds.template.yaml": "d6f5f314a9b7541bd009d2f0bc918ac8764bd48d"
+  },
+  "references": ["https://supabase.com/docs/guides/self-hosting/docker", "https://supabase.com/docs/guides/self-hosting/self-hosted-envoy", "https://supabase.com/docs/guides/self-hosting/restore-from-platform", "https://supabase.com/docs/guides/self-hosting/self-hosted-s3", "https://supabase.com/docs/guides/self-hosting/auth/config", "https://supabase.com/docs/guides/self-hosting/realtime/config", "https://supabase.com/docs/guides/self-hosting/self-hosted-proxy-https"]
+}

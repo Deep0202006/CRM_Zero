@@ -134,15 +134,36 @@
         "SOURCE_SNAPSHOT_BOUND",
         "SOURCE_LATE_WRITE_RECONCILIATION_REQUIRED",
         "SOURCE_ROLLBACK_AVAILABILITY_PLAN",
-        "ROLLBACK_WRITE_RECONCILIATION_REQUIRED"
+        "ROLLBACK_WRITE_RECONCILIATION_REQUIRED",
+        "MIGRATION_OPERATOR_NOT_ADMIN",
+        "DOCKER_ACCESS_IS_ADMIN",
+        "OPERATOR_PACKAGE_CONTAINS_NO_SECRETS",
+        "SOURCE_CREDENTIALS_OWNER_ONLY",
+        "TARGET_RUNTIME_SECRETS_OWNER_ONLY",
+        "RECIPIENT_NO_GITHUB_AUTHORITY",
+        "RECIPIENT_NO_VERCEL_AUTHORITY",
+        "RECIPIENT_NO_SOURCE_SUPABASE_AUTHORITY",
+        "SEALED_EXECUTOR_ROOT_OWNED",
+        "OPERATOR_CANNOT_SUPPLY_EXECUTABLE_CODE",
+        "OWNER_AUTHORIZES_PAYLOAD_HASH",
+        "PACKAGE_PROVENANCE_REQUIRED",
+        "PAYLOAD_ENCRYPTION_REQUIRED",
+        "OWNER_RECOVERY_CUSTODY_REQUIRED",
+        "POST_MIGRATION_OPERATOR_WRITE_REVOKED",
+        "SOURCE_REMAINS_AUTHORITATIVE",
+        "SEALED_MIRROR_NOT_PRODUCTION",
+        "NO_DUAL_MASTER",
+        "REFRESH_REQUIRES_NEW_OWNER_AUTHORIZATION"
       ],
       "kind": "mechanical",
       "evidence": [
-        "docs/engineering/PLATFORM_HANDOVER.md"
+        "docs/engineering/PLATFORM_HANDOVER.md",
+        "docs/handover/SEALED_MIGRATION.md"
       ],
       "enforcementRefs": [
         "scripts/engineering/impact.mjs",
-        "scripts/engineering/proof-plan.mjs"
+        "scripts/engineering/proof-plan.mjs",
+        "scripts/handover/sealed/check.mjs"
       ],
       "evalRefs": [
         "platform-handover",
@@ -153,7 +174,8 @@
         "platform-client-cutover-blocker",
         "platform-snapshot-blocker",
         "platform-rollback-availability-blocker",
-        "platform-rollback-blocker"
+        "platform-rollback-blocker",
+        "sealed-migration-operator"
       ],
       "legacyRefs": [
         "LEGACY_0c09a95af52d35d8",

@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "role": "OWNER",
+  "owns": ["GitHub", "Vercel", "managed source", "target cloud/IaaS", "target root/admin", "DNS", "runtime secrets", "backup keys", "recovery private key"],
+  "approvals": ["target encryption public-key fingerprint", "payload hash and snapshot authorization", "rehearsal target bootstrap", "source export environment"],
+  "prohibitsAutomaticCutover": true,
+  "sourceStatus": "SOURCE_REMAINS_AUTHORITATIVE"
+}

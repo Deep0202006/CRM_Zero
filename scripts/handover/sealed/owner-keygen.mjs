@@ -1,0 +1,4 @@
+import { generateKeyPairSync } from 'node:crypto'; import { chmodSync, existsSync, mkdirSync, writeFileSync } from 'node:fs'; import { resolve } from 'node:path';
+const output = resolve(process.cwd(), process.argv[2] ?? '.handover-owner'); if (existsSync(output)) throw new Error('OWNER_KEY_DIRECTORY_EXISTS'); mkdirSync(output, { recursive: true, mode: 0o700 });
+const { privateKey, publicKey } = generateKeyPairSync('rsa', { modulusLength: 4096, privateKeyEncoding: { type: 'pkcs8', format: 'pem' }, publicKeyEncoding: { type: 'spki', format: 'pem' } });
+writeFileSync(resolve(output, 'owner-private.pem'), privateKey, { mode: 0o600 }); chmodSync(resolve(output, 'owner-private.pem'), 0o600); writeFileSync(resolve(output, 'owner-public.pem'), publicKey, { mode: 0o644 }); console.log(JSON.stringify({ ownerPublicKey: resolve(output, 'owner-public.pem') }));

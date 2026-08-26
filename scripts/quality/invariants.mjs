@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { extname, join, resolve } from "node:path";
+import { execFileSync } from "node:child_process";
 
 const root = resolve(import.meta.dirname, "../..");
 const extensions = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"]);
@@ -42,6 +43,16 @@ for (const absolute of sourceFiles(join(root, "scripts/engineering"))) {
   const source = readFileSync(absolute, "utf8");
   if (relative !== "scripts/engineering/os-acceptance.mjs" && /--updateSnapshot|--update-snapshot|updateSnapshot\s*\(/.test(source)) fail(`${relative} automates assertion/snapshot acceptance`);
   if (/(?:execFileSync|spawnSync)[\s\S]{0,300}gwfjkpsoaoherntwhdyf[\s\S]{0,300}(?:push|reset|insert|update|delete|apply)/i.test(source)) fail(`${relative} contains a production mutation runner`);
+}
+const tracked = execFileSync("git", ["ls-files"], { cwd: root, encoding: "utf8" }).split(/\r?\n/).filter(Boolean);
+for (const path of tracked) {
+  const content = readFileSync(join(root, path), "utf8");
+  if (/-----BEGIN(?: [A-Z]+)? PRIVATE KEY-----/i.test(content)) fail(`${path} tracks private key material`);
+  if (/^dist\/handover\/|^\.handover-owner\/|^\.handover\//.test(path)) fail(`${path} tracks sealed handover artifact`);
+}
+for (const absolute of sourceFiles(join(root, "scripts/handover"))) {
+  const relative = absolute.slice(root.length + 1).replaceAll("\\", "/"), source = readFileSync(absolute, "utf8");
+  if (/supabase\s+(?:db\s+push|migration\s+up|link)|vercel\s+env\s+(?:add|rm)|(?:dns|route53)\s+(?:change|update)/i.test(source)) fail(`${relative} contains prohibited platform mutation command`);
 }
 if (process.exitCode) process.exit(process.exitCode);
 console.log("Invariant checks passed.");

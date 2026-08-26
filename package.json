@@ -36,6 +36,11 @@
     "graphify:sync": "node scripts/engineering/graphify-sync.mjs",
     "graphify:verify": "node scripts/engineering/graphify-verify.mjs",
     "handover:check": "node scripts/handover/check.mjs",
+    "handover:sealed:check": "node scripts/handover/sealed/check.mjs",
+    "handover:sealed:build": "node scripts/handover/sealed/build-package.mjs",
+    "handover:sealed:verify": "node scripts/handover/sealed/verify-package.mjs",
+    "handover:owner-keygen": "node scripts/handover/sealed/owner-keygen.mjs",
+    "handover:owner-recovery-verify": "node scripts/handover/sealed/owner-recovery-verify.mjs",
     "graphify:impact": "node scripts/engineering/graphify-impact.mjs",
     "vercel-build": "npm run test && next build"
   },

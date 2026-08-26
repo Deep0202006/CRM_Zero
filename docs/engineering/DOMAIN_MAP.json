@@ -21,6 +21,14 @@
         "rollback backend",
         "rollback target writes",
         "cutover",
+        "sealed migration",
+        "sealed mirror",
+        "migration operator",
+        "contractor docker access",
+        "contractor source postgres password",
+        "contractor service role key",
+        "operator sftp",
+        "encrypted migration payload",
         "rehearsal",
         "restore"
       ],
@@ -51,7 +59,7 @@
         "PRODUCTION_DISCIPLINE",
         "R3_RUNTIME_PROOF"
       ],
-      "proofRefs": ["supabase-handover-readiness"],
+      "proofRefs": ["supabase-handover-readiness", "supabase-sealed-package"],
       "requiredProofKinds": ["handover"],
       "criticalTests": [],
       "mustNotWriteAuthorityRefs": [

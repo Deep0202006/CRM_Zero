@@ -2,7 +2,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const root = process.cwd();
-const dataPath = resolve(root, '.handover/data.sql');
+const dataPath = resolve(root, process.env.HANDOVER_DATA_PATH ?? '.handover/data.sql');
 if (!existsSync(dataPath)) {
   console.log('NOT_RUN_UNTIL_REHEARSAL');
   process.exit(0);

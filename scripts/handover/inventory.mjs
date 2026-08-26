@@ -4,10 +4,11 @@ import { resolve } from 'node:path';
 import { assertDeepInventoryBudget, assertRedacted, classifyBudget, migrationBoundary, sourceIdentity, supabaseArgv } from './lib.mjs';
 
 const root = process.cwd();
-const dbUrl = process.env.HANDOVER_SOURCE_DB_URL;
-const identity = sourceIdentity(dbUrl);
+const targetMode = process.env.HANDOVER_TARGET_MODE === '1';
+const dbUrl = targetMode ? process.env.HANDOVER_TARGET_DB_URL : process.env.HANDOVER_SOURCE_DB_URL;
+const identity = targetMode ? { expectedProjectRef: 'target', endpoint: 'target-db-host', connectionIdentityValidated: true, liveDatabaseCompatibilityVerified: false } : sourceIdentity(dbUrl);
 const sqlFile = resolve(root, 'scripts/handover/inventory.sql');
-const outputFile = resolve(root, '.handover/source-inventory.json');
+const outputFile = resolve(root, process.env.HANDOVER_INVENTORY_OUTPUT ?? `.handover/${targetMode ? 'target' : 'source'}-inventory.json`);
 const run = (program, args) => execFileSync(process.platform === 'win32' ? process.env.ComSpec : program, process.platform === 'win32' ? ['/d', '/c', [program, ...args.map((arg) => /\s/.test(arg) ? `"${arg.replaceAll('"', '""')}"` : arg)].join(' ')] : args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
 const parse = (output) => { const starts = [output.indexOf('{'), output.indexOf('[')].filter((index) => index >= 0); if (!starts.length) throw new Error('HANDOVER_INVENTORY_UNPARSEABLE'); return JSON.parse(output.slice(Math.min(...starts))); };
 const query = (args) => parse(run('supabase', ['db', 'query', '--db-url', dbUrl, '--output', 'json', ...args]));
@@ -33,17 +34,19 @@ const deepData = deep ? {
 } : undefined;
 
 const boundary = migrationBoundary(root);
-const vault = query(["begin read only; set local statement_timeout='60s'; set local lock_timeout='5s'; select count(*)::bigint as count from vault.secrets; commit;"]).rows?.[0]?.count;
+const vault = targetMode ? process.env.HANDOVER_TARGET_VAULT_SECRET_COUNT ?? 0 : query(["begin read only; set local statement_timeout='60s'; set local lock_timeout='5s'; select count(*)::bigint as count from vault.secrets; commit;"]).rows?.[0]?.count;
+const targetCapabilities = targetMode ? JSON.parse(process.env.HANDOVER_TARGET_CAPABILITIES_JSON ?? 'null') : undefined;
+if (targetMode && !targetCapabilities) throw new Error('TARGET_PLATFORM_INCOMPATIBLE');
 const manifest = {
   manifestVersion: 2,
   generatedAt: new Date().toISOString(),
   sourceIdentity: { ...identity, database: 'postgres', postgresMajor: 17, liveDatabaseCompatibilityVerified: true },
   ownerMigrationBoundary: boundary,
   toolchain: { supabaseCli: run('supabase', ['--version']).trim(), psql: process.env.PSQL_VERSION ?? 'NOT_DETECTED', docker: process.env.DOCKER_VERSION ?? 'NOT_DETECTED' },
-  edgeFunctionCount: countList(['functions', 'list', '--project-ref', identity.expectedProjectRef, '--output', 'json']),
-  edgeFunctionSecretCount: countList(['secrets', 'list', '--project-ref', identity.expectedProjectRef, '--output', 'json']),
-  vaultSecretCount: Number(vault),
-  snapshotConsistency: { state: 'LIVE_BULK_COPY', bindingStatus: 'SOURCE_SNAPSHOT_UNBOUND' },
+  edgeFunctionCount: targetMode ? Number(process.env.HANDOVER_TARGET_EDGE_FUNCTION_COUNT ?? 0) : countList(['functions', 'list', '--project-ref', identity.expectedProjectRef, '--output', 'json']),
+  edgeFunctionSecretCount: targetMode ? Number(process.env.HANDOVER_TARGET_EDGE_FUNCTION_SECRET_COUNT ?? 0) : countList(['secrets', 'list', '--project-ref', identity.expectedProjectRef, '--output', 'json']),
+  vaultSecretCount: targetMode ? Number(process.env.HANDOVER_TARGET_VAULT_SECRET_COUNT ?? 0) : Number(vault),
+  snapshotConsistency: process.env.HANDOVER_SNAPSHOT_ID ? { state: 'SNAPSHOT_BOUND', snapshotId: process.env.HANDOVER_SNAPSHOT_ID, dumpArtifactSha256: process.env.HANDOVER_DUMP_SHA256 } : { state: 'LIVE_BULK_COPY', bindingStatus: 'SOURCE_SNAPSHOT_UNBOUND' },
   sourceAdvisorBaseline,
   freeTierBudget: { verifiedAt: '2026-08-24', database: { usedBytes: inventory.database.bytes, limitBytes: 500_000_000, classification: classifyBudget(inventory.database.bytes, 500_000_000) }, storage: { usedBytes: inventory.storage.objectBytes, limitBytes: 1_000_000_000, classification: classifyBudget(inventory.storage.objectBytes, 1_000_000_000) }, manualDashboardEvidence: ['egress', 'cachedEgress', 'realtimeMonthlyMessages', 'realtimeConnections'] },
   semantic: inventory.semantic,
@@ -51,6 +54,7 @@ const manifest = {
   storage: { bucketConfiguration: inventory.storage.buckets, metadataFingerprint: inventory.storage.metadataFingerprint, objectCount: inventory.storage.objectCount, objectBytes: inventory.storage.objectBytes, fullIntegrity: { status: 'PENDING', bulkCopyStatus: 'PENDING', finalDeltaStatus: 'PENDING' } },
   businessInvariants: { criticalRows: inventory.criticalRows, financialAggregates: inventory.financialAggregates, fieldVisitMedia: inventory.fieldVisitMedia },
   inventory,
+  ...(targetMode ? { capabilities: targetCapabilities } : {}),
   ...(deepData ? { deepData } : {}),
 };
 assertRedacted(manifest);

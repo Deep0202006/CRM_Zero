@@ -8,6 +8,10 @@ This is readiness and rehearsal tooling only: source production stays active, he
 
 `owner-access-checklist.json` keeps every access/custody item at `MANUAL_OWNER_EVIDENCE_REQUIRED` until the Owner verifies it. Secret values are never recorded.
 
+## Sealed migration appliance
+
+`SEALED_MIGRATION.md` adds a mirror-only package for an external migration operator. It contains a safe operator package, an authenticated encrypted payload, and an Owner-only recovery bundle. The operator is SFTP-only and cannot obtain source, target root/Docker, cloud, Studio, GitHub, Vercel, credential, or executable-code authority. Root-owned target software accepts only a nonce- and hash-authorized encrypted payload, produces a redacted certificate, and revokes inbox write access after certification. The source stays authoritative and Vercel is not changed.
+
 ## Boundary and source identity
 
 Vercel retains Next.js/API routes, domains, Functions, Vercel Cron (`/api/maintenance/selfie-retention`), `CRON_SECRET`, VAPID/Web Push, and deployment flow. Supabase moves PostgreSQL, Auth, Data API/RPC, RLS/grants/roles, Realtime, Storage, pg_cron, extensions, and Supabase service configuration. Edge Functions and Vault are inventoried as facts, never assumed.

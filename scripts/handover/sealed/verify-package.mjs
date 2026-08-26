@@ -1,0 +1,12 @@
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { untarGz } from './tar.mjs';
+const root = resolve(import.meta.dirname, '../../..'); const sha256 = (value) => createHash('sha256').update(value).digest('hex');
+const artifact = process.argv[2]; if (!artifact) throw new Error('SEALED_PACKAGE_PATH_REQUIRED');
+const files = untarGz(readFileSync(resolve(root, artifact)));
+const forbidden = /(?:BEGIN (?:RSA |OPENSSH )?PRIVATE KEY|postgres(?:ql)?:\/\/|service_role|sb_secret_|JWT_SECRET|SUPABASE_SECRET_KEY|\.sql$|\.zdp$|storage\/)/i;
+for (const [name, data] of files) if (forbidden.test(name) || forbidden.test(data.toString('utf8'))) throw new Error('SEALED_OPERATOR_PACKAGE_SECRET_LEAK');
+const manifest = JSON.parse(files.get('PACKAGE_MANIFEST.json') ?? '{}');
+for (const [name, hash] of Object.entries(manifest.files ?? {})) if (!files.has(name) || sha256(files.get(name)) !== hash) throw new Error('PACKAGE_PROVENANCE_INVALID');
+console.log(JSON.stringify({ status: 'ZERODATA_OPERATOR_PACKAGE_VERIFIED', packageSha256: sha256(readFileSync(resolve(root, artifact))), repositorySha: manifest.repositorySha }));

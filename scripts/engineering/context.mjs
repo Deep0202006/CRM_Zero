@@ -70,7 +70,8 @@ const briefCapability = (item) => ({
   implementationPaths: item.implementationPaths,
   testPaths: item.testPaths,
 });
-const briefLesson = (item) => ({ id: item.id, claims: item.claims });
+const claimDigest = (claims) => createHash("sha256").update([...claims].sort().join("|")).digest("hex");
+const briefLesson = (item) => item.claims.length <= 8 ? ({ id: item.id, claims: item.claims }) : ({ id: item.id, claimCount: item.claims.length, claimSetSha256: claimDigest(item.claims), claimPreview: item.claims.slice(0, 4) });
 
 if (mode === "platform") {
   const pack = {
@@ -242,6 +243,13 @@ const blocker = selected.has("platform-handover")
         "SOURCE_SNAPSHOT_UNBOUND",
       ],
       [
+        /contractor.*(?:docker|source postgres|service-role|compose)|migration operator.*(?:root|sudo|docker)/,
+        "MIGRATION_OPERATOR_NOT_ADMIN",
+      ],
+      [/payload.*sha.*(?:does not match|mismatch)|payload.*authorization/, "PAYLOAD_NOT_AUTHORIZED"],
+      [/(?:older|used).*payload.*again|payload.*replay/, "MIGRATION_PAYLOAD_REPLAY_DENIED"],
+      [/automatically switch vercel|sealed mirror.*(?:cutover|production)/, "SEALED_MIRROR_NOT_PRODUCTION"],
+      [
         /cut over.*without.*(?:managed source|rollback).*(?:available|availability|decision)/,
         "SOURCE_ROLLBACK_AVAILABILITY_PLAN",
       ],
@@ -341,15 +349,9 @@ const build = (entries, omittedLessons = []) => {
     lessons: visibleEntries.map(({ lesson }) => briefLesson(lesson)),
     ...(task
       ? {
-          criticalClaims: [
-            ...new Set(entries.flatMap(({ lesson }) => lesson.claims ?? [])),
-          ],
-          compactedLessonClaims: Object.fromEntries(
-            compactedEntries.map(({ lesson }) => [
-              lesson.id,
-              lesson.claims ?? [],
-            ]),
-          ),
+          criticalClaims: [...new Set(entries.flatMap(({ lesson }) => lesson.claims ?? []))].slice(0, 8),
+          mandatoryClaimBundles: entries.filter(({ lesson }) => (lesson.claims ?? []).length > 8).map(({ lesson }) => ({ lessonId: lesson.id, claimCount: lesson.claims.length, claimSetSha256: claimDigest(lesson.claims) })),
+          compactedLessonClaims: Object.fromEntries(compactedEntries.map(({ lesson }) => [lesson.id, { claimCount: (lesson.claims ?? []).length, claimSetSha256: claimDigest(lesson.claims ?? []) }])),
         }
       : {}),
     lessonSelection,
