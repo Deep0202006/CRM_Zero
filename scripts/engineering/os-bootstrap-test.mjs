@@ -339,7 +339,14 @@ const legacyStatusBefore = execFileSync("git", ["status", "--porcelain"], {
     execFileSync("git", args, {
       cwd: root,
       encoding: "utf8",
-      env: { ...process.env, GIT_INDEX_FILE: legacyFixtureIndex },
+      env: {
+        ...process.env,
+        GIT_INDEX_FILE: legacyFixtureIndex,
+        GIT_AUTHOR_NAME: "ZeroGraph Fixture",
+        GIT_AUTHOR_EMAIL: "fixture@example.invalid",
+        GIT_COMMITTER_NAME: "ZeroGraph Fixture",
+        GIT_COMMITTER_EMAIL: "fixture@example.invalid",
+      },
       ...options,
     });
 try {
