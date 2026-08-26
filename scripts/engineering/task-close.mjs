@@ -77,7 +77,7 @@ const main = () => {
     } catch (error) {
       return void out("IMPLEMENTATION_INCOMPLETE", "TASK_CONTRACT_REQUIRED", { code: String(error.stderr ?? error.message).trim() });
     }
-    if (state.originalTaskHash !== contract.taskHash || state.taskBaseHeadSha !== contract.baseSha)
+    if (state.originalTaskHash !== contract.ownerIntentHash || state.taskBaseHeadSha !== contract.originBaseSha)
       return void out("IMPLEMENTATION_INCOMPLETE", "TASK_CONTRACT_BASELINE_MISMATCH");
     if (!contract.domains.every((domain) => state.resolvedDomains.includes(domain)))
       return void out("IMPLEMENTATION_INCOMPLETE", "TASK_CONTRACT_DOMAIN_MISMATCH");

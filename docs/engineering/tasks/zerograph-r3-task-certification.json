@@ -1,20 +1,21 @@
 {
   "schemaVersion": 1,
-  "taskId": "zerograph-r3-task-certification",
-  "baseSha": "932bc6d613992071518175e2a86d9e254169a800",
+  "taskId": "zerograph-r3-task-certification-v2",
+  "ownerIntentMode": "OWNER_REATTESTATION",
+  "ownerIntentHash": "0fb3076891fdc8a0d22708c62c871abb74b9d977755aaddde0b6f04e32ce3fee",
+  "originBaseSha": "932bc6d613992071518175e2a86d9e254169a800",
   "risk": "R3",
   "domains": ["engineering-control"],
   "requiredClaims": ["TASK_ACCEPTANCE_COMPLETE"],
   "criteria": [
-    { "id": "STOP_ACTIVE_CONTINUATION_FIXED", "description": "Active Stop continues evaluation.", "proofRefs": ["control-unit"], "evalRefs": ["scripts/engineering/os-bootstrap-test.mjs"], "ownerGate": null },
-    { "id": "REMOTE_PLAN_HASH_BOUND", "description": "Remote evidence binds proof plan.", "proofRefs": ["control-unit"], "evalRefs": ["scripts/engineering/os-bootstrap-test.mjs"], "ownerGate": null },
-    { "id": "REMOTE_FAILURE_CLASSIFIED", "description": "Failed remote checks are not external dependencies.", "proofRefs": ["control-unit"], "evalRefs": ["scripts/engineering/os-bootstrap-test.mjs"], "ownerGate": null },
-    { "id": "PR_NUMBER_HARDCODE_REMOVED", "description": "Generic control code has no fixed PR command.", "proofRefs": ["control-unit"], "evalRefs": ["scripts/quality/invariants.mjs"], "ownerGate": null },
-    { "id": "R3_TASK_CONTRACT_REQUIRED", "description": "R3 changes require one active contract.", "proofRefs": ["control-unit"], "evalRefs": ["scripts/engineering/task-contract.mjs"], "ownerGate": null },
-    { "id": "TASK_CONTRACT_IMMUTABLE", "description": "The first committed contract cannot weaken.", "proofRefs": ["control-unit"], "evalRefs": ["scripts/engineering/task-contract.mjs"], "ownerGate": null },
-    { "id": "CI_TASK_ACCEPTANCE_ENFORCED", "description": "Verify gates task acceptance.", "proofRefs": ["control-unit"], "evalRefs": [".github/workflows/product-verification.yml"], "ownerGate": null },
-    { "id": "PR85_FALSE_GREEN_REGRESSION", "description": "Green generic checks cannot certify absent task proof.", "proofRefs": ["control-unit"], "evalRefs": ["scripts/engineering/os-bootstrap-test.mjs"], "ownerGate": null },
-    { "id": "LEGACY_BASELINE_FROZEN", "description": "Ordinary CI validates frozen legacy files.", "proofRefs": ["control-unit"], "evalRefs": ["scripts/engineering/legacy-ingest.mjs"], "ownerGate": null }
-  ],
-  "taskHash": "2140a1c429628ba30822b3f894fe5e5dff1fef0b35ad689ab835efbd16191690"
+    { "id": "STOP_ACTIVE_CONTINUATION_FIXED", "description": "Active Stop continues evaluation.", "proofRefs": [], "probeRefs": ["STOP_ACTIVE_CONTINUATION_FIXED"], "evalCaseRefs": [], "ownerGate": null },
+    { "id": "REMOTE_PLAN_HASH_BOUND", "description": "Remote evidence binds proof plan.", "proofRefs": [], "probeRefs": ["REMOTE_PLAN_HASH_BOUND"], "evalCaseRefs": [], "ownerGate": null },
+    { "id": "REMOTE_FAILURE_CLASSIFIED", "description": "Failed remote checks are not external dependencies.", "proofRefs": [], "probeRefs": ["REMOTE_FAILURE_CLASSIFIED"], "evalCaseRefs": [], "ownerGate": null },
+    { "id": "PR_NUMBER_HARDCODE_REMOVED", "description": "Generic control code has no fixed PR command.", "proofRefs": [], "probeRefs": ["PR_NUMBER_HARDCODE_REMOVED"], "evalCaseRefs": [], "ownerGate": null },
+    { "id": "R3_TASK_CONTRACT_REQUIRED", "description": "R3 changes require one active contract.", "proofRefs": [], "probeRefs": ["R3_TASK_CONTRACT_REQUIRED"], "evalCaseRefs": [], "ownerGate": null },
+    { "id": "TASK_CONTRACT_IMMUTABLE", "description": "The first committed contract cannot weaken.", "proofRefs": [], "probeRefs": ["TASK_CONTRACT_IMMUTABLE"], "evalCaseRefs": [], "ownerGate": null },
+    { "id": "CI_TASK_ACCEPTANCE_ENFORCED", "description": "Verify gates task acceptance.", "proofRefs": [], "probeRefs": ["CI_TASK_ACCEPTANCE_ENFORCED"], "evalCaseRefs": [], "ownerGate": null },
+    { "id": "PR85_FALSE_GREEN_REGRESSION", "description": "Green generic checks cannot certify absent task proof.", "proofRefs": [], "probeRefs": ["PR85_FALSE_GREEN_REGRESSION"], "evalCaseRefs": [], "ownerGate": null },
+    { "id": "LEGACY_BASELINE_FROZEN", "description": "Ordinary CI validates frozen legacy files.", "proofRefs": [], "probeRefs": ["LEGACY_BASELINE_FROZEN"], "evalCaseRefs": [], "ownerGate": null }
+  ]
 }

@@ -26,7 +26,7 @@ jobs:
       - run: npm run quality:legacy
       - run: npm run quality:invariants
       - run: npm run context:test
-      - run: npm run os:bootstrap-test
+      - run: node scripts/engineering/os-bootstrap-test.mjs --evidence .zerograph-evidence/probes.json
       - run: npm run engineering:eval
       - name: Require immutable R3 task contract
         env:
@@ -75,7 +75,7 @@ jobs:
         with:
           {
             name: zerograph-preflight,
-            path: .zerograph-evidence/preflight.json,
+            path: .zerograph-evidence,
           }
 
   unit-build:
@@ -225,7 +225,7 @@ jobs:
           ZEROGRAPH_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           ZEROGRAPH_EVIDENCE_DIR: .zerograph-evidence
         run: |
-          npm run task:contract:check -- --acceptance --base "$ZEROGRAPH_BASE_SHA" --head "$ZEROGRAPH_HEAD_SHA"
+          npm run task:acceptance:check -- --evidence .zerograph-evidence --base "$ZEROGRAPH_BASE_SHA" --head "$ZEROGRAPH_HEAD_SHA"
           echo "TASK_ACCEPTANCE_COMPLETE"
           result="$(npm run --silent quality:release)"
           echo "$result"

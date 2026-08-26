@@ -33,6 +33,8 @@
     "task:close": "node scripts/engineering/task-close.mjs",
     "task:contract": "node scripts/engineering/task-contract.mjs",
     "task:contract:check": "node scripts/engineering/task-contract.mjs --check",
+    "task:acceptance": "node scripts/engineering/task-acceptance.mjs",
+    "task:acceptance:check": "node scripts/engineering/task-acceptance.mjs",
     "remote:certify": "node scripts/engineering/remote-evidence.mjs",
     "quality:release": "node scripts/engineering/os-acceptance.mjs --mode release",
     "os:acceptance": "node scripts/engineering/os-acceptance.mjs",
