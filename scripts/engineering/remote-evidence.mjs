@@ -26,6 +26,7 @@ try {
   if (failed.length) output("REMOTE_EVIDENCE_FAILED", { code: "REQUIRED_CHECK_FAILED", failures: failed.map(({ name, state, link, description }) => ({ name, state, link, description: String(description ?? "").slice(0, 240) })) }, 2);
   output("REMOTE_EVIDENCE_PASS", { remoteEvidence: { status: "PASS", headSha: repo.currentHeadSha, treeSha: repo.currentTreeSha, planHash: proof.planHash, requiredChecks: checks.map((x) => x.name), terminalChecks: checks.map(({ name, state, link }) => ({ name, state, link })) } });
 } catch (error) {
+  if (/no checks reported/i.test(String(error))) output("REMOTE_EVIDENCE_PENDING", { remoteEvidence: { status: "PENDING", headSha: repo.currentHeadSha, treeSha: repo.currentTreeSha, planHash: plan().planHash, requiredChecks: [], terminalChecks: [] } }, 2);
   if (inaccessible(error)) output("EXTERNAL_DEPENDENCY", { detail: String(error).slice(0, 240) }, 3);
   output("REMOTE_EVIDENCE_FAILED", { code: "REMOTE_EVIDENCE_QUERY_FAILED", detail: String(error).slice(0, 240) }, 2);
 }
