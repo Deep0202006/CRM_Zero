@@ -61,7 +61,7 @@ if (!acceptance.localComplete) {
       JSON.stringify({
         decision: "block",
         reason:
-          "ZEROGRAPH_CONTINUE|status=AWAITING_REMOTE_EVIDENCE|command=push exact head and wait for GitHub/Vercel evidence",
+      "ZEROGRAPH_CONTINUE|status=TASK_LOCAL_COMPLETE|command=npm run remote:certify",
       }),
     );
     process.exit(0);

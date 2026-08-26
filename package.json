@@ -25,6 +25,8 @@
     "proof:plan": "node scripts/engineering/proof-plan.mjs",
     "verify:affected": "node scripts/engineering/verify-affected.mjs",
     "legacy:ingest": "node scripts/engineering/legacy-ingest.mjs",
+    "legacy:refresh": "node scripts/engineering/legacy-ingest.mjs --refresh --write",
+    "remote:certify": "node scripts/engineering/remote-evidence.mjs",
     "legacy:reconcile": "node scripts/engineering/legacy-reconcile.mjs",
     "engineering:eval": "node scripts/engineering/engineering-eval.mjs",
     "learn:close": "node scripts/engineering/learn-close.mjs",
