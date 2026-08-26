@@ -200,11 +200,13 @@ assert(
 );
 assert(s4.stopReason === "STALL_LIMIT", "STOP_LOOP_UNBOUNDED");
 assert(
-  run("scripts/engineering/hooks/stop.mjs", {
-    session_id,
-    stop_hook_active: true,
-  }).stdout === "",
-  "STOP_ACTIVE_IGNORED",
+  parse(
+    run("scripts/engineering/hooks/stop.mjs", {
+      session_id: `active-${randomUUID()}`,
+      stop_hook_active: true,
+    }),
+  )?.decision === "block",
+  "STOP_ACTIVE_BYPASS_NOT_REMOVED",
 );
 const workflow = readFileSync(
     resolve(root, ".github/workflows/product-verification.yml"),
@@ -252,6 +254,71 @@ assert(
   futureStop?.decision === "block" &&
     futureStop.reason.includes("Run the missing domain proof"),
   "FUTURE_TASK_STOP_NOT_ENFORCED",
+);
+const exactHead = execFileSync("git", ["rev-parse", "HEAD"], {
+    cwd: root,
+    encoding: "utf8",
+  }).trim(),
+  remoteFixture = (checks, pr = { number: 1, headRefOid: exactHead, url: "https://example.invalid/pr/1" }) =>
+    JSON.stringify({ pr, checks }),
+  closeStop = (status, fixture) =>
+    parse(
+      runWithEnv(
+        "scripts/engineering/hooks/stop.mjs",
+        { session_id: `remote-${randomUUID()}`, stop_hook_active: false },
+        {
+          ZEROGRAPH_ACCEPTANCE_FIXTURE: greenAcceptance,
+          ZEROGRAPH_TASK_CLOSE_FIXTURE: JSON.stringify({ status, nextAction: null }),
+          ZEROGRAPH_REMOTE_CHECK_FIXTURE: fixture,
+        },
+      ),
+    ),
+  passChecks = [{ name: "preflight", state: "SUCCESS", bucket: "pass", link: "https://example.invalid/check" }];
+assert(
+  closeStop("TASK_LOCAL_COMPLETE", remoteFixture([{ ...passChecks[0], bucket: "pending" }]))?.reason.includes(
+    "gh pr checks --required --watch",
+  ),
+  "REMOTE_PENDING_DID_NOT_BLOCK",
+);
+assert(
+  closeStop("TASK_LOCAL_COMPLETE", remoteFixture([{ ...passChecks[0], bucket: "fail" }]))?.decision === "block",
+  "REMOTE_FAILURE_DID_NOT_BLOCK",
+);
+assert(
+  closeStop("TASK_LOCAL_COMPLETE", remoteFixture(passChecks, { number: 1, headRefOid: "stale", url: "https://example.invalid/pr/1" }))?.decision === "block",
+  "REMOTE_HEAD_MISMATCH_DID_NOT_BLOCK",
+);
+assert(
+  closeStop("TASK_LOCAL_COMPLETE", remoteFixture(passChecks, null))?.decision === "block",
+  "REMOTE_MISSING_PR_DID_NOT_BLOCK",
+);
+assert(
+  runWithEnv(
+    "scripts/engineering/hooks/stop.mjs",
+    { session_id: `remote-pass-${randomUUID()}`, stop_hook_active: false },
+    {
+      ZEROGRAPH_ACCEPTANCE_FIXTURE: greenAcceptance,
+      ZEROGRAPH_TASK_CLOSE_FIXTURE: JSON.stringify({ status: "TASK_LOCAL_COMPLETE", nextAction: null }),
+      ZEROGRAPH_REMOTE_CHECK_FIXTURE: remoteFixture(passChecks),
+    },
+  ).stdout === "",
+  "REMOTE_PASS_DID_NOT_CLOSE_LOCAL_TASK",
+);
+assert(
+  runWithEnv(
+    "scripts/engineering/hooks/stop.mjs",
+    { session_id: `remote-awaiting-${randomUUID()}`, stop_hook_active: false },
+    {
+      ZEROGRAPH_ACCEPTANCE_FIXTURE: greenAcceptance,
+      ZEROGRAPH_TASK_CLOSE_FIXTURE: JSON.stringify({ status: "AWAITING_REMOTE_EVIDENCE", nextAction: null }),
+      ZEROGRAPH_REMOTE_CHECK_FIXTURE: remoteFixture(passChecks),
+    },
+  ).stdout === "",
+  "REMOTE_PASS_DID_NOT_CLOSE_AWAITING_TASK",
+);
+assert(
+  closeStop("IMPLEMENTATION_INCOMPLETE", remoteFixture(passChecks))?.decision === "block",
+  "REMOTE_OVERRULED_INCOMPLETE_TASK",
 );
 
 const taskState = {
