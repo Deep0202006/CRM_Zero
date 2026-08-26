@@ -19,6 +19,8 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
+      - name: Fetch complete origin governance history
+        run: git fetch --prune origin '+refs/heads/*:refs/remotes/origin/*'
       - uses: actions/setup-node@v4
         with: { node-version: 24.13.0, cache: npm }
       - run: npm ci

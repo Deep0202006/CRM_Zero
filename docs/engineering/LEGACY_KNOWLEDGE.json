@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "generatedFrom": "git rev-list --objects --all + targeted filesystem scan",
   "summary": {
-    "sourceBlobCount": 1163,
+    "sourceBlobCount": 1164,
     "filesystemGovernanceSources": 58,
     "ledgerVersionCount": 21,
     "rawLessonRowCount": 221,
@@ -619,6 +619,7 @@
     "83cb85f852b6e003694a50f54330a8262017ef98c88d3e39c2aa31286941a7d4",
     "83ce891719d1932ae026ef52bd20c6e11020aac1c29e3adccf76fd98a100c1af",
     "83dd612bd6403b3a7045fbfdff176a089e4d1d54223de7987caf87b6c8c845d8",
+    "845a3a29ed7a1fccff67cfd32464b30b70cd41f642adab528bd6fddf9e44a5a8",
     "84add44731af3cceaa1ea06c1262570375cdb0747139a4f4bb3c6bf4e87b1981",
     "84ae387deaefe8d248819b2757acb43dd16a85d9ca803c9d819ad7807832408b",
     "84b0eecb5a2b59a95e7a3bfa31e3d2bc9a7906c873cab0188928a44e144a1372",
@@ -7117,6 +7118,12 @@
     },
     {
       "blobHash": "7ae1b64dffd44059f1adc4847450940dc45d56204664d9b4d6aacf42af8fd86e",
+      "path": "scripts/engineering/legacy-ingest.mjs",
+      "classification": "SUPPORTING_EVIDENCE",
+      "extractedRecordCount": 0
+    },
+    {
+      "blobHash": "845a3a29ed7a1fccff67cfd32464b30b70cd41f642adab528bd6fddf9e44a5a8",
       "path": "scripts/engineering/legacy-ingest.mjs",
       "classification": "SUPPORTING_EVIDENCE",
       "extractedRecordCount": 0
