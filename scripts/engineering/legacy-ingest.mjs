@@ -104,8 +104,8 @@ const extract = (path, content) => {
       add(match[1], `TEST_${hash(match[1]).slice(0, 12)}`);
   return [...new Map(rows.map((x) => [hash(x.normalizedRule), x])).values()];
 };
-// Enumerate every local ref as required, then bind tracked certification to
-// portable repository refs so an Owner-only local branch cannot make CI stale.
+// Enumerate every remote ref; CI fetches the same ref set before certification.
+// This preserves retained governance knowledge outside the current branch.
 const canonicalObjects = new Set(
     git("rev-list", "--objects", "HEAD", "--remotes=origin")
       .split(/\r?\n/)
