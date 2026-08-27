@@ -1,68 +1,91 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { loadState, readInput, root, saveState, sha } from "./state.mjs";
 const input = await readInput(),
-  remoteFixture = process.env.ZEROGRAPH_REMOTE_CHECK_FIXTURE
-    ? JSON.parse(process.env.ZEROGRAPH_REMOTE_CHECK_FIXTURE)
-    : null,
   output = (value) => console.log(JSON.stringify(value)),
   remoteBlock = (reason) => output({ decision: "block", reason }),
+  external = (message) =>
+    output({
+      stopReason: "EXTERNAL_DEPENDENCY",
+      systemMessage: `EXTERNAL_DEPENDENCY: ${message}`,
+    }),
+  run = (file, args) => {
+    const result = spawnSync(file, args, { cwd: root, encoding: "utf8" });
+    return {
+      status: result.status,
+      stdout: result.stdout ?? "",
+      stderr: result.stderr ?? String(result.error ?? ""),
+    };
+  },
+  gh = (args) =>
+    process.env.ZEROGRAPH_GH_FIXTURE
+      ? run(process.execPath, [process.env.ZEROGRAPH_GH_FIXTURE, ...args])
+      : run("gh", args),
+  json = (result) => {
+    try {
+      return JSON.parse(result.stdout);
+    } catch {
+      return null;
+    }
+  },
   remoteGate = (session_id, state) => {
     const head = execFileSync("git", ["rev-parse", "HEAD"], {
       cwd: root,
       encoding: "utf8",
     }).trim();
-    let pr;
-    try {
-      pr = Object.hasOwn(remoteFixture ?? {}, "pr") ? remoteFixture.pr : JSON.parse(
-        execFileSync("gh", ["pr", "view", "--json", "number,headRefOid,url"], {
-          cwd: root,
-          encoding: "utf8",
-        }),
-      );
-    } catch (error) {
-      if (/no pull requests found|no pull request/i.test(String(error.stderr ?? error)))
-        return remoteBlock(
-          "ZEROGRAPH_CONTINUE|status=AWAITING_REMOTE_EVIDENCE|command=push the exact current HEAD and open a PR",
-        );
-      return output({
-        stopReason: "EXTERNAL_DEPENDENCY",
-        systemMessage: "EXTERNAL_DEPENDENCY: GitHub PR discovery is unavailable.",
-      });
-    }
+    const prResult = gh([
+        "pr",
+        "view",
+        "--json",
+        "number,headRefOid,baseRefOid,baseRefName,url",
+      ]),
+      pr = json(prResult);
     if (!pr)
-      return remoteBlock(
-        "ZEROGRAPH_CONTINUE|status=AWAITING_REMOTE_EVIDENCE|command=push the exact current HEAD and open a PR",
-      );
+      return /no pull requests found|no pull request/i.test(prResult.stderr)
+        ? remoteBlock(
+            "ZEROGRAPH_CONTINUE|status=AWAITING_REMOTE_EVIDENCE|command=push the exact current HEAD and open a PR",
+          )
+        : external("GitHub PR metadata is unavailable.");
+    if (!pr.number || !pr.headRefOid || !pr.baseRefOid || !pr.baseRefName)
+      return external("GitHub PR metadata is incomplete.");
     if (pr.headRefOid !== head)
       return remoteBlock(
-        "ZEROGRAPH_CONTINUE|status=AWAITING_REMOTE_EVIDENCE|command=push the exact current HEAD to the PR branch",
+        "ZEROGRAPH_CONTINUE|status=HEAD_MISMATCH|command=push the exact current HEAD to the PR branch",
       );
-    let checks;
-    try {
-      checks = Object.hasOwn(remoteFixture ?? {}, "checks") ? remoteFixture.checks : JSON.parse(
-        execFileSync(
-          "gh",
-          ["pr", "checks", "--required", "--json", "name,state,bucket,link"],
-          { cwd: root, encoding: "utf8" },
-        ),
-      );
-    } catch (error) {
-      return output({
-        stopReason: "EXTERNAL_DEPENDENCY",
-        systemMessage: "EXTERNAL_DEPENDENCY: GitHub required-check query is unavailable.",
-      });
-    }
-    if (checks.some((check) => ["fail", "cancel", "skipping"].includes(check.bucket)))
+    const base = run("git", ["merge-base", "--is-ancestor", pr.baseRefOid, "HEAD"]);
+    if (base.status === 1)
       return remoteBlock(
-        "ZEROGRAPH_CONTINUE|status=AWAITING_REMOTE_EVIDENCE|command=inspect and fix failed required checks",
+        `ZEROGRAPH_CONTINUE|status=STALE_BASE|base=${pr.baseRefName}|command=rebase onto the current PR base`,
+      );
+    if (base.status !== 0)
+      return external("PR base containment could not be verified.");
+    const checksResult = gh([
+        "pr",
+        "checks",
+        String(pr.number),
+        "--required",
+        "--json",
+        "name,state,bucket,link",
+      ]),
+      checks = json(checksResult);
+    if (!Array.isArray(checks))
+      return external("GitHub required-check state is unavailable.");
+    if (
+      checks.some(
+        (check) =>
+          ["fail", "cancel", "skipping"].includes(check.bucket) ||
+          /cancel|timed.?out|failure|error/i.test(check.state),
+      )
+    )
+      return remoteBlock(
+        "ZEROGRAPH_CONTINUE|status=REMOTE_CHECKS_FAILED|command=inspect and fix failed required checks",
       );
     if (!checks.length || checks.some((check) => check.bucket === "pending"))
       return remoteBlock(
-        "ZEROGRAPH_CONTINUE|status=AWAITING_REMOTE_EVIDENCE|command=gh pr checks --required --watch",
+        "ZEROGRAPH_CONTINUE|status=REMOTE_CHECKS_PENDING|command=gh pr checks --required --watch",
       );
     if (!checks.every((check) => check.bucket === "pass"))
       return remoteBlock(
-        "ZEROGRAPH_CONTINUE|status=AWAITING_REMOTE_EVIDENCE|command=gh pr checks --required --watch",
+        "ZEROGRAPH_CONTINUE|status=REMOTE_CHECKS_PENDING|command=gh pr checks --required --watch",
       );
     saveState({
       ...state,

@@ -44,7 +44,7 @@ const refresh = process.argv.includes("--refresh"),
     process.exit(2);
   };
 if (write && !refresh) fail("LEGACY_REFRESH_REQUIRES_EXPLICIT_MODE");
-if (check && !refresh) {
+if (!refresh) {
   if (
     spawnSync("git", ["merge-base", "--is-ancestor", FROZEN_LEGACY_BASE, "HEAD"], {
       cwd: root,

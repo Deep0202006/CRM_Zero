@@ -259,67 +259,154 @@ const exactHead = execFileSync("git", ["rev-parse", "HEAD"], {
     cwd: root,
     encoding: "utf8",
   }).trim(),
-  remoteFixture = (checks, pr = { number: 1, headRefOid: exactHead, url: "https://example.invalid/pr/1" }) =>
-    JSON.stringify({ pr, checks }),
-  closeStop = (status, fixture) =>
-    parse(
-      runWithEnv(
-        "scripts/engineering/hooks/stop.mjs",
-        { session_id: `remote-${randomUUID()}`, stop_hook_active: false },
-        {
-          ZEROGRAPH_ACCEPTANCE_FIXTURE: greenAcceptance,
-          ZEROGRAPH_TASK_CLOSE_FIXTURE: JSON.stringify({ status, nextAction: null }),
-          ZEROGRAPH_REMOTE_CHECK_FIXTURE: fixture,
-        },
-      ),
+  ancestorBase = execFileSync("git", ["rev-parse", "HEAD^"], {
+    cwd: root,
+    encoding: "utf8",
+  }).trim(),
+  staleBase = execFileSync(
+    "git",
+    ["commit-tree", "HEAD^{tree}", "-p", "HEAD", "-m", "stale base fixture"],
+    {
+      cwd: root,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        GIT_AUTHOR_NAME: "ZeroGraph Fixture",
+        GIT_AUTHOR_EMAIL: "fixture@example.invalid",
+        GIT_COMMITTER_NAME: "ZeroGraph Fixture",
+        GIT_COMMITTER_EMAIL: "fixture@example.invalid",
+      },
+    },
+  ).trim(),
+  fakeGhRoot = mkdtempSync(resolve(tmpdir(), "zerograph-gh-")),
+  fakeGhScript = resolve(fakeGhRoot, "gh.mjs"),
+  fixturePrNumber = process.pid,
+  pr = (overrides = {}) => ({
+    number: fixturePrNumber,
+    headRefOid: exactHead,
+    baseRefOid: ancestorBase,
+    baseRefName: "main",
+    url: "https://example.invalid/pr/fixture",
+    ...overrides,
+  }),
+  passChecks = [
+    {
+      name: "preflight",
+      state: "SUCCESS",
+      bucket: "pass",
+      link: "https://example.invalid/check",
+    },
+  ],
+  closeStop = (status, fixture = {}) =>
+    runWithEnv(
+      "scripts/engineering/hooks/stop.mjs",
+      { session_id: `remote-${randomUUID()}`, stop_hook_active: false },
+      {
+        ZEROGRAPH_ACCEPTANCE_FIXTURE: greenAcceptance,
+        ZEROGRAPH_TASK_CLOSE_FIXTURE: JSON.stringify({ status, nextAction: null }),
+        ZEROGRAPH_FAKE_PR: fixture.pr === null ? "" : JSON.stringify(fixture.pr ?? pr()),
+        ZEROGRAPH_FAKE_CHECKS:
+          typeof fixture.checks === "string"
+            ? fixture.checks
+            : JSON.stringify(fixture.checks ?? passChecks),
+        ZEROGRAPH_FAKE_PR_STATUS: String(fixture.prStatus ?? 0),
+        ZEROGRAPH_FAKE_CHECK_STATUS: String(fixture.checkStatus ?? 0),
+        ZEROGRAPH_FAKE_STDERR: fixture.stderr ?? "",
+        ZEROGRAPH_GH_FIXTURE: fakeGhScript,
+      },
+    );
+writeFileSync(
+  fakeGhScript,
+  `const checks = process.argv[3] === "checks";
+process.stdout.write(checks ? process.env.ZEROGRAPH_FAKE_CHECKS : process.env.ZEROGRAPH_FAKE_PR);
+process.stderr.write(process.env.ZEROGRAPH_FAKE_STDERR ?? "");
+process.exit(Number(checks ? process.env.ZEROGRAPH_FAKE_CHECK_STATUS : process.env.ZEROGRAPH_FAKE_PR_STATUS));\n`,
+);
+try {
+  const pending = parse(
+      closeStop("TASK_LOCAL_COMPLETE", {
+        checks: [{ ...passChecks[0], state: "PENDING", bucket: "pending" }],
+        checkStatus: 8,
+      }),
     ),
-  passChecks = [{ name: "preflight", state: "SUCCESS", bucket: "pass", link: "https://example.invalid/check" }];
-assert(
-  closeStop("TASK_LOCAL_COMPLETE", remoteFixture([{ ...passChecks[0], bucket: "pending" }]))?.reason.includes(
-    "gh pr checks --required --watch",
-  ),
-  "REMOTE_PENDING_DID_NOT_BLOCK",
-);
-assert(
-  closeStop("TASK_LOCAL_COMPLETE", remoteFixture([{ ...passChecks[0], bucket: "fail" }]))?.decision === "block",
-  "REMOTE_FAILURE_DID_NOT_BLOCK",
-);
-assert(
-  closeStop("TASK_LOCAL_COMPLETE", remoteFixture(passChecks, { number: 1, headRefOid: "stale", url: "https://example.invalid/pr/1" }))?.decision === "block",
-  "REMOTE_HEAD_MISMATCH_DID_NOT_BLOCK",
-);
-assert(
-  closeStop("TASK_LOCAL_COMPLETE", remoteFixture(passChecks, null))?.decision === "block",
-  "REMOTE_MISSING_PR_DID_NOT_BLOCK",
-);
-assert(
-  runWithEnv(
-    "scripts/engineering/hooks/stop.mjs",
-    { session_id: `remote-pass-${randomUUID()}`, stop_hook_active: false },
-    {
-      ZEROGRAPH_ACCEPTANCE_FIXTURE: greenAcceptance,
-      ZEROGRAPH_TASK_CLOSE_FIXTURE: JSON.stringify({ status: "TASK_LOCAL_COMPLETE", nextAction: null }),
-      ZEROGRAPH_REMOTE_CHECK_FIXTURE: remoteFixture(passChecks),
-    },
-  ).stdout === "",
-  "REMOTE_PASS_DID_NOT_CLOSE_LOCAL_TASK",
-);
-assert(
-  runWithEnv(
-    "scripts/engineering/hooks/stop.mjs",
-    { session_id: `remote-awaiting-${randomUUID()}`, stop_hook_active: false },
-    {
-      ZEROGRAPH_ACCEPTANCE_FIXTURE: greenAcceptance,
-      ZEROGRAPH_TASK_CLOSE_FIXTURE: JSON.stringify({ status: "AWAITING_REMOTE_EVIDENCE", nextAction: null }),
-      ZEROGRAPH_REMOTE_CHECK_FIXTURE: remoteFixture(passChecks),
-    },
-  ).stdout === "",
-  "REMOTE_PASS_DID_NOT_CLOSE_AWAITING_TASK",
-);
-assert(
-  closeStop("IMPLEMENTATION_INCOMPLETE", remoteFixture(passChecks))?.decision === "block",
-  "REMOTE_OVERRULED_INCOMPLETE_TASK",
-);
+    failed = parse(
+      closeStop("TASK_LOCAL_COMPLETE", {
+        checks: [{ ...passChecks[0], state: "FAILURE", bucket: "fail" }],
+        checkStatus: 1,
+      }),
+    );
+  assert(
+    pending?.decision === "block" && pending.reason.includes("REMOTE_CHECKS_PENDING"),
+    "REMOTE_PENDING_PROCESS_EXIT_LOST",
+  );
+  assert(
+    failed?.decision === "block" && failed.reason.includes("REMOTE_CHECKS_FAILED"),
+    "REMOTE_FAILURE_PROCESS_EXIT_LOST",
+  );
+  for (const state of ["CANCELLED", "TIMED_OUT"])
+    assert(
+      parse(
+        closeStop("TASK_LOCAL_COMPLETE", {
+          checks: [{ ...passChecks[0], state, bucket: "fail" }],
+          checkStatus: 1,
+        }),
+      )?.reason.includes("REMOTE_CHECKS_FAILED"),
+      `REMOTE_${state}_NOT_BLOCKING`,
+    );
+  assert(
+    closeStop("TASK_LOCAL_COMPLETE").stdout === "",
+    "REMOTE_PASS_DID_NOT_CLOSE_LOCAL_TASK",
+  );
+  assert(
+    parse(
+      closeStop("TASK_LOCAL_COMPLETE", {
+        checks: "",
+        checkStatus: 1,
+        stderr: "authentication required",
+      }),
+    )?.stopReason === "EXTERNAL_DEPENDENCY",
+    "REMOTE_AUTH_FAILURE_NOT_EXTERNAL",
+  );
+  assert(
+    parse(closeStop("TASK_LOCAL_COMPLETE", { checks: "not-json" }))?.stopReason ===
+      "EXTERNAL_DEPENDENCY",
+    "REMOTE_MALFORMED_JSON_NOT_EXTERNAL",
+  );
+  assert(
+    parse(closeStop("TASK_LOCAL_COMPLETE", { pr: pr({ headRefOid: "stale" }) }))?.reason.includes(
+      "HEAD_MISMATCH",
+    ),
+    "REMOTE_HEAD_MISMATCH_DID_NOT_BLOCK",
+  );
+  assert(
+    closeStop("AWAITING_REMOTE_EVIDENCE").stdout === "",
+    "REMOTE_PASS_DID_NOT_CLOSE_AWAITING_TASK",
+  );
+  assert(
+    parse(closeStop("TASK_LOCAL_COMPLETE", { pr: pr({ baseRefOid: staleBase }) }))?.reason.includes(
+      "STALE_BASE",
+    ),
+    "REMOTE_STALE_BASE_DID_NOT_BLOCK",
+  );
+  assert(
+    parse(closeStop("TASK_LOCAL_COMPLETE", { pr: pr({ baseRefOid: undefined }) }))
+      ?.stopReason === "EXTERNAL_DEPENDENCY",
+    "REMOTE_MISSING_BASE_NOT_EXTERNAL",
+  );
+  assert(
+    closeStop("TASK_LOCAL_COMPLETE", { pr: pr({ baseRefOid: ancestorBase }) }).stdout === "" &&
+      parse(closeStop("TASK_LOCAL_COMPLETE", { pr: pr({ baseRefOid: staleBase }) }))?.reason.includes(
+        "STALE_BASE",
+      ),
+    "REMOTE_CHANGED_BASE_NOT_RECHECKED",
+  );
+  assert(
+    parse(closeStop("IMPLEMENTATION_INCOMPLETE"))?.decision === "block",
+    "REMOTE_OVERRULED_INCOMPLETE_TASK",
+  );
+} finally {
+  rmSync(fakeGhRoot, { recursive: true, force: true });
+}
 
 const legacyStatusBefore = execFileSync("git", ["status", "--porcelain"], {
     cwd: root,
@@ -364,6 +451,10 @@ try {
     commit = legacyGit(["commit-tree", tree, "-p", "HEAD", "-m", "A07 fixture"]).trim();
   execFileSync("git", ["update-ref", legacyFixtureRef, commit], { cwd: root });
   assert(
+    legacyCheck().status === 0,
+    "LEGACY_NO_ARGUMENT_NOT_FROZEN",
+  );
+  assert(
     legacyCheck("--check").status === 0,
     "LEGACY_REMOTE_REF_AFFECTED_FROZEN_CHECK",
   );
@@ -373,7 +464,9 @@ try {
   ]) {
     const fullPath = resolve(root, path), original = readFileSync(fullPath);
     try {
-      writeFileSync(fullPath, Buffer.concat([original, Buffer.from("\n")]));
+      const corrupted = JSON.parse(original);
+      corrupted.corrupt = true;
+      writeFileSync(fullPath, JSON.stringify(corrupted));
       assert(
         legacyFailure(legacyCheck("--check"), "LEGACY_FROZEN_BASELINE_DRIFT"),
         `LEGACY_FROZEN_DRIFT_NOT_DETECTED:${path}`,
@@ -386,12 +479,23 @@ try {
     legacyFailure(legacyCheck("--write"), "LEGACY_REFRESH_REQUIRES_EXPLICIT_MODE"),
     "LEGACY_REFRESH_MODE_NOT_REQUIRED",
   );
+  assert(legacyCheck("--refresh").status === 0, "LEGACY_EXPLICIT_REFRESH_UNAVAILABLE");
 } finally {
   execFileSync("git", ["update-ref", "-d", legacyFixtureRef], {
     cwd: root,
   });
+  assert(
+    legacyCheck().status === 0,
+    "LEGACY_DELETED_REF_AFFECTED_FROZEN_CHECK",
+  );
   rmSync(legacyFixtureRoot, { recursive: true, force: true });
 }
+assert(
+  !readFileSync(resolve(root, "package.json"), "utf8").match(
+    /legacy-ingest\.mjs[^"\n]*--refresh/,
+  ),
+  "LEGACY_NORMAL_CI_USES_REFRESH",
+);
 assert(
   execFileSync("git", ["status", "--porcelain"], { cwd: root, encoding: "utf8" }) ===
     legacyStatusBefore,
