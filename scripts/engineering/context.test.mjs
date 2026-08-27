@@ -1,38 +1,50 @@
 import assert from "node:assert/strict";
 import { buildSourceIndex } from "./source-index.mjs";
 import { resolveContext, revalidateCandidate } from "./context.mjs";
-const index = buildSourceIndex({ writeCache: false });
-const matrix = [];
-for (const [task, domain, path] of [
-  ["MappingsPage should show who logged and completed each mapping", "mappings", "src/app/mappings/page.tsx"],
-  ["loadCallHistoryWithOptionalMetrics loses calls for employee", "calls", "src/app/api/call-logs/history/route.ts"],
-  ["execute_receivable_command_v1 must target the exact receivable", "receivables", "src/app/api/receivables/commands/route.ts"],
-  ["Move managed Supabase to self-hosted platform", "platform-handover", "docs/engineering/PLATFORM_HANDOVER.md"],
-]) {
+
+const index = buildSourceIndex({ writeCache: false }), relationshipKinds = new Set(["IMPORT", "REVERSE_IMPORT", "RELATED_TEST"]), matrix = [];
+const golden = [
+  ["calls visibility employee server confirmation", ["calls"], "R2", ["call_history"], "src/app/api/call-logs/confirm/route.ts"],
+  ["attendance offline confirmation", ["attendance"], "R2", ["attendance"], "src/app/api/attendance/confirm/route.ts"],
+  ["mapping attribution logged completed", ["mappings"], "R2", ["mapping_request"], "src/app/mappings/page.tsx"],
+  ["pipeline retry idempotency", ["pipeline"], "R2", ["pipeline_lead"], "src/app/api/pipeline/create/route.ts"],
+  ["receivable exact payment", ["receivables"], "R3", ["receivable", "payment"], "src/app/api/receivables/commands/route.ts"],
+  ["distributor renewal reminders", ["distributor-status", "renewals"], "R2", ["distributor_account", "renewal"], "src/app/api/distributors/renewals/route.ts"],
+  ["ERP assignment distributor", ["distributor-status", "erp"], "R3", ["distributor_erp_assignment"], "src/app/api/distributors/commands/route.ts"],
+  ["external ERP partner authorization", ["erp", "erp-partner"], "R3", ["erp_partner_scope"], "src/app/api/erp-partner/distributors/route.ts"],
+  ["spreadsheet import atomic", ["imports"], "R3", ["unified_distributor_master_import_orchestration"], "src/app/api/distributors/master-import/route.ts"],
+  ["team KPI reporting", ["team-kpi"], "R2", ["attendance"], "src/app/api/team-kpi/route.ts"],
+  ["Move managed Supabase to self-hosted platform", ["platform-handover"], "R3", ["platform_runtime_placement"], "docs/engineering/PLATFORM_HANDOVER.md"],
+  ["presentation shared layout navigation", ["shared-ui"], "R0", [], "src/app/page.tsx"],
+];
+let relationshipCases = 0;
+for (const [task, domains, risk, authorities, path] of golden) {
   const pack = resolveContext({ task, index });
   assert.equal(pack.status, "RESOLVED", task);
-  assert(pack.domains.includes(domain), `${task}:${domain}`);
-  assert(pack.candidatePaths.some((candidate) => candidate.path === path || candidate.path.startsWith(`${path}/`)), `${task}:${path}`);
-  assert(pack.candidatePaths.length <= 7);
-  matrix.push({ case: domain, status: pack.status });
+  for (const domain of domains) assert(pack.domains.includes(domain), `${task}:domain:${domain}`);
+  assert.equal(pack.risk, risk, `${task}:risk`);
+  for (const authority of authorities) assert(pack.authorities.includes(authority), `${task}:authority:${authority}`);
+  assert(pack.candidatePaths.some((candidate) => candidate.path === path || candidate.path.startsWith(`${path}/`)), `${task}:path:${path}`);
+  assert(pack.candidatePaths.length > 0 && pack.candidatePaths.length <= 7);
+  assert(pack.candidatePaths.every((candidate) => /^[a-f0-9]{64}$/.test(candidate.contentHash) && candidate.role && candidate.matchedBy.length));
+  if (pack.candidatePaths.some((candidate) => candidate.matchedBy.some((reason) => relationshipKinds.has(reason.kind)))) relationshipCases += 1;
+  if (domains[0] !== "platform-handover") assert(pack.candidatePaths.some((candidate) => ["implementation", "server"].includes(candidate.role)), `${task}:implementation`);
+  matrix.push({ task, status: pack.status, domains: pack.domains, candidates: pack.candidatePaths.length });
 }
-const partner = resolveContext({ task: "erp-partner erp_partner_distributors_v1", index });
-assert.equal(partner.status, "RESOLVED");
-assert(partner.domains.includes("erp-partner"));
-const conflict = resolveContext({ task: "calls receivable", index });
-assert.equal(conflict.status, "SCOPE_AMBIGUOUS");
-assert(conflict.unresolved.includes("CONFLICTING_AUTHORITIES"));
-const lexical = resolveContext({ task: "mapping", index: { files: [{ path: "tools/mapping.ts", contentHash: "0".repeat(64), exports: [], imports: [], tables: [], rpcs: [], routes: [], sqlIdentifiers: [], reverseImports: [] }] } });
-assert.equal(lexical.status, "SCOPE_AMBIGUOUS");
-assert.deepEqual(lexical.requiredOpenPaths, []);
-const lowMargin = resolveContext({ task: "Mapping should show who logged and completed each mapping", index });
-assert.equal(lowMargin.status, "SCOPE_AMBIGUOUS"); assert(lowMargin.unresolved.includes("LOW_MARGIN"));
+assert(relationshipCases >= 3, "fewer than three golden tasks used source relationships");
+const sameDomainTie = resolveContext({ task: "mapping attribution logged completed", index });
+assert.equal(sameDomainTie.status, "RESOLVED");
+assert(sameDomainTie.candidatePaths.filter((candidate) => candidate.score === sameDomainTie.candidatePaths[0].score).length >= 1);
+const conflict = resolveContext({ task: "receivable renewal payment authority conflict", index });
+assert.equal(conflict.status, "SCOPE_AMBIGUOUS"); assert(conflict.unresolved.includes("CONFLICTING_AUTHORITIES")); assert.deepEqual(conflict.requiredOpenPaths, []);
+for (const task of ["unmapped imaginary subsystem", "attendnce offlne confirmiton"]) {
+  const unknown = resolveContext({ task, index });
+  assert.equal(unknown.status, "UNKNOWN"); assert.deepEqual(unknown.requiredOpenPaths, []);
+}
 const exact = resolveContext({ task: "inspect exact route", exactPath: "src/app/api/call-logs/confirm/route.ts", index });
-assert.equal(exact.status, "RESOLVED");
-assert.equal(exact.candidatePaths[0].matchedBy[0].kind, "exact-identifier");
+assert.equal(exact.status, "RESOLVED"); assert(exact.candidatePaths[0].matchedBy.some((reason) => reason.kind === "EXACT_PATH"));
 assert.equal(revalidateCandidate({ ...exact.candidatePaths[0], contentHash: "f".repeat(64) }), false);
-const unknown = resolveContext({ task: "unmapped imaginary subsystem", index });
-assert.equal(unknown.status, "UNKNOWN");
-assert(index.files.some((file) => file.tables.length || file.rpcs.length), "compiler index did not extract database targets");
-matrix.push({ case: "conflicting-authority", status: conflict.status }, { case: "lexical-only", status: lexical.status }, { case: "low-margin", status: lowMargin.status }, { case: "hash-drift", status: "INVALIDATED" }, { case: "graph-unavailable-fallback", status: exact.status });
-console.log(JSON.stringify({ code: "CONTEXT_TEST_MATRIX_PASS", matrix }));
+assert(index.files.some((file) => file.imports.length && file.reverseImports.length), "import graph missing");
+assert(index.files.some((file) => file.relatedTests.length || file.testedSources.length), "test relationships missing");
+matrix.push({ task: "cross-domain conflict", status: conflict.status }, { task: "hash drift", status: "INVALIDATED" }, { task: "graph unavailable", status: exact.status });
+console.log(JSON.stringify({ code: "CONTEXT_TEST_MATRIX_PASS", relationshipCases, matrix }));

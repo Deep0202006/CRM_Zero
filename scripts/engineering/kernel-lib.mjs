@@ -1,21 +1,23 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 
 export const root = resolve(import.meta.dirname, "../..");
 export const sha256 = (value) =>
   createHash("sha256").update(value).digest("hex");
 export const git = (...args) =>
   execFileSync("git", args, { cwd: root, encoding: "utf8", maxBuffer: 64 << 20 }).trim();
-export const run = (file, args, options = {}) =>
-  spawnSync(process.platform === "win32" && ["npm", "npx"].includes(file) ? `${file}.cmd` : file, args, {
+export const run = (file, args, options = {}) => {
+  const windowsNodeCli = process.platform === "win32" && ["npm", "npx"].includes(file) ? resolve(dirname(process.execPath), "node_modules/npm/bin", `${file}-cli.js`) : null;
+  return spawnSync(windowsNodeCli ? process.execPath : file, windowsNodeCli ? [windowsNodeCli, ...args] : args, {
     cwd: options.cwd ?? root,
     encoding: "utf8",
     env: options.env ?? process.env,
     stdio: options.inherit ? "inherit" : "pipe",
     maxBuffer: 64 << 20,
   });
+};
 export const readJson = (path) =>
   JSON.parse(readFileSync(resolve(root, path), "utf8"));
 export const parseArgs = (args = process.argv.slice(2)) => ({

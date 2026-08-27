@@ -1,18 +1,19 @@
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
+import ts from "typescript";
 import { dirtyFingerprint, git, parseArgs, readJson, root, sha256 } from "./kernel-lib.mjs";
 
 const riskRank = { R0: 0, R1: 1, R2: 2, R3: 3 };
 const maxRisk = (...values) => values.reduce((best, value) => riskRank[value] > riskRank[best] ? value : best, "R0");
 const matches = (path, pattern) => pattern.endsWith("/**") ? path === pattern.slice(0, -3) || path.startsWith(pattern.slice(0, -2)) : path === pattern || path.startsWith(`${pattern}/`);
-const executable = (path) => /(?:^|\/)(?:package\.json|[^/]+\.(?:c?js|mjs|mts|cts|jsx|tsx?|py|sh|bash|ps1|ya?ml|toml|json|sql))$/i.test(path);
+const sensitiveUnknownPath = (path) => /(?:^|\/)(?:Dockerfile|Makefile|Containerfile|Jenkinsfile)$/i.test(path) || /(?:^|\/)(?:config|configs|configuration|db|database|queries|query|schema|scripts|tools|workflows?|security|auth|rls|infra|infrastructure)(?:\/|$)/i.test(path) || /(?:^|\/)[^/]+\.(?:c?js|mjs|mts|cts|jsx|tsx?|py|rb|php|go|rs|java|sh|bash|zsh|fish|ps1|bat|cmd|ya?ml|toml|json|sql|ini|cfg|conf|properties|prisma|graphql|gql|env)$/i.test(path) || /(?:^|\/)\.env(?:\.|$)/i.test(path);
 const controlPath = (path) => /^(?:scripts\/(?:engineering|quality)|docs\/engineering|\.github|\.codex|\.gitignore$|AGENTS\.md$|CLAUDE\.md$|package(?:-lock)?\.json$)/.test(path);
 const effectsFor = (path, patch) => {
   const effects = [];
   if (controlPath(path)) effects.push("ENGINEERING_CONTROL", "SECURITY");
   if (/^\.github\//.test(path)) effects.push("WORKFLOW");
-  if (/^\.codex\//.test(path)) effects.push("CONFIGURATION");
-  if (/^supabase\/migrations\/\d+_.*\.sql$/.test(path)) effects.push("DATABASE");
+  if (/^\.codex\/|(?:^|\/)(?:config|configuration)(?:\/|$)|\.(?:ini|cfg|conf|properties|toml|ya?ml|json)$/i.test(path)) effects.push("CONFIGURATION");
+  if (/^supabase\/|(?:^|\/)(?:db|database|schema|queries?)(?:\/|$)|\.(?:sql|prisma|graphql|gql)$/i.test(path)) effects.push("DATABASE");
   if (/^src\/app\/api\//.test(path)) effects.push("API");
   if (/^src\/(?:app|components)\//.test(path)) effects.push("UI");
   if (/auth|rls|policy|service.role|security definer/i.test(`${path}\n${patch}`)) effects.push("AUTHORIZATION", "SECURITY");
@@ -38,6 +39,56 @@ const currentDiff = (base, head) => {
   };
 };
 const authorityTokens = (facts) => facts.flatMap((fact) => [fact.id, fact.authority, ...(fact.identity ?? []), ...(fact.owns ?? [])].filter(Boolean).map((value) => String(value).toLowerCase()));
+const patchSections = (patch, entries) => {
+  const sections = String(patch).split(/^diff --git /m).filter(Boolean).map((section) => {
+    const path = /^\+\+\+ b\/(.+)$/m.exec(section)?.[1] ?? entries[0]?.path ?? "fixture.ts";
+    const added = section.split(/\r?\n/).filter((line) => line.startsWith("+") && !line.startsWith("+++")).map((line) => line.slice(1)).join("\n");
+    return { path, added };
+  });
+  return sections.length ? sections : [{ path: entries[0]?.path ?? "fixture.ts", added: String(patch).split(/\r?\n/).filter((line) => line.startsWith("+")).map((line) => line.slice(1)).join("\n") || String(patch) }];
+};
+const stringLiteral = (node) => node && ts.isStringLiteralLike(node) ? node.text : null;
+const findCallTarget = (node, method) => {
+  if (!node) return null;
+  if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)) {
+    if (node.expression.name.text === method) return stringLiteral(node.arguments[0]);
+    return findCallTarget(node.expression.expression, method);
+  }
+  if (ts.isPropertyAccessExpression(node)) return findCallTarget(node.expression, method);
+  return null;
+};
+const extractSourceWrites = (path, added) => {
+  if (!/\.(?:c?js|mjs|mts|cts|jsx|tsx?)$/i.test(path) || !added.trim()) return [];
+  const source = ts.createSourceFile(path, `async function __impact_fixture__(){\n${added}\n}`, ts.ScriptTarget.Latest, true, /\.tsx?$/i.test(path) ? ts.ScriptKind.TSX : ts.ScriptKind.JS), writes = [];
+  const visit = (node) => {
+    if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)) {
+      const method = node.expression.name.text;
+      if (["insert", "upsert", "update", "delete"].includes(method)) {
+        const target = findCallTarget(node.expression.expression, "from");
+        if (target) writes.push({ kind: "table", target });
+      }
+      if (method === "rpc") {
+        const target = stringLiteral(node.arguments[0]);
+        if (target) writes.push({ kind: "rpc", target });
+      }
+      if (/^(?:createUser|deleteUser|updateUserById|inviteUserByEmail|generateLink|signOut)$/.test(method) && added.slice(Math.max(0, node.pos - 80), node.end).includes(".auth.admin")) writes.push({ kind: "auth", target: `auth.admin.${method}` });
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  if (!writes.length && source.parseDiagnostics.length && !/(?:__tests__|\.test\.|\.spec\.|^e2e\/)/i.test(path)) {
+    for (const match of added.matchAll(/\.from\s*\(\s*["']([^"']+)["']\s*\)[\s\S]*?\.(?:insert|upsert|update|delete)\s*\(/gi)) writes.push({ kind: "table", target: match[1] });
+    for (const match of added.matchAll(/\.rpc\s*\(\s*["']([^"']+)["']/gi)) writes.push({ kind: "rpc", target: match[1] });
+  }
+  return writes;
+};
+const extractSqlWrites = (path, added) => {
+  if (!/\.sql$/i.test(path)) return [];
+  const writes = [];
+  for (const match of added.matchAll(/\b(?:INSERT\s+INTO|UPDATE|DELETE\s+FROM|TRUNCATE(?:\s+TABLE)?|ALTER\s+TABLE|CREATE\s+TABLE|DROP\s+TABLE)\s+(?:public\.)?["']?([a-zA-Z_][\w]*)/gi)) writes.push({ kind: "sql", target: match[1] });
+  return writes;
+};
+
 export const compileImpact = ({ base = "origin/main", head = "WORKTREE", entries, patch } = {}) => {
   ({ entries, patch } = entries ? { entries, patch: patch ?? "" } : currentDiff(base, head));
   const domains = readJson("docs/engineering/DOMAIN_MAP.json").domains, facts = readJson("docs/engineering/AUTHORITIES.json").facts;
@@ -49,20 +100,18 @@ export const compileImpact = ({ base = "origin/main", head = "WORKTREE", entries
     const pathEffects = paths.flatMap((path) => effectsFor(path, patch));
     pathEffects.forEach((effect) => effects.add(effect));
     matched.forEach((domain) => mappedDomains.add(domain));
-    const unknown = !matched.size && paths.some(executable);
+    const unknown = !matched.size && paths.some(sensitiveUnknownPath);
     if (unknown) unresolved.push({ code: "UNMAPPED_PATH", path: entry.path });
     if ((entry.status === "D" || entry.status === "R") && !matched.size) unresolved.push({ code: "STALE_PATH_MAPPING", path: entry.path, oldPath: entry.oldPath });
     const pathRisk = controlPath(entry.path) || pathEffects.some((effect) => ["WORKFLOW", "CONFIGURATION", "ENGINEERING_CONTROL", "AUTHORIZATION", "SECURITY", "DATABASE", "SCHEMA", "MONEY", "PLATFORM", "PRODUCTION"].includes(effect)) || unknown ? "R3" : pathEffects.length ? "R2" : "R0";
     pathRecords.push({ ...entry, domains: [...matched].sort(), effects: [...new Set(pathEffects)].sort(), risk: pathRisk, unknown });
   }
   const domainRisk = [...mappedDomains].map((id) => domains.find((domain) => domain.id === id)?.riskFloor ?? (id === "engineering-control" ? "R3" : "R0"));
-  const writeTargets = [...patch.matchAll(/^\+.*?\.from\(["']([^"']+)["']\)[\s\S]{0,240}?\.(?:insert|upsert|update|delete)\s*\(/gim)].map((match) => match[1]);
-  const rpcTargets = [...patch.matchAll(/^\+.*?\.rpc\(["']([^"']+)["']/gim)].map((match) => match[1]);
-  const tokens = authorityTokens(facts), unknownWrites = [...writeTargets, ...rpcTargets].filter((target) => !tokens.some((token) => token.includes(target.toLowerCase())));
-  for (const target of unknownWrites) unresolved.push({ code: "AUTHORITY_UNRESOLVED", target });
+  const writes = patchSections(patch, entries).flatMap(({ path, added }) => [...extractSourceWrites(path, added), ...extractSqlWrites(path, added)]);
+  const targets = [...new Set(writes.map(({ target }) => target))], tokens = authorityTokens(facts);
+  for (const target of targets.filter((value) => !tokens.some((token) => token.includes(value.toLowerCase()) || value.toLowerCase().includes(token)))) unresolved.push({ code: "AUTHORITY_UNRESOLVED", target });
   const protectedIds = new Set([...mappedDomains].flatMap((id) => domains.find((domain) => domain.id === id)?.mustNotWriteAuthorityRefs ?? []));
-  for (const target of [...writeTargets, ...rpcTargets]) for (const fact of facts.filter((item) => protectedIds.has(item.id)))
-    if (authorityTokens([fact]).some((token) => token.includes(target.toLowerCase()) || target.toLowerCase().includes(token))) unresolved.push({ code: "PROHIBITED_WRITE_AUTHORITY", target, authority: fact.id });
+  for (const target of targets) for (const fact of facts.filter((item) => protectedIds.has(item.id))) if (authorityTokens([fact]).some((token) => token.includes(target.toLowerCase()) || target.toLowerCase().includes(token))) unresolved.push({ code: "PROHIBITED_WRITE_AUTHORITY", target, authority: fact.id });
   for (const entry of entries) {
     const migration = /^supabase\/migrations\/(\d+)_/.exec(entry.path);
     if (migration && Number(migration[1]) <= 51) unresolved.push({ code: "IMMUTABLE_MIGRATION", path: entry.path });
@@ -75,9 +124,8 @@ export const compileImpact = ({ base = "origin/main", head = "WORKTREE", entries
     dirtyFingerprint: dirtyFingerprint(),
     changes: pathRecords,
     changedPaths: [...new Set(entries.flatMap((entry) => [entry.oldPath, entry.path].filter(Boolean)))],
-    domains: [...mappedDomains].sort(), effects: [...effects].sort(),
-    changedAuthorities: [...new Set([...writeTargets, ...rpcTargets])],
-    risk: maxRisk(...domainRisk, ...pathRecords.map((entry) => entry.risk)),
+    domains: [...mappedDomains].sort(), effects: [...effects].sort(), changedAuthorities: targets,
+    risk: maxRisk(...domainRisk, ...pathRecords.map((entry) => entry.risk), targets.length || unresolved.some((item) => item.code.includes("AUTHORITY")) ? "R3" : "R0"),
     unresolved,
     writable: unresolved.length === 0,
     impactHash: sha256(JSON.stringify({ entries, patch })),

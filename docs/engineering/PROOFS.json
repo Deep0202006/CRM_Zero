@@ -494,7 +494,8 @@
         "engineering-control"
       ],
       "effects": [
-        "ENGINEERING_CONTROL"
+        "ENGINEERING_CONTROL",
+        "ALL_CHANGES"
       ],
       "runner": "bash-postgres",
       "paths": [
@@ -517,7 +518,8 @@
         "engineering-control"
       ],
       "effects": [
-        "ENGINEERING_CONTROL"
+        "ENGINEERING_CONTROL",
+        "ALL_CHANGES"
       ],
       "runner": "playwright",
       "paths": [
@@ -557,7 +559,8 @@
         "engineering-control"
       ],
       "effects": [
-        "ENGINEERING_CONTROL"
+        "ENGINEERING_CONTROL",
+        "ALL_CHANGES"
       ],
       "runner": "fixed-commands",
       "commands": [
@@ -626,7 +629,8 @@
         "engineering-control"
       ],
       "effects": [
-        "ENGINEERING_CONTROL"
+        "ENGINEERING_CONTROL",
+        "ALL_CHANGES"
       ],
       "runner": "fixed-commands",
       "commands": [
@@ -662,6 +666,13 @@
       "effects": [],
       "runner": "fixed-commands",
       "commands": [
+        {
+          "file": "node",
+          "args": [
+            "scripts/engineering/fixtures/proof-fixture.mjs",
+            "pass"
+          ]
+        },
         {
           "file": "node",
           "args": [

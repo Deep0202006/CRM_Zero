@@ -8,6 +8,8 @@ permissions:
 env:
   NEXT_PUBLIC_SUPABASE_URL: https://e2e.supabase.co
   NEXT_PUBLIC_SUPABASE_ANON_KEY: e2e-anon-key
+  KERNEL_BASE_SHA: "${{ github.event.pull_request.base.sha }}"
+  KERNEL_HEAD_SHA: "${{ github.event.pull_request.head.sha }}"
 
 jobs:
   preflight:
@@ -25,9 +27,8 @@ jobs:
         run: |
           npm run impact:compile -- --base "$BASE_SHA" --head "$HEAD_SHA"
           npm run proof:plan -- --base "$BASE_SHA" --head "$HEAD_SHA"
-      - name: Execute registered preflight proof
-        env: { BASE_SHA: "${{ github.event.pull_request.base.sha }}", HEAD_SHA: "${{ github.event.pull_request.head.sha }}" }
-        run: npm run proof:run -- --proof kernel-preflight --base "$BASE_SHA" --head "$HEAD_SHA"
+      - name: Execute exact planned unit proofs
+        run: npm run proof:run -- --kind unit --base "$KERNEL_BASE_SHA" --head "$KERNEL_HEAD_SHA"
       - name: Diff integrity and related tests
         env: { BASE_SHA: "${{ github.event.pull_request.base.sha }}", HEAD_SHA: "${{ github.event.pull_request.head.sha }}" }
         run: |
@@ -37,7 +38,7 @@ jobs:
           for candidate in "${changed_source[@]}"; do case "$candidate" in *.ts|*.tsx|*.js|*.jsx) affected+=("$candidate");; esac; done
           if [ "${#affected[@]}" -gt 0 ]; then npm test -- --runInBand --findRelatedTests "${affected[@]}"; fi
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with: { name: kernel-preflight, path: artifacts/engineering-evidence/kernel-preflight.json, if-no-files-found: error }
+        with: { name: kernel-preflight, path: artifacts/engineering-evidence/*.json, if-no-files-found: error }
 
   unit-build:
     needs: preflight
@@ -49,11 +50,10 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with: { node-version: 24.13.0, cache: npm }
       - run: npm ci
-      - name: Execute registered unit/build proof
-        env: { BASE_SHA: "${{ github.event.pull_request.base.sha }}", HEAD_SHA: "${{ github.event.pull_request.head.sha }}" }
-        run: npm run proof:run -- --proof kernel-unit-build --base "$BASE_SHA" --head "$HEAD_SHA"
+      - name: Execute exact planned build proofs
+        run: npm run proof:run -- --kind build --base "$KERNEL_BASE_SHA" --head "$KERNEL_HEAD_SHA"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with: { name: kernel-unit-build, path: artifacts/engineering-evidence/kernel-unit-build.json, if-no-files-found: error }
+        with: { name: kernel-unit-build, path: artifacts/engineering-evidence/*.json, if-no-files-found: error }
 
   receivables-postgres:
     needs: preflight
@@ -78,11 +78,10 @@ jobs:
           test -x "$pg_bin/psql"
           test -x "$pg_bin/createdb"
           echo "$pg_bin" >> "$GITHUB_PATH"
-      - name: Execute registered PostgreSQL proof
-        env: { BASE_SHA: "${{ github.event.pull_request.base.sha }}", HEAD_SHA: "${{ github.event.pull_request.head.sha }}" }
-        run: node scripts/engineering/proof-runner.mjs --proof control-postgres-matrix --base "$BASE_SHA" --head "$HEAD_SHA"
+      - name: Execute exact planned PostgreSQL proofs
+        run: node scripts/engineering/proof-runner.mjs --proof control-postgres-matrix --kind postgres --base "$KERNEL_BASE_SHA" --head "$KERNEL_HEAD_SHA"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with: { name: kernel-postgres, path: artifacts/engineering-evidence/control-postgres-matrix.json, if-no-files-found: error }
+        with: { name: kernel-postgres, path: artifacts/engineering-evidence/*.json, if-no-files-found: error }
 
   e2e:
     needs: [preflight, unit-build]
@@ -99,11 +98,10 @@ jobs:
       - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - run: npm ci
       - run: npm run build
-      - name: Execute registered E2E proof
-        env: { BASE_SHA: "${{ github.event.pull_request.base.sha }}", HEAD_SHA: "${{ github.event.pull_request.head.sha }}" }
-        run: npm run proof:run -- --proof control-e2e-matrix --base "$BASE_SHA" --head "$HEAD_SHA"
+      - name: Execute exact planned E2E proofs
+        run: npm run proof:run -- --kind e2e --base "$KERNEL_BASE_SHA" --head "$KERNEL_HEAD_SHA"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with: { name: kernel-e2e, path: artifacts/engineering-evidence/control-e2e-matrix.json, if-no-files-found: error }
+        with: { name: kernel-e2e, path: artifacts/engineering-evidence/*.json, if-no-files-found: error }
 
   verify:
     needs: [preflight, unit-build, receivables-postgres, e2e]
@@ -121,5 +119,4 @@ jobs:
         env: { BASE_SHA: "${{ github.event.pull_request.base.sha }}", HEAD_SHA: "${{ github.event.pull_request.head.sha }}" }
         run: >-
           npm run proof:certify-ci -- --base "$BASE_SHA" --head "$HEAD_SHA"
-          --evidence-dir artifacts/engineering-evidence
           --jobs "${{ needs.preflight.result }}:${{ needs.unit-build.result }}:${{ needs.receivables-postgres.result }}:${{ needs.e2e.result }}"

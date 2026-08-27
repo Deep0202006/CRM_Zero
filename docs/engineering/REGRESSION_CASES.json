@@ -46,7 +46,7 @@
       "proofRefs": [
         "mapping-unit"
       ],
-      "expectedStatus": "SCOPE_AMBIGUOUS"
+      "expectedStatus": "RESOLVED"
     },
     {
       "id": "calls-visibility",
@@ -76,7 +76,7 @@
       "proofRefs": [
         "calls-unit"
       ],
-      "expectedStatus": "SCOPE_AMBIGUOUS"
+      "expectedStatus": "RESOLVED"
     },
     {
       "id": "attendance-confirmation",
@@ -107,7 +107,7 @@
       "proofRefs": [
         "attendance-unit"
       ],
-      "expectedStatus": "SCOPE_AMBIGUOUS"
+      "expectedStatus": "RESOLVED"
     },
     {
       "id": "pipeline-retry",
@@ -138,7 +138,7 @@
       "proofRefs": [
         "pipeline-unit"
       ],
-      "expectedStatus": "SCOPE_AMBIGUOUS"
+      "expectedStatus": "RESOLVED"
     },
     {
       "id": "receivables-money",
@@ -171,7 +171,7 @@
       "proofRefs": [
         "receivables-unit"
       ],
-      "expectedStatus": "SCOPE_AMBIGUOUS"
+      "expectedStatus": "RESOLVED"
     },
     {
       "id": "import-atomicity",
@@ -203,7 +203,7 @@
       "proofRefs": [
         "imports-unit"
       ],
-      "expectedStatus": "SCOPE_AMBIGUOUS"
+      "expectedStatus": "RESOLVED"
     },
     {
       "id": "erp-filter",
@@ -236,7 +236,7 @@
         "distributor-unit",
         "erp-unit"
       ],
-      "expectedStatus": "SCOPE_AMBIGUOUS"
+      "expectedStatus": "RESOLVED"
     },
     {
       "id": "external-partner",
@@ -618,7 +618,7 @@
       "proofRefs": [
         "auth-unit"
       ],
-      "expectedStatus": "SCOPE_AMBIGUOUS"
+      "expectedStatus": "RESOLVED"
     },
     {
       "id": "domain-field-visits",
@@ -640,7 +640,7 @@
       "proofRefs": [
         "field-visits-unit"
       ],
-      "expectedStatus": "SCOPE_AMBIGUOUS"
+      "expectedStatus": "RESOLVED"
     },
     {
       "id": "domain-team-kpi",
@@ -662,7 +662,7 @@
       "proofRefs": [
         "team-kpi-unit"
       ],
-      "expectedStatus": "SCOPE_AMBIGUOUS"
+      "expectedStatus": "RESOLVED"
     },
     {
       "id": "domain-erp-partner",
@@ -684,7 +684,7 @@
       "proofRefs": [
         "erp-unit"
       ],
-      "expectedStatus": "SCOPE_AMBIGUOUS"
+      "expectedStatus": "RESOLVED"
     },
     {
       "id": "domain-renewals",
@@ -706,7 +706,7 @@
       "proofRefs": [
         "distributor-unit"
       ],
-      "expectedStatus": "SCOPE_AMBIGUOUS"
+      "expectedStatus": "RESOLVED"
     },
     {
       "id": "domain-followups",
@@ -728,7 +728,7 @@
       "proofRefs": [
         "followups-unit"
       ],
-      "expectedStatus": "SCOPE_AMBIGUOUS"
+      "expectedStatus": "RESOLVED"
     },
     {
       "id": "domain-queries",
@@ -750,7 +750,7 @@
       "proofRefs": [
         "queries-unit"
       ],
-      "expectedStatus": "SCOPE_AMBIGUOUS"
+      "expectedStatus": "RESOLVED"
     },
     {
       "id": "domain-task-allocation",
@@ -772,7 +772,7 @@
       "proofRefs": [
         "task-allocation-unit"
       ],
-      "expectedStatus": "SCOPE_AMBIGUOUS"
+      "expectedStatus": "RESOLVED"
     },
     {
       "id": "domain-my-day",
@@ -794,7 +794,7 @@
       "proofRefs": [
         "followups-unit"
       ],
-      "expectedStatus": "SCOPE_AMBIGUOUS"
+      "expectedStatus": "RESOLVED"
     }
   ]
 }

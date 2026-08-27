@@ -3,6 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { classifyCommand, CommandClass } from "../engineering/command-policy.mjs";
 
 const scanner = resolve(dirname(fileURLToPath(import.meta.url)), "repository-safety.mjs");
 const join = (...parts) => parts.join("");
@@ -149,5 +150,22 @@ const matrix = [
     "src/app/api/example/route.ts": 'await client.from("synthetic").update({ safe: true });\n',
   }),
 ];
+
+for (const [name, command, expected] of [
+  ["policy-node-inline", "node -e process.exit(0)", CommandClass.PROHIBITED],
+  ["policy-python-inline", "python -c open('x','w')", CommandClass.PROHIBITED],
+  ["policy-shell-redirect", "printf fixture > file", CommandClass.PROHIBITED],
+  ["policy-git-refspec-main", "git push origin HEAD:refs/heads/main", CommandClass.PROHIBITED],
+  ["policy-git-force-tail", "git push origin feature/x --force", CommandClass.PROHIBITED],
+  ["policy-supabase-parameter", "supabase --project-ref X db push", CommandClass.PROHIBITED],
+  ["policy-supabase-wrapper", "npm exec -- supabase db push", CommandClass.PROHIBITED],
+  ["policy-vercel-wrapper", "npx vercel deploy", CommandClass.PROHIBITED],
+  ["policy-read-only", "git status --short", CommandClass.READ_ONLY_ALLOWED],
+  ["policy-feature-push", "git push origin chore/engineering-kernel-v4", CommandClass.SCOPED_MUTATION_ALLOWED],
+]) {
+  const actual = classifyCommand(command);
+  if (actual.classification !== expected) throw Error(`${name}:${actual.classification}:${actual.reason}`);
+  matrix.push({ name, expected, outcome: actual.classification });
+}
 
 console.log(JSON.stringify({ code: "REPOSITORY_SAFETY_FIXTURES_PASS", matrix }));

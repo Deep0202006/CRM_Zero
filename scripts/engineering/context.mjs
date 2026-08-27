@@ -5,44 +5,76 @@ import { parseArgs, readJson, root, sha256 } from "./kernel-lib.mjs";
 
 const matchesRoot = (path, pattern) => pattern.endsWith("/**") ? path === pattern.slice(0, -3) || path.startsWith(pattern.slice(0, -2)) : path === pattern || path.startsWith(`${pattern}/`);
 const words = (value) => new Set(String(value).toLowerCase().match(/[a-z0-9_-]{3,}/g) ?? []);
+const includesWords = (taskWords, value) => {
+  const required = [...words(value)];
+  return required.length > 0 && required.every((word) => taskWords.has(word));
+};
+const roleFor = (path, reason) => /(?:^|\/)(?:__tests__|e2e)(?:\/|$)|\.(?:test|spec)\./i.test(path) ? "test" : /^docs\/contracts\//.test(path) ? "contract" : /^src\/app\/api\//.test(path) ? "server" : reason === "REVERSE_IMPORT" ? "reader" : "implementation";
+const relationshipKinds = new Set(["IMPORT", "REVERSE_IMPORT", "RELATED_TEST"]);
 export const resolveContext = ({ task = "", exactPath, index } = {}) => {
   index ??= buildSourceIndex({ includePaths: exactPath ? [exactPath] : [] });
   const taskHash = sha256(task), taskWords = words(task), domains = readJson("docs/engineering/DOMAIN_MAP.json").domains;
   const authorities = readJson("docs/engineering/AUTHORITIES.json").facts;
   const capabilities = readJson("docs/engineering/CAPABILITIES.json").capabilities;
   const proofs = readJson("docs/engineering/PROOFS.json").proofs;
+  const domainForPath = (domain, path) => [...(domain.surfacePaths ?? []), ...(domain.codeRoots ?? []), ...(domain.serverBoundaries ?? []), ...(domain.contractPaths ?? []), ...(domain.criticalTests ?? []), ...(domain.pathPatterns ?? [])].some((pattern) => matchesRoot(path, pattern));
   const domainScores = domains.map((domain) => {
-    let score = 0;
-    if (exactPath && [...(domain.surfacePaths ?? []), ...(domain.codeRoots ?? []), ...(domain.serverBoundaries ?? []), ...(domain.contractPaths ?? []), ...(domain.criticalTests ?? []), ...(domain.pathPatterns ?? [])].some((path) => matchesRoot(exactPath, path))) score = 1;
-    for (const alias of [domain.id, ...(domain.aliases ?? [])]) if ([...words(alias)].every((word) => taskWords.has(word))) score = Math.max(score, 0.85);
+    let score = exactPath && domainForPath(domain, exactPath) ? 1 : 0;
+    for (const alias of [domain.id, ...(domain.aliases ?? [])]) if (includesWords(taskWords, alias)) score = Math.max(score, 0.9);
+    for (const file of index.files.filter((item) => domainForPath(domain, item.path))) for (const value of [...file.tables, ...file.rpcs, ...file.routes, ...file.exports]) if (includesWords(taskWords, value)) {
+      const valueWords = words(value), owns = [domain.id, ...(domain.aliases ?? [])].some((alias) => includesWords(valueWords, alias) || includesWords(words(alias), value));
+      score = Math.max(score, owns ? 1 : 0.84);
+    }
     return { domain, score };
-  }).filter((item) => item.score > 0).sort((a, b) => b.score - a.score);
-  const selected = domainScores.filter((item) => item.score === domainScores[0]?.score).map((item) => item.domain);
-  const evidence = [];
+  }).filter((item) => item.score > 0).sort((a, b) => b.score - a.score || a.domain.id.localeCompare(b.domain.id));
+  const topDomainScore = domainScores[0]?.score ?? 0;
+  const selected = domainScores.filter((item) => topDomainScore - item.score < 0.06).map((item) => item.domain);
+  const evidence = new Map();
+  const add = (file, score, kind, value, role) => {
+    if (!file) return;
+    const existing = evidence.get(file.path) ?? { path: file.path, contentHash: file.contentHash, score: 0, role: role ?? roleFor(file.path, kind), matchedBy: [] };
+    existing.score = Math.max(existing.score, score);
+    existing.role = existing.role === "implementation" && role ? role : existing.role;
+    if (!existing.matchedBy.some((item) => item.kind === kind && item.value === value)) existing.matchedBy.push({ kind, value });
+    evidence.set(file.path, existing);
+  };
   for (const file of index.files) {
-    const matchedBy = [];
-    let score = 0;
-    if (exactPath && file.path === exactPath) { score = 1; matchedBy.push({ kind: "exact-identifier", value: exactPath }); }
-    for (const domain of selected) for (const [paths, weight] of [[domain.serverBoundaries ?? [], 0.8], [domain.codeRoots ?? [], 0.75], [domain.criticalTests ?? [], 0.7], [domain.surfacePaths ?? [], 0.8], [domain.contractPaths ?? [], 0.75]]) for (const path of paths) if (matchesRoot(file.path, path)) { score = Math.max(score, weight); matchedBy.push({ kind: "registry", value: `${domain.id}:${path}` }); }
-    for (const value of [...file.tables, ...file.rpcs, ...file.routes, ...file.exports]) if (score > 0 && taskWords.has(String(value).toLowerCase())) { score = 1; matchedBy.push({ kind: file.tables.includes(value) ? "table" : file.rpcs.includes(value) ? "rpc" : file.routes.includes(value) ? "route" : "exact-identifier", value }); }
+    if (exactPath && file.path === exactPath) add(file, 1, "EXACT_PATH", exactPath);
+    for (const domain of selected) {
+      for (const path of domain.serverBoundaries ?? []) if (matchesRoot(file.path, path)) add(file, 0.92, "SERVER_BOUNDARY", `${domain.id}:${path}`, "server");
+      for (const path of domain.surfacePaths ?? []) if (matchesRoot(file.path, path)) add(file, 0.9, "SURFACE_PATH", `${domain.id}:${path}`);
+      for (const path of domain.criticalTests ?? []) if (matchesRoot(file.path, path)) add(file, 0.76, "RELATED_TEST", `${domain.id}:${path}`, "test");
+      for (const path of [...(domain.codeRoots ?? []), ...(domain.contractPaths ?? [])]) if (matchesRoot(file.path, path)) add(file, 0.7, "DOMAIN_REGISTRY", `${domain.id}:${path}`);
+      if (domainForPath(domain, file.path)) for (const authority of authorities.filter((item) => (domain.authorityRefs ?? []).includes(item.id))) if (includesWords(taskWords, authority.id) || includesWords(taskWords, authority.authority)) add(file, 0.95, "AUTHORITY", authority.id);
+    }
+    if (selected.some((domain) => domainForPath(domain, file.path))) for (const [kind, values] of [["TABLE", file.tables], ["RPC", file.rpcs], ["ROUTE", file.routes], ["EXPORTED_SYMBOL", file.exports]]) for (const value of values) if (includesWords(taskWords, value)) add(file, 1, kind, value);
     const baseName = file.path.split("/").at(-1).replace(/\.[^.]+$/, "");
-    if (taskWords.has(baseName.toLowerCase())) { score = Math.max(score, 0.45); matchedBy.push({ kind: "filename", value: baseName }); }
-    if (score) evidence.push({ path: file.path, contentHash: file.contentHash, score, matchedBy: [...new Map(matchedBy.map((item) => [`${item.kind}:${item.value}`, item])).values()] });
+    if (taskWords.has(baseName.toLowerCase())) add(file, 0.4, "FILENAME", baseName);
   }
-  evidence.sort((a, b) => b.score - a.score || a.path.localeCompare(b.path));
+  const directSeeds = [...evidence.values()].filter((candidate) => candidate.score >= 0.9);
+  for (const seed of directSeeds) {
+    const file = index.files.find((candidate) => candidate.path === seed.path);
+    for (const path of file?.reverseImports ?? []) add(index.files.find((candidate) => candidate.path === path), 0.84, "REVERSE_IMPORT", seed.path, "reader");
+    for (const path of file?.imports ?? []) add(index.files.find((candidate) => candidate.path === path), 0.8, "IMPORT", seed.path);
+    for (const path of file?.relatedTests ?? []) add(index.files.find((candidate) => candidate.path === path), 0.78, "RELATED_TEST", seed.path, "test");
+    for (const path of file?.testedSources ?? []) add(index.files.find((candidate) => candidate.path === path), 0.78, "RELATED_TEST", seed.path);
+  }
+  const ordered = [...evidence.values()].sort((a, b) => b.score - a.score || a.path.localeCompare(b.path));
   const bounded = [];
-  for (const domain of selected) {
-    const representative = (domain.codeRoots ?? []).map((path) => evidence.find((candidate) => matchesRoot(candidate.path, path))).find(Boolean) ?? evidence.find((candidate) => (domain.serverBoundaries ?? []).some((path) => matchesRoot(candidate.path, path)));
-    if (representative && !bounded.includes(representative)) bounded.push(representative);
-  }
-  for (const candidate of evidence) if (bounded.length < 7 && !bounded.includes(candidate)) bounded.push(candidate);
+  const take = (candidate) => { if (candidate && bounded.length < 7 && !bounded.some((item) => item.path === candidate.path)) bounded.push(candidate); };
+  take(ordered.find((candidate) => ["implementation", "server"].includes(candidate.role)));
+  take(ordered.find((candidate) => candidate.role === "test"));
+  take(ordered.find((candidate) => candidate.matchedBy.some((reason) => relationshipKinds.has(reason.kind))));
+  for (const domain of selected) take(ordered.find((candidate) => (domain.serverBoundaries ?? []).some((path) => matchesRoot(candidate.path, path))));
+  for (const domain of selected) for (const path of domain.codeRoots ?? []) take(ordered.find((candidate) => matchesRoot(candidate.path, path)));
+  for (const domain of selected) take(ordered.find((candidate) => domainForPath(domain, candidate.path)));
+  for (const candidate of ordered) take(candidate);
   bounded.sort((a, b) => b.score - a.score || a.path.localeCompare(b.path));
-  const top = evidence[0]?.score ?? 0, margin = top - (evidence[1]?.score ?? 0);
   const authoritySets = selected.map((domain) => new Set(domain.authorityRefs ?? []));
   const conflicting = authoritySets.some((left, index) => left.size && authoritySets.slice(index + 1).some((right) => right.size && ![...left].some((id) => right.has(id))));
-  const lexicalOnly = evidence.length && evidence.every((candidate) => candidate.matchedBy.every((match) => match.kind === "filename"));
-  const lowMargin = !exactPath && evidence.length > 1 && margin < 0.1;
-  const status = !selected.length || !evidence.length ? "UNKNOWN" : conflicting || lexicalOnly || top < 0.7 || lowMargin ? "SCOPE_AMBIGUOUS" : "RESOLVED";
+  const lexicalOnly = ordered.length > 0 && ordered.every((candidate) => candidate.matchedBy.every((match) => match.kind === "FILENAME"));
+  const relationshipOnly = ordered.length > 0 && ordered.every((candidate) => candidate.matchedBy.every((match) => relationshipKinds.has(match.kind)));
+  const status = !selected.length || !ordered.length ? "UNKNOWN" : conflicting || lexicalOnly || relationshipOnly || ordered[0].score < 0.68 ? "SCOPE_AMBIGUOUS" : "RESOLVED";
   const authorityIds = new Set(selected.flatMap((domain) => domain.authorityRefs ?? []));
   const protectedIds = new Set(selected.flatMap((domain) => domain.mustNotWriteAuthorityRefs ?? []));
   const capabilityIds = new Set(selected.flatMap((domain) => domain.capabilityRefs ?? []));
@@ -55,7 +87,7 @@ export const resolveContext = ({ task = "", exactPath, index } = {}) => {
     capabilities: capabilities.filter((item) => capabilityIds.has(item.id)).map((item) => item.id),
     candidatePaths: bounded, requiredOpenPaths: status === "RESOLVED" ? bounded.map((item) => item.path) : [],
     requiredProofRefs: [...new Set([...selected.flatMap((domain) => domain.proofRefs ?? []), ...proofs.filter((proof) => (proof.domains ?? []).some((domain) => selected.some((item) => item.id === domain))).map((proof) => proof.id)])],
-    unresolved: [!selected.length && "NO_DOMAIN_EVIDENCE", !evidence.length && "NO_PATH_EVIDENCE", conflicting && "CONFLICTING_AUTHORITIES", lexicalOnly && "LEXICAL_ONLY", top < 0.7 && "LOW_CONFIDENCE", lowMargin && "LOW_MARGIN"].filter(Boolean),
+    unresolved: [!selected.length && "NO_DOMAIN_EVIDENCE", !ordered.length && "NO_PATH_EVIDENCE", conflicting && "CONFLICTING_AUTHORITIES", lexicalOnly && "LEXICAL_ONLY", relationshipOnly && "RELATIONSHIP_ONLY", ordered[0]?.score < 0.68 && "LOW_CONFIDENCE"].filter(Boolean),
   };
 };
 export const revalidateCandidate = (candidate) => {
