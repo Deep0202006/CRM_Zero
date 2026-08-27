@@ -27,6 +27,15 @@ const input = await readInput(),
       return null;
     }
   },
+  validCheck = (check) =>
+    check &&
+    typeof check === "object" &&
+    !Array.isArray(check) &&
+    typeof check.name === "string" &&
+    check.name.trim() !== "" &&
+    typeof check.state === "string" &&
+    check.state.trim() !== "" &&
+    ["pass", "pending", "fail", "cancel", "skipping"].includes(check.bucket),
   remoteGate = (session_id, state) => {
     const head = execFileSync("git", ["rev-parse", "HEAD"], {
       cwd: root,
@@ -72,21 +81,28 @@ const input = await readInput(),
     if (
       checks.some(
         (check) =>
-          ["fail", "cancel", "skipping"].includes(check.bucket) ||
-          /cancel|timed.?out|failure|error/i.test(check.state),
+          ["fail", "cancel", "skipping"].includes(check?.bucket) ||
+          /cancel|timed.?out|failure|error/i.test(check?.state),
       )
     )
       return remoteBlock(
         "ZEROGRAPH_CONTINUE|status=REMOTE_CHECKS_FAILED|command=inspect and fix failed required checks",
       );
-    if (!checks.length || checks.some((check) => check.bucket === "pending"))
+    if (checks.some((check) => !validCheck(check)))
+      return external("GitHub required-check state is malformed.");
+    if (
+      !checks.length ||
+      checks.some(
+        (check) =>
+          check.bucket === "pending" ||
+          /pending|queued|in.?progress|waiting|requested/i.test(check.state),
+      )
+    )
       return remoteBlock(
         "ZEROGRAPH_CONTINUE|status=REMOTE_CHECKS_PENDING|command=gh pr checks --required --watch",
       );
-    if (!checks.every((check) => check.bucket === "pass"))
-      return remoteBlock(
-        "ZEROGRAPH_CONTINUE|status=REMOTE_CHECKS_PENDING|command=gh pr checks --required --watch",
-      );
+    if (!checks.every((check) => check.bucket === "pass" && check.state === "SUCCESS"))
+      return external("GitHub required-check state is malformed.");
     saveState({
       ...state,
       session_id,

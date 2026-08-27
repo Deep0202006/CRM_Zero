@@ -449,6 +449,66 @@ try {
       "EXTERNAL_DEPENDENCY",
     "REMOTE_MALFORMED_JSON_NOT_EXTERNAL",
   );
+  const malformedChecks = [
+    {
+      code: "REMOTE_PENDING_PASS_CLOSED",
+      checks: [{ ...passChecks[0], state: "PENDING" }],
+      expected: "REMOTE_CHECKS_PENDING",
+    },
+    {
+      code: "REMOTE_MISSING_CHECK_FIELD_CLOSED",
+      checks: [{ state: "SUCCESS", bucket: "pass", link: passChecks[0].link }],
+      expected: "EXTERNAL_DEPENDENCY",
+    },
+    {
+      code: "REMOTE_UNKNOWN_BUCKET_CLOSED",
+      checks: [{ ...passChecks[0], bucket: "unknown" }],
+      expected: "EXTERNAL_DEPENDENCY",
+    },
+    {
+      code: "REMOTE_UNKNOWN_STATE_CLOSED",
+      checks: [{ ...passChecks[0], state: "UNKNOWN" }],
+      expected: "EXTERNAL_DEPENDENCY",
+    },
+    {
+      code: "REMOTE_MIXED_MALFORMED_CHECKS_CLOSED",
+      checks: [passChecks[0], { state: "SUCCESS", bucket: "pass" }],
+      expected: "EXTERNAL_DEPENDENCY",
+    },
+    {
+      code: "REMOTE_NULL_CHECK_CLOSED",
+      checks: [null],
+      expected: "EXTERNAL_DEPENDENCY",
+    },
+    {
+      code: "REMOTE_FAILED_MIXED_CHECK_RELABELED",
+      checks: [
+        { ...passChecks[0], state: "FAILURE", bucket: "fail" },
+        { state: "SUCCESS", bucket: "pass" },
+      ],
+      expected: "REMOTE_CHECKS_FAILED",
+    },
+  ];
+  for (const fixture of malformedChecks) {
+    const malformedSession = `fixture-malformed-${randomUUID()}`,
+      malformedResult = parse(
+        closeStop("TASK_LOCAL_COMPLETE", {
+          sessionId: malformedSession,
+          checks: fixture.checks,
+        }),
+      ),
+      malformedStatePath = fixtureGit([
+        "rev-parse",
+        "--git-path",
+        `zerograph/sessions/${malformedSession}.json`,
+      ]).trim();
+    assert(
+      (malformedResult?.reason ?? malformedResult?.stopReason)?.includes(
+        fixture.expected,
+      ) && !existsSync(resolve(root, malformedStatePath)),
+      fixture.code,
+    );
+  }
   assert(
     parse(closeStop("TASK_LOCAL_COMPLETE", { pr: pr({ headRefOid: "stale" }) }))?.reason.includes(
       "HEAD_MISMATCH",
