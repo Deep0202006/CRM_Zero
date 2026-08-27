@@ -19,8 +19,6 @@ const eslintConfig = defineConfig([
     ".worktrees/**",
     ".archive/**",
 
-    "check.js", "check_active.js", "check_cols.js", "check_users.js", "check_users_paginated.js",
-    "scripts/seed-production-users.js",
   ]),
   // Downgrade React Compiler optimization hints to warnings.
   // These rules flag valid setState-before-async and manual useMemo patterns
