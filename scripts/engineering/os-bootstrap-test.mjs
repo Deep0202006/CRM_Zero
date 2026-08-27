@@ -87,6 +87,13 @@ try {
       encoding: "utf8",
       env: { ...process.env, ...env, ...isolatedGitEnv },
     }),
+  runStatelessWithEnv = (path, input, env) =>
+    spawnSync("node", [resolve(root, path)], {
+      cwd: resolve(root, "src"),
+      input: JSON.stringify(input ?? {}),
+      encoding: "utf8",
+      env: { ...process.env, ...env },
+    }),
   parse = (r) => (r.stdout.trim() ? JSON.parse(r.stdout) : null),
   assert = (ok, code) => {
     if (!ok) throw Error(code);
@@ -741,13 +748,13 @@ assert(
 );
 
 const platformImpact = parse(
-    runWithEnv(
+    runStatelessWithEnv(
       "scripts/engineering/impact.mjs",
       {},
       { ZEROGRAPH_IMPACT_PATHS: '["scripts/handover/check.mjs"]' },
     ),
   ),
-  handoverPlan = runWithEnv(
+  handoverPlan = runStatelessWithEnv(
     "scripts/engineering/proof-plan.mjs",
     {},
     { ZEROGRAPH_IMPACT_PATHS: '["scripts/handover/check.mjs"]' },
@@ -755,7 +762,7 @@ const platformImpact = parse(
   proofRegistry = JSON.parse(
     readFileSync(resolve(root, "docs/engineering/PROOFS.json")),
   ),
-  handoverMissing = runWithEnv(
+  handoverMissing = runStatelessWithEnv(
     "scripts/engineering/proof-plan.mjs",
     {},
     {
