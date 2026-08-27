@@ -4,10 +4,13 @@ import { extname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const reviewedServiceRolePaths = new Set([
+  ".codex/config.toml",
   ".github/workflows/product-verification.yml",
   "scripts/distributor-status-db/run-integration.sh",
   "scripts/handover/check.mjs",
   "scripts/handover/lib.mjs",
+  "scripts/engineering/hooks/pre-tool.mjs",
+  "scripts/engineering/kernel-lib.mjs",
   "scripts/quality/invariants.mjs",
   "scripts/quality/repository-safety.mjs",
   "scripts/receivables-db/run-integration.sh",
@@ -53,9 +56,14 @@ const reviewedServiceRolePaths = new Set([
   "src/lib/receivables/server.ts",
   "src/lib/teamChat/server.ts",
 ]);
+const reviewedServiceRoleReasons = new Map([...reviewedServiceRolePaths].map((path) => [path,
+  path.startsWith("src/app/api/") || path.endsWith("/server.ts") ? "server-only authorization boundary" :
+  path.includes("/__tests__/") ? "synthetic contract fixture" :
+  path.startsWith("scripts/engineering/") || path.startsWith("scripts/quality/") || path.startsWith(".codex/") ? "credential isolation enforcement" :
+  path.startsWith("scripts/handover/") ? "read-only handover verification" : "disposable CI integration",
+]));
 const reviewedDiagnosticPaths = new Set([
   "scripts/attendance-db/verify.sql",
-  "scripts/engineering/verify-affected.mjs",
   "scripts/handover/check.mjs",
   "scripts/handover/checksums.mjs",
   "scripts/mappings-db/verify.sql",
@@ -66,7 +74,7 @@ const reviewedSyntheticCredentialPaths = new Set([
 ]);
 
 const sourceExtensions = new Set([
-  ".bash", ".cjs", ".cts", ".js", ".jsx", ".mjs", ".mts", ".php", ".ps1", ".py", ".rb", ".sh", ".sql", ".ts", ".tsx", ".yaml", ".yml", ".zsh",
+  ".bash", ".cjs", ".cts", ".js", ".jsx", ".mjs", ".mts", ".php", ".ps1", ".py", ".rb", ".rules", ".sh", ".sql", ".toml", ".ts", ".tsx", ".yaml", ".yml", ".zsh",
 ]);
 const removedOperationalPaths = [
   "check.js",
@@ -74,6 +82,8 @@ const removedOperationalPaths = [
   "check_cols.js",
   "check_users.js",
   "check_users_paginated.js",
+  "diagnose_rpc.js",
+  "verify_migrations.js",
   "scripts/seed-production-users.js",
 ];
 
@@ -110,7 +120,7 @@ const stripComments = (text, extension) => {
   if (extension === ".php") return stripHashComments(stripCodeComments(text));
   if (extension === ".sql")
     return stripSqlComments(text);
-  if ([".bash", ".ps1", ".py", ".rb", ".sh", ".yaml", ".yml", ".zsh"].includes(extension))
+  if ([".bash", ".ps1", ".py", ".rb", ".rules", ".sh", ".toml", ".yaml", ".yml", ".zsh"].includes(extension))
     return stripHashComments(extension === ".ps1" ? text.replace(/<#[\s\S]*?#>/g, "") : text);
   return text;
 };
@@ -183,7 +193,7 @@ export const scanRepository = (root) => {
   for (const path of paths) {
     if (!existsSync(resolve(root, path))) continue;
     const extension = extname(path).toLowerCase(), rootFile = !path.includes("/"),
-      governancePath = /^(?:\.agents|\.codex|\.harness|\.crm-engineering|docs\/engineering|scripts\/(?:engineering|quality)|tools\/crm-graph)\//i.test(path),
+      governancePath = /^(?:\.agents|\.codex|docs\/engineering|scripts\/(?:engineering|quality))\//i.test(path),
       governanceJson = governancePath && extension === ".json",
       hookPath = /(^|\/)(?:hooks?|\.husky|\.githooks)\//i.test(path),
       configJson = extension === ".json" && !/(^|\/)package-lock\.json$/i.test(path);
@@ -201,7 +211,7 @@ export const scanRepository = (root) => {
         fail("MACHINE_ABSOLUTE_PATH", path);
     }
     if (path.endsWith(".md")) {
-      if (/(?:^|[`>\s])(?:node|bun|deno|tsx|npx(?:\s+tsx)?|pnpm(?:\s+exec)?|yarn|bash|sh|pwsh|powershell)\s+(?:\.\/)?(?:check(?:_[\w-]+)?\.js|scripts\/seed-production-users\.js)\b|(?:^|[`>\s])\.\/(?:check(?:_[\w-]+)?\.js|scripts\/seed-production-users\.js)\b/im.test(executable))
+      if (/(?:^|[`>\s])(?:node|bun|deno|tsx|npx(?:\s+tsx)?|pnpm(?:\s+exec)?|yarn|bash|sh|pwsh|powershell)\s+(?:\.\/)?(?:check(?:_[\w-]+)?\.js|diagnose_rpc\.js|verify_migrations\.js|scripts\/seed-production-users\.js)\b|(?:^|[`>\s])\.\/(?:check(?:_[\w-]+)?\.js|diagnose_rpc\.js|verify_migrations\.js|scripts\/seed-production-users\.js)\b/im.test(executable))
         fail("REMOVED_OPERATIONAL_COMMAND", path);
       if (hasMachineAbsolutePath(executable, extension) && /^(?:docs\/engineering|docs\/operations|\.codex)\//.test(path))
         fail("MACHINE_ABSOLUTE_PATH", path);
@@ -228,7 +238,7 @@ export const scanRepository = (root) => {
       fail("DEFAULT_ADMIN_CREATION", path);
 
     const serviceRole = /SUPABASE_SERVICE_ROLE(?:_KEY)?|\bservice_role\b/i.test(executable);
-    if (extension !== ".sql" && serviceRole && !reviewedServiceRolePaths.has(path)) fail("SERVICE_ROLE_NOT_ALLOWLISTED", path);
+    if (extension !== ".sql" && serviceRole && !reviewedServiceRoleReasons.has(path)) fail("SERVICE_ROLE_NOT_ALLOWLISTED", path);
     if (/\.env\.local\b/i.test(executable) && /createClient\s*\(/.test(executable) && serviceRole)
       fail("ENV_LOCAL_PRIVILEGED_CLIENT", path);
 

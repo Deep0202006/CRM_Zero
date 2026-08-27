@@ -1,0 +1,33 @@
+model = "gpt-5.6"
+model_reasoning_effort = "high"
+approval_policy = "on-request"
+approvals_reviewer = "user"
+sandbox_mode = "workspace-write"
+allow_login_shell = false
+project_doc_max_bytes = 16384
+
+[agents]
+max_concurrent_threads_per_session = 1
+
+[sandbox_workspace_write]
+network_access = false
+exclude_slash_tmp = true
+exclude_tmpdir_env_var = true
+
+[shell_environment_policy]
+inherit = "core"
+ignore_default_excludes = false
+
+[shell_environment_policy.filters]
+"SUPABASE_SERVICE_ROLE_KEY" = "exclude"
+"SUPABASE_URL" = "exclude"
+"SUPABASE_ANON_KEY" = "exclude"
+"NEXT_PUBLIC_SUPABASE_URL" = "exclude"
+"NEXT_PUBLIC_SUPABASE_ANON_KEY" = "exclude"
+"DATABASE_URL" = "exclude"
+"POSTGRES_URL*" = "exclude"
+"PRODUCTION_*" = "exclude"
+"VERCEL_TOKEN" = "exclude"
+"AWS_SECRET_ACCESS_KEY" = "exclude"
+"AZURE_*" = "exclude"
+"CLOUDFLARE_API_TOKEN" = "exclude"

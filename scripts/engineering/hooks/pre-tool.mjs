@@ -1,39 +1,17 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { readInput, root } from "./state.mjs";
-const input = await readInput(),
-  tool = input.tool_name ?? "",
-  payload = JSON.stringify(input.tool_input ?? {}),
-  editTool = /^(apply_patch|Edit|Write)$/.test(tool),
-  mutatingBash =
-    tool === "Bash" &&
-    /(?:^|[;&|]\s*)(?:Set-Content|Add-Content|Remove-Item|Move-Item|Copy-Item|sed\s+-i|perl\s+-pi)|(?:^|\s)(?:>|>>)/i.test(
-      payload,
-    ),
-  boundary = JSON.parse(
-    readFileSync(
-      resolve(root, "supabase/migrations/APPLIED_OWNER_MIGRATIONS.json"),
-    ),
-  ).immutableThrough;
-const migration =
-  (editTool || mutatingBash) &&
-  [...payload.matchAll(/supabase[\\/]migrations[\\/](\d+)_/g)].some(
-    (m) => Number(m[1]) <= boundary,
-  );
-const locked =
-  (editTool || mutatingBash) &&
-  /OS_V3_ACCEPTANCE(?:\.lock)?\.json|\.codex[\\/]hooks\.json/.test(payload);
-const dangerous =
-  /git\s+reset\s+--hard|git\s+clean\s+-[^\s]*[fd]|git\s+push[^\n]*(?:--force|-f)|git\s+push[^\n]*\bmain\b|supabase[^\n]*(?:db\s+(?:push|reset)|migration\s+up)|gwfjkpsoaoherntwhdyf[^\n]*(?:insert|update|delete|apply)|(?:install|choco|winget|apt)[^\n]*(?:postgres|docker)/i.test(
-    payload,
-  );
-if (locked || migration || dangerous)
-  console.log(
-    JSON.stringify({
-      hookSpecificOutput: {
-        hookEventName: "PreToolUse",
-        permissionDecision: "deny",
-        permissionDecisionReason: `SAFETY_CONFLICT:${tool}`,
-      },
-    }),
-  );
+import { revalidateCandidate } from "../context.mjs";
+import { loadState, readHookInput, root } from "./state-store.mjs";
+const input = await readHookInput(), sessionId = input.session_id ?? "unknown", state = loadState(sessionId);
+const tool = input.tool_name ?? "", payload = input.tool_input ?? {}, text = JSON.stringify(payload), editTool = /^(?:apply_patch|Edit|Write)$/.test(tool), shellMutating = /^(?:Bash|exec_command)$/.test(tool) && /apply_patch|git\s+(?:mv|rm|add|commit)|Set-Content|Add-Content|Remove-Item|Move-Item|Copy-Item|sed\s+-i|perl\s+-pi|(?:^|[;&|]\s*)(?:rm|mv|cp)\b|(?:^|[^>])>>?[^=]/i.test(text), mutating = editTool || shellMutating;
+const boundary = JSON.parse(readFileSync(resolve(root, "supabase/migrations/APPLIED_OWNER_MIGRATIONS.json"), "utf8")).immutableThrough;
+const migration = [...text.matchAll(/supabase[\\/]migrations[\\/](\d+)_/g)].some((match) => Number(match[1]) <= boundary);
+const dangerous = /git\s+(?:reset\s+--hard|clean\b|add\s+(?:-A|--all|\.)(?=["'\s]|$))|git\s+push[^\n]*(?:--force|-f|\bmain\b)|supabase\s+(?:db\s+(?:push|reset)|migration\s+(?:up|apply))|\bpsql\b|\b(?:docker|kubectl|terraform|aws|az|gcloud|cloudflare|vercel)\s+(?:apply|create|delete|deploy|destroy|down|push|reset|rm|set|up)\b|(?:node|python(?:3)?)\s+(?:\.\/)?(?:check(?:_[\w-]+)?\.js|diagnose_rpc\.js|verify_migrations\.js|scripts[\\/]seed-production-users\.js)|(?:node|psql)\s+owner-[\w.-]+\.sql/i.test(text);
+const env = /(?:^|[\\/])\.env(?:\.|[\\/]|$)|SUPABASE_SERVICE_ROLE_KEY|DATABASE_URL|POSTGRES_URL|PRODUCTION_|VERCEL_TOKEN/i.test(text);
+const controlEdit = mutating && /(?:^|["'\\/])(?:\.codex|\.github|scripts[\\/](?:engineering|quality)|docs[\\/]engineering|AGENTS\.md|CLAUDE\.md|package(?:-lock)?\.json)/i.test(text);
+const controlAuthorized = state.resolution?.status === "RESOLVED" && state.resolution?.risk === "R3" && state.resolution?.domains?.includes("engineering-control");
+const requestedPaths = [...text.replaceAll("\\", "/").matchAll(/(?:^|[^A-Za-z0-9_.-])((?:src|scripts|docs|e2e|supabase|\.github|\.codex)\/[A-Za-z0-9_.\[\]/-]+|\.gitignore|(?:AGENTS|CLAUDE|package(?:-lock)?)\.(?:md|json)|[A-Za-z0-9_.-]+\.(?:c?js|mjs|mts|cts|json|toml|ya?ml|md|sql|ts|tsx))/g)].map((match) => match[1]);
+const candidates = new Map((state.resolution?.candidatePaths ?? []).map((candidate) => [candidate.path, candidate]));
+const metadataOnly = shellMutating && /git\s+commit\b/i.test(text);
+const outsideScope = mutating && !metadataOnly && (!requestedPaths.length || requestedPaths.some((path) => !candidates.has(path) || !revalidateCandidate(candidates.get(path))));
+if (dangerous || env || (mutating && (migration || (controlEdit && !controlAuthorized) || outsideScope))) console.log(JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: `SAFETY_CONFLICT:${migration ? "IMMUTABLE_MIGRATION" : dangerous ? "PROHIBITED_COMMAND" : env ? "CREDENTIAL_PATH" : controlEdit ? "CONTROL_SCOPE" : "SCOPE_OR_HASH"}` } }));

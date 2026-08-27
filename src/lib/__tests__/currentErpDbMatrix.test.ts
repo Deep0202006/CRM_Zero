@@ -32,7 +32,7 @@ describe("Migration 049 disposable PostgreSQL matrix", () => {
     expect(proofs.find((proof: { id: string }) => proof.id === "erp-postgres")?.paths).toContain("scripts/field-business-erp-db/run-integration.sh");
     expect(proofs.find((proof: { id: string }) => proof.id === "control-postgres-matrix")?.paths).toContain("scripts/field-business-erp-db/run-integration.sh");
     expect(workflow).toContain("postgres:17.6-alpine");
-    expect(workflow).toContain("verify-affected.mjs --kind postgres --execute");
-    expect(workflow).toContain("zerograph-postgres");
+    expect(workflow).toContain("proof-runner.mjs --proof control-postgres-matrix");
+    expect(workflow).toContain("kernel-postgres");
   });
 });

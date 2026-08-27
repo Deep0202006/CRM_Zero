@@ -1,388 +1,70 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { createHash } from "node:crypto";
+import { buildSourceIndex } from "./source-index.mjs";
+import { parseArgs, readJson, root, sha256 } from "./kernel-lib.mjs";
 
-const root = resolve(import.meta.dirname, "../..");
-const json = (file) => JSON.parse(readFileSync(resolve(root, file), "utf8"));
-const map = json("docs/engineering/DOMAIN_MAP.json");
-const authorities = json("docs/engineering/AUTHORITIES.json").facts;
-const capabilities = json("docs/engineering/CAPABILITIES.json").capabilities;
-const lessons = json("docs/engineering/LESSONS.json").lessons;
-const proofs = json("docs/engineering/PROOFS.json").proofs;
-const effects = new Set([
-  "UI",
-  "API",
-  "DATABASE",
-  "AUTHORIZATION",
-  "OFFLINE",
-  "IMPORT",
-  "ANALYTICS",
-  "EXPORT",
-  "SECURITY",
-  "PLATFORM",
-  "STORAGE",
-  "REALTIME",
-  "CONFIGURATION",
-]);
-const args = process.argv.slice(2);
-const values = (name) =>
-  args.flatMap((arg, index) =>
-    arg === name && args[index + 1] ? [args[index + 1]] : [],
-  );
-const stop = (code) => {
-  console.error(code);
-  process.exit(2);
-};
-const domainsArg = values("--domain");
-const paths = values("--path");
-const requestedEffects = values("--effect");
-const task = values("--task").at(-1) ?? "";
-const mode = values("--mode").at(-1) ?? "focused";
-const budgetValue = values("--budget").at(-1) ?? "900";
-const budget = Number(budgetValue);
-if (!Number.isInteger(budget) || budget <= 0) stop("INVALID_BUDGET");
-if (!new Set(["focused", "platform"]).has(mode)) stop("INVALID_MODE");
-if (requestedEffects.some((effect) => !effects.has(effect)))
-  stop("INVALID_EFFECT");
-const byId = new Map(map.domains.map((domain) => [domain.id, domain]));
-const rank = { R0: 0, R1: 1, R2: 2, R3: 3 };
-const tokens = (value) => [
-  ...new Set(
-    String(value)
-      .normalize("NFKC")
-      .replace(/([a-z])([A-Z])/g, "$1 $2")
-      .toLowerCase()
-      .match(/[\p{L}\p{N}_-]+/gu)
-      ?.flatMap((token) => token.split(/[_-]+/))
-      .filter((token) => token.length > 1) ?? [],
-  ),
-];
-const taskTokens = new Set(tokens(task));
-const briefAuthority = (item) => ({
-  id: item.id,
-  authority: item.authority,
-  owns: item.owns,
-  mustNotOwn: item.mustNotOwn,
-});
-const briefCapability = (item) => ({
-  id: item.id,
-  reuse: item.reuse,
-  implementationPaths: item.implementationPaths,
-  testPaths: item.testPaths,
-});
-const briefLesson = (item) => ({ id: item.id, claims: item.claims });
-
-if (mode === "platform") {
-  const pack = {
-    mode: "platform",
-    scope: "platform",
-    risk: "R3",
-    budget,
-    architecture: "docs/engineering/ARCHITECTURE.md",
-    domainIndex: map.domains.map(({ id, riskFloor, authorityRefs }) => ({
-      id,
-      riskFloor,
-      authorityRefs,
-    })),
-    contractIndex: [
-      ...new Set(map.domains.flatMap((domain) => domain.contractPaths ?? [])),
-    ],
-    criticalPlatformRoots: [
-      "src/app",
-      "src/lib",
-      "src/context",
-      "supabase",
-      "docs/contracts",
-      "scripts",
-      ".github/workflows",
-      "package.json",
-      "public",
-    ],
-    nextStep:
-      "Resolve focused context for each affected write before changing product or schema.",
+const matchesRoot = (path, pattern) => pattern.endsWith("/**") ? path === pattern.slice(0, -3) || path.startsWith(pattern.slice(0, -2)) : path === pattern || path.startsWith(`${pattern}/`);
+const words = (value) => new Set(String(value).toLowerCase().match(/[a-z0-9_-]{3,}/g) ?? []);
+export const resolveContext = ({ task = "", exactPath, index } = {}) => {
+  index ??= buildSourceIndex({ includePaths: exactPath ? [exactPath] : [] });
+  const taskHash = sha256(task), taskWords = words(task), domains = readJson("docs/engineering/DOMAIN_MAP.json").domains;
+  const authorities = readJson("docs/engineering/AUTHORITIES.json").facts;
+  const capabilities = readJson("docs/engineering/CAPABILITIES.json").capabilities;
+  const proofs = readJson("docs/engineering/PROOFS.json").proofs;
+  const domainScores = domains.map((domain) => {
+    let score = 0;
+    if (exactPath && [...(domain.surfacePaths ?? []), ...(domain.codeRoots ?? []), ...(domain.serverBoundaries ?? []), ...(domain.contractPaths ?? []), ...(domain.criticalTests ?? []), ...(domain.pathPatterns ?? [])].some((path) => matchesRoot(exactPath, path))) score = 1;
+    for (const alias of [domain.id, ...(domain.aliases ?? [])]) if ([...words(alias)].every((word) => taskWords.has(word))) score = Math.max(score, 0.85);
+    return { domain, score };
+  }).filter((item) => item.score > 0).sort((a, b) => b.score - a.score);
+  const selected = domainScores.filter((item) => item.score === domainScores[0]?.score).map((item) => item.domain);
+  const evidence = [];
+  for (const file of index.files) {
+    const matchedBy = [];
+    let score = 0;
+    if (exactPath && file.path === exactPath) { score = 1; matchedBy.push({ kind: "exact-identifier", value: exactPath }); }
+    for (const domain of selected) for (const [paths, weight] of [[domain.serverBoundaries ?? [], 0.8], [domain.codeRoots ?? [], 0.75], [domain.criticalTests ?? [], 0.7], [domain.surfacePaths ?? [], 0.8], [domain.contractPaths ?? [], 0.75]]) for (const path of paths) if (matchesRoot(file.path, path)) { score = Math.max(score, weight); matchedBy.push({ kind: "registry", value: `${domain.id}:${path}` }); }
+    for (const value of [...file.tables, ...file.rpcs, ...file.routes, ...file.exports]) if (score > 0 && taskWords.has(String(value).toLowerCase())) { score = 1; matchedBy.push({ kind: file.tables.includes(value) ? "table" : file.rpcs.includes(value) ? "rpc" : file.routes.includes(value) ? "route" : "exact-identifier", value }); }
+    const baseName = file.path.split("/").at(-1).replace(/\.[^.]+$/, "");
+    if (taskWords.has(baseName.toLowerCase())) { score = Math.max(score, 0.45); matchedBy.push({ kind: "filename", value: baseName }); }
+    if (score) evidence.push({ path: file.path, contentHash: file.contentHash, score, matchedBy: [...new Map(matchedBy.map((item) => [`${item.kind}:${item.value}`, item])).values()] });
+  }
+  evidence.sort((a, b) => b.score - a.score || a.path.localeCompare(b.path));
+  const bounded = [];
+  for (const domain of selected) {
+    const representative = (domain.codeRoots ?? []).map((path) => evidence.find((candidate) => matchesRoot(candidate.path, path))).find(Boolean) ?? evidence.find((candidate) => (domain.serverBoundaries ?? []).some((path) => matchesRoot(candidate.path, path)));
+    if (representative && !bounded.includes(representative)) bounded.push(representative);
+  }
+  for (const candidate of evidence) if (bounded.length < 7 && !bounded.includes(candidate)) bounded.push(candidate);
+  bounded.sort((a, b) => b.score - a.score || a.path.localeCompare(b.path));
+  const top = evidence[0]?.score ?? 0, margin = top - (evidence[1]?.score ?? 0);
+  const authoritySets = selected.map((domain) => new Set(domain.authorityRefs ?? []));
+  const conflicting = authoritySets.some((left, index) => left.size && authoritySets.slice(index + 1).some((right) => right.size && ![...left].some((id) => right.has(id))));
+  const lexicalOnly = evidence.length && evidence.every((candidate) => candidate.matchedBy.every((match) => match.kind === "filename"));
+  const lowMargin = !exactPath && evidence.length > 1 && margin < 0.1;
+  const status = !selected.length || !evidence.length ? "UNKNOWN" : conflicting || lexicalOnly || top < 0.7 || lowMargin ? "SCOPE_AMBIGUOUS" : "RESOLVED";
+  const authorityIds = new Set(selected.flatMap((domain) => domain.authorityRefs ?? []));
+  const protectedIds = new Set(selected.flatMap((domain) => domain.mustNotWriteAuthorityRefs ?? []));
+  const capabilityIds = new Set(selected.flatMap((domain) => domain.capabilityRefs ?? []));
+  const riskRank = { R0: 0, R1: 1, R2: 2, R3: 3 };
+  const risk = selected.reduce((current, domain) => riskRank[domain.riskFloor] > riskRank[current] ? domain.riskFloor : current, "R0");
+  return {
+    status, taskHash, domains: selected.map((domain) => domain.id), risk,
+    authorities: authorities.filter((item) => authorityIds.has(item.id)).map((item) => item.id),
+    mustNotWriteAuthorities: authorities.filter((item) => protectedIds.has(item.id)).map((item) => item.id),
+    capabilities: capabilities.filter((item) => capabilityIds.has(item.id)).map((item) => item.id),
+    candidatePaths: bounded, requiredOpenPaths: status === "RESOLVED" ? bounded.map((item) => item.path) : [],
+    requiredProofRefs: [...new Set([...selected.flatMap((domain) => domain.proofRefs ?? []), ...proofs.filter((proof) => (proof.domains ?? []).some((domain) => selected.some((item) => item.id === domain))).map((proof) => proof.id)])],
+    unresolved: [!selected.length && "NO_DOMAIN_EVIDENCE", !evidence.length && "NO_PATH_EVIDENCE", conflicting && "CONFLICTING_AUTHORITIES", lexicalOnly && "LEXICAL_ONLY", top < 0.7 && "LOW_CONFIDENCE", lowMargin && "LOW_MARGIN"].filter(Boolean),
   };
-  const estimatedTokens = Math.ceil(JSON.stringify(pack).length / 4);
-  if (estimatedTokens > budget) stop("CONTEXT_REQUIRED_BUDGET_EXCEEDED");
-  console.log(JSON.stringify({ ...pack, estimatedTokens }, null, 2));
-  process.exit(0);
-}
+};
+export const revalidateCandidate = (candidate) => {
+  try { return sha256(readFileSync(resolve(root, candidate.path))) === candidate.contentHash; }
+  catch { return false; }
+};
 
-const selected = new Set(domainsArg);
-let confidence = paths.length || domainsArg.length ? 1 : 0;
-let margin = 1;
-for (const id of selected) if (!byId.has(id)) stop("UNMAPPED_PATH");
-for (const path of paths) {
-  const matches = map.domains.filter((domain) =>
-    ["surfacePaths", "codeRoots", "serverBoundaries"].some((key) =>
-      (domain[key] ?? []).some(
-        (prefix) => path === prefix || path.startsWith(`${prefix}/`),
-      ),
-    ),
-  );
-  if (!matches.length) stop("UNMAPPED_PATH");
-  matches.forEach((domain) => selected.add(domain.id));
+if (process.argv[1] && resolve(process.argv[1]) === resolve(import.meta.filename)) {
+  const { value } = parseArgs(), pack = resolveContext({ task: value("--task", ""), exactPath: value("--path") });
+  console.log(JSON.stringify(pack, null, 2));
+  if (pack.status !== "RESOLVED") process.exitCode = 2;
 }
-// Task-only discovery is intentionally evidence ranking, never authorization.
-// A tie fails closed instead of guessing a writable domain.
-if (!selected.size && task) {
-  const sameToken = (left, right) =>
-    left === right || left.replace(/s$/, "") === right.replace(/s$/, "");
-  const scoreText = (value) =>
-    tokens(value).filter((token) =>
-      [...taskTokens].some((taskToken) => sameToken(token, taskToken)),
-    ).length;
-  const candidates = map.domains
-    .map((domain) => {
-      const authorityText = (domain.authorityRefs ?? [])
-        .map((id) => authorities.find((item) => item.id === id))
-        .filter(Boolean)
-        .flatMap((item) => [
-          item.id,
-          ...(item.owns ?? []),
-          item.authority ?? "",
-        ]);
-      const capabilityText = (domain.capabilityRefs ?? [])
-        .map((id) => capabilities.find((item) => item.id === id))
-        .filter(Boolean)
-        .flatMap((item) => [item.id, ...(item.notes ?? [])]);
-      const direct = scoreText(
-        [domain.id, ...(domain.aliases ?? [])].join(" "),
-      );
-      return {
-        domain,
-        direct,
-        score:
-          direct * 5 +
-          scoreText(
-            [
-              ...(domain.surfacePaths ?? []),
-              ...authorityText,
-              ...capabilityText,
-            ].join(" "),
-          ),
-      };
-    })
-    .filter((candidate) => candidate.score > 0)
-    .sort(
-      (a, b) => b.score - a.score || a.domain.id.localeCompare(b.domain.id),
-    );
-  if (!candidates.length) stop("CONTEXT_AMBIGUOUS");
-  confidence = Math.min(1, candidates[0].score / 10);
-  margin = candidates[1]
-    ? (candidates[0].score - candidates[1].score) /
-      Math.max(1, candidates[0].score)
-    : 1;
-  const confirmed = candidates.filter(
-    (candidate) =>
-      candidate.direct > 0 && candidate.score >= candidates[0].score - 1,
-  );
-  if (confirmed.length > 1)
-    confirmed.forEach((candidate) => selected.add(candidate.domain.id));
-  else if (candidates[1] && candidates[0].score === candidates[1].score)
-    stop("CONTEXT_AMBIGUOUS");
-  else selected.add(candidates[0].domain.id);
-}
-if (!selected.size) stop("UNMAPPED_PATH");
-const pathSpecificity = (domain) =>
-  Math.max(
-    0,
-    ...paths.flatMap((path) =>
-      ["surfacePaths", "codeRoots", "serverBoundaries"].flatMap((key) =>
-        (domain[key] ?? [])
-          .filter((prefix) => path === prefix || path.startsWith(`${prefix}/`))
-          .map((prefix) => prefix.length),
-      ),
-    ),
-  );
-const domains = [...selected]
-  .map((id) => byId.get(id))
-  .sort((left, right) => pathSpecificity(right) - pathSpecificity(left));
-let risk = domains.reduce(
-  (current, domain) =>
-    rank[domain.riskFloor] > rank[current] ? domain.riskFloor : current,
-  "R0",
-);
-if (
-  requestedEffects.some((effect) =>
-    ["DATABASE", "AUTHORIZATION", "SECURITY"].includes(effect),
-  )
-)
-  risk = "R3";
-const ids = (key) => [
-  ...new Set(domains.flatMap((domain) => domain[key] ?? [])),
-];
-const derivedEffects = [
-  ...new Set([...requestedEffects, ...ids("defaultEffects")]),
-];
-const normalizedTask = task.toLowerCase();
-const blocker = selected.has("platform-handover")
-  ? [
-      [
-        /database dump.*storage|storage objects.*(?:dump|moved)/,
-        "DATABASE_DUMP_NOT_STORAGE_TRANSFER",
-      ],
-      [
-        /auth.*(?:ignore|without).*(?:jwt|configuration)|copy auth.*ignore/,
-        "AUTH_CONFIGURATION_PARITY_REQUIRED",
-      ],
-      [
-        /postgres.*(?:not|do not|without).*realtime|realtime.*(?:not|without).*verify/,
-        "REALTIME_COMPATIBILITY_REQUIRED",
-      ],
-      [
-        /vercel.*(?:variables|environment).*(?:before|without).*parity/,
-        "CUTOVER_ENV_PARITY_REQUIRED",
-      ],
-      [
-        /(?:old browsers|browser bundles|offline queues).*(?:reload|converge)|resume writes.*(?:old browsers|offline queues)/,
-        "CLIENT_CUTOVER_COMPATIBILITY_NOT_RUN",
-      ],
-      [
-        /(?:live inventory|source manifest).*(?:unrelated|different).*(?:dump|snapshot)|parity.*unrelated.*(?:dump|snapshot)/,
-        "SOURCE_SNAPSHOT_UNBOUND",
-      ],
-      [
-        /cut over.*without.*(?:managed source|rollback).*(?:available|availability|decision)/,
-        "SOURCE_ROLLBACK_AVAILABILITY_PLAN",
-      ],
-      [
-        /rollback.*target.*writes.*(?:pointing|switch)/,
-        "ROLLBACK_WRITE_RECONCILIATION_REQUIRED",
-      ],
-    ].find(([pattern]) => pattern.test(normalizedTask))?.[1]
-  : undefined;
-const authorityIds = ids("authorityRefs");
-if (
-  requestedEffects.some((effect) =>
-    ["DATABASE", "AUTHORIZATION"].includes(effect),
-  ) &&
-  !authorityIds.length
-)
-  stop("AUTHORITY_UNRESOLVED");
-const intersectsDomain = (lesson) =>
-  (lesson.domains ?? []).includes("all") ||
-  (lesson.domains ?? []).some((id) => selected.has(id));
-const matchesTask = (lesson) =>
-  intersectsDomain(lesson) &&
-  (lesson.risk ?? []).includes(risk) &&
-  (lesson.triggers ?? []).some((trigger) =>
-    tokens(trigger).every((token) => taskTokens.has(token)),
-  );
-const add = (bucket, reason, lesson) => {
-  if (!bucket.has(lesson.id)) bucket.set(lesson.id, { lesson, reasons: [] });
-  bucket.get(lesson.id).reasons.push(reason);
-};
-const chosen = new Map();
-for (const lesson of lessons.filter((lesson) => lesson.loadByDefault))
-  add(chosen, "default", lesson);
-for (const id of requestedEffects.flatMap(
-  (effect) => map.effectLessonRefs?.[effect] ?? [],
-)) {
-  const lesson = lessons.find((item) => item.id === id);
-  if (lesson) add(chosen, "effect", lesson);
-}
-for (const lesson of lessons.filter(matchesTask))
-  add(chosen, "task-trigger", lesson);
-for (const id of ids("lessonRefs")) {
-  const lesson = lessons.find((item) => item.id === id);
-  if (lesson) add(chosen, "domain", lesson);
-}
-const mandatory = new Set(
-  [...chosen.values()]
-    .filter(({ reasons }) => reasons.some((reason) => reason !== "domain"))
-    .map(({ lesson }) => lesson.id),
-);
-const optional = [...chosen.values()].filter(
-  ({ lesson }) => !mandatory.has(lesson.id),
-);
-const build = (entries, omittedLessons = []) => {
-  const lessonSelection = Object.fromEntries(
-    entries.map(({ lesson, reasons }) => [lesson.id, [...new Set(reasons)]]),
-  );
-  const visibleEntries = [],
-    compactedEntries = [];
-  for (const entry of entries)
-    (visibleEntries.length < 4 ? visibleEntries : compactedEntries).push(entry);
-  const pack = {
-    mode: "focused",
-    scope: domains.length === 1 ? "focused" : "cross-domain",
-    budget,
-    ...(task
-      ? {
-          taskHash: createHash("sha256").update(task).digest("hex"),
-          confidence,
-          margin,
-        }
-      : {}),
-    domains: domains.map((domain) => domain.id),
-    effects: derivedEffects,
-    relevantEffects: ids("relevantEffects"),
-    risk,
-    riskFloor: risk,
-    contracts: ids("contractPaths").slice(0, 3),
-    candidatePaths: [
-      ...new Set([
-        ...ids("codeRoots"),
-        ...ids("surfacePaths"),
-        ...ids("serverBoundaries"),
-        ...capabilities
-          .filter((item) => ids("capabilityRefs").includes(item.id))
-          .flatMap((item) => item.implementationPaths ?? []),
-        ...ids("contractPaths"),
-      ]),
-    ].slice(0, 5),
-    authorities: authorities
-      .filter((item) => authorityIds.includes(item.id))
-      .map(briefAuthority),
-    capabilities: capabilities
-      .filter((item) => ids("capabilityRefs").includes(item.id))
-      .slice(0, 4)
-      .map(briefCapability),
-    lessons: visibleEntries.map(({ lesson }) => briefLesson(lesson)),
-    ...(task
-      ? {
-          criticalClaims: [
-            ...new Set(entries.flatMap(({ lesson }) => lesson.claims ?? [])),
-          ],
-          compactedLessonClaims: Object.fromEntries(
-            compactedEntries.map(({ lesson }) => [
-              lesson.id,
-              lesson.claims ?? [],
-            ]),
-          ),
-        }
-      : {}),
-    lessonSelection,
-    omittedLessons: [
-      ...new Set([
-        ...omittedLessons,
-        ...compactedEntries.map(({ lesson }) => lesson.id),
-      ]),
-    ],
-    mustNotWriteAuthorities: ids("mustNotWriteAuthorityRefs"),
-    criticalTests: ids("criticalTests"),
-    requiredProofRefs: proofs
-      .filter((proof) => (proof.domains ?? []).some((id) => selected.has(id)))
-      .map((proof) => proof.id),
-    requiredProofKinds: ids("requiredProofKinds"),
-    ...(blocker ? { blocker } : {}),
-  };
-  return { pack, estimatedTokens: Math.ceil(JSON.stringify(pack).length / 4) };
-};
-let included = [...chosen.values()];
-let omittedLessons = [];
-let result = build(included, omittedLessons);
-while (result.estimatedTokens > budget && optional.length) {
-  const removed = optional.pop();
-  included = included.filter(({ lesson }) => lesson.id !== removed.lesson.id);
-  omittedLessons.push(removed.lesson.id);
-  result = build(included, omittedLessons);
-}
-if (result.estimatedTokens > budget) stop("CONTEXT_REQUIRED_BUDGET_EXCEEDED");
-console.log(
-  JSON.stringify(
-    { ...result.pack, estimatedTokens: result.estimatedTokens },
-    null,
-    2,
-  ),
-);

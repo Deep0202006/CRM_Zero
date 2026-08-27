@@ -1,9 +1,11 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { execFileSync, spawnSync } from "node:child_process";
 import { resolve } from "node:path";
+import { safeEnvironment } from "./kernel-lib.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
-const graphifyBin = process.env.ZEROGRAPH_GRAPHIFY_BIN ?? "graphify";
+const graphifyBin = process.env.GRAPHIFY_BIN ?? "graphify";
+const environment = safeEnvironment();
 const run = (...args) =>
   execFileSync("git", args, { cwd: root, encoding: "utf8" }).trim();
 const head = run("rev-parse", "HEAD");
@@ -13,6 +15,7 @@ const stamp = resolve(output, ".crm-head");
 const probe = spawnSync(graphifyBin, ["--version"], {
   cwd: root,
   encoding: "utf8",
+  env: environment,
 });
 if (probe.error || probe.status !== 0) {
   console.log("GRAPHIFY_UNAVAILABLE_TARGETED_SEARCH_REQUIRED");
@@ -33,6 +36,7 @@ if (
 execFileSync(graphifyBin, ["extract", ".", "--code-only"], {
   cwd: root,
   stdio: "inherit",
+  env: environment,
 });
 if (!existsSync(graph)) throw new Error("GRAPHIFY_EXTRACTION_GRAPH_MISSING");
 mkdirSync(output, { recursive: true });

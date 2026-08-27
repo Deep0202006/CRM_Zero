@@ -1,39 +1,693 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "proofs": [
-    {"id":"auth-unit","kind":"unit","domains":["auth"],"effects":["AUTHORIZATION","SECURITY","API"],"runner":"jest","paths":["src/lib/__tests__/productionConsistencyGuards.test.ts"]},
-    {"id":"attendance-unit","kind":"unit","domains":["attendance"],"effects":["UI","API","OFFLINE","AUTHORIZATION"],"runner":"jest","paths":["src/lib/__tests__/attendanceAuthority.test.ts"]},
-    {"id":"attendance-e2e","kind":"e2e","domains":["attendance"],"effects":["UI","OFFLINE"],"runner":"playwright","paths":["e2e/attendance"]},
-    {"id":"attendance-postgres","kind":"postgres","domains":["attendance"],"effects":["DATABASE","AUTHORIZATION","SECURITY"],"runner":"bash-postgres","paths":["scripts/attendance-db/run-integration.sh"]},
-    {"id":"calls-unit","kind":"unit","domains":["calls"],"effects":["UI","API","OFFLINE","AUTHORIZATION"],"runner":"jest","paths":["src/lib/__tests__/callLogContract.test.ts","src/lib/__tests__/callHistoryAuthority.test.ts"]},
-    {"id":"field-visits-unit","kind":"unit","domains":["field-visits"],"effects":["UI","API","OFFLINE","AUTHORIZATION"],"runner":"jest","paths":["src/lib/__tests__/fieldVisitZeroLossContract.test.ts"]},
-    {"id":"field-visits-e2e","kind":"e2e","domains":["field-visits"],"effects":["UI","OFFLINE"],"runner":"playwright","paths":["e2e/field-visits"]},
-    {"id":"field-visits-postgres","kind":"postgres","domains":["field-visits"],"effects":["DATABASE","AUTHORIZATION","SECURITY"],"runner":"bash-postgres","paths":["scripts/field-visits-db/run-integration.sh"]},
-    {"id":"mapping-unit","kind":"unit","domains":["mappings"],"effects":["UI","OFFLINE","AUTHORIZATION"],"runner":"jest","paths":["src/lib/__tests__/mappingStandaloneContract.test.ts"]},
-    {"id":"mapping-e2e","kind":"e2e","domains":["mappings"],"effects":["UI","OFFLINE"],"runner":"playwright","paths":["e2e/mappings"]},
-    {"id":"mapping-postgres","kind":"postgres","domains":["mappings"],"effects":["DATABASE","AUTHORIZATION","SECURITY"],"runner":"bash-postgres","paths":["scripts/mappings-db/run-integration.sh"]},
-    {"id":"mapping-owner-pre","kind":"owner-pre","domains":["mappings"],"effects":["DATABASE"],"runner":"owner-sql","paths":["supabase/manual/precheck_051_mapping_attribution_visibility.sql"]},
-    {"id":"mapping-owner-post","kind":"owner-post","domains":["mappings"],"effects":["DATABASE"],"runner":"owner-sql","paths":["supabase/manual/verify_051_mapping_attribution_visibility.sql"]},
-    {"id":"pipeline-unit","kind":"unit","domains":["pipeline"],"effects":["UI","API","OFFLINE","AUTHORIZATION"],"runner":"jest","paths":["src/lib/__tests__/pipeline/pipelineAuthority.test.ts"]},
-    {"id":"pipeline-e2e","kind":"e2e","domains":["pipeline"],"effects":["UI","OFFLINE"],"runner":"playwright","paths":["e2e/pipeline"]},
-    {"id":"pipeline-postgres","kind":"postgres","domains":["pipeline"],"effects":["DATABASE","AUTHORIZATION","SECURITY"],"runner":"bash-postgres","paths":["scripts/pipeline-db/run-integration.sh"]},
-    {"id":"team-kpi-unit","kind":"unit","domains":["team-kpi"],"effects":["UI","API","ANALYTICS"],"runner":"jest","paths":["src/lib/__tests__/teamKpiContract.test.ts"]},
-    {"id":"distributor-unit","kind":"unit","domains":["distributor-status","renewals"],"effects":["UI","API","IMPORT","EXPORT","AUTHORIZATION"],"runner":"jest","paths":["src/lib/__tests__/distributors/routeMatrix.test.ts"]},
-    {"id":"distributor-e2e","kind":"e2e","domains":["distributor-status","renewals"],"effects":["UI"],"runner":"playwright","paths":["e2e/distributors"]},
-    {"id":"distributor-postgres","kind":"postgres","domains":["distributor-status","renewals"],"effects":["DATABASE","AUTHORIZATION","SECURITY"],"runner":"bash-postgres","paths":["scripts/distributor-status-db/run-integration.sh"]},
-    {"id":"receivables-unit","kind":"unit","domains":["receivables"],"effects":["UI","API","IMPORT","EXPORT","AUTHORIZATION"],"runner":"jest","paths":["src/lib/__tests__/receivables/financialSqlContract.test.ts"]},
-    {"id":"receivables-e2e","kind":"e2e","domains":["receivables"],"effects":["UI","API"],"runner":"playwright","paths":["e2e/receivables"]},
-    {"id":"receivables-postgres","kind":"postgres","domains":["receivables"],"effects":["DATABASE","AUTHORIZATION","SECURITY"],"runner":"bash-postgres","paths":["scripts/receivables-db/run-integration.sh"]},
-    {"id":"erp-unit","kind":"unit","domains":["erp","erp-partner"],"effects":["UI","API","AUTHORIZATION"],"runner":"jest","paths":["src/lib/__tests__/fieldVisitErpIntelligence.test.ts","src/lib/__tests__/erpVisibilityContract.test.ts"]},
-    {"id":"erp-postgres","kind":"postgres","domains":["erp","erp-partner"],"effects":["DATABASE","AUTHORIZATION","SECURITY"],"runner":"bash-postgres","paths":["scripts/field-visit-erp-db/run-integration.sh","scripts/field-business-erp-db/run-integration.sh"]},
-    {"id":"imports-unit","kind":"unit","domains":["imports"],"effects":["IMPORT","API","AUTHORIZATION"],"runner":"jest","paths":["src/lib/__tests__/distributorMaster/confirmation.test.ts"]},
-    {"id":"imports-postgres","kind":"postgres","domains":["imports"],"effects":["DATABASE","AUTHORIZATION","SECURITY","IMPORT"],"runner":"bash-postgres","paths":["scripts/distributor-master-db/run-integration.sh"]},
-    {"id":"followups-unit","kind":"unit","domains":["followups","my-day"],"effects":["UI","API","OFFLINE"],"runner":"jest","paths":["src/lib/__tests__/followUpContract.test.ts"]},
-    {"id":"queries-unit","kind":"unit","domains":["queries"],"effects":["API","ANALYTICS"],"runner":"jest","paths":["src/lib/__tests__/teamKpiLiveAggregation.test.ts"]},
-    {"id":"task-allocation-unit","kind":"unit","domains":["task-allocation"],"effects":["UI","API","AUTHORIZATION"],"runner":"jest","paths":["src/lib/__tests__/taskAllocationValidation.test.ts"]},
-    {"id":"control-unit","kind":"unit","domains":["engineering-control"],"effects":["ENGINEERING_CONTROL"],"runner":"node","paths":["scripts/engineering/os-bootstrap-test.mjs","scripts/engineering/context.test.mjs"],"controlPlaneCoverage":true},
-    {"id":"control-postgres-matrix","kind":"postgres","domains":["engineering-control"],"effects":["ENGINEERING_CONTROL"],"runner":"bash-postgres","paths":["scripts/attendance-db/run-integration.sh","scripts/distributor-master-db/run-integration.sh","scripts/distributor-status-db/run-integration.sh","scripts/field-business-erp-db/run-integration.sh","scripts/field-visit-erp-db/run-integration.sh","scripts/field-visits-db/run-integration.sh","scripts/mappings-db/run-integration.sh","scripts/pipeline-db/run-integration.sh","scripts/receivables-db/run-integration.sh"],"controlPlaneCoverage":true},
-    {"id":"control-e2e-matrix","kind":"e2e","domains":["engineering-control"],"effects":["ENGINEERING_CONTROL"],"runner":"playwright","paths":["e2e/attendance","e2e/distributors","e2e/field-visits","e2e/mappings","e2e/pipeline","e2e/receivables"],"controlPlaneCoverage":true},
-    {"id":"supabase-handover-readiness","kind":"handover","domains":["platform-handover"],"effects":["PLATFORM","DATABASE","AUTHORIZATION","SECURITY","STORAGE","REALTIME","CONFIGURATION"],"runner":"node","paths":["scripts/handover/check.mjs"]}
+    {
+      "id": "auth-unit",
+      "kind": "unit",
+      "domains": [
+        "auth"
+      ],
+      "effects": [
+        "AUTHORIZATION",
+        "SECURITY",
+        "API"
+      ],
+      "runner": "jest",
+      "paths": [
+        "src/lib/__tests__/productionConsistencyGuards.test.ts"
+      ]
+    },
+    {
+      "id": "attendance-unit",
+      "kind": "unit",
+      "domains": [
+        "attendance"
+      ],
+      "effects": [
+        "UI",
+        "API",
+        "OFFLINE",
+        "AUTHORIZATION"
+      ],
+      "runner": "jest",
+      "paths": [
+        "src/lib/__tests__/attendanceAuthority.test.ts"
+      ]
+    },
+    {
+      "id": "attendance-e2e",
+      "kind": "e2e",
+      "domains": [
+        "attendance"
+      ],
+      "effects": [
+        "UI",
+        "OFFLINE"
+      ],
+      "runner": "playwright",
+      "paths": [
+        "e2e/attendance"
+      ]
+    },
+    {
+      "id": "attendance-postgres",
+      "kind": "postgres",
+      "domains": [
+        "attendance"
+      ],
+      "effects": [
+        "DATABASE",
+        "AUTHORIZATION",
+        "SECURITY"
+      ],
+      "runner": "bash-postgres",
+      "paths": [
+        "scripts/attendance-db/run-integration.sh"
+      ]
+    },
+    {
+      "id": "calls-unit",
+      "kind": "unit",
+      "domains": [
+        "calls"
+      ],
+      "effects": [
+        "UI",
+        "API",
+        "OFFLINE",
+        "AUTHORIZATION"
+      ],
+      "runner": "jest",
+      "paths": [
+        "src/lib/__tests__/callLogContract.test.ts",
+        "src/lib/__tests__/callHistoryAuthority.test.ts"
+      ]
+    },
+    {
+      "id": "field-visits-unit",
+      "kind": "unit",
+      "domains": [
+        "field-visits"
+      ],
+      "effects": [
+        "UI",
+        "API",
+        "OFFLINE",
+        "AUTHORIZATION"
+      ],
+      "runner": "jest",
+      "paths": [
+        "src/lib/__tests__/fieldVisitZeroLossContract.test.ts"
+      ]
+    },
+    {
+      "id": "field-visits-e2e",
+      "kind": "e2e",
+      "domains": [
+        "field-visits"
+      ],
+      "effects": [
+        "UI",
+        "OFFLINE"
+      ],
+      "runner": "playwright",
+      "paths": [
+        "e2e/field-visits"
+      ]
+    },
+    {
+      "id": "field-visits-postgres",
+      "kind": "postgres",
+      "domains": [
+        "field-visits"
+      ],
+      "effects": [
+        "DATABASE",
+        "AUTHORIZATION",
+        "SECURITY"
+      ],
+      "runner": "bash-postgres",
+      "paths": [
+        "scripts/field-visits-db/run-integration.sh"
+      ]
+    },
+    {
+      "id": "mapping-unit",
+      "kind": "unit",
+      "domains": [
+        "mappings"
+      ],
+      "effects": [
+        "UI",
+        "OFFLINE",
+        "AUTHORIZATION"
+      ],
+      "runner": "jest",
+      "paths": [
+        "src/lib/__tests__/mappingStandaloneContract.test.ts"
+      ]
+    },
+    {
+      "id": "mapping-e2e",
+      "kind": "e2e",
+      "domains": [
+        "mappings"
+      ],
+      "effects": [
+        "UI",
+        "OFFLINE"
+      ],
+      "runner": "playwright",
+      "paths": [
+        "e2e/mappings"
+      ]
+    },
+    {
+      "id": "mapping-postgres",
+      "kind": "postgres",
+      "domains": [
+        "mappings"
+      ],
+      "effects": [
+        "DATABASE",
+        "AUTHORIZATION",
+        "SECURITY"
+      ],
+      "runner": "bash-postgres",
+      "paths": [
+        "scripts/mappings-db/run-integration.sh"
+      ]
+    },
+    {
+      "id": "mapping-owner-pre",
+      "kind": "owner-pre",
+      "domains": [
+        "mappings"
+      ],
+      "effects": [
+        "DATABASE"
+      ],
+      "runner": "owner-sql",
+      "paths": [
+        "supabase/manual/precheck_051_mapping_attribution_visibility.sql"
+      ]
+    },
+    {
+      "id": "mapping-owner-post",
+      "kind": "owner-post",
+      "domains": [
+        "mappings"
+      ],
+      "effects": [
+        "DATABASE"
+      ],
+      "runner": "owner-sql",
+      "paths": [
+        "supabase/manual/verify_051_mapping_attribution_visibility.sql"
+      ]
+    },
+    {
+      "id": "pipeline-unit",
+      "kind": "unit",
+      "domains": [
+        "pipeline"
+      ],
+      "effects": [
+        "UI",
+        "API",
+        "OFFLINE",
+        "AUTHORIZATION"
+      ],
+      "runner": "jest",
+      "paths": [
+        "src/lib/__tests__/pipeline/pipelineAuthority.test.ts"
+      ]
+    },
+    {
+      "id": "pipeline-e2e",
+      "kind": "e2e",
+      "domains": [
+        "pipeline"
+      ],
+      "effects": [
+        "UI",
+        "OFFLINE"
+      ],
+      "runner": "playwright",
+      "paths": [
+        "e2e/pipeline"
+      ]
+    },
+    {
+      "id": "pipeline-postgres",
+      "kind": "postgres",
+      "domains": [
+        "pipeline"
+      ],
+      "effects": [
+        "DATABASE",
+        "AUTHORIZATION",
+        "SECURITY"
+      ],
+      "runner": "bash-postgres",
+      "paths": [
+        "scripts/pipeline-db/run-integration.sh"
+      ]
+    },
+    {
+      "id": "team-kpi-unit",
+      "kind": "unit",
+      "domains": [
+        "team-kpi"
+      ],
+      "effects": [
+        "UI",
+        "API",
+        "ANALYTICS"
+      ],
+      "runner": "jest",
+      "paths": [
+        "src/lib/__tests__/teamKpiContract.test.ts"
+      ]
+    },
+    {
+      "id": "distributor-unit",
+      "kind": "unit",
+      "domains": [
+        "distributor-status",
+        "renewals"
+      ],
+      "effects": [
+        "UI",
+        "API",
+        "IMPORT",
+        "EXPORT",
+        "AUTHORIZATION"
+      ],
+      "runner": "jest",
+      "paths": [
+        "src/lib/__tests__/distributors/routeMatrix.test.ts"
+      ]
+    },
+    {
+      "id": "distributor-e2e",
+      "kind": "e2e",
+      "domains": [
+        "distributor-status",
+        "renewals"
+      ],
+      "effects": [
+        "UI"
+      ],
+      "runner": "playwright",
+      "paths": [
+        "e2e/distributors"
+      ]
+    },
+    {
+      "id": "distributor-postgres",
+      "kind": "postgres",
+      "domains": [
+        "distributor-status",
+        "renewals"
+      ],
+      "effects": [
+        "DATABASE",
+        "AUTHORIZATION",
+        "SECURITY"
+      ],
+      "runner": "bash-postgres",
+      "paths": [
+        "scripts/distributor-status-db/run-integration.sh"
+      ]
+    },
+    {
+      "id": "receivables-unit",
+      "kind": "unit",
+      "domains": [
+        "receivables"
+      ],
+      "effects": [
+        "UI",
+        "API",
+        "IMPORT",
+        "EXPORT",
+        "AUTHORIZATION"
+      ],
+      "runner": "jest",
+      "paths": [
+        "src/lib/__tests__/receivables/financialSqlContract.test.ts"
+      ]
+    },
+    {
+      "id": "receivables-e2e",
+      "kind": "e2e",
+      "domains": [
+        "receivables"
+      ],
+      "effects": [
+        "UI",
+        "API"
+      ],
+      "runner": "playwright",
+      "paths": [
+        "e2e/receivables"
+      ]
+    },
+    {
+      "id": "receivables-postgres",
+      "kind": "postgres",
+      "domains": [
+        "receivables"
+      ],
+      "effects": [
+        "DATABASE",
+        "AUTHORIZATION",
+        "SECURITY"
+      ],
+      "runner": "bash-postgres",
+      "paths": [
+        "scripts/receivables-db/run-integration.sh"
+      ]
+    },
+    {
+      "id": "erp-unit",
+      "kind": "unit",
+      "domains": [
+        "erp",
+        "erp-partner"
+      ],
+      "effects": [
+        "UI",
+        "API",
+        "AUTHORIZATION"
+      ],
+      "runner": "jest",
+      "paths": [
+        "src/lib/__tests__/fieldVisitErpIntelligence.test.ts",
+        "src/lib/__tests__/erpVisibilityContract.test.ts"
+      ]
+    },
+    {
+      "id": "erp-postgres",
+      "kind": "postgres",
+      "domains": [
+        "erp",
+        "erp-partner"
+      ],
+      "effects": [
+        "DATABASE",
+        "AUTHORIZATION",
+        "SECURITY"
+      ],
+      "runner": "bash-postgres",
+      "paths": [
+        "scripts/field-visit-erp-db/run-integration.sh",
+        "scripts/field-business-erp-db/run-integration.sh"
+      ]
+    },
+    {
+      "id": "imports-unit",
+      "kind": "unit",
+      "domains": [
+        "imports"
+      ],
+      "effects": [
+        "IMPORT",
+        "API",
+        "AUTHORIZATION"
+      ],
+      "runner": "jest",
+      "paths": [
+        "src/lib/__tests__/distributorMaster/confirmation.test.ts"
+      ]
+    },
+    {
+      "id": "imports-postgres",
+      "kind": "postgres",
+      "domains": [
+        "imports"
+      ],
+      "effects": [
+        "DATABASE",
+        "AUTHORIZATION",
+        "SECURITY",
+        "IMPORT"
+      ],
+      "runner": "bash-postgres",
+      "paths": [
+        "scripts/distributor-master-db/run-integration.sh"
+      ]
+    },
+    {
+      "id": "followups-unit",
+      "kind": "unit",
+      "domains": [
+        "followups",
+        "my-day"
+      ],
+      "effects": [
+        "UI",
+        "API",
+        "OFFLINE"
+      ],
+      "runner": "jest",
+      "paths": [
+        "src/lib/__tests__/followUpContract.test.ts"
+      ]
+    },
+    {
+      "id": "queries-unit",
+      "kind": "unit",
+      "domains": [
+        "queries"
+      ],
+      "effects": [
+        "API",
+        "ANALYTICS"
+      ],
+      "runner": "jest",
+      "paths": [
+        "src/lib/__tests__/teamKpiLiveAggregation.test.ts"
+      ]
+    },
+    {
+      "id": "task-allocation-unit",
+      "kind": "unit",
+      "domains": [
+        "task-allocation"
+      ],
+      "effects": [
+        "UI",
+        "API",
+        "AUTHORIZATION"
+      ],
+      "runner": "jest",
+      "paths": [
+        "src/lib/__tests__/taskAllocationValidation.test.ts"
+      ]
+    },
+    {
+      "id": "control-postgres-matrix",
+      "kind": "postgres",
+      "domains": [
+        "engineering-control"
+      ],
+      "effects": [
+        "ENGINEERING_CONTROL"
+      ],
+      "runner": "bash-postgres",
+      "paths": [
+        "scripts/attendance-db/run-integration.sh",
+        "scripts/distributor-master-db/run-integration.sh",
+        "scripts/distributor-status-db/run-integration.sh",
+        "scripts/field-business-erp-db/run-integration.sh",
+        "scripts/field-visit-erp-db/run-integration.sh",
+        "scripts/field-visits-db/run-integration.sh",
+        "scripts/mappings-db/run-integration.sh",
+        "scripts/pipeline-db/run-integration.sh",
+        "scripts/receivables-db/run-integration.sh"
+      ],
+      "controlPlaneCoverage": true
+    },
+    {
+      "id": "control-e2e-matrix",
+      "kind": "e2e",
+      "domains": [
+        "engineering-control"
+      ],
+      "effects": [
+        "ENGINEERING_CONTROL"
+      ],
+      "runner": "playwright",
+      "paths": [
+        "e2e/attendance",
+        "e2e/distributors",
+        "e2e/field-visits",
+        "e2e/mappings",
+        "e2e/pipeline",
+        "e2e/receivables"
+      ],
+      "controlPlaneCoverage": true
+    },
+    {
+      "id": "supabase-handover-readiness",
+      "kind": "handover",
+      "domains": [
+        "platform-handover"
+      ],
+      "effects": [
+        "PLATFORM",
+        "DATABASE",
+        "AUTHORIZATION",
+        "SECURITY",
+        "STORAGE",
+        "REALTIME",
+        "CONFIGURATION"
+      ],
+      "runner": "node",
+      "paths": [
+        "scripts/handover/check.mjs"
+      ]
+    },
+    {
+      "id": "kernel-preflight",
+      "kind": "unit",
+      "domains": [
+        "engineering-control"
+      ],
+      "effects": [
+        "ENGINEERING_CONTROL"
+      ],
+      "runner": "fixed-commands",
+      "commands": [
+        {
+          "file": "node",
+          "args": [
+            "scripts/quality/repository-safety.test.mjs"
+          ]
+        },
+        {
+          "file": "node",
+          "args": [
+            "scripts/quality/repository-safety.mjs"
+          ]
+        },
+        {
+          "file": "node",
+          "args": [
+            "scripts/quality/knowledge-check.mjs"
+          ]
+        },
+        {
+          "file": "node",
+          "args": [
+            "scripts/quality/invariants.mjs"
+          ]
+        },
+        {
+          "file": "node",
+          "args": [
+            "scripts/engineering/kernel.test.mjs"
+          ]
+        },
+        {
+          "file": "node",
+          "args": [
+            "scripts/engineering/context.test.mjs"
+          ]
+        },
+        {
+          "file": "node",
+          "args": [
+            "scripts/engineering/regression-test.mjs"
+          ]
+        },
+        {
+          "file": "node",
+          "args": [
+            "scripts/engineering/registry-index.mjs"
+          ]
+        },
+        {
+          "file": "npm",
+          "args": [
+            "run",
+            "typecheck"
+          ]
+        }
+      ],
+      "controlPlaneCoverage": true
+    },
+    {
+      "id": "kernel-unit-build",
+      "kind": "build",
+      "domains": [
+        "engineering-control"
+      ],
+      "effects": [
+        "ENGINEERING_CONTROL"
+      ],
+      "runner": "fixed-commands",
+      "commands": [
+        {
+          "file": "npm",
+          "args": [
+            "test",
+            "--",
+            "--runInBand"
+          ]
+        },
+        {
+          "file": "npm",
+          "args": [
+            "run",
+            "lint"
+          ]
+        },
+        {
+          "file": "npm",
+          "args": [
+            "run",
+            "build"
+          ]
+        }
+      ],
+      "controlPlaneCoverage": true
+    },
+    {
+      "id": "kernel-fixture-pass",
+      "kind": "unit",
+      "domains": [],
+      "effects": [],
+      "runner": "fixed-commands",
+      "commands": [
+        {
+          "file": "node",
+          "args": [
+            "scripts/engineering/fixtures/proof-fixture.mjs",
+            "pass"
+          ]
+        }
+      ],
+      "fixtureOnly": true
+    },
+    {
+      "id": "kernel-fixture-flaky",
+      "kind": "unit",
+      "domains": [],
+      "effects": [],
+      "runner": "fixed-commands",
+      "commands": [
+        {
+          "file": "node",
+          "args": [
+            "scripts/engineering/fixtures/proof-fixture.mjs",
+            "flaky"
+          ]
+        }
+      ],
+      "fixtureOnly": true
+    }
   ]
 }

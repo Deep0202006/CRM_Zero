@@ -37,61 +37,14 @@
       ],
       "kind": "mechanical",
       "evidence": [
-        "scripts/engineering/task-close.mjs"
+        "scripts/engineering/proof-certify-ci.mjs"
       ],
       "enforcementRefs": [
-        "scripts/engineering/task-close.mjs",
+        "scripts/engineering/proof-certify-ci.mjs",
         "scripts/engineering/hooks/stop.mjs"
       ],
       "evalRefs": [
         "task-lifecycle-hardening"
-      ],
-      "legacyRefs": [
-        "COMMITTED_RELEASE_STATE_RULE",
-        "CONTENT_SENSITIVE_WORKTREE_RULE",
-        "EXACT_HEAD_PROOF_REUSE_RULE",
-        "EXECUTION_BUDGET_RULE",
-        "GRAPH_LEARNING_CLOSURE_RULE",
-        "GRAPH_WORKER_BOUNDED_TERMINATION_RULE",
-        "HUMAN_GATE_EVIDENCE_RULE",
-        "LEGACY_11628f0f975bb3c6",
-        "LEGACY_29c92e97184df650",
-        "LEGACY_2a4a4d93555a5b04",
-        "LEGACY_4d46e0d46511e6c9",
-        "LEGACY_697ff4ebd9c2b5c4",
-        "LEGACY_81c7fe59710868d7",
-        "LEGACY_8bd7cb61bc55c20b",
-        "LEGACY_9edeaa18fbab0c1f",
-        "LEGACY_a6f1c2c6f6dac2e2",
-        "LEGACY_ae7397f60d8a8ea5",
-        "LEGACY_bd7d37a5c17826ad",
-        "LEGACY_c240201dc8e5ad79",
-        "LEGACY_c7e90b5bb89c0779",
-        "LEGACY_cbba5d3ed68ec587",
-        "LEGACY_ccfb7bb6feacf122",
-        "TASK_LIFECYCLE_ENFORCEMENT",
-        "TEST_1361c3030964",
-        "TEST_16e024373277",
-        "TEST_172baafc6135",
-        "TEST_197c31b995d3",
-        "TEST_19fd40c8acfa",
-        "TEST_1be87a7eda2c",
-        "TEST_491ce73364ee",
-        "TEST_4b26d787f458",
-        "TEST_567e1f3c4472",
-        "TEST_5e163e7b6388",
-        "TEST_5f00542627cc",
-        "TEST_6aead050e397",
-        "TEST_7dc71177dff0",
-        "TEST_7fd1763d1623",
-        "TEST_8f9c9cdf7e21",
-        "TEST_9d1e9dbfa927",
-        "TEST_a1235be5a416",
-        "TEST_cac6a96120e4",
-        "TEST_d2c28cfe48a7",
-        "TEST_d63a3f7a6b04",
-        "TEST_ead88b918661",
-        "WORKTREE_AUTHORITY_RULE"
       ],
       "loadByDefault": false
     },
@@ -155,15 +108,6 @@
         "platform-rollback-availability-blocker",
         "platform-rollback-blocker"
       ],
-      "legacyRefs": [
-        "LEGACY_0c09a95af52d35d8",
-        "LEGACY_20bdf5245d859da8",
-        "LEGACY_4d7fe69f44ddcb5f",
-        "LEGACY_6a4666a073215390",
-        "LEGACY_6d36ccf990ff843c",
-        "P0-045-V01-EA1217D-DB-PSQL-UNAVAILABLE",
-        "PLATFORM_HANDOVER_SAFETY"
-      ],
       "loadByDefault": false
     },
     {
@@ -194,31 +138,6 @@
       "evalRefs": [
         "mapping-attribution",
         "distributor-renewal"
-      ],
-      "legacyRefs": [
-        "CROSS_AUTHORITY_ATOMIC_IMPORT_RULE",
-        "LEGACY_0224a370f2bd276a",
-        "LEGACY_196df765d48dccc5",
-        "LEGACY_265f39b779d834d2",
-        "LEGACY_326158a1ae25c87a",
-        "LEGACY_467701d575d48d33",
-        "LEGACY_6e522323ae4bb749",
-        "LEGACY_8b5317efb011a1bc",
-        "LEGACY_a5943ebfdf3640aa",
-        "LEGACY_b38f41acea846ded",
-        "LEGACY_bf60280aa85f959c",
-        "LEGACY_bfa0f3cf8fa53693",
-        "LEGACY_cfdb2eec291f835f",
-        "LEGACY_d6edfc8613fef296",
-        "LEGACY_e004bcf578e932b3",
-        "LEGACY_fdbabfb3865a546b",
-        "LEGACY_ff50f9a56ba87ab6",
-        "MASTER_WORKBOOK_IS_ORCHESTRATOR_RULE",
-        "ONE_FACT_ONE_AUTHORITY",
-        "SINGLE_IMPORT_PROPAGATION_RULE",
-        "SINGLE_SERVER_ENTRY_RULE",
-        "TEST_3c859bfd4401",
-        "TEST_b71918106642"
       ]
     },
     {
@@ -251,28 +170,6 @@
       "evalRefs": [
         "mapping-attribution",
         "pipeline-retry"
-      ],
-      "legacyRefs": [
-        "BOUNDED_READ_SIDE_EFFECT_RULE",
-        "CANONICAL_IDENTITY_RULE",
-        "DURABLE_TRANSITION_RULE",
-        "LEGACY_33214489f05e9d66",
-        "LEGACY_5935ebe54d0cabea",
-        "LEGACY_63d63c2347699a97",
-        "LEGACY_6dc0313b5d089e49",
-        "LEGACY_82323f6482c3f863",
-        "LEGACY_84de0dd935a9d7d5",
-        "LEGACY_926004b7b26dddee",
-        "LEGACY_a6b81da184871d5f",
-        "LEGACY_c2f003bd2296ea43",
-        "LEGACY_cae21aa3282146a6",
-        "LEGACY_d0c37562bc85e544",
-        "LEGACY_d1df1493ce090011",
-        "LEGACY_f7f862147545c310",
-        "PAYMENT_IMPORT_IDEMPOTENCY_RULE",
-        "STABLE_EXTERNAL_IMPORT_KEY_RULE",
-        "STABLE_IDENTITY",
-        "TEST_d2c28cfe48a7"
       ]
     },
     {
@@ -297,16 +194,12 @@
       "loadByDefault": false,
       "claims": [
         "EMPLOYEE_IDENTITY_SEPARATION",
-        "EXTERNAL_IDENTITY_NOT_EMPLOYEE"
+        "EMPLOYEE_IDENTITY_SEPARATION"
       ],
       "kind": "judgment",
       "enforcementRefs": [],
       "evalRefs": [
         "external-partner"
-      ],
-      "legacyRefs": [
-        "EXTERNAL_ACCOUNT_NOT_EMPLOYEE_RULE",
-        "LEGACY_d6b8b556f064d5b7"
       ]
     },
     {
@@ -340,12 +233,6 @@
         "calls-visibility",
         "attendance-confirmation",
         "field-evidence"
-      ],
-      "legacyRefs": [
-        "LEGACY_3afa2d5cd5439d5c",
-        "LEGACY_b0a97ee4b6126e30",
-        "WRITE_READ_ADMIN_EXPORT",
-        "WRITE_READ_CLOSURE_RULE"
       ]
     },
     {
@@ -374,9 +261,6 @@
       "enforcementRefs": [],
       "evalRefs": [
         "mapping-attribution"
-      ],
-      "legacyRefs": [
-        "LEGACY_d1df1493ce090011"
       ]
     },
     {
@@ -410,20 +294,6 @@
       "evalRefs": [
         "mapping-attribution",
         "attendance-confirmation"
-      ],
-      "legacyRefs": [
-        "LEGACY_076d18ed00bb26da",
-        "LEGACY_12cd981841b9b3e3",
-        "LEGACY_149ad7087d54aaac",
-        "LEGACY_2a4a4d93555a5b04",
-        "LEGACY_51644d857ea6119c",
-        "LEGACY_5394d31a6933192c",
-        "LEGACY_6d37c5e99269b0b6",
-        "LEGACY_950bda0cc1560726",
-        "LEGACY_aa364ffc58328d34",
-        "OFFLINE_COMPATIBILITY",
-        "SEMANTIC_CONTRACT_RULE",
-        "SEMANTIC_RETRY_RULE"
       ]
     },
     {
@@ -454,23 +324,6 @@
       "evalRefs": [
         "mapping-attribution",
         "pipeline-retry"
-      ],
-      "legacyRefs": [
-        "LEGACY_2fab65c5222dd9ef",
-        "LEGACY_8729e5452f1ff209",
-        "LEGACY_8a87317c0467771e",
-        "LEGACY_a082fae4244818f6",
-        "LEGACY_a64fd322885c11be",
-        "LEGACY_b5d74268f8739c0e",
-        "LEGACY_c7184dc0c0195018",
-        "LEGACY_d17f8907b3ef8a5a",
-        "LEGACY_e4b8bc19a47cb2a9",
-        "LEGACY_e8ac764ea13c14d9",
-        "LEGACY_eb0b11e2605344d2",
-        "LEGACY_f3237c3bbe1f426c",
-        "LOCAL_TO_SERVER_CONVERGENCE_RULE",
-        "OFFLINE_RECOVERY",
-        "TERMINAL_4XX_RULE"
       ]
     },
     {
@@ -501,11 +354,6 @@
       "enforcementRefs": [],
       "evalRefs": [
         "import-atomicity"
-      ],
-      "legacyRefs": [
-        "ATOMIC_BATCH_RULE",
-        "CROSS_AUTHORITY_ATOMIC_IMPORT_RULE",
-        "LEGACY_8658557422a6eebf"
       ]
     },
     {
@@ -535,10 +383,6 @@
       "enforcementRefs": [],
       "evalRefs": [
         "import-atomicity"
-      ],
-      "legacyRefs": [
-        "BOUNDED_BATCH_SCALING",
-        "BOUNDED_IS_NOT_LINEARITY_RULE"
       ]
     },
     {
@@ -562,38 +406,13 @@
       ],
       "loadByDefault": false,
       "claims": [
-        "ONE_FINANCIAL_AUTHORITY",
+        "FINANCIAL_STATE_DERIVED",
         "FINANCIAL_STATE_DERIVED"
       ],
       "kind": "judgment",
       "enforcementRefs": [],
       "evalRefs": [
         "receivables-money"
-      ],
-      "legacyRefs": [
-        "BILLED_IS_NOT_UNPAID",
-        "CROSS_AUTHORITY_ATOMIC_IMPORT_RULE",
-        "DERIVED_FINANCIAL_STATE_RULE",
-        "ERP_DIMENSION_AUTHORITY_RULE",
-        "EXACT_PAYMENT_TARGET_RULE",
-        "LEGACY_0601f5c7683a9d5c",
-        "LEGACY_380aae5fe9f4ec82",
-        "LEGACY_4b8ecf2c0c58d483",
-        "LEGACY_5856b4d41f8bc4b4",
-        "LEGACY_5d97ab5632766b1a",
-        "LEGACY_72d6e1be1031b249",
-        "LEGACY_a5943ebfdf3640aa",
-        "LEGACY_b3f803d6bbbeb19b",
-        "LEGACY_d1df1493ce090011",
-        "LEGACY_d2b16e7422e27a61",
-        "LEGACY_d55e89418d33d462",
-        "LEGACY_ff50f9a56ba87ab6",
-        "MONEY_TRUTH",
-        "MULTI_PAYMENT_HISTORY_RULE",
-        "ONE_MONEY_AUTHORITY",
-        "REFLECTION_IS_NOT_MUTATION",
-        "SINGLE_SERVER_ENTRY_RULE",
-        "ZERO_DATA_MIGRATION_RULE"
       ]
     },
     {
@@ -626,16 +445,6 @@
       "enforcementRefs": [],
       "evalRefs": [
         "erp-filter"
-      ],
-      "legacyRefs": [
-        "ERP_AUTHORITIES",
-        "FIELD_VISIT_ERP_IS_OBSERVATION_RULE",
-        "LATEST_BUSINESS_OBSERVATION_RULE",
-        "LEGACY_13a92cee5377799b",
-        "LEGACY_34be3df1b4a6601e",
-        "LEGACY_6c9178dc1bae30cf",
-        "LEGACY_d6b8b556f064d5b7",
-        "MANUAL_BASELINE_NOT_HISTORY_RULE"
       ]
     },
     {
@@ -664,8 +473,7 @@
       "enforcementRefs": [],
       "evalRefs": [
         "erp-filter"
-      ],
-      "legacyRefs": []
+      ]
     },
     {
       "id": "SERVER_AUTHORIZATION",
@@ -690,31 +498,13 @@
       "loadByDefault": false,
       "claims": [
         "AUTHZ_SERVER_ENFORCED",
-        "UI_FILTER_NOT_AUTHORIZATION"
+        "AUTHZ_SERVER_ENFORCED"
       ],
       "kind": "judgment",
       "enforcementRefs": [],
       "evalRefs": [
         "calls-visibility",
         "external-partner"
-      ],
-      "legacyRefs": [
-        "LEGACY_0601f5c7683a9d5c",
-        "LEGACY_15ebea1e6463b777",
-        "LEGACY_18a205492ee3877d",
-        "LEGACY_324bcd2ec32f477c",
-        "LEGACY_4d46e0d46511e6c9",
-        "LEGACY_62cc1440d62cf755",
-        "LEGACY_65097bbda8581afb",
-        "LEGACY_6e408fc664f49876",
-        "LEGACY_a982918ebafb1689",
-        "LEGACY_b86dedfe6b832d04",
-        "LEGACY_ca7f6a87689be383",
-        "LEGACY_d20d10e15addf540",
-        "LEGACY_dce852f5744f9d09",
-        "LEGACY_dd6c1f9103164919",
-        "SERVER_AUTHORIZATION",
-        "SERVER_SCOPE_NOT_UI_FILTER_RULE"
       ]
     },
     {
@@ -743,11 +533,6 @@
       "enforcementRefs": [],
       "evalRefs": [
         "external-partner"
-      ],
-      "legacyRefs": [
-        "EXTERNAL_VIEW_DATA_MINIMIZATION_RULE",
-        "LEGACY_95b7fbc61b09917d",
-        "MINIMUM_EXTERNAL_PROJECTION"
       ]
     },
     {
@@ -779,29 +564,6 @@
       ],
       "evalRefs": [
         "production-safety"
-      ],
-      "legacyRefs": [
-        "LEGACY_1be2a9b2c60d5622",
-        "LEGACY_20bdf5245d859da8",
-        "LEGACY_37baa55b642fae6c",
-        "LEGACY_3c80e36e100d42f6",
-        "LEGACY_45d8d95a6a303c06",
-        "LEGACY_4977cc84f727aa41",
-        "LEGACY_57655e82b4e09280",
-        "LEGACY_8606568b775965f7",
-        "LEGACY_91581cabc0e2131b",
-        "LEGACY_9354372ebdea7aa5",
-        "LEGACY_98f75499787004fd",
-        "LEGACY_a1eb44255e4828d4",
-        "LEGACY_dbf4578044341606",
-        "NO_PRODUCTION_DUMMY_DATA",
-        "OWNER_SQL_PURE_POSTGRESQL",
-        "PRODUCTION_DISCIPLINE",
-        "TEST_08f1e8b4b18c",
-        "TEST_7de9f0eccaef",
-        "TEST_e10c8373aec3",
-        "TEST_e4a8cce9092f",
-        "WIRE_MOCK_REALISM_RULE"
       ]
     },
     {
@@ -831,16 +593,6 @@
       ],
       "evalRefs": [
         "production-safety"
-      ],
-      "legacyRefs": [
-        "LEGACY_3c3a796c93081789",
-        "LEGACY_6fee4c978a672b89",
-        "LEGACY_d29c9bd00ff62017",
-        "LEGACY_d5c7243ed002145d",
-        "LEGACY_ee68fba2f0e61712",
-        "MIGRATION_IMMUTABILITY",
-        "TEST_026f23213c79",
-        "TEST_dba12e5914c9"
       ]
     },
     {
@@ -873,15 +625,6 @@
       ],
       "evalRefs": [
         "production-safety"
-      ],
-      "legacyRefs": [
-        "LEGACY_05b876d069c1c59e",
-        "LEGACY_d56c6bf058168d3c",
-        "LEGACY_e62f580225675ec4",
-        "LEGACY_e75461d880322f95",
-        "LOCAL_EPHEMERAL_DB_TOOLCHAIN_RULE",
-        "P0-045-V01-EA1217D-DB-PSQL-UNAVAILABLE",
-        "RUNTIME_DB_PROOF_RULE"
       ]
     },
     {
@@ -911,11 +654,6 @@
       "enforcementRefs": [],
       "evalRefs": [
         "receivables-money"
-      ],
-      "legacyRefs": [
-        "LEGACY_6801b8e9d749278d",
-        "POSTGRES_NUMERIC_WIRE_CONTRACT_RULE",
-        "WIRE_MOCK_REALISM_RULE"
       ]
     },
     {
@@ -944,11 +682,6 @@
       "enforcementRefs": [],
       "evalRefs": [
         "import-atomicity"
-      ],
-      "legacyRefs": [
-        "LEGACY_1f4992c18916f711",
-        "LEGACY_aa620eb6e1e9c2d6",
-        "TRANSACTION_STAGING"
       ]
     },
     {
@@ -980,24 +713,6 @@
       ],
       "evalRefs": [
         "repository-proof"
-      ],
-      "legacyRefs": [
-        "EXACT_HEAD_PROOF_REUSE_RULE",
-        "EXACT_HEAD_RELEASE",
-        "LEGACY_62a8f5ffc895b249",
-        "LEGACY_6d9f537b0ffefa2e",
-        "LEGACY_6dcb5e3f9b6a36c1",
-        "LEGACY_90568865ae480eae",
-        "LEGACY_c1f957f55e34c26c",
-        "LEGACY_c240201dc8e5ad79",
-        "LEGACY_d71136106e7db164",
-        "LEGACY_e2edb739047ce801",
-        "PREEXISTING_FAILURE_RULE",
-        "REMOTE_RELEASE_EVIDENCE_RULE",
-        "STALE_BASE_PENALTY",
-        "TEST_5e5a56426f76",
-        "TEST_6d37d0c6fa79",
-        "TEST_ee17ae9a7227"
       ]
     },
     {
@@ -1027,16 +742,6 @@
       "enforcementRefs": [],
       "evalRefs": [
         "repository-proof"
-      ],
-      "legacyRefs": [
-        "LEGACY_3fc924d350860f4f",
-        "LEGACY_60f1dedd8902f1b4",
-        "LEGACY_6801b8e9d749278d",
-        "LEGACY_6d9f537b0ffefa2e",
-        "LEGACY_8604299199f5293c",
-        "REAL_ROUTE_MAP_RULE",
-        "ROUTE_MATRIX_RULE",
-        "TEST_REALISM_RULE"
       ]
     },
     {
@@ -1069,14 +774,6 @@
       "enforcementRefs": [],
       "evalRefs": [
         "receivables-money"
-      ],
-      "legacyRefs": [
-        "LEGACY_21c90112aa8634f7",
-        "LEGACY_3c6a711fb954c356",
-        "LEGACY_61e6c0d5205a9538",
-        "LEGACY_8ab7a411cf2e158a",
-        "LEGACY_bcbf994280b00223",
-        "LEGACY_c29813ff208f5ad4"
       ]
     },
     {
@@ -1106,11 +803,6 @@
       "enforcementRefs": [],
       "evalRefs": [
         "receivables-money"
-      ],
-      "legacyRefs": [
-        "LEGACY_891cf5c38d571ad4",
-        "LEGACY_cc3bc38246a6ed8a",
-        "SPREADSHEET_FORMULA_RULE"
       ]
     },
     {
@@ -1141,16 +833,6 @@
       "evalRefs": [
         "attendance-confirmation",
         "field-evidence"
-      ],
-      "legacyRefs": [
-        "LEGACY_02a6979bbb9d8f04",
-        "LEGACY_08a284ab268ef97a",
-        "LEGACY_119987b80c781077",
-        "LEGACY_52f890b70290dfca",
-        "LEGACY_8cff795b039f4cac",
-        "LEGACY_ea0574ea4d322985",
-        "MEDIA_LIFECYCLE",
-        "MEDIA_LIFECYCLE_RULE"
       ]
     },
     {
@@ -1182,10 +864,6 @@
       "enforcementRefs": [],
       "evalRefs": [
         "distributor-renewal"
-      ],
-      "legacyRefs": [
-        "LEGACY_6f40cc1a9c24a1e2",
-        "LEGACY_8968f5cb026fa793"
       ]
     },
     {
@@ -1215,13 +893,6 @@
       "enforcementRefs": [],
       "evalRefs": [
         "production-safety"
-      ],
-      "legacyRefs": [
-        "LEGACY_44e79fc4377751e9",
-        "LEGACY_5531aa329a9e2537",
-        "LEGACY_6f40cc1a9c24a1e2",
-        "LEGACY_fb94781c17c9bdf3",
-        "LOCK_BEFORE_CHANGE"
       ]
     },
     {
@@ -1252,18 +923,6 @@
       "enforcementRefs": [],
       "evalRefs": [
         "repository-proof"
-      ],
-      "legacyRefs": [
-        "DIRECT_ENGINEERING",
-        "DIRTY_TREE_ISOLATION_RULE",
-        "LEGACY_0963b4c5959dfad6",
-        "LEGACY_179be2fb8453ba76",
-        "LEGACY_44e79fc4377751e9",
-        "LEGACY_4ebaa2a1790c53e8",
-        "LEGACY_6b677abd4eaf3715",
-        "LEGACY_88bf045497c6afdb",
-        "LEGACY_cf9836de10545893",
-        "LEGACY_d5fb2e03d67f80c7"
       ]
     },
     {
@@ -1292,15 +951,6 @@
       "enforcementRefs": [],
       "evalRefs": [
         "repository-proof"
-      ],
-      "legacyRefs": [
-        "AGENT_REPORT_NOT_PROOF",
-        "EXACT_HEAD_PROOF_REUSE_RULE",
-        "LOCAL_EPHEMERAL_DB_TOOLCHAIN_RULE",
-        "OWNER_MIGRATION_CLOSEOUT",
-        "P0-045-V01-DB-NOT-RUN",
-        "TEST_5430244db991",
-        "TEST_a1235be5a416"
       ]
     },
     {
@@ -1329,10 +979,6 @@
       "enforcementRefs": [],
       "evalRefs": [
         "control-plane-regressions"
-      ],
-      "legacyRefs": [
-        "LEGACY_579cec8ff07c655b",
-        "LEGACY_bcbf994280b00223"
       ]
     },
     {
@@ -1361,15 +1007,6 @@
       "enforcementRefs": [],
       "evalRefs": [
         "import-atomicity"
-      ],
-      "legacyRefs": [
-        "LEGACY_34be3df1b4a6601e",
-        "LEGACY_453409ed1b82ac13",
-        "LEGACY_6c9178dc1bae30cf",
-        "LEGACY_99b96e19094bd284",
-        "LEGACY_b2f886a4e490447b",
-        "LEGACY_bfa0f3cf8fa53693",
-        "NO_FABRICATED_BACKFILL"
       ]
     },
     {
@@ -1398,11 +1035,6 @@
       "enforcementRefs": [],
       "evalRefs": [
         "calls-visibility"
-      ],
-      "legacyRefs": [
-        "LEGACY_119987b80c781077",
-        "LEGACY_8cff795b039f4cac",
-        "OPTIONAL_FAILURE_ISOLATION"
       ]
     },
     {
@@ -1433,11 +1065,6 @@
       "enforcementRefs": [],
       "evalRefs": [
         "pipeline-retry"
-      ],
-      "legacyRefs": [
-        "EXACT_COMPATIBILITY_CONTRACT_NOT_OPTIONAL_RULE",
-        "LEGACY_81a04361e6ad369a",
-        "LEGACY_8604299199f5293c"
       ]
     },
     {
@@ -1466,9 +1093,6 @@
       "enforcementRefs": [],
       "evalRefs": [
         "import-atomicity"
-      ],
-      "legacyRefs": [
-        "IMPORT_TEMPLATE_VERSION_RULE"
       ]
     },
     {
@@ -1496,10 +1120,6 @@
       "enforcementRefs": [],
       "evalRefs": [
         "pipeline-retry"
-      ],
-      "legacyRefs": [
-        "CROSS_AUTHORITY_ATOMIC_IMPORT_RULE",
-        "PREVIEW_RESOLVED_PLAN_HASH_RULE"
       ]
     },
     {
@@ -1528,16 +1148,6 @@
       "enforcementRefs": [],
       "evalRefs": [
         "erp-filter"
-      ],
-      "legacyRefs": [
-        "LEGACY_29c92e97184df650",
-        "LEGACY_562773649423e1a3",
-        "LEGACY_6c9178dc1bae30cf",
-        "LEGACY_9dc708671ce05b6e",
-        "LEGACY_d4ad5fc2329defb9",
-        "LEGACY_f3dc6e5647da9930",
-        "MANUAL_BASELINE_NOT_HISTORY_RULE",
-        "STATIC_SNAPSHOT_NOT_CURRENT_AUTHORITY"
       ]
     },
     {
@@ -1567,14 +1177,6 @@
       "enforcementRefs": [],
       "evalRefs": [
         "control-plane-regressions"
-      ],
-      "legacyRefs": [
-        "LEGACY_0f6bb417b98e4072",
-        "LEGACY_46b1894337826c08",
-        "LEGACY_54aecae016644da1",
-        "LEGACY_c7b1a7570724a718",
-        "LEGACY_e4f77f7ea51de1f6",
-        "TOOLING_DOES_NOT_BLOCK_DELIVERY"
       ]
     },
     {
@@ -1602,12 +1204,6 @@
       "enforcementRefs": [],
       "evalRefs": [
         "control-plane-regressions"
-      ],
-      "legacyRefs": [
-        "GRAPH_THREAD_RESUME_RULE",
-        "LEGACY_074c617447d598aa",
-        "NO_AUTONOMOUS_SELF_HOSTING",
-        "TEST_5d12c64bc402"
       ]
     },
     {
@@ -1637,8 +1233,7 @@
       "enforcementRefs": [],
       "evalRefs": [
         "field-evidence"
-      ],
-      "legacyRefs": []
+      ]
     },
     {
       "id": "PREEXISTING_FAILURE_PROOF",
@@ -1666,13 +1261,6 @@
       "enforcementRefs": [],
       "evalRefs": [
         "repository-proof"
-      ],
-      "legacyRefs": [
-        "LEGACY_401b30b6fe473d19",
-        "MAIN_BASELINE_RULE",
-        "MANUAL_BASELINE_NOT_HISTORY_RULE",
-        "PREEXISTING_FAILURE_PROOF",
-        "PREEXISTING_FAILURE_RULE"
       ]
     },
     {
@@ -1702,11 +1290,6 @@
       "enforcementRefs": [],
       "evalRefs": [
         "attendance-confirmation"
-      ],
-      "legacyRefs": [
-        "LEGACY_cf79fea103a80033",
-        "LEGACY_dfa304b9adfaeb06",
-        "TIME_DEPENDENT_TEST_CLOCK_RULE"
       ]
     },
     {
@@ -1734,15 +1317,6 @@
       "enforcementRefs": [],
       "evalRefs": [
         "import-atomicity"
-      ],
-      "legacyRefs": [
-        "EXPLICIT_NONE_VS_UNKNOWN_RULE",
-        "LEGACY_13917349069065ee",
-        "LEGACY_17fd13a972902e4b",
-        "LEGACY_236b33694dc33183",
-        "LEGACY_cae21aa3282146a6",
-        "LEGACY_eceddbb421a72a97",
-        "PATCH_BLANK_SEMANTICS_RULE"
       ]
     },
     {
@@ -1770,22 +1344,6 @@
       "enforcementRefs": [],
       "evalRefs": [
         "attendance-confirmation"
-      ],
-      "legacyRefs": [
-        "LEGACY_12a9a1c89b051327",
-        "LEGACY_12cd981841b9b3e3",
-        "LEGACY_29c92e97184df650",
-        "LEGACY_67d6b86e88c2307c",
-        "LEGACY_6c9178dc1bae30cf",
-        "LEGACY_6dc0313b5d089e49",
-        "LEGACY_8a87317c0467771e",
-        "LEGACY_8d68ef7bda4912f9",
-        "LEGACY_eaf684c03679e818",
-        "LEGACY_f12a5f4cd641d6ff",
-        "LEGACY_f3237c3bbe1f426c",
-        "MONEY_TRUTH",
-        "TEST_16c7e9e88b39",
-        "TEST_fb5a8df2f956"
       ]
     },
     {
@@ -1813,14 +1371,6 @@
       "enforcementRefs": [],
       "evalRefs": [
         "distributor-renewal"
-      ],
-      "legacyRefs": [
-        "LEGACY_45d8d95a6a303c06",
-        "LEGACY_82323f6482c3f863",
-        "LEGACY_95b7fbc61b09917d",
-        "LEGACY_d7f53f995589fdb2",
-        "TEST_3c859bfd4401",
-        "TEST_b71918106642"
       ]
     },
     {
@@ -1849,15 +1399,6 @@
       "enforcementRefs": [],
       "evalRefs": [
         "pipeline-retry"
-      ],
-      "legacyRefs": [
-        "DURABLE_TRANSITION_RULE",
-        "LEGACY_4173a59910437fb5",
-        "LEGACY_595cfa770a670906",
-        "LEGACY_6c5c9a740a0afb0f",
-        "LEGACY_95f1f58ae64801a3",
-        "LEGACY_d0c37562bc85e544",
-        "LEGACY_d66884dc1dfbe6c5"
       ]
     },
     {
@@ -1886,10 +1427,6 @@
       "enforcementRefs": [],
       "evalRefs": [
         "distributor-renewal"
-      ],
-      "legacyRefs": [
-        "DERIVED_ALERTS_NOT_WORK",
-        "LEGACY_0a45bc8929531e5c"
       ]
     },
     {
@@ -1918,9 +1455,6 @@
       "enforcementRefs": [],
       "evalRefs": [
         "calls-visibility"
-      ],
-      "legacyRefs": [
-        "LEGACY_b89947e249cb4a8d"
       ]
     },
     {
@@ -1948,17 +1482,6 @@
       "enforcementRefs": [],
       "evalRefs": [
         "production-safety"
-      ],
-      "legacyRefs": [
-        "LEGACY_11628f0f975bb3c6",
-        "LEGACY_4662b0addb7a6be5",
-        "LEGACY_5156b08a51cc65ff",
-        "LEGACY_8bd7cb61bc55c20b",
-        "LEGACY_bd7d37a5c17826ad",
-        "LEGACY_d46e8cec2584dd69",
-        "OWNER_MIGRATION_CLOSEOUT",
-        "OWNER_MIGRATION_CLOSURE_RULE",
-        "PRODUCTION_DISCIPLINE"
       ]
     },
     {
@@ -1996,9 +1519,6 @@
       "enforcementRefs": [],
       "evalRefs": [
         "erp-filter"
-      ],
-      "legacyRefs": [
-        "POSTGRES_UUID_NOT_RFC_UUID"
       ]
     },
     {
@@ -2028,29 +1548,6 @@
       ],
       "evalRefs": [
         "control-plane-regressions"
-      ],
-      "legacyRefs": [
-        "CANONICAL_DIMENSION_CREATE_AT_WRITE_RULE",
-        "CI_HOT_PATH_TOOLCHAIN_RULE",
-        "LEGACY_3c52dd2a81ba5abc",
-        "LEGACY_4b8ecf2c0c58d483",
-        "LEGACY_678f6f93cdd71e8a",
-        "LEGACY_6fa5773ba4270a99",
-        "LEGACY_734b4d3b4de2ab32",
-        "LEGACY_7e5e70588efa1415",
-        "LEGACY_7ffbb9e383e1e76e",
-        "LEGACY_829b9fa3957f51d0",
-        "LEGACY_924c7edc24b3e53b",
-        "LEGACY_c1a776b9c844f992",
-        "LEGACY_d193ada5dca28dde",
-        "LEGACY_ead43ef06a3e4f75",
-        "LOCAL_EPHEMERAL_DB_TOOLCHAIN_RULE",
-        "OFFLINE_ENUM_EXTENSION_RULE",
-        "OPTIONAL_METRIC_FAILURE_RULE",
-        "REDUNDANT_LOCAL_TOOLCHAIN_DENY_RULE",
-        "TOTAL_VS_PAGE_RULE",
-        "WRITE_READ_CLOSURE_RULE",
-        "ZERO_DATA_MIGRATION_RULE"
       ]
     }
   ]

@@ -92,7 +92,7 @@ const matrix = [
     "docs/engineering/cache.json": join('{"tool":"/ho', 'me/fixture/bin/tool"}\n'),
   }),
   expectFailure("governance-dependency-tree", "GOVERNANCE_DEPENDENCY_TREE", {
-    ".harness/node_modules/example/index.js": "export {};\n",
+    ".codex/node_modules/example/index.js": "export {};\n",
   }),
   expectFailure("agent-dependency-tree", "GOVERNANCE_DEPENDENCY_TREE", {
     ".agents/node_modules/example/index.js": "export {};\n",
@@ -105,6 +105,9 @@ const matrix = [
   }),
   expectFailure("hook-removed-command-reference", "REMOVED_OPERATIONAL_COMMAND", {
     "scripts/engineering/hooks/preflight.mjs": join('spawnSync(process.execPath, ["scripts/seed-production-', 'users.js"]);\n'),
+  }),
+  expectFailure("diagnostic-command-reference", "REMOVED_OPERATIONAL_COMMAND", {
+    "docs/operations/runbook.md": join("Run `node diagnose_", "rpc.js`.\n"),
   }),
   expectFailure("extensionless-hook-removed-command-reference", "REMOVED_OPERATIONAL_COMMAND", {
     ".husky/pre-commit": join('node scripts/seed-production-', 'users.js\n'),

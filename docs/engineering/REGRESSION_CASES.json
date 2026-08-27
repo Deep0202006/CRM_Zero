@@ -5,7 +5,9 @@
       "id": "mapping-attribution",
       "kind": "resolve",
       "inputTask": "Mapping should show who logged and who completed each mapping and all Mapping users should see team history",
-      "expectedDomains": ["mappings"],
+      "expectedDomains": [
+        "mappings"
+      ],
       "minimumRisk": "R2",
       "requiredClaims": [
         "ONE_FACT_ONE_AUTHORITY",
@@ -23,35 +25,66 @@
         "OFFLINE_RECOVERY_PRESERVES_INTENT",
         "STABLE_RETRY_IDENTITY"
       ],
-      "requiredAuthorities": ["mapping_request"],
-      "forbiddenAuthorities": ["pipeline_lead"],
-      "requiredProofKinds": ["unit", "e2e"],
-      "candidatePathsAnyOf": ["src/app/mappings/page.tsx"],
-      "expectedEffects": ["UI", "OFFLINE", "EXPORT"]
+      "requiredAuthorities": [
+        "mapping_request"
+      ],
+      "forbiddenAuthorities": [
+        "pipeline_lead"
+      ],
+      "requiredProofKinds": [
+        "unit",
+        "e2e"
+      ],
+      "candidatePathsAnyOf": [
+        "src/app/mappings/page.tsx"
+      ],
+      "expectedEffects": [
+        "UI",
+        "OFFLINE",
+        "EXPORT"
+      ],
+      "proofRefs": [
+        "mapping-unit"
+      ],
+      "expectedStatus": "SCOPE_AMBIGUOUS"
     },
     {
       "id": "calls-visibility",
       "kind": "resolve",
       "inputTask": "calls disappear for employee but admin sees them",
-      "expectedDomains": ["calls"],
+      "expectedDomains": [
+        "calls"
+      ],
       "minimumRisk": "R2",
       "requiredClaims": [
         "WRITE_READ_CLOSURE",
         "OPTIONAL_FAILURE_ISOLATION",
         "AUTHZ_SERVER_ENFORCED",
-        "UI_FILTER_NOT_AUTHORIZATION",
+        "AUTHZ_SERVER_ENFORCED",
         "CRITICAL_PRIORITY_CONFIRMATION"
       ],
-      "requiredAuthorities": ["call_history"],
+      "requiredAuthorities": [
+        "call_history"
+      ],
       "forbiddenAuthorities": [],
-      "requiredProofKinds": ["unit"],
-      "candidatePathsAnyOf": ["src/app/call-logs"]
+      "requiredProofKinds": [
+        "unit"
+      ],
+      "candidatePathsAnyOf": [
+        "src/app/call-logs"
+      ],
+      "proofRefs": [
+        "calls-unit"
+      ],
+      "expectedStatus": "SCOPE_AMBIGUOUS"
     },
     {
       "id": "attendance-confirmation",
       "kind": "resolve",
       "inputTask": "attendance offline row is shown before server confirmation",
-      "expectedDomains": ["attendance"],
+      "expectedDomains": [
+        "attendance"
+      ],
       "minimumRisk": "R2",
       "requiredClaims": [
         "WRITE_READ_CLOSURE",
@@ -60,16 +93,29 @@
         "MEDIA_LIFECYCLE",
         "IST_BUSINESS_DATE"
       ],
-      "requiredAuthorities": ["attendance"],
+      "requiredAuthorities": [
+        "attendance"
+      ],
       "forbiddenAuthorities": [],
-      "requiredProofKinds": ["unit", "e2e"],
-      "candidatePathsAnyOf": ["src/app/attendance"]
+      "requiredProofKinds": [
+        "unit",
+        "e2e"
+      ],
+      "candidatePathsAnyOf": [
+        "src/app/attendance"
+      ],
+      "proofRefs": [
+        "attendance-unit"
+      ],
+      "expectedStatus": "SCOPE_AMBIGUOUS"
     },
     {
       "id": "pipeline-retry",
       "kind": "resolve",
       "inputTask": "pipeline duplicate terminal history retry",
-      "expectedDomains": ["pipeline"],
+      "expectedDomains": [
+        "pipeline"
+      ],
       "minimumRisk": "R2",
       "requiredClaims": [
         "STABLE_RETRY_IDENTITY",
@@ -78,34 +124,62 @@
         "EXACT_COMPATIBILITY_CONTRACT",
         "RESOLVED_PLAN_REVALIDATION"
       ],
-      "requiredAuthorities": ["pipeline_lead"],
+      "requiredAuthorities": [
+        "pipeline_lead"
+      ],
       "forbiddenAuthorities": [],
-      "requiredProofKinds": ["unit", "e2e"],
-      "candidatePathsAnyOf": ["src/app/onboarding"]
+      "requiredProofKinds": [
+        "unit",
+        "e2e"
+      ],
+      "candidatePathsAnyOf": [
+        "src/app/onboarding"
+      ],
+      "proofRefs": [
+        "pipeline-unit"
+      ],
+      "expectedStatus": "SCOPE_AMBIGUOUS"
     },
     {
       "id": "receivables-money",
       "kind": "resolve",
       "inputTask": "receivable billed should not mean unpaid and payment must target the exact receivable",
-      "expectedDomains": ["receivables"],
+      "expectedDomains": [
+        "receivables"
+      ],
       "minimumRisk": "R3",
       "requiredClaims": [
-        "ONE_FINANCIAL_AUTHORITY",
+        "FINANCIAL_STATE_DERIVED",
         "FINANCIAL_STATE_DERIVED",
         "POSTGRES_WIRE_NORMALIZATION",
         "SPREADSHEET_FORMULA_SAFETY",
         "RESOURCE_BOUNDS"
       ],
-      "requiredAuthorities": ["receivable", "payment"],
+      "requiredAuthorities": [
+        "receivable",
+        "payment"
+      ],
       "forbiddenAuthorities": [],
-      "requiredProofKinds": ["unit", "e2e", "postgres"],
-      "candidatePathsAnyOf": ["src/lib/receivables"]
+      "requiredProofKinds": [
+        "unit",
+        "e2e",
+        "postgres"
+      ],
+      "candidatePathsAnyOf": [
+        "src/lib/receivables"
+      ],
+      "proofRefs": [
+        "receivables-unit"
+      ],
+      "expectedStatus": "SCOPE_AMBIGUOUS"
     },
     {
       "id": "import-atomicity",
       "kind": "resolve",
       "inputTask": "import spreadsheet 5000 rows atomic rollback",
-      "expectedDomains": ["imports"],
+      "expectedDomains": [
+        "imports"
+      ],
       "minimumRisk": "R3",
       "requiredClaims": [
         "ATOMIC_BATCH_ROLLBACK",
@@ -119,14 +193,26 @@
         "unified_distributor_master_import_orchestration"
       ],
       "forbiddenAuthorities": [],
-      "requiredProofKinds": ["unit", "postgres"],
-      "candidatePathsAnyOf": ["src/lib/distributorMaster"]
+      "requiredProofKinds": [
+        "unit",
+        "postgres"
+      ],
+      "candidatePathsAnyOf": [
+        "src/lib/distributorMaster"
+      ],
+      "proofRefs": [
+        "imports-unit"
+      ],
+      "expectedStatus": "SCOPE_AMBIGUOUS"
     },
     {
       "id": "erp-filter",
       "kind": "resolve",
       "inputTask": "admin needs a distributor ERP filter",
-      "expectedDomains": ["erp", "distributor-status"],
+      "expectedDomains": [
+        "erp",
+        "distributor-status"
+      ],
       "minimumRisk": "R3",
       "requiredClaims": [
         "ERP_AUTHORITY_SEPARATION",
@@ -134,34 +220,60 @@
         "POSTGRES_UUID_NOT_RFC_UUID",
         "CURRENT_SOURCE_OVERRIDES_SNAPSHOT"
       ],
-      "requiredAuthorities": ["erp_system", "distributor_erp_assignment"],
+      "requiredAuthorities": [
+        "erp_system",
+        "distributor_erp_assignment"
+      ],
       "forbiddenAuthorities": [],
-      "requiredProofKinds": ["unit", "postgres"],
-      "candidatePathsAnyOf": ["src/lib/distributors"]
+      "requiredProofKinds": [
+        "unit",
+        "postgres"
+      ],
+      "candidatePathsAnyOf": [
+        "src/lib/distributors"
+      ],
+      "proofRefs": [
+        "distributor-unit",
+        "erp-unit"
+      ],
+      "expectedStatus": "SCOPE_AMBIGUOUS"
     },
     {
       "id": "external-partner",
       "kind": "semantic",
       "inputTask": "external ERP partner scope must be server enforced and expose minimum data",
-      "expectedDomains": ["erp-partner"],
+      "expectedDomains": [
+        "erp-partner"
+      ],
       "minimumRisk": "R3",
       "requiredClaims": [
         "AUTHZ_SERVER_ENFORCED",
-        "UI_FILTER_NOT_AUTHORIZATION",
-        "EXTERNAL_IDENTITY_NOT_EMPLOYEE",
+        "AUTHZ_SERVER_ENFORCED",
+        "EMPLOYEE_IDENTITY_SEPARATION",
         "EXTERNAL_DATA_MINIMIZATION",
         "EMPLOYEE_IDENTITY_SEPARATION"
       ],
-      "requiredAuthorities": ["erp_partner_scope"],
+      "requiredAuthorities": [
+        "erp_partner_scope"
+      ],
       "forbiddenAuthorities": [],
-      "requiredProofKinds": ["unit", "postgres"],
-      "candidatePathsAnyOf": []
+      "requiredProofKinds": [
+        "unit",
+        "postgres"
+      ],
+      "candidatePathsAnyOf": [],
+      "proofRefs": [
+        "erp-unit"
+      ]
     },
     {
       "id": "distributor-renewal",
       "kind": "semantic",
       "inputTask": "show distributor renewal reminders without writing duplicate tasks",
-      "expectedDomains": ["distributor-status", "renewals"],
+      "expectedDomains": [
+        "distributor-status",
+        "renewals"
+      ],
       "minimumRisk": "R2",
       "requiredClaims": [
         "ONE_FACT_ONE_AUTHORITY",
@@ -169,26 +281,46 @@
         "SIDE_EFFECT_BUDGET",
         "HONEST_VISUALIZATION"
       ],
-      "requiredAuthorities": ["distributor_account", "renewal"],
+      "requiredAuthorities": [
+        "distributor_account",
+        "renewal"
+      ],
       "forbiddenAuthorities": [],
-      "requiredProofKinds": ["unit", "e2e"],
-      "candidatePathsAnyOf": []
+      "requiredProofKinds": [
+        "unit",
+        "e2e"
+      ],
+      "candidatePathsAnyOf": [],
+      "proofRefs": [
+        "distributor-unit"
+      ]
     },
     {
       "id": "field-evidence",
       "kind": "semantic",
       "inputTask": "field visit evidence lifecycle must preserve confirmed visit",
-      "expectedDomains": ["field-visits"],
+      "expectedDomains": [
+        "field-visits"
+      ],
       "minimumRisk": "R2",
       "requiredClaims": [
         "MEDIA_LIFECYCLE",
         "WRITE_READ_CLOSURE",
         "ROOT_CAUSE_SHARED_FIX"
       ],
-      "requiredAuthorities": ["field_visit"],
+      "requiredAuthorities": [
+        "field_visit"
+      ],
       "forbiddenAuthorities": [],
-      "requiredProofKinds": ["unit", "e2e", "postgres"],
-      "candidatePathsAnyOf": []
+      "requiredProofKinds": [
+        "unit",
+        "e2e",
+        "postgres"
+      ],
+      "candidatePathsAnyOf": [],
+      "proofRefs": [
+        "field-visits-unit"
+      ]
     },
     {
       "id": "production-safety",
@@ -205,14 +337,21 @@
       ],
       "requiredAuthorities": [],
       "forbiddenAuthorities": [],
-      "requiredProofKinds": ["postgres"],
-      "candidatePathsAnyOf": []
+      "requiredProofKinds": [
+        "postgres"
+      ],
+      "candidatePathsAnyOf": [],
+      "proofRefs": [
+        "kernel-preflight"
+      ]
     },
     {
       "id": "repository-proof",
       "kind": "semantic",
       "inputTask": "certify exact PR head and distinguish baseline failure",
-      "expectedDomains": ["engineering-control"],
+      "expectedDomains": [
+        "engineering-control"
+      ],
       "minimumRisk": "R3",
       "requiredClaims": [
         "EXACT_HEAD_PROOF",
@@ -223,14 +362,23 @@
       ],
       "requiredAuthorities": [],
       "forbiddenAuthorities": [],
-      "requiredProofKinds": ["unit", "e2e", "postgres"],
-      "candidatePathsAnyOf": []
+      "requiredProofKinds": [
+        "unit",
+        "e2e",
+        "postgres"
+      ],
+      "candidatePathsAnyOf": [],
+      "proofRefs": [
+        "kernel-preflight"
+      ]
     },
     {
       "id": "control-plane-regressions",
       "kind": "semantic",
-      "inputTask": "ZeroGraph control plane must not weaken tests or use unrelated proof",
-      "expectedDomains": ["engineering-control"],
+      "inputTask": "engineering control plane must not weaken tests or use unrelated proof",
+      "expectedDomains": [
+        "engineering-control"
+      ],
       "minimumRisk": "R3",
       "requiredClaims": [
         "NO_REDUNDANT_LOCAL_TOOLCHAIN",
@@ -241,14 +389,23 @@
       ],
       "requiredAuthorities": [],
       "forbiddenAuthorities": [],
-      "requiredProofKinds": ["unit", "e2e", "postgres"],
-      "candidatePathsAnyOf": []
+      "requiredProofKinds": [
+        "unit",
+        "e2e",
+        "postgres"
+      ],
+      "candidatePathsAnyOf": [],
+      "proofRefs": [
+        "kernel-preflight"
+      ]
     },
     {
       "id": "task-lifecycle-hardening",
       "kind": "control",
-      "inputTask": "A future implementation is unfinished after the OS installation is green",
-      "expectedDomains": ["engineering-control"],
+      "inputTask": "A future implementation is unfinished after the kernel installation is green",
+      "expectedDomains": [
+        "engineering-control"
+      ],
       "minimumRisk": "R3",
       "requiredClaims": [
         "NO_END_WITH_INCOMPLETE_ACCEPTANCE",
@@ -267,14 +424,21 @@
       ],
       "requiredAuthorities": [],
       "forbiddenAuthorities": [],
-      "requiredProofKinds": ["unit"],
-      "candidatePathsAnyOf": []
+      "requiredProofKinds": [
+        "unit"
+      ],
+      "candidatePathsAnyOf": [],
+      "proofRefs": [
+        "kernel-preflight"
+      ]
     },
     {
       "id": "platform-handover",
       "kind": "resolve",
       "inputTask": "Move managed Supabase to self-hosted while Vercel remains the CRM app runtime",
-      "expectedDomains": ["platform-handover"],
+      "expectedDomains": [
+        "platform-handover"
+      ],
       "minimumRisk": "R3",
       "requiredClaims": [
         "PLATFORM_MIGRATION_PRESERVES_BUSINESS_AUTHORITY",
@@ -285,28 +449,55 @@
         "MANAGED_INTERNALS_NOT_BLINDLY_CLONED",
         "OWNER_SQL_PURE_POSTGRESQL"
       ],
-      "requiredAuthorities": ["platform_runtime_placement"],
-      "forbiddenAuthorities": ["receivable", "payment", "pipeline_lead"],
+      "requiredAuthorities": [
+        "platform_runtime_placement"
+      ],
+      "forbiddenAuthorities": [
+        "receivable",
+        "payment",
+        "pipeline_lead"
+      ],
       "requiredProofKinds": [],
-      "candidatePathsAnyOf": ["docs/engineering/PLATFORM_HANDOVER.md"],
-      "expectedEffects": ["PLATFORM"]
+      "candidatePathsAnyOf": [
+        "docs/engineering/PLATFORM_HANDOVER.md"
+      ],
+      "expectedEffects": [
+        "PLATFORM"
+      ],
+      "proofRefs": [
+        "supabase-handover-readiness"
+      ]
     },
     {
       "id": "platform-readonly-inventory",
       "kind": "resolve",
       "inputTask": "Inventory production Supabase for migration without changing production",
-      "expectedDomains": ["platform-handover"],
+      "expectedDomains": [
+        "platform-handover"
+      ],
       "minimumRisk": "R3",
       "requiredClaims": [
         "SOURCE_PRODUCTION_READ_ONLY_UNTIL_CUTOVER",
         "HANDOVER_SOURCE_IDENTITY_VERIFIED",
         "NO_SECRETS_IN_HANDOVER_ARTIFACTS"
       ],
-      "requiredAuthorities": ["platform_runtime_placement"],
-      "forbiddenAuthorities": ["receivable", "payment"],
+      "requiredAuthorities": [
+        "platform_runtime_placement"
+      ],
+      "forbiddenAuthorities": [
+        "receivable",
+        "payment"
+      ],
       "requiredProofKinds": [],
-      "candidatePathsAnyOf": ["docs/engineering/PLATFORM_HANDOVER.md"],
-      "expectedEffects": ["PLATFORM"]
+      "candidatePathsAnyOf": [
+        "docs/engineering/PLATFORM_HANDOVER.md"
+      ],
+      "expectedEffects": [
+        "PLATFORM"
+      ],
+      "proofRefs": [
+        "supabase-handover-readiness"
+      ]
     },
     {
       "id": "platform-storage-blocker",
@@ -316,164 +507,294 @@
         "DATABASE_DUMP_NOT_STORAGE_TRANSFER",
         "STORAGE_FULL_INTEGRITY_REQUIRED"
       ],
-      "expectedBlocker": "DATABASE_DUMP_NOT_STORAGE_TRANSFER"
+      "expectedBlocker": "DATABASE_DUMP_NOT_STORAGE_TRANSFER",
+      "proofRefs": [
+        "supabase-handover-readiness"
+      ]
     },
     {
       "id": "platform-auth-blocker",
       "kind": "blocker",
       "inputTask": "Copy Auth users but ignore Auth and JWT configuration",
-      "requiredClaims": ["AUTH_CONFIGURATION_PARITY_REQUIRED"],
-      "expectedBlocker": "AUTH_CONFIGURATION_PARITY_REQUIRED"
+      "requiredClaims": [
+        "AUTH_CONFIGURATION_PARITY_REQUIRED"
+      ],
+      "expectedBlocker": "AUTH_CONFIGURATION_PARITY_REQUIRED",
+      "proofRefs": [
+        "supabase-handover-readiness"
+      ]
     },
     {
       "id": "platform-realtime-blocker",
       "kind": "blocker",
       "inputTask": "Move Postgres but do not verify Realtime",
-      "requiredClaims": ["REALTIME_COMPATIBILITY_REQUIRED"],
-      "expectedBlocker": "REALTIME_COMPATIBILITY_REQUIRED"
+      "requiredClaims": [
+        "REALTIME_COMPATIBILITY_REQUIRED"
+      ],
+      "expectedBlocker": "REALTIME_COMPATIBILITY_REQUIRED",
+      "proofRefs": [
+        "supabase-handover-readiness"
+      ]
     },
     {
       "id": "platform-cutover-blocker",
       "kind": "blocker",
       "inputTask": "Change Vercel backend variables before target parity is proven",
-      "requiredClaims": ["CUTOVER_ENV_PARITY_REQUIRED"],
-      "expectedBlocker": "CUTOVER_ENV_PARITY_REQUIRED"
+      "requiredClaims": [
+        "CUTOVER_ENV_PARITY_REQUIRED"
+      ],
+      "expectedBlocker": "CUTOVER_ENV_PARITY_REQUIRED",
+      "proofRefs": [
+        "supabase-handover-readiness"
+      ]
     },
     {
       "id": "platform-client-cutover-blocker",
       "kind": "blocker",
       "inputTask": "During Supabase cutover resume writes without proving old browsers reload and offline queues converge",
-      "requiredClaims": ["CLIENT_CUTOVER_RELOAD_REQUIRED", "OFFLINE_QUEUE_CUTOVER_CONVERGENCE_REQUIRED", "SOURCE_LATE_WRITE_RECONCILIATION_REQUIRED"],
-      "expectedBlocker": "CLIENT_CUTOVER_COMPATIBILITY_NOT_RUN"
+      "requiredClaims": [
+        "CLIENT_CUTOVER_RELOAD_REQUIRED",
+        "OFFLINE_QUEUE_CUTOVER_CONVERGENCE_REQUIRED",
+        "SOURCE_LATE_WRITE_RECONCILIATION_REQUIRED"
+      ],
+      "expectedBlocker": "CLIENT_CUTOVER_COMPATIBILITY_NOT_RUN",
+      "proofRefs": [
+        "supabase-handover-readiness"
+      ]
     },
     {
       "id": "platform-snapshot-blocker",
       "kind": "blocker",
       "inputTask": "Certify target parity using a live inventory unrelated to the restored source dump",
-      "requiredClaims": ["SOURCE_SNAPSHOT_BOUND"],
-      "expectedBlocker": "SOURCE_SNAPSHOT_UNBOUND"
+      "requiredClaims": [
+        "SOURCE_SNAPSHOT_BOUND"
+      ],
+      "expectedBlocker": "SOURCE_SNAPSHOT_UNBOUND",
+      "proofRefs": [
+        "supabase-handover-readiness"
+      ]
     },
     {
       "id": "platform-rollback-availability-blocker",
       "kind": "blocker",
       "inputTask": "Cut over without an Owner decision keeping the managed source available for rollback",
-      "requiredClaims": ["SOURCE_ROLLBACK_AVAILABILITY_PLAN"],
-      "expectedBlocker": "SOURCE_ROLLBACK_AVAILABILITY_PLAN"
+      "requiredClaims": [
+        "SOURCE_ROLLBACK_AVAILABILITY_PLAN"
+      ],
+      "expectedBlocker": "SOURCE_ROLLBACK_AVAILABILITY_PLAN",
+      "proofRefs": [
+        "supabase-handover-readiness"
+      ]
     },
     {
       "id": "platform-rollback-blocker",
       "kind": "blocker",
       "inputTask": "Rollback after target accepted writes by simply pointing Vercel back",
-      "requiredClaims": ["ROLLBACK_WRITE_RECONCILIATION_REQUIRED"],
-      "expectedBlocker": "ROLLBACK_WRITE_RECONCILIATION_REQUIRED"
+      "requiredClaims": [
+        "ROLLBACK_WRITE_RECONCILIATION_REQUIRED"
+      ],
+      "expectedBlocker": "ROLLBACK_WRITE_RECONCILIATION_REQUIRED",
+      "proofRefs": [
+        "supabase-handover-readiness"
+      ]
     },
     {
       "id": "domain-auth",
       "kind": "resolve",
       "inputTask": "employee authentication",
-      "expectedDomains": ["auth"],
+      "expectedDomains": [
+        "auth"
+      ],
       "minimumRisk": "R2",
       "requiredClaims": [],
-      "requiredAuthorities": ["employee_identity"],
+      "requiredAuthorities": [
+        "employee_identity"
+      ],
       "forbiddenAuthorities": [],
       "requiredProofKinds": [],
-      "candidatePathsAnyOf": ["src/app/login"]
+      "candidatePathsAnyOf": [
+        "src/app/login"
+      ],
+      "proofRefs": [
+        "auth-unit"
+      ],
+      "expectedStatus": "SCOPE_AMBIGUOUS"
     },
     {
       "id": "domain-field-visits",
       "kind": "resolve",
       "inputTask": "field visit evidence",
-      "expectedDomains": ["field-visits"],
+      "expectedDomains": [
+        "field-visits"
+      ],
       "minimumRisk": "R2",
       "requiredClaims": [],
-      "requiredAuthorities": ["field_visit"],
+      "requiredAuthorities": [
+        "field_visit"
+      ],
       "forbiddenAuthorities": [],
       "requiredProofKinds": [],
-      "candidatePathsAnyOf": ["src/app/visits"]
+      "candidatePathsAnyOf": [
+        "src/app/visits"
+      ],
+      "proofRefs": [
+        "field-visits-unit"
+      ],
+      "expectedStatus": "SCOPE_AMBIGUOUS"
     },
     {
       "id": "domain-team-kpi",
       "kind": "resolve",
       "inputTask": "team KPI reporting",
-      "expectedDomains": ["team-kpi"],
+      "expectedDomains": [
+        "team-kpi"
+      ],
       "minimumRisk": "R2",
       "requiredClaims": [],
-      "requiredAuthorities": ["attendance"],
+      "requiredAuthorities": [
+        "attendance"
+      ],
       "forbiddenAuthorities": [],
       "requiredProofKinds": [],
-      "candidatePathsAnyOf": ["src/app/manager/kpi"]
+      "candidatePathsAnyOf": [
+        "src/app/manager/kpi"
+      ],
+      "proofRefs": [
+        "team-kpi-unit"
+      ],
+      "expectedStatus": "SCOPE_AMBIGUOUS"
     },
     {
       "id": "domain-erp-partner",
       "kind": "resolve",
       "inputTask": "external ERP partner portal",
-      "expectedDomains": ["erp-partner"],
+      "expectedDomains": [
+        "erp-partner"
+      ],
       "minimumRisk": "R3",
       "requiredClaims": [],
-      "requiredAuthorities": ["erp_partner_scope"],
+      "requiredAuthorities": [
+        "erp_partner_scope"
+      ],
       "forbiddenAuthorities": [],
       "requiredProofKinds": [],
-      "candidatePathsAnyOf": ["src/app/api/erp-partner"]
+      "candidatePathsAnyOf": [
+        "src/app/api/erp-partner"
+      ],
+      "proofRefs": [
+        "erp-unit"
+      ],
+      "expectedStatus": "SCOPE_AMBIGUOUS"
     },
     {
       "id": "domain-renewals",
       "kind": "resolve",
       "inputTask": "renewal reminders",
-      "expectedDomains": ["renewals"],
+      "expectedDomains": [
+        "renewals"
+      ],
       "minimumRisk": "R2",
       "requiredClaims": [],
-      "requiredAuthorities": ["renewal"],
+      "requiredAuthorities": [
+        "renewal"
+      ],
       "forbiddenAuthorities": [],
       "requiredProofKinds": [],
-      "candidatePathsAnyOf": ["src/app/payments/renewals"]
+      "candidatePathsAnyOf": [
+        "src/app/payments/renewals"
+      ],
+      "proofRefs": [
+        "distributor-unit"
+      ],
+      "expectedStatus": "SCOPE_AMBIGUOUS"
     },
     {
       "id": "domain-followups",
       "kind": "resolve",
       "inputTask": "my payment followups",
-      "expectedDomains": ["followups"],
+      "expectedDomains": [
+        "followups"
+      ],
       "minimumRisk": "R2",
       "requiredClaims": [],
-      "requiredAuthorities": ["followup_projection"],
+      "requiredAuthorities": [
+        "followup_projection"
+      ],
       "forbiddenAuthorities": [],
       "requiredProofKinds": [],
-      "candidatePathsAnyOf": ["src/app/api/my-day/payment-followups"]
+      "candidatePathsAnyOf": [
+        "src/app/api/my-day/payment-followups"
+      ],
+      "proofRefs": [
+        "followups-unit"
+      ],
+      "expectedStatus": "SCOPE_AMBIGUOUS"
     },
     {
       "id": "domain-queries",
       "kind": "resolve",
       "inputTask": "client support queries",
-      "expectedDomains": ["queries"],
+      "expectedDomains": [
+        "queries"
+      ],
       "minimumRisk": "R2",
       "requiredClaims": [],
-      "requiredAuthorities": ["client_query"],
+      "requiredAuthorities": [
+        "client_query"
+      ],
       "forbiddenAuthorities": [],
       "requiredProofKinds": [],
-      "candidatePathsAnyOf": ["src/app/support"]
+      "candidatePathsAnyOf": [
+        "src/app/support"
+      ],
+      "proofRefs": [
+        "queries-unit"
+      ],
+      "expectedStatus": "SCOPE_AMBIGUOUS"
     },
     {
       "id": "domain-task-allocation",
       "kind": "resolve",
       "inputTask": "city task allocation",
-      "expectedDomains": ["task-allocation"],
+      "expectedDomains": [
+        "task-allocation"
+      ],
       "minimumRisk": "R3",
       "requiredClaims": [],
-      "requiredAuthorities": ["task_allocation"],
+      "requiredAuthorities": [
+        "task_allocation"
+      ],
       "forbiddenAuthorities": [],
       "requiredProofKinds": [],
-      "candidatePathsAnyOf": ["src/app/manager/tasks"]
+      "candidatePathsAnyOf": [
+        "src/app/manager/tasks"
+      ],
+      "proofRefs": [
+        "task-allocation-unit"
+      ],
+      "expectedStatus": "SCOPE_AMBIGUOUS"
     },
     {
       "id": "domain-my-day",
       "kind": "resolve",
       "inputTask": "daily work orchestration",
-      "expectedDomains": ["my-day"],
+      "expectedDomains": [
+        "my-day"
+      ],
       "minimumRisk": "R2",
       "requiredClaims": [],
-      "requiredAuthorities": ["my_day_projection"],
+      "requiredAuthorities": [
+        "my_day_projection"
+      ],
       "forbiddenAuthorities": [],
       "requiredProofKinds": [],
-      "candidatePathsAnyOf": ["src/app/my-day"]
+      "candidatePathsAnyOf": [
+        "src/app/my-day"
+      ],
+      "proofRefs": [
+        "followups-unit"
+      ],
+      "expectedStatus": "SCOPE_AMBIGUOUS"
     }
   ]
 }

@@ -1,103 +1,32 @@
-import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { createHash } from "node:crypto";
-import { resolveProofPath } from "./proof-path.mjs";
-const root = resolve(import.meta.dirname, "../.."),
-  args = process.argv.slice(2),
-  value = (k) => {
-    const i = args.indexOf(k);
-    return i < 0 ? undefined : args[i + 1];
-  },
-  base = value("--base") ?? "origin/main",
-  head = value("--head") ?? "HEAD",
-  run = (...a) =>
-    execFileSync("git", a, { cwd: root, encoding: "utf8" }).trim(),
-  impact = JSON.parse(
-    execFileSync(
-      "node",
-      ["scripts/engineering/impact.mjs", "--base", base, "--head", head],
-      { cwd: root, encoding: "utf8" },
-    ),
-  ),
-  proofs = process.env.ZEROGRAPH_PROOFS_JSON
-    ? JSON.parse(process.env.ZEROGRAPH_PROOFS_JSON).proofs
-    : JSON.parse(readFileSync(resolve(root, "docs/engineering/PROOFS.json")))
-        .proofs;
-const applicable = (p) =>
-  impact.domains.some((d) => (p.domains ?? []).includes(d)) &&
-  impact.effects.some((e) => (p.effects ?? []).includes(e));
-const required = proofs
-  .filter(
-    (p) =>
-      applicable(p) ||
-      (impact.domains.includes("engineering-control") &&
-        p.controlPlaneCoverage === true),
-  )
-  .map((proof) => ({
-    ...proof,
-    paths: (proof.paths ?? []).map(
-      (path) => resolveProofPath(root, base, head, path).path,
-    ),
-  }));
-const concreteHandover = impact.changedPaths.some((path) =>
-  /^(docs|scripts)\/handover\//.test(path),
-);
-if (
-  concreteHandover &&
-  !required.some(
-    (p) =>
-      p.kind === "handover" && (p.domains ?? []).includes("platform-handover"),
-  )
-) {
-  console.error("HANDOVER_PROOF_UNMAPPED");
-  process.exit(2);
-}
-if (
-  !concreteHandover &&
-  ["DATABASE", "AUTHORIZATION", "SECURITY"].some((e) =>
-    impact.effects.includes(e),
-  ) &&
-  !required.some((p) => p.kind === "postgres")
-) {
-  console.error("R3_DB_PROOF_UNMAPPED");
-  process.exit(2);
-}
-const migrations = impact.changedPaths.filter((path) =>
-  /^supabase\/migrations\/\d+_.*\.sql$/.test(path),
-);
-if (migrations.length) {
-  const numbers = migrations.map(
-    (path) => /^supabase\/migrations\/(\d+)_/.exec(path)[1],
-  );
-  if (
-    numbers.some(
-      (number) =>
-        !required.some(
-          (p) =>
-            p.kind === "owner-pre" &&
-            p.paths.some((path) => path.includes(number)),
-        ) ||
-        !required.some(
-          (p) =>
-            p.kind === "owner-post" &&
-            p.paths.some((path) => path.includes(number)),
-        ),
-    )
-  ) {
-    console.error("OWNER_PROOF_UNMAPPED");
-    process.exit(2);
-  }
-}
-const plan = {
-  ...impact,
-  treeSha: run("rev-parse", `${head}^{tree}`),
-  unitProofs: required.filter((p) => p.kind === "unit"),
-  postgresProofs: required.filter((p) => p.kind === "postgres"),
-  e2eProofs: required.filter((p) => p.kind === "e2e"),
-  handoverProofs: required.filter((p) => p.kind === "handover"),
-  ownerProofs: required.filter((p) => p.runner === "owner-sql"),
-  forbiddenWrites: ["production"],
+import { compileImpact } from "./impact.mjs";
+import { parseArgs, readJson, sha256 } from "./kernel-lib.mjs";
+
+const kinds = ["unit", "build", "postgres", "e2e", "handover", "owner-pre", "owner-post"];
+export const compileProofPlan = ({ base = "origin/main", head = "WORKTREE", impact } = {}) => {
+  impact ??= compileImpact({ base, head });
+  const domains = readJson("docs/engineering/DOMAIN_MAP.json").domains;
+  const proofs = readJson("docs/engineering/PROOFS.json").proofs;
+  const mapped = domains.filter((domain) => impact.domains.includes(domain.id));
+  const explicit = new Set(mapped.flatMap((domain) => domain.proofRefs ?? []));
+  const requiredKinds = new Set(mapped.flatMap((domain) => domain.requiredProofKinds ?? []));
+  const required = proofs.filter((proof) => explicit.has(proof.id) || (proof.domains ?? []).some((domain) => impact.domains.includes(domain)) || (proof.effects ?? []).includes("ALL_CHANGES"));
+  for (const kind of requiredKinds) if (!required.some((proof) => proof.kind === kind)) throw new Error(`PROOF_UNMAPPED:${kind}`);
+  if (impact.risk === "R3" && !required.some((proof) => proof.kind === "unit")) throw new Error("PROOF_UNMAPPED:unit");
+  const plan = {
+    schemaVersion: 1,
+    ...impact,
+    requiredProofs: required.map((proof) => proof.id),
+    requiredByKind: Object.fromEntries(kinds.map((kind) => [kind, required.filter((proof) => proof.kind === kind).map((proof) => proof.id)])),
+    notRequiredKinds: kinds.filter((kind) => !requiredKinds.has(kind) && !required.some((proof) => proof.kind === kind)),
+    forbiddenWrites: ["production", ...mapped.flatMap((domain) => domain.mustNotWriteAuthorityRefs ?? [])],
+  };
+  plan.planHash = sha256(JSON.stringify(plan));
+  return plan;
 };
-plan.planHash = createHash("sha256").update(JSON.stringify(plan)).digest("hex");
-console.log(JSON.stringify(plan, null, 2));
+
+if (process.argv[1] && resolve(process.argv[1]) === resolve(import.meta.filename)) {
+  const { value } = parseArgs();
+  try { console.log(JSON.stringify(compileProofPlan({ base: value("--base", "origin/main"), head: value("--head", "WORKTREE") }), null, 2)); }
+  catch (error) { console.error(error.message); process.exitCode = 2; }
+}

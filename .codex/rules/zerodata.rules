@@ -1,0 +1,91 @@
+prefix_rule(
+    pattern = ["git", "reset", "--hard"],
+    decision = "forbidden",
+    justification = "Repository history and Owner work are immutable to Codex.",
+    match = [["git", "reset", "--hard"], ["git", "reset", "--hard", "HEAD~1"]],
+    not_match = [["git", "reset", "--soft", "HEAD~1"], ["git", "status"]],
+)
+prefix_rule(
+    pattern = ["git", "clean"],
+    decision = "forbidden",
+    justification = "Unknown and untracked Owner files must be preserved.",
+    match = [["git", "clean", "-fd"], ["git", "clean", "-n"]],
+    not_match = [["git", "status"]],
+)
+prefix_rule(
+    pattern = ["git", "add", ["-A", "--all", "."]],
+    decision = "forbidden",
+    justification = "Broad staging can capture unknown Owner work; stage explicit paths only.",
+    match = [["git", "add", "-A"], ["git", "add", "--all"], ["git", "add", "."]],
+    not_match = [["git", "add", "scripts/engineering/kernel.test.mjs"]],
+)
+prefix_rule(
+    pattern = ["git", "push", ["--force", "-f", "--force-with-lease"]],
+    decision = "forbidden",
+    justification = "Force pushes are prohibited.",
+    match = [["git", "push", "--force"], ["git", "push", "--force-with-lease"]],
+    not_match = [["git", "push", "origin", "feature/example"]],
+)
+prefix_rule(
+    pattern = ["git", "push", ["origin", "upstream"], ["--force", "-f", "--force-with-lease"]],
+    decision = "forbidden",
+    justification = "Force pushes are prohibited regardless of flag position.",
+    match = [["git", "push", "origin", "--force"], ["git", "push", "upstream", "--force-with-lease"]],
+    not_match = [["git", "push", "origin", "feature/example"]],
+)
+prefix_rule(
+    pattern = ["git", "push", ["origin", "upstream"], "main"],
+    decision = "forbidden",
+    justification = "Main changes must use protected pull requests.",
+    match = [["git", "push", "origin", "main"], ["git", "push", "upstream", "main"]],
+    not_match = [["git", "push", "origin", "feature/example"]],
+)
+prefix_rule(
+    pattern = ["git", "push"],
+    decision = "prompt",
+    justification = "Feature-branch publication requires user-visible approval.",
+    match = [["git", "push", "origin", "feature/example"]],
+    not_match = [["git", "status"]],
+)
+prefix_rule(
+    pattern = ["supabase", ["db", "migration"]],
+    decision = "forbidden",
+    justification = "Codex may not mutate database environments or apply migrations.",
+    match = [["supabase", "db", "push"], ["supabase", "db", "reset"], ["supabase", "migration", "up"]],
+    not_match = [["supabase", "--version"]],
+)
+prefix_rule(
+    pattern = [["psql", "pgcli", "mysql", "sqlcmd"]],
+    decision = "forbidden",
+    justification = "Database clients require an explicit reviewed disposable-environment boundary.",
+    match = [["psql"], ["pgcli", "example"]],
+    not_match = [["node", "scripts/engineering/kernel-doctor.mjs"]],
+)
+prefix_rule(
+    pattern = [["docker", "kubectl", "terraform", "aws", "az", "gcloud", "cloudflare", "vercel"], ["apply", "create", "delete", "deploy", "destroy", "down", "push", "reset", "rm", "set", "up"]],
+    decision = "forbidden",
+    justification = "Infrastructure and deployment mutation is outside repository engineering scope.",
+    match = [["docker", "rm", "fixture"], ["kubectl", "delete", "pod", "fixture"], ["terraform", "apply"], ["vercel", "deploy"]],
+    not_match = [["docker", "--version"], ["vercel", "--version"]],
+)
+prefix_rule(
+    pattern = [["node", "python", "python3"], ["check.js", "check_active.js", "check_cols.js", "check_users.js", "check_users_paginated.js", "diagnose_rpc.js", "verify_migrations.js", "scripts/seed-production-users.js"]],
+    decision = "forbidden",
+    justification = "Removed privileged scratch paths may never execute.",
+    match = [["node", "check.js"], ["node", "scripts/seed-production-users.js"]],
+    not_match = [["node", "scripts/engineering/kernel-doctor.mjs"]],
+)
+prefix_rule(
+    pattern = ["gh", "pr", ["create", "view", "checks"]],
+    decision = "prompt",
+    justification = "Pull-request network operations must remain explicit.",
+    match = [["gh", "pr", "create"], ["gh", "pr", "view", "123"], ["gh", "pr", "checks", "123"]],
+    not_match = [["gh", "repo", "view"]],
+)
+prefix_rule(
+    pattern = ["gh", "pr", "merge"],
+    decision = "forbidden",
+    justification = "Codex may not merge this engineering-control pull request.",
+    match = [["gh", "pr", "merge", "123"]],
+    not_match = [["gh", "pr", "view", "123"]],
+)
