@@ -16,6 +16,7 @@
     "test:e2e:distributors": "playwright test e2e/distributors",
     "typecheck": "tsc --noEmit",
     "quality:invariants": "node scripts/quality/invariants.mjs",
+    "quality:repository": "node scripts/quality/repository-safety.test.mjs && node scripts/quality/repository-safety.mjs",
     "quality:knowledge": "node scripts/quality/knowledge-check.mjs",
     "quality:legacy": "node scripts/quality/legacy-coverage-check.mjs",
     "context:resolve": "node scripts/engineering/context.mjs",

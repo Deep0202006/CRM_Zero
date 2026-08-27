@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+**/node_modules/
 /.pnp
 .pnp.*
 .yarn/*
@@ -46,3 +47,12 @@ graphify-out/
 .graphify-venv/
 .handover/
 .zerograph-evidence/
+.codex-artifacts/
+.gstack/
+.harness/
+.repository-safety-fixtures/
+playwright-report/
+test-results/
+docs/engineering/**/package-lock.json
+scripts/engineering/**/package-lock.json
+scripts/quality/**/package-lock.json

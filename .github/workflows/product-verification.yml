@@ -22,6 +22,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 24.13.0, cache: npm }
       - run: npm ci
+      - run: npm run quality:repository
       - run: npm run quality:knowledge
       - run: npm run quality:legacy
       - run: npm run quality:invariants
