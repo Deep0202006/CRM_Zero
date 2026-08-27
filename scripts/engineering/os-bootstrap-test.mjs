@@ -1,35 +1,91 @@
 import { spawnSync, execFileSync } from "node:child_process";
 import {
+  existsSync,
   mkdtempSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from "node:fs";
-import { resolve } from "node:path";
+import { relative, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { createHash, randomUUID } from "node:crypto";
 import { resolveProofPath } from "./proof-path.mjs";
 const root = resolve(import.meta.dirname, "../.."),
-  acceptanceFixture = JSON.stringify({
-    localComplete: false,
-    progressSignature: "fixture-progress",
-    evidenceHash: "fixture-evidence",
-    nextAction: { acceptanceId: "ZOS-A01", command: "npm run context:test" },
-  }),
+  operationalSessionRoot = resolve(
+    root,
+    execFileSync("git", ["rev-parse", "--git-path", "zerograph/sessions"], {
+      cwd: root,
+      encoding: "utf8",
+    }).trim(),
+  ),
+  sessionSnapshot = () => {
+    if (!existsSync(operationalSessionRoot)) return { exists: false, files: [] };
+    const files = [];
+    const walk = (directory) => {
+      for (const entry of readdirSync(directory, { withFileTypes: true })) {
+        const path = resolve(directory, entry.name);
+        if (entry.isDirectory()) walk(path);
+        else if (entry.isFile()) {
+          const content = readFileSync(path);
+          files.push({
+            path: relative(operationalSessionRoot, path).replaceAll("\\", "/"),
+            size: statSync(path).size,
+            sha256: createHash("sha256").update(content).digest("hex"),
+          });
+        }
+      }
+    };
+    walk(operationalSessionRoot);
+    return { exists: true, files: files.sort((a, b) => a.path.localeCompare(b.path)) };
+  },
+  operationalSessionBefore = sessionSnapshot(),
+  hookFixtureRoot = mkdtempSync(resolve(tmpdir(), "zerograph-hook-git-"));
+let operationalSessionAfter, isolatedGreenClosureProof = false;
+try {
+  const exactRepositoryHead = execFileSync("git", ["rev-parse", "HEAD"], {
+      cwd: root,
+      encoding: "utf8",
+    }).trim();
+  execFileSync("git", ["clone", "--quiet", "--no-checkout", root, hookFixtureRoot]);
+  const hookGitDir = resolve(hookFixtureRoot, ".git"),
+    isolatedGitEnv = { GIT_DIR: hookGitDir, GIT_WORK_TREE: root },
+    fixtureGit = (args, options = {}) =>
+      execFileSync("git", args, {
+        ...options,
+        cwd: root,
+        encoding: options.encoding ?? "utf8",
+        env: { ...process.env, ...(options.env ?? {}), ...isolatedGitEnv },
+      });
+  fixtureGit(["update-ref", "--no-deref", "HEAD", exactRepositoryHead]);
+  fixtureGit(["read-tree", "HEAD"]);
+  if (fixtureGit(["rev-parse", "HEAD"]).trim() !== exactRepositoryHead)
+    throw Error("ISOLATED_HOOK_FIXTURE_HEAD_MISMATCH");
+  const acceptanceFixture = JSON.stringify({
+      localComplete: false,
+      progressSignature: "fixture-progress",
+      evidenceHash: "fixture-evidence",
+      nextAction: { acceptanceId: "ZOS-A01", command: "npm run context:test" },
+    }),
   run = (path, input) =>
     spawnSync("node", [resolve(root, path)], {
       cwd: resolve(root, "src"),
       input: JSON.stringify(input ?? {}),
       encoding: "utf8",
-      env: { ...process.env, ZEROGRAPH_ACCEPTANCE_FIXTURE: acceptanceFixture },
+      env: {
+        ...process.env,
+        ZEROGRAPH_ACCEPTANCE_FIXTURE: acceptanceFixture,
+        ...isolatedGitEnv,
+      },
     }),
   runWithEnv = (path, input, env) =>
     spawnSync("node", [resolve(root, path)], {
       cwd: resolve(root, "src"),
       input: JSON.stringify(input ?? {}),
       encoding: "utf8",
-      env: { ...process.env, ...env },
+      env: { ...process.env, ...env, ...isolatedGitEnv },
     }),
   parse = (r) => (r.stdout.trim() ? JSON.parse(r.stdout) : null),
   assert = (ok, code) => {
@@ -135,11 +191,11 @@ assert(
   ownerOut.hookSpecificOutput.hookEventName === "UserPromptSubmit",
   "PROMPT_WIRE_INVALID",
 );
-const sessionFile = execFileSync(
-    "git",
-    ["rev-parse", "--git-path", `zerograph/sessions/${session_id}.json`],
-    { cwd: root, encoding: "utf8" },
-  ).trim(),
+const sessionFile = fixtureGit([
+    "rev-parse",
+    "--git-path",
+    `zerograph/sessions/${session_id}.json`,
+  ]).trim(),
   before = JSON.parse(readFileSync(resolve(root, sessionFile)));
 run("scripts/engineering/hooks/user-prompt.mjs", {
   session_id,
@@ -158,11 +214,11 @@ run("scripts/engineering/hooks/user-prompt.mjs", {
 });
 assert(
   sessionFile !==
-    execFileSync(
-      "git",
-      ["rev-parse", "--git-path", `zerograph/sessions/${other}.json`],
-      { cwd: root, encoding: "utf8" },
-    ).trim(),
+    fixtureGit([
+      "rev-parse",
+      "--git-path",
+      `zerograph/sessions/${other}.json`,
+    ]).trim(),
   "SESSION_ISOLATION_FAILED",
 );
 const s1 = parse(
@@ -255,22 +311,12 @@ assert(
     futureStop.reason.includes("Run the missing domain proof"),
   "FUTURE_TASK_STOP_NOT_ENFORCED",
 );
-const exactHead = execFileSync("git", ["rev-parse", "HEAD"], {
-    cwd: root,
-    encoding: "utf8",
-  }).trim(),
-  ancestorBase = execFileSync("git", ["rev-parse", "HEAD^"], {
-    cwd: root,
-    encoding: "utf8",
-  }).trim(),
-  staleBase = execFileSync(
-    "git",
+const exactHead = fixtureGit(["rev-parse", "HEAD"]).trim(),
+  ancestorBase = fixtureGit(["rev-parse", "HEAD^"]).trim(),
+  staleBase = fixtureGit(
     ["commit-tree", "HEAD^{tree}", "-p", "HEAD", "-m", "stale base fixture"],
     {
-      cwd: root,
-      encoding: "utf8",
       env: {
-        ...process.env,
         GIT_AUTHOR_NAME: "ZeroGraph Fixture",
         GIT_AUTHOR_EMAIL: "fixture@example.invalid",
         GIT_COMMITTER_NAME: "ZeroGraph Fixture",
@@ -300,7 +346,10 @@ const exactHead = execFileSync("git", ["rev-parse", "HEAD"], {
   closeStop = (status, fixture = {}) =>
     runWithEnv(
       "scripts/engineering/hooks/stop.mjs",
-      { session_id: `remote-${randomUUID()}`, stop_hook_active: false },
+      {
+        session_id: fixture.sessionId ?? `fixture-remote-${randomUUID()}`,
+        stop_hook_active: false,
+      },
       {
         ZEROGRAPH_ACCEPTANCE_FIXTURE: greenAcceptance,
         ZEROGRAPH_TASK_CLOSE_FIXTURE: JSON.stringify({ status, nextAction: null }),
@@ -353,10 +402,31 @@ try {
       )?.reason.includes("REMOTE_CHECKS_FAILED"),
       `REMOTE_${state}_NOT_BLOCKING`,
     );
+  const greenSession = `fixture-remote-${randomUUID()}`,
+    greenResult = closeStop("TASK_LOCAL_COMPLETE", { sessionId: greenSession }),
+    isolatedGreenPath = fixtureGit([
+      "rev-parse",
+      "--git-path",
+      `zerograph/sessions/${greenSession}.json`,
+    ]).trim(),
+    operationalGreenPath = resolve(
+      root,
+      execFileSync(
+        "git",
+        ["rev-parse", "--git-path", `zerograph/sessions/${greenSession}.json`],
+        { cwd: root, encoding: "utf8" },
+      ).trim(),
+    ),
+    greenState = JSON.parse(readFileSync(resolve(root, isolatedGreenPath)));
+  assert(greenResult.stdout === "", "REMOTE_PASS_DID_NOT_CLOSE_LOCAL_TASK");
   assert(
-    closeStop("TASK_LOCAL_COMPLETE").stdout === "",
-    "REMOTE_PASS_DID_NOT_CLOSE_LOCAL_TASK",
+    greenState.taskClosed === true &&
+      greenState.remoteEvidence?.headSha === exactHead &&
+      greenState.remoteEvidence?.checkNames?.includes("preflight") &&
+      !existsSync(operationalGreenPath),
+    "ISOLATED_GREEN_CLOSURE_EVIDENCE_INVALID",
   );
+  isolatedGreenClosureProof = true;
   assert(
     parse(
       closeStop("TASK_LOCAL_COMPLETE", {
@@ -436,6 +506,15 @@ const legacyStatusBefore = execFileSync("git", ["status", "--porcelain"], {
       },
       ...options,
     });
+const frozenNoArguments = legacyCheck(),
+  frozenExplicitCheck = legacyCheck("--check");
+assert(
+  frozenNoArguments.status === 0 &&
+    frozenExplicitCheck.status === 0 &&
+    frozenNoArguments.stdout === frozenExplicitCheck.stdout &&
+    JSON.parse(frozenNoArguments.stdout).code === "LEGACY_FROZEN_BASELINE_PASS",
+  "LEGACY_FROZEN_DEFAULT_MISMATCH",
+);
 try {
   legacyGit(["read-tree", "HEAD"]);
   const blob = legacyGit(["hash-object", "-w", "--stdin"], {
@@ -450,12 +529,13 @@ try {
   const tree = legacyGit(["write-tree"]).trim(),
     commit = legacyGit(["commit-tree", tree, "-p", "HEAD", "-m", "A07 fixture"]).trim();
   execFileSync("git", ["update-ref", legacyFixtureRef, commit], { cwd: root });
+  const afterRefCreation = legacyCheck(),
+    afterRefCreationCheck = legacyCheck("--check");
   assert(
-    legacyCheck().status === 0,
-    "LEGACY_NO_ARGUMENT_NOT_FROZEN",
-  );
-  assert(
-    legacyCheck("--check").status === 0,
+    afterRefCreation.status === 0 &&
+      afterRefCreationCheck.status === 0 &&
+      afterRefCreation.stdout === frozenNoArguments.stdout &&
+      afterRefCreationCheck.stdout === frozenNoArguments.stdout,
     "LEGACY_REMOTE_REF_AFFECTED_FROZEN_CHECK",
   );
   for (const path of [
@@ -479,22 +559,42 @@ try {
     legacyFailure(legacyCheck("--write"), "LEGACY_REFRESH_REQUIRES_EXPLICIT_MODE"),
     "LEGACY_REFRESH_MODE_NOT_REQUIRED",
   );
-  assert(legacyCheck("--refresh").status === 0, "LEGACY_EXPLICIT_REFRESH_UNAVAILABLE");
 } finally {
   execFileSync("git", ["update-ref", "-d", legacyFixtureRef], {
     cwd: root,
   });
+  const afterRefDeletion = legacyCheck();
   assert(
-    legacyCheck().status === 0,
+    afterRefDeletion.status === 0 &&
+      afterRefDeletion.stdout === frozenNoArguments.stdout,
     "LEGACY_DELETED_REF_AFFECTED_FROZEN_CHECK",
   );
   rmSync(legacyFixtureRoot, { recursive: true, force: true });
 }
+const refreshToken = `--${["re", "fresh"].join("")}`,
+  normalCiSources = [
+    workflow,
+    readFileSync(resolve(root, "package.json"), "utf8"),
+    readFileSync(import.meta.filename, "utf8"),
+  ],
+  executableRefreshPatterns = [
+    new RegExp(`legacyCheck\\s*\\(\\s*["'\\x60]${refreshToken}["'\\x60]`),
+    new RegExp(`legacy-ingest\\.mjs[^\\r\\n]*${refreshToken}`),
+    new RegExp(`npm\\s+run\\s+legacy:ingest[^\\r\\n]*${refreshToken}`),
+  ],
+  executableRefreshFixtures = [
+    `legacyCheck("${refreshToken}")`,
+    `node scripts/engineering/legacy-ingest.mjs ${refreshToken}`,
+    `npm run legacy:ingest -- ${refreshToken}`,
+  ];
 assert(
-  !readFileSync(resolve(root, "package.json"), "utf8").match(
-    /legacy-ingest\.mjs[^"\n]*--refresh/,
+  executableRefreshFixtures.every((fixture) =>
+    executableRefreshPatterns.some((pattern) => pattern.test(fixture)),
+  ) &&
+  !normalCiSources.some((source) =>
+    executableRefreshPatterns.some((pattern) => pattern.test(source)),
   ),
-  "LEGACY_NORMAL_CI_USES_REFRESH",
+  "CI_TRANSITIVE_LEGACY_REFRESH_PRESENT",
 );
 assert(
   execFileSync("git", ["status", "--porcelain"], { cwd: root, encoding: "utf8" }) ===
@@ -716,11 +816,11 @@ runWithEnv(
   { session_id: ordinarySession, prompt: "change Mapping button wording" },
   {},
 );
-const ordinaryPath = execFileSync(
-    "git",
-    ["rev-parse", "--git-path", `zerograph/sessions/${ordinarySession}.json`],
-    { cwd: root, encoding: "utf8" },
-  ).trim(),
+const ordinaryPath = fixtureGit([
+    "rev-parse",
+    "--git-path",
+    `zerograph/sessions/${ordinarySession}.json`,
+  ]).trim(),
   ordinaryState = JSON.parse(readFileSync(resolve(root, ordinaryPath)));
 assert(!ordinaryState.graphifyNavigation, "GRAPHIFY_RAN_FOR_ORDINARY_TASK");
 const ambiguousSession = `ambiguous-${randomUUID()}`,
@@ -730,11 +830,11 @@ runWithEnv(
   { session_id: ambiguousSession, prompt: ambiguousPrompt },
   { ZEROGRAPH_GRAPHIFY_BIN: "graphify-fixture-missing" },
 );
-const ambiguousPath = execFileSync(
-    "git",
-    ["rev-parse", "--git-path", `zerograph/sessions/${ambiguousSession}.json`],
-    { cwd: root, encoding: "utf8" },
-  ).trim(),
+const ambiguousPath = fixtureGit([
+    "rev-parse",
+    "--git-path",
+    `zerograph/sessions/${ambiguousSession}.json`,
+  ]).trim(),
   ambiguousState = JSON.parse(readFileSync(resolve(root, ambiguousPath)));
 assert(
   ambiguousState.graphifyNavigation?.status === "SEMANTIC_FALLBACK" &&
@@ -761,15 +861,11 @@ runWithEnv(
     ZEROGRAPH_TASK_PLAN_FIXTURE: planFixture,
   },
 );
-const navigationPath = execFileSync(
-    "git",
-    [
-      "rev-parse",
-      "--git-path",
-      `zerograph/sessions/${navigationSession}.navigation.json`,
-    ],
-    { cwd: root, encoding: "utf8" },
-  ).trim(),
+const navigationPath = fixtureGit([
+    "rev-parse",
+    "--git-path",
+    `zerograph/sessions/${navigationSession}.navigation.json`,
+  ]).trim(),
   navigation = JSON.parse(readFileSync(resolve(root, navigationPath)));
 assert(
   navigation.outcome === "useful" &&
@@ -824,4 +920,29 @@ assert(
     graphifySource.includes('authoritySource: "SEMANTIC_REGISTRIES_ONLY"'),
   "GRAPHIFY_PRIVACY_OR_AUTHORITY_GUARD_MISSING",
 );
-console.log("ZERO_GRAPH_CONTROL_PLANE_V2_FIXTURES_PASS");
+operationalSessionAfter = sessionSnapshot();
+assert(
+  JSON.stringify(operationalSessionAfter) === JSON.stringify(operationalSessionBefore),
+  "OPERATIONAL_SESSION_STORE_MUTATED_BY_TEST",
+);
+} finally {
+  try {
+    rmSync(hookFixtureRoot, { recursive: true, force: true });
+  } finally {
+    if (existsSync(hookFixtureRoot))
+      throw Error("ISOLATED_HOOK_FIXTURE_NOT_REMOVED");
+  }
+}
+const snapshotHash = (snapshot) =>
+  createHash("sha256").update(JSON.stringify(snapshot)).digest("hex");
+console.log(
+  JSON.stringify({
+    code: "ZERO_GRAPH_CONTROL_PLANE_V2_FIXTURES_PASS",
+    operationalSessionSnapshotBefore: snapshotHash(operationalSessionBefore),
+    operationalSessionSnapshotAfter: snapshotHash(operationalSessionAfter),
+    operationalSessionUnchanged: true,
+    isolatedFixturePath: hookFixtureRoot,
+    isolatedFixtureRemoved: !existsSync(hookFixtureRoot),
+    isolatedGreenClosureProof,
+  }),
+);
