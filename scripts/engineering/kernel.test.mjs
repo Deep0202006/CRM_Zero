@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, unlinkSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -11,16 +11,18 @@ import { compileImpact, parseNameStatus } from "./impact.mjs";
 import { compileProofPlan } from "./proof-plan.mjs";
 import * as certifierModule from "./proof-certify-ci.mjs";
 import { validateEvidenceFile } from "./proof-certify-ci.mjs";
+import { parseVerifiedAttestation } from "./proof-attestation.mjs";
+import { assertDisposablePostgresEnvironment, compileRegisteredCommandPlan, disposablePostgresEnvironment, proofDefinitionHash, proofRunnerIdentity } from "./proof-command-plan.mjs";
 import { evidencePayloadHash } from "./proof-evidence.mjs";
 import { canonicalEvidencePath, runRegisteredProof } from "./proof-runner.mjs";
 import { executeRegressionCases, validateCaseResult } from "./regression-executors.mjs";
 import { revalidateCandidate } from "./context.mjs";
-import { remoteGate } from "./hooks/stop.mjs";
+import { evaluateStopState, remoteGate, requiredRemoteChecks } from "./hooks/stop.mjs";
 import { beginExternalTask, compareAndSwap, loadState, requireContinuation, sessionPath, sessionsDirectory } from "./hooks/state-store.mjs";
-import { dirtyFingerprint, git, repositoryIdentity, root, safeEnvironment, sha256 } from "./kernel-lib.mjs";
+import { dirtyFingerprint, environmentPolicyHash, git, repositoryIdentity, root, safeEnvironment, sha256 } from "./kernel-lib.mjs";
 import { containsAssertionWeakening } from "../quality/assertion-policy.mjs";
 
-const matrix = { state: [], risk: [], proof: [], commandPolicy: [], regression: [], stopRemote: [] }, tempRoots = [], createdEvidence = [];
+const matrix = { state: [], risk: [], proof: [], attestation: [], commandPolicy: [], regression: [], stopRemote: [], postgresEnvironment: [], tokenIsolation: [] }, tempRoots = [], createdEvidence = [];
 const temp = (prefix) => { const path = mkdtempSync(resolve(tmpdir(), prefix)); tempRoots.push(path); return path; };
 const command = (cwd, file, args, env, input) => spawnSync(file, args, { cwd, encoding: "utf8", env: { ...process.env, ...env }, input });
 const gitAt = (cwd, ...args) => command(cwd, "git", args);
@@ -47,6 +49,23 @@ const expectClass = (commandText, expected, name) => {
   const actual = classifyCommand(commandText);
   assert.equal(actual.classification, expected, `${name}:${actual.reason}`);
   matrix.commandPolicy.push({ name, classification: actual.classification });
+};
+const attestationOutput = (environment, digest, mutate = () => {}) => {
+  const workflow = `https://github.com/Deep0202006/CRM_Zero/.github/workflows/product-verification.yml@${environment.GITHUB_REF}`;
+  const row = { verificationResult: {
+    signature: { certificate: {
+      issuer: "https://token.actions.githubusercontent.com", subjectAlternativeName: workflow, githubWorkflowTrigger: environment.GITHUB_EVENT_NAME,
+      githubWorkflowSHA: environment.GITHUB_SHA, githubWorkflowRepository: environment.GITHUB_REPOSITORY, githubWorkflowRef: environment.GITHUB_REF,
+      buildSignerURI: workflow, buildSignerDigest: environment.GITHUB_SHA, buildConfigURI: workflow, buildConfigDigest: environment.GITHUB_SHA,
+      runnerEnvironment: "github-hosted", sourceRepositoryURI: "https://github.com/Deep0202006/CRM_Zero", sourceRepositoryOwnerURI: "https://github.com/Deep0202006",
+      sourceRepositoryDigest: environment.GITHUB_SHA, sourceRepositoryRef: environment.GITHUB_REF,
+      runInvocationURI: `https://github.com/Deep0202006/CRM_Zero/actions/runs/${environment.GITHUB_RUN_ID}/attempts/${environment.GITHUB_RUN_ATTEMPT}`,
+    } },
+    verifiedTimestamps: [{ type: "Tlog", uri: "https://rekor.sigstore.dev", timestamp: "2026-08-28T00:00:00Z" }],
+    statement: { subject: [{ name: "proof.json", digest: { sha256: digest } }] },
+  } };
+  mutate(row);
+  return JSON.stringify([row]);
 };
 
 const operationalDirectory = sessionsDirectory(), operationalBefore = snapshotDirectory(operationalDirectory);
@@ -91,14 +110,17 @@ try {
     matrix.state.push("corrupt-preserved-fail-closed", "hook-schema-valid", "failure-output-hashed-only");
 
     const runPreTool = (cmd) => command(root, process.execPath, ["scripts/engineering/hooks/pre-tool.mjs"], isolatedEnvironment, JSON.stringify({ session_id: `kernel-test-${randomUUID()}`, tool_name: "exec_command", tool_input: { cmd } }));
-    for (const cmd of ["node -e require('fs').writeFileSync('x','y')", "python -c open('x','w')", "git apply patch.diff", "git checkout -- file", "git restore file", "git push origin HEAD:main", "git push origin feature/x --force", "supabase --project-ref X db push", "npx supabase db push", "npm exec -- vercel deploy", "printf fixture > file", "powershell -EncodedCommand ZgBpAHgAdAB1AHIAZQA="]) {
+    for (const cmd of ["node -e require('fs').writeFileSync('x','y')", "python -c open('x','w')", "git apply patch.diff", "git checkout -- file", "git restore file", "git push origin HEAD:main", "git push origin feature/x --force", "git branch -D feature/x", "git remote set-url origin https://example.invalid/repo.git", "git worktree remove .worktrees/x", "git worktree prune", "supabase --project-ref X db push", "npx supabase db push", "npm exec -- vercel deploy", "printf fixture > file", "powershell -EncodedCommand ZgBpAHgAdAB1AHIAZQA="]) {
       const hook = runPreTool(cmd); assert.equal(hook.status, 0); assert.match(hook.stdout, /SAFETY_CONFLICT:COMMAND_POLICY/);
     }
+    assert.match(runPreTool("git worktree add .worktrees/x chore/x").stdout, /SAFETY_CONFLICT:WORKTREE_SCOPE/);
     assert.equal(runPreTool("git status --short").stdout, ""); assert.equal(runPreTool("git push origin chore/engineering-kernel-v4").stdout, "");
-    matrix.risk.push("pretool-command-matrix-denied", "pretool-read-only-allowed", "pretool-feature-push-scoped");
+    const scopedWorktree = command(root, process.execPath, ["scripts/engineering/hooks/pre-tool.mjs"], isolatedEnvironment, JSON.stringify({ session_id: session, tool_name: "exec_command", tool_input: { cmd: "git worktree add .worktrees/kernel-test-safe chore/kernel-test-safe" } }));
+    assert.equal(scopedWorktree.stdout, "");
+    matrix.risk.push("pretool-command-matrix-denied", "pretool-read-only-allowed", "pretool-feature-push-scoped", "pretool-worktree-add-requires-resolved-scope", "pretool-worktree-add-exact-resolved-scope");
 
     const identity = { schemaVersion: 1, baseSha, headSha: currentHead, treeSha: currentTree, dirtyFingerprint: dirtyFingerprint(), impactHash: "b".repeat(64), planHash: "a".repeat(64), requiredProofs: ["kernel-fixture-pass"], requiredByKind: { unit: ["kernel-fixture-pass"] }, notRequiredKinds: [] };
-    const ciEnvironment = { CI: "true", GITHUB_REPOSITORY: "Deep0202006/CRM_Zero", GITHUB_WORKFLOW: "CRM Product Verification", GITHUB_RUN_ID: "123456", GITHUB_RUN_ATTEMPT: "1", GITHUB_JOB: "preflight", GITHUB_EVENT_NAME: "pull_request", KERNEL_BASE_SHA: baseSha, KERNEL_HEAD_SHA: currentHead };
+    const ciEnvironment = { CI: "true", GITHUB_ACTIONS: "true", GITHUB_REPOSITORY: "Deep0202006/CRM_Zero", GITHUB_WORKFLOW: "CRM Product Verification", GITHUB_RUN_ID: "123456", GITHUB_RUN_ATTEMPT: "1", GITHUB_SHA: currentHead, GITHUB_REF: "refs/pull/89/merge", GITHUB_JOB: "preflight", GITHUB_EVENT_NAME: "pull_request", KERNEL_BASE_SHA: baseSha, KERNEL_HEAD_SHA: currentHead };
     const passPath = canonicalEvidencePath("kernel-fixture-pass"); assert(!existsSync(passPath), "fixture evidence already exists");
     const pass = await withEnvironment(ciEnvironment, () => runRegisteredProof({ proofId: "kernel-fixture-pass", plan: identity })); createdEvidence.push(passPath);
     assert.equal(pass.status, "PASS");
@@ -128,8 +150,12 @@ try {
     rejectMutation("reversed-time", (item) => { item.startedAt = "2026-01-02T00:00:00.000Z"; item.endedAt = "2026-01-01T00:00:00.000Z"; }, /TIMESTAMP/);
     rejectMutation("future-time", (item) => { item.startedAt = "2999-01-01T00:00:00.000Z"; item.endedAt = "2999-01-01T00:00:01.000Z"; }, /TIMESTAMP/);
     rejectMutation("nonzero-command", (item) => item.attempts[0].commands[0].exitCode = 1);
+    rejectMutation("zero-output-arbitrary-digest", (item) => { item.attempts[0].commands[0].stdoutBytes = 0; item.attempts[0].commands[0].stdoutHash = "1".repeat(64); }, /OUTPUT/);
+    rejectMutation("nonzero-output-empty-digest", (item) => { item.attempts[0].commands[0].stdoutBytes = 1; item.attempts[0].commands[0].stdoutHash = sha256(""); }, /OUTPUT/);
+    rejectMutation("zero-output-zero-digest", (item) => { item.attempts[0].commands[0].stderrBytes = 0; item.attempts[0].commands[0].stderrHash = "0".repeat(64); }, /OUTPUT/);
     rejectMutation("unknown-field", (item) => item.callerAuthored = true, /unrecognized|Unrecognized|unknown/i);
     assert.equal(certifierModule.validateEvidenceItem, undefined, "in-memory evidence validator exposed");
+    assert.equal(certifierModule.certifyRepositoryProof, undefined, "repository certificate API exposed");
     const selectedOutput = command(root, process.execPath, ["scripts/engineering/proof-runner.mjs", "--proof", "kernel-fixture-pass", "--output", resolve(forgedRoot, "caller.json")], isolatedEnvironment);
     assert.equal(selectedOutput.status, 2); assert.match(selectedOutput.stderr, /UNKNOWN_ARGUMENT:--output/); matrix.proof.push("caller-output-rejected", "direct-object-api-absent", "real-runner-evidence-accepted");
 
@@ -138,7 +164,44 @@ try {
     const flakyPlan = { ...identity, requiredProofs: ["kernel-fixture-flaky"], requiredByKind: { unit: ["kernel-fixture-flaky"] } };
     const flaky = await withEnvironment(ciEnvironment, () => runRegisteredProof({ proofId: "kernel-fixture-flaky", plan: flakyPlan })); createdEvidence.push(flakyPath);
     assert.equal(flaky.status, "FLAKY_DETECTED"); assert.throws(() => validateEvidenceFile({ path: flakyPath, proofId: "kernel-fixture-flaky", plan: flakyPlan, environment: ciEnvironment }), /EVIDENCE_STALE|FLAKY/); matrix.proof.push("retry-pass-rejected");
+
+    const subjectDigest = "d".repeat(64), verified = attestationOutput(ciEnvironment, subjectDigest);
+    assert.equal(parseVerifiedAttestation({ output: verified, evidenceSha256: subjectDigest, environment: ciEnvironment }).repository, "Deep0202006/CRM_Zero");
+    const rejectAttestation = (name, mutate, environment = ciEnvironment) => {
+      assert.throws(() => parseVerifiedAttestation({ output: attestationOutput(ciEnvironment, subjectDigest, mutate), evidenceSha256: subjectDigest, environment }), /ATTESTATION/, name);
+      matrix.attestation.push(name);
+    };
+    rejectAttestation("wrong-subject-digest", (row) => row.verificationResult.statement.subject[0].digest.sha256 = "0".repeat(64));
+    rejectAttestation("wrong-signer-workflow", (row) => row.verificationResult.signature.certificate.buildSignerURI = "https://github.com/Other/Repo/.github/workflows/unsafe.yml@refs/heads/main");
+    rejectAttestation("wrong-certificate-repository", (row) => row.verificationResult.signature.certificate.sourceRepositoryURI = "https://github.com/Other/Repo");
+    rejectAttestation("wrong-run-attempt", (row) => row.verificationResult.signature.certificate.runInvocationURI = "https://github.com/Deep0202006/CRM_Zero/actions/runs/999/attempts/2");
+    rejectAttestation("self-hosted-signer", (row) => row.verificationResult.signature.certificate.runnerEnvironment = "self-hosted");
+    rejectAttestation("missing-verified-time", (row) => row.verificationResult.verifiedTimestamps = []);
+    rejectAttestation("wrong-current-repository", () => {}, { ...ciEnvironment, GITHUB_REPOSITORY: "Other/Repo" });
+    assert.throws(() => parseVerifiedAttestation({ output: "not-json", evidenceSha256: subjectDigest, environment: ciEnvironment }), /ATTESTATION/);
+    matrix.attestation.push("valid-certificate-accepted", "fake-output-rejected");
   });
+  for (const path of [...createdEvidence]) { if (existsSync(path)) unlinkSync(path); createdEvidence.splice(createdEvidence.indexOf(path), 1); }
+  const attackPlan = compileProofPlan({ base: baseSha, head: currentHead }), proofRegistry = JSON.parse(readFileSync(resolve(root, "docs/engineering/PROOFS.json"), "utf8")).proofs;
+  const attackEnvironment = { CI: "true", GITHUB_ACTIONS: "true", GITHUB_REPOSITORY: "Deep0202006/CRM_Zero", GITHUB_WORKFLOW: "CRM Product Verification", GITHUB_RUN_ID: "123456", GITHUB_RUN_ATTEMPT: "1", GITHUB_SHA: currentHead, GITHUB_REF: "refs/pull/89/merge", GITHUB_EVENT_NAME: "pull_request", KERNEL_BASE_SHA: baseSha, KERNEL_HEAD_SHA: currentHead };
+  for (const proofId of attackPlan.requiredProofs) {
+    const proof = proofRegistry.find((item) => item.id === proofId), commandPlan = compileRegisteredCommandPlan({ proof, proofId, baseSha: attackPlan.baseSha, headSha: attackPlan.headSha }), now = new Date().toISOString();
+    const commands = commandPlan.commands.map((commandItem) => ({ ...commandItem, exitCode: 0, stdoutHash: sha256(""), stdoutBytes: 0, stderrHash: sha256(""), stderrBytes: 0, startedAt: now, endedAt: now }));
+    const evidence = { schemaVersion: 2, proofId, kind: proof.kind, status: "PASS", baseSha: attackPlan.baseSha, headSha: attackPlan.headSha, treeSha: attackPlan.treeSha, dirtyFingerprint: attackPlan.dirtyFingerprint, impactHash: attackPlan.impactHash, planHash: attackPlan.planHash, proofDefinitionHash: proofDefinitionHash(proof), runnerIdentity: proofRunnerIdentity(), commandPlanHash: commandPlan.commandPlanHash, environmentPolicyHash: environmentPolicyHash(), startedAt: now, endedAt: now, attempts: [{ attemptIndex: 1, commandPlanHash: commandPlan.commandPlanHash, startedAt: now, endedAt: now, commands }], provenanceMode: "GITHUB_ACTIONS", githubRepository: attackEnvironment.GITHUB_REPOSITORY, githubWorkflow: attackEnvironment.GITHUB_WORKFLOW, githubRunId: attackEnvironment.GITHUB_RUN_ID, githubRunAttempt: attackEnvironment.GITHUB_RUN_ATTEMPT, githubJob: commandPlan.expectedCiJob, githubEvent: attackEnvironment.GITHUB_EVENT_NAME, expectedSourceJob: commandPlan.expectedCiJob };
+    evidence.evidencePayloadHash = evidencePayloadHash(evidence);
+    const path = canonicalEvidencePath(proofId, commandPlan.expectedCiJob); mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, JSON.stringify(evidence)); createdEvidence.push(path);
+    validateEvidenceFile({ path, proofId, plan: attackPlan, environment: { ...attackEnvironment, GITHUB_JOB: commandPlan.expectedCiJob } });
+  }
+  const canonicalSet = certifierModule.requireCanonicalEvidenceFiles(attackPlan), firstProofId = attackPlan.requiredProofs[0], firstPath = canonicalSet.get(firstProofId), firstContents = readFileSync(firstPath);
+  const wrongDirectory = resolve(dirname(dirname(firstPath)), "unit-build", `${firstProofId}.json`); mkdirSync(dirname(wrongDirectory), { recursive: true }); renameSync(firstPath, wrongDirectory); assert.throws(() => certifierModule.requireCanonicalEvidenceFiles(attackPlan), /EVIDENCE_FILE_SET_MISMATCH/); renameSync(wrongDirectory, firstPath);
+  copyFileSync(firstPath, wrongDirectory); assert.throws(() => certifierModule.requireCanonicalEvidenceFiles(attackPlan), /EVIDENCE_FILE_SET_MISMATCH/); unlinkSync(wrongDirectory);
+  unlinkSync(firstPath); assert.throws(() => certifierModule.requireCanonicalEvidenceFiles(attackPlan), /EVIDENCE_FILE_SET_MISMATCH/); writeFileSync(firstPath, firstContents);
+  const extraEvidence = resolve(root, "artifacts/engineering-evidence/extra.json"); writeFileSync(extraEvidence, "{}\n"); assert.throws(() => certifierModule.requireCanonicalEvidenceFiles(attackPlan), /EVIDENCE_FILE_SET_MISMATCH/); unlinkSync(extraEvidence);
+  matrix.proof.push("wrong-job-directory-rejected", "duplicate-proof-id-rejected", "missing-proof-file-rejected", "extra-proof-file-rejected", "merged-artifact-layout-rejected");
+  const fakeBundle = resolve(root, "artifacts/engineering-attestation/fake.json"); mkdirSync(dirname(fakeBundle), { recursive: true }); writeFileSync(fakeBundle, "{}\n"); createdEvidence.push(fakeBundle);
+  const syntheticAttack = command(root, process.execPath, ["scripts/engineering/proof-certify-ci.mjs", "--base", baseSha, "--head", currentHead, "--jobs", "success:success:success:success:success"], attackEnvironment);
+  assert.equal(syntheticAttack.status, 2); assert.match(syntheticAttack.stderr, /ATTESTATION_VERIFICATION_FAILED|ATTESTATION_REQUIRED/); assert(!syntheticAttack.stdout.includes("REPOSITORY_PROOF_READY"));
+  matrix.attestation.push("synthetic-four-file-structurally-valid", "fake-bundle-rejected", "repository-certificate-not-emitted");
   rmSync(isolatedGit, { recursive: true, force: true }); tempRoots.splice(tempRoots.indexOf(isolatedGit), 1); isolatedRemoved = !existsSync(isolatedGit);
   assert(isolatedRemoved, "ISOLATED_STATE_FIXTURE_NOT_REMOVED");
   assert.deepEqual(snapshotDirectory(operationalDirectory), operationalBefore, "OPERATIONAL_SESSION_STORE_MUTATED_BY_TEST");
@@ -146,6 +209,10 @@ try {
 
   for (const [text, expected, name] of [
     ["git status --short", CommandClass.READ_ONLY_ALLOWED, "git-read"], ["npm run kernel:test", CommandClass.REGISTERED_VERIFICATION_ALLOWED, "registered-test"],
+    ["git branch", CommandClass.READ_ONLY_ALLOWED, "branch-list-default"], ["git branch --list", CommandClass.READ_ONLY_ALLOWED, "branch-list"], ["git branch -a", CommandClass.READ_ONLY_ALLOWED, "branch-all"], ["git branch -r", CommandClass.READ_ONLY_ALLOWED, "branch-remotes"], ["git branch -vv", CommandClass.READ_ONLY_ALLOWED, "branch-verbose"], ["git branch --show-current", CommandClass.READ_ONLY_ALLOWED, "branch-current"],
+    ["git branch -d feature/x", CommandClass.PROHIBITED, "branch-delete"], ["git branch -D feature/x", CommandClass.PROHIBITED, "branch-force-delete"], ["git branch --delete feature/x", CommandClass.PROHIBITED, "branch-delete-long"], ["git branch -m old new", CommandClass.PROHIBITED, "branch-move"], ["git branch -M old new", CommandClass.PROHIBITED, "branch-force-move"], ["git branch feature/x", CommandClass.PROHIBITED, "branch-create"],
+    ["git remote", CommandClass.READ_ONLY_ALLOWED, "remote-list"], ["git remote -v", CommandClass.READ_ONLY_ALLOWED, "remote-verbose"], ["git remote get-url origin", CommandClass.READ_ONLY_ALLOWED, "remote-url"], ["git remote show origin", CommandClass.READ_ONLY_ALLOWED, "remote-show"], ["git remote add upstream https://example.invalid/repo.git", CommandClass.PROHIBITED, "remote-add"], ["git remote set-url origin https://example.invalid/repo.git", CommandClass.PROHIBITED, "remote-set-url"],
+    ["git worktree list", CommandClass.READ_ONLY_ALLOWED, "worktree-list"], ["git worktree list --porcelain", CommandClass.READ_ONLY_ALLOWED, "worktree-porcelain"], ["git worktree remove .worktrees/x", CommandClass.PROHIBITED, "worktree-remove"], ["git worktree prune", CommandClass.PROHIBITED, "worktree-prune"], ["git worktree add .worktrees/x chore/x", CommandClass.SCOPED_MUTATION_ALLOWED, "worktree-add-scoped"], ["git worktree add ../x main", CommandClass.PROHIBITED, "worktree-add-main"], ["git fetch origin main", CommandClass.REPOSITORY_METADATA_ALLOWED, "fetch-metadata"],
     ["git push origin chore/engineering-kernel-v4", CommandClass.SCOPED_MUTATION_ALLOWED, "feature-push"], ["git push origin main", CommandClass.PROHIBITED, "main-push"],
     ["git push origin HEAD:main", CommandClass.PROHIBITED, "refspec-main"], ["git push origin HEAD:refs/heads/main", CommandClass.PROHIBITED, "full-refspec-main"],
     ["git push origin feature/x --force", CommandClass.PROHIBITED, "force-last"], ["git push --force origin feature/x", CommandClass.PROHIBITED, "force-first"],
@@ -162,16 +229,23 @@ try {
   const repo = temp("kernel-git-");
   assert.equal(gitAt(repo, "init", "-q", "-b", "main").status, 0); gitAt(repo, "config", "user.email", "fixture@example.invalid"); gitAt(repo, "config", "user.name", "Kernel Fixture");
   writeFileSync(resolve(repo, "base.txt"), "base\n"); gitAt(repo, "add", "base.txt"); gitAt(repo, "commit", "-q", "-m", "base");
-  const base = gitAt(repo, "rev-parse", "HEAD").stdout.trim(); gitAt(repo, "checkout", "-q", "-b", "feature"); writeFileSync(resolve(repo, "head.txt"), "head\n"); gitAt(repo, "add", "head.txt"); gitAt(repo, "commit", "-q", "-m", "head");
+  const base = gitAt(repo, "rev-parse", "HEAD").stdout.trim(), baseTree = gitAt(repo, "rev-parse", "HEAD^{tree}").stdout.trim(); gitAt(repo, "update-ref", "refs/remotes/origin/main", base); gitAt(repo, "checkout", "-q", "-b", "feature"); writeFileSync(resolve(repo, "head.txt"), "head\n"); gitAt(repo, "add", "head.txt"); gitAt(repo, "commit", "-q", "-m", "head");
   const cleanFingerprint = dirtyFingerprint(repo), fingerprintPath = resolve(repo, "fingerprint.txt"); writeFileSync(fingerprintPath, "one\n"); const firstFingerprint = dirtyFingerprint(repo); writeFileSync(fingerprintPath, "two\n");
   assert.notEqual(cleanFingerprint, firstFingerprint); assert.notEqual(firstFingerprint, dirtyFingerprint(repo)); unlinkSync(fingerprintPath); matrix.state.push("content-sensitive-worktree");
   const head = gitAt(repo, "rev-parse", "HEAD").stdout.trim(), staleBase = gitAt(repo, "commit-tree", "HEAD^{tree}", "-m", "unrelated").stdout.trim();
-  const fixture = resolve(repo, "gh-fixture.mjs");
-  writeFileSync(fixture, `const a=process.argv.slice(2),s=process.env.SCENARIO;if(a[0]==='pr'&&a[1]==='view'){if(s==='no-pr'){console.error('no pull requests found');process.exit(1)}const base=s==='stale-base'?process.env.STALE_BASE:process.env.BASE_SHA;console.log(JSON.stringify({number:123,headRefOid:s==='wrong-head'?'0'.repeat(40):process.env.HEAD_SHA,baseRefOid:base,baseRefName:'main',url:'https://example.invalid/pr/123'}));process.exit(0)}if(s==='auth'){console.error('authentication network unavailable');process.exit(1)}if(s==='malformed'){console.log('{bad');process.exit(1)}const rows=s==='pending'?[{name:'preflight',state:'PENDING',bucket:'pending',link:''}]:s==='failed'?[{name:'preflight',state:'FAILURE',bucket:'fail',link:''}]:[{name:'preflight',state:'SUCCESS',bucket:'pass',link:''}];console.log(JSON.stringify(rows));process.exit(s==='pending'||s==='failed'?1:0);`);
+  const fixture = resolve(temp("kernel-gh-fixture-"), "gh-fixture.mjs");
+  const greenChecks = requiredRemoteChecks.map((name) => ({ name, state: "SUCCESS", bucket: "pass", link: "" }));
+  writeFileSync(fixture, `const a=process.argv.slice(2),s=process.env.SCENARIO;if(a[0]==='pr'&&a[1]==='view'){if(s==='no-pr'){console.error('no pull requests found');process.exit(1)}const base=s==='stale-base'?process.env.STALE_BASE:process.env.BASE_SHA;console.log(JSON.stringify({number:123,headRefOid:s==='wrong-head'?'0'.repeat(40):process.env.HEAD_SHA,baseRefOid:base,baseRefName:'main',url:'https://example.invalid/pr/123'}));process.exit(0)}if(s==='auth'){console.error('authentication network unavailable');process.exit(1)}if(s==='malformed'){console.log('{bad');process.exit(1)}const rows=${JSON.stringify(greenChecks)};if(s==='pending'){rows[0]={...rows[0],state:'PENDING',bucket:'pending'}}if(s==='failed'){rows[0]={...rows[0],state:'FAILURE',bucket:'fail'}}if(s==='missing-check'){rows.pop()}console.log(JSON.stringify(rows));process.exit(s==='pending'||s==='failed'?1:0);`);
   const gate = (scenario) => remoteGate({ cwd: repo, gh: (args) => command(repo, process.execPath, [fixture, ...args], { SCENARIO: scenario, HEAD_SHA: head, BASE_SHA: base, STALE_BASE: staleBase }) });
-  assert.equal(gate("pending").status, "REMOTE_PENDING"); assert.equal(gate("failed").status, "REMOTE_FAILED"); assert.equal(gate("auth").status, "EXTERNAL_DEPENDENCY"); assert.equal(gate("success").status, "READY_TO_END"); assert.equal(gate("malformed").status, "REMOTE_FAILED"); assert.equal(gate("wrong-head").reason, "HEAD_MISMATCH"); assert.equal(gate("stale-base").reason, "BASE_NOT_ANCESTOR"); assert.equal(gate("no-pr").status, "PR_REQUIRED");
+  assert.equal(gate("pending").status, "REMOTE_PENDING"); assert.equal(gate("failed").status, "REMOTE_FAILED"); assert.equal(gate("auth").status, "EXTERNAL_DEPENDENCY"); assert.equal(gate("success").status, "READY_TO_END"); assert.equal(gate("malformed").status, "REMOTE_FAILED"); assert.equal(gate("missing-check").reason, "REQUIRED_CHECK_SET_MISMATCH"); assert.equal(gate("wrong-head").reason, "HEAD_MISMATCH"); assert.equal(gate("stale-base").reason, "BASE_NOT_ANCESTOR"); assert.equal(gate("no-pr").status, "PR_REQUIRED");
   process.env.stop_hook_active = "true"; assert.equal(gate("failed").status, "REMOTE_FAILED"); delete process.env.stop_hook_active;
-  matrix.stopRemote.push("pending-nonzero", "failed-nonzero", "auth-external", "success", "malformed-closed", "head-mismatch", "stale-base", "no-pr", "active-flag-no-bypass");
+  const stopState = { taskId: "fixture", resolution: { status: "RESOLVED" }, baseline: { headSha: base, treeSha: baseTree, baseSha: base, dirtyFingerprint: cleanFingerprint }, evidence: [{ status: "PASS", name: "TASK_CERTIFIED", ownerApproval: true }] };
+  let remoteCalls = 0; writeFileSync(fingerprintPath, "forged-local-change\n");
+  const dirtyStop = evaluateStopState({ state: stopState, cwd: repo, remote: () => { remoteCalls += 1; return { status: "READY_TO_END" }; } });
+  assert.equal(dirtyStop.status, "WORKTREE_DIRTY_COMMIT_REQUIRED"); assert.equal(remoteCalls, 0); assert(!JSON.stringify(dirtyStop).includes("TASK_CERTIFIED")); unlinkSync(fingerprintPath);
+  assert.equal(evaluateStopState({ state: stopState, cwd: repo, remote: () => gate("success") }).status, "READY_TO_END");
+  assert.equal(evaluateStopState({ state: { ...stopState, baseline: { headSha: head, treeSha: gitAt(repo, "rev-parse", "HEAD^{tree}").stdout.trim(), baseSha: base, dirtyFingerprint: cleanFingerprint } }, cwd: repo, remote: () => { throw new Error("REMOTE_MUST_NOT_RUN"); } }).status, "IMPLEMENTATION_IN_PROGRESS");
+  matrix.stopRemote.push("pending-nonzero", "failed-nonzero", "auth-external", "success", "malformed-closed", "required-set-exact", "head-mismatch", "stale-base", "no-pr", "active-flag-no-bypass", "dirty-forged-local-blocked-before-remote", "no-task-certified-or-owner-approval");
 
   writeFileSync(resolve(repo, "old.mjs"), "export const oldValue=1;\n"); gitAt(repo, "add", "old.mjs"); gitAt(repo, "commit", "-q", "-m", "old"); gitAt(repo, "mv", "old.mjs", "new.mjs");
   const renameEntries = parseNameStatus(gitAt(repo, "diff", "--name-status", "-z", "--cached").stdout); assert.equal(renameEntries[0].status, "R"); assert.equal(renameEntries[0].oldPath, "old.mjs"); assert.equal(renameEntries[0].path, "new.mjs");
@@ -191,10 +265,23 @@ try {
   const impact = { ...compileImpact({ entries: [{ status: "M", path: "scripts/engineering/kernel.test.mjs" }], patch: "" }), domains: ["engineering-control"], effects: ["ENGINEERING_CONTROL"], risk: "R3", unresolved: [], writable: true };
   const plan = compileProofPlan({ impact }); for (const kind of ["unit", "build", "postgres", "e2e"]) assert(plan.requiredByKind[kind].length, `domain proof missing ${kind}`);
   assert(compileProofPlan({ impact: { ...impact, domains: [], risk: "R3" } }).requiredProofs.length > 0);
-  assert.throws(() => certifierModule.requireCanonicalEvidenceFiles({ requiredProofs: ["missing-required-proof"] }), /EVIDENCE_FILE_SET_MISMATCH|EVIDENCE_DIRECTORY_MISSING/);
+  assert.throws(() => certifierModule.requireCanonicalEvidenceFiles({ requiredProofs: ["missing-required-proof"] }), /EVIDENCE_FILE_SET_MISMATCH|EVIDENCE_DIRECTORY_MISSING|PROOF_UNMAPPED/);
   matrix.proof.push("missing-required-proof-rejected");
   assert.equal(containsAssertionWeakening(`npx jest --update${"Snapshot"}`), true); assert.equal(containsAssertionWeakening("npx jest --runInBand"), false);
-  const isolated = safeEnvironment({ NEXT_PUBLIC_SUPABASE_URL: "https://production.example.invalid", NEXT_PUBLIC_SUPABASE_ANON_KEY: "synthetic-invalid", [["SUPABASE", "SERVICE_ROLE_KEY"].join("_")]: "synthetic-invalid", KEEP: "yes" }); assert.deepEqual(isolated, { KEEP: "yes" });
+  const hostileEnvironment = { PGHOST: "production.example.invalid", PGPORT: "6543", PGDATABASE: "customer_prod", PGUSER: "prod_admin", PGPASSWORD: "secret", PGSERVICE: "production", PGPASSFILE: ["", "tmp", "prod.pgpass"].join("/"), GITHUB_TOKEN: "github-secret", GH_TOKEN: "gh-secret", ACTIONS_ID_TOKEN_REQUEST_TOKEN: "oidc-secret", ACTIONS_ID_TOKEN_REQUEST_URL: "https://oidc.invalid", ACTIONS_RUNTIME_TOKEN: "runtime-secret", KEEP: "yes" };
+  const isolated = safeEnvironment({ ...hostileEnvironment, NEXT_PUBLIC_SUPABASE_URL: "https://production.example.invalid", NEXT_PUBLIC_SUPABASE_ANON_KEY: "synthetic-invalid", [["SUPABASE", "SERVICE_ROLE_KEY"].join("_")]: "synthetic-invalid" }); assert.deepEqual(isolated, { KEEP: "yes" });
+  const postgresProof = JSON.parse(readFileSync(resolve(root, "docs/engineering/PROOFS.json"), "utf8")).proofs.find((proof) => proof.id === "control-postgres-matrix");
+  const postgresPlan = compileRegisteredCommandPlan({ proof: postgresProof, baseSha, headSha: currentHead }), registeredPostgresCommand = postgresPlan.commands.find((item) => item.database);
+  const postgresEnvironment = disposablePostgresEnvironment(registeredPostgresCommand, hostileEnvironment);
+  const captured = command(root, process.execPath, ["-p", "JSON.stringify(Object.fromEntries(Object.entries(process.env).filter(([key])=>/^PG|^CRM_(?:MASTER_DB|POSTGRES_SERVICE)_DISPOSABLE$/.test(key))))"], postgresEnvironment);
+  assert.equal(captured.status, 0); const childEnvironment = JSON.parse(captured.stdout);
+  assert.deepEqual(childEnvironment, { CRM_MASTER_DB_DISPOSABLE: "1", CRM_POSTGRES_SERVICE_DISPOSABLE: "1", PGDATABASE: registeredPostgresCommand.database, PGHOST: "127.0.0.1", PGPASSWORD: "postgres", PGPORT: "5432", PGSSLMODE: "disable", PGUSER: "postgres" });
+  assert(!Object.values(childEnvironment).some((value) => Object.values(hostileEnvironment).includes(value)));
+  let processExecuted = false;
+  assert.throws(() => { assertDisposablePostgresEnvironment(registeredPostgresCommand, { ...postgresEnvironment, PGHOST: "production.example.invalid" }); processExecuted = true; }, /POSTGRES_DISPOSABLE/);
+  assert.equal(processExecuted, false);
+  matrix.postgresEnvironment.push("hostile-libpq-stripped", "registered-loopback-child", "external-target-pre-execution-rejected");
+  matrix.tokenIsolation.push("non-postgres-no-pg", "proof-command-no-github-token", "proof-command-no-oidc-token");
   assert.equal(revalidateCandidate({ path: "scripts/engineering/fixtures/missing-candidate.mjs", contentHash: "0".repeat(64) }), false);
 
   const index = buildSourceIndex({ writeCache: false }), criticalClaim = [{ id: "FIXTURE_CRITICAL", severity: "CRITICAL" }];

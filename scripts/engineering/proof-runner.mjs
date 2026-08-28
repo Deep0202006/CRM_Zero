@@ -1,23 +1,29 @@
 import { closeSync, existsSync, fsyncSync, mkdirSync, openSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
-import { compileRegisteredCommandPlan, proofDefinitionHash, proofRunnerIdentity } from "./proof-command-plan.mjs";
+import { compileRegisteredCommandPlan, disposablePostgresEnvironment, expectedCiJob, proofDefinitionHash, proofRunnerIdentity } from "./proof-command-plan.mjs";
 import { evidencePayloadHash, provenanceFromEnvironment } from "./proof-evidence.mjs";
 import { compileProofPlan } from "./proof-plan.mjs";
 import { dirtyFingerprint, environmentPolicyHash, parseArgs, readJson, root, run, safeEnvironment, sha256 } from "./kernel-lib.mjs";
 
-export const canonicalEvidencePath = (proofId) => resolve(root, "artifacts/engineering-evidence", `${proofId}.json`);
-const executeAttempt = (commandPlan) => {
+export const canonicalEvidencePath = (proofId, sourceJob) => {
+  sourceJob ??= expectedCiJob(readJson("docs/engineering/PROOFS.json").proofs.find((proof) => proof.id === proofId));
+  if (!sourceJob) throw new Error(`PROOF_SOURCE_JOB_UNMAPPED:${proofId}`);
+  return resolve(root, "artifacts/engineering-evidence", sourceJob, `${proofId}.json`);
+};
+const executeAttempt = (commandPlan, kind) => {
   const startedAt = new Date().toISOString(), commands = [];
   for (const command of commandPlan.commands) {
     const commandStartedAt = new Date().toISOString();
-    const baseEnvironment = safeEnvironment(process.env);
-    const environment = { ...baseEnvironment, ...(command.database ? { PGDATABASE: command.database, CRM_MASTER_DB_DISPOSABLE: "1" } : {}) };
+    const environment = kind === "postgres" ? disposablePostgresEnvironment(command, process.env) : safeEnvironment(process.env);
     const processResult = run(command.executable, command.args, { env: environment });
+    const stdout = processResult.stdout ?? "", stderr = processResult.stderr ?? String(processResult.error ?? "");
     const record = {
       ...command,
       exitCode: processResult.status ?? 1,
-      stdoutHash: sha256(processResult.stdout ?? ""),
-      stderrHash: sha256(processResult.stderr ?? String(processResult.error ?? "")),
+      stdoutHash: sha256(stdout),
+      stdoutBytes: Buffer.byteLength(stdout),
+      stderrHash: sha256(stderr),
+      stderrBytes: Buffer.byteLength(stderr),
       startedAt: commandStartedAt,
       endedAt: new Date().toISOString(),
     };
@@ -39,6 +45,7 @@ const atomicCreateEvidence = (path, evidence) => {
 const requireCiRunnerIdentity = (plan, sourceJob) => {
   if (process.env.CI !== "true") return;
   const required = ["GITHUB_REPOSITORY", "GITHUB_WORKFLOW", "GITHUB_RUN_ID", "GITHUB_RUN_ATTEMPT", "GITHUB_JOB", "GITHUB_EVENT_NAME", "KERNEL_BASE_SHA", "KERNEL_HEAD_SHA"];
+  if (process.env.GITHUB_ACTIONS !== "true") throw new Error("CI_PROVENANCE_INCOMPLETE");
   if (required.some((key) => !process.env[key])) throw new Error("CI_PROVENANCE_INCOMPLETE");
   if (process.env.GITHUB_REPOSITORY !== "Deep0202006/CRM_Zero") throw new Error("CI_REPOSITORY_MISMATCH");
   if (process.env.GITHUB_JOB !== sourceJob) throw new Error(`CI_SOURCE_JOB_MISMATCH:${sourceJob}`);
@@ -52,11 +59,11 @@ export const runRegisteredProof = ({ proofId, base = "origin/main", head = "WORK
   if (!plan.requiredProofs.includes(proofId)) throw new Error(`PROOF_NOT_REQUIRED:${proofId}`);
   const firstPlan = compileRegisteredCommandPlan({ proof, proofId, baseSha: plan.baseSha, headSha: plan.headSha, attemptIndex: 1 });
   requireCiRunnerIdentity(plan, firstPlan.expectedCiJob);
-  const startedAt = new Date().toISOString(), first = executeAttempt(firstPlan);
+  const startedAt = new Date().toISOString(), first = executeAttempt(firstPlan, proof.kind);
   const firstPassed = first.commands.length === firstPlan.commands.length && first.commands.every((command) => command.exitCode === 0);
   const attempts = [first];
   const secondPlan = firstPassed ? null : compileRegisteredCommandPlan({ proof, proofId, baseSha: plan.baseSha, headSha: plan.headSha, attemptIndex: 2 });
-  if (secondPlan) attempts.push(executeAttempt(secondPlan));
+  if (secondPlan) attempts.push(executeAttempt(secondPlan, proof.kind));
   const retryPassed = secondPlan && attempts[1].commands.length === secondPlan.commands.length && attempts[1].commands.every((command) => command.exitCode === 0);
   const evidence = {
     schemaVersion: 2,
@@ -79,7 +86,7 @@ export const runRegisteredProof = ({ proofId, base = "origin/main", head = "WORK
     ...provenanceFromEnvironment(process.env, firstPlan.expectedCiJob),
   };
   evidence.evidencePayloadHash = evidencePayloadHash(evidence);
-  atomicCreateEvidence(canonicalEvidencePath(proofId), evidence);
+  atomicCreateEvidence(canonicalEvidencePath(proofId, firstPlan.expectedCiJob), evidence);
   return evidence;
 };
 

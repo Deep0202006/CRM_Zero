@@ -1,22 +1,31 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
-import { compileRegisteredCommandPlan, proofDefinitionHash, proofRunnerIdentity } from "./proof-command-plan.mjs";
+import { relative, resolve } from "node:path";
+import { parseVerifiedAttestation } from "./proof-attestation.mjs";
+import { compileRegisteredCommandPlan, expectedCiJob, proofDefinitionHash, proofRunnerIdentity } from "./proof-command-plan.mjs";
 import { evidencePayloadHash, readEvidenceFile } from "./proof-evidence.mjs";
 import { compileProofPlan } from "./proof-plan.mjs";
 import { environmentPolicyHash, git, parseArgs, readJson, root, sha256 } from "./kernel-lib.mjs";
 
-const canonicalDirectory = resolve(root, "artifacts/engineering-evidence");
+const evidenceDirectory = resolve(root, "artifacts/engineering-evidence");
+const attestationDirectory = resolve(root, "artifacts/engineering-attestation");
+const repository = "Deep0202006/CRM_Zero";
+const signerWorkflow = `${repository}/.github/workflows/product-verification.yml`;
+const emptySha256 = sha256("");
 const validTimeRange = (startedAt, endedAt, now = Date.now()) => {
   const started = Date.parse(startedAt), ended = Date.parse(endedAt);
   return Number.isFinite(started) && Number.isFinite(ended) && started <= ended && ended <= now + 300_000;
 };
 const requireCiEnvironment = (environment, plan) => {
-  if (environment.CI !== "true") throw new Error("CI_PROVENANCE_REQUIRED");
-  const required = ["GITHUB_REPOSITORY", "GITHUB_WORKFLOW", "GITHUB_RUN_ID", "GITHUB_RUN_ATTEMPT", "GITHUB_EVENT_NAME", "KERNEL_BASE_SHA", "KERNEL_HEAD_SHA"];
+  if (environment.GITHUB_ACTIONS !== "true") throw new Error("ATTESTATION_REQUIRED");
+  const required = ["GITHUB_REPOSITORY", "GITHUB_WORKFLOW", "GITHUB_RUN_ID", "GITHUB_RUN_ATTEMPT", "GITHUB_SHA", "GITHUB_REF", "GITHUB_EVENT_NAME", "KERNEL_BASE_SHA", "KERNEL_HEAD_SHA"];
   if (required.some((key) => !environment[key])) throw new Error("CI_PROVENANCE_INCOMPLETE");
-  if (environment.GITHUB_REPOSITORY !== "Deep0202006/CRM_Zero") throw new Error("CI_REPOSITORY_MISMATCH");
+  if (environment.GITHUB_REPOSITORY !== repository) throw new Error("CI_REPOSITORY_MISMATCH");
   if (environment.KERNEL_BASE_SHA !== plan.baseSha || environment.KERNEL_HEAD_SHA !== plan.headSha) throw new Error("CI_GIT_IDENTITY_MISMATCH");
+};
+const requireOutputRecord = (proofId, index, stream, bytes, digest) => {
+  if (digest === "0".repeat(64)) throw new Error(`COMMAND_OUTPUT_DIGEST_INVALID:${proofId}:${index}:${stream}`);
+  if (bytes === 0 && digest !== emptySha256 || bytes > 0 && digest === emptySha256) throw new Error(`COMMAND_OUTPUT_SIZE_HASH_MISMATCH:${proofId}:${index}:${stream}`);
 };
 
 export const validateEvidenceFile = ({ path, proofId, plan, environment = process.env, now = Date.now() }) => {
@@ -39,26 +48,65 @@ export const validateEvidenceFile = ({ path, proofId, plan, environment = proces
     if (JSON.stringify(actual.args) !== JSON.stringify(expected.args)) throw new Error(`COMMAND_ARGUMENT_MISMATCH:${proofId}:${index}`);
     if (actual.exitCode !== 0) throw new Error(`COMMAND_FAILED:${proofId}:${index}`);
     if (!validTimeRange(actual.startedAt, actual.endedAt, now)) throw new Error(`COMMAND_TIMESTAMP_INVALID:${proofId}:${index}`);
+    requireOutputRecord(proofId, index, "stdout", actual.stdoutBytes, actual.stdoutHash);
+    requireOutputRecord(proofId, index, "stderr", actual.stderrBytes, actual.stderrHash);
   }
-  for (const [key, expected] of [["provenanceMode", "GITHUB_ACTIONS"], ["githubRepository", "Deep0202006/CRM_Zero"], ["githubWorkflow", environment.GITHUB_WORKFLOW], ["githubRunId", environment.GITHUB_RUN_ID], ["githubRunAttempt", environment.GITHUB_RUN_ATTEMPT], ["githubJob", expectedPlan.expectedCiJob], ["githubEvent", environment.GITHUB_EVENT_NAME], ["expectedSourceJob", expectedPlan.expectedCiJob]])
+  for (const [key, expected] of [["provenanceMode", "GITHUB_ACTIONS"], ["githubRepository", repository], ["githubWorkflow", environment.GITHUB_WORKFLOW], ["githubRunId", environment.GITHUB_RUN_ID], ["githubRunAttempt", environment.GITHUB_RUN_ATTEMPT], ["githubJob", expectedPlan.expectedCiJob], ["githubEvent", environment.GITHUB_EVENT_NAME], ["expectedSourceJob", expectedPlan.expectedCiJob]])
     if (item[key] !== expected) throw new Error(`EVIDENCE_PROVENANCE_MISMATCH:${proofId}:${key}`);
   return { proofId, evidenceHash: sha256(readFileSync(path)) };
 };
 
-export const requireCanonicalEvidenceFiles = (plan) => {
-  if (!existsSync(canonicalDirectory)) throw new Error("EVIDENCE_DIRECTORY_MISSING");
-  const expected = [...plan.requiredProofs].sort(), actual = readdirSync(canonicalDirectory).filter((name) => name.endsWith(".json")).map((name) => name.slice(0, -5)).sort();
-  if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error(`EVIDENCE_FILE_SET_MISMATCH:${actual.join(",")}`);
+const expectedEvidencePaths = (plan) => {
+  const proofs = readJson("docs/engineering/PROOFS.json").proofs;
+  return new Map(plan.requiredProofs.map((proofId) => {
+    const proof = proofs.find((candidate) => candidate.id === proofId);
+    if (!proof) throw new Error(`PROOF_UNMAPPED:${proofId}`);
+    const job = expectedCiJob(proof);
+    if (!job || job === "HUMAN_OWNER") throw new Error(`PROOF_SOURCE_JOB_UNMAPPED:${proofId}`);
+    return [proofId, resolve(evidenceDirectory, job, `${proofId}.json`)];
+  }));
 };
-export const certifyRepositoryProof = ({ base, head, expectedJobs, environment = process.env }) => {
-  if (expectedJobs !== "success:success:success:success") throw new Error("CI_JOB_RESULT_INCOMPLETE");
+const jsonFiles = (directory) => {
+  if (!existsSync(directory)) return [];
+  const files = [];
+  const visit = (current) => {
+    for (const entry of readdirSync(current, { withFileTypes: true })) {
+      const path = resolve(current, entry.name);
+      if (entry.isDirectory()) visit(path);
+      else if (entry.name.endsWith(".json")) files.push(path);
+    }
+  };
+  visit(directory);
+  return files;
+};
+export const requireCanonicalEvidenceFiles = (plan) => {
+  const expected = expectedEvidencePaths(plan), expectedRelative = [...expected.values()].map((path) => relative(evidenceDirectory, path).replaceAll("\\", "/")).sort();
+  const actualRelative = jsonFiles(evidenceDirectory).map((path) => relative(evidenceDirectory, path).replaceAll("\\", "/")).sort();
+  if (JSON.stringify(actualRelative) !== JSON.stringify(expectedRelative)) throw new Error(`EVIDENCE_FILE_SET_MISMATCH:${actualRelative.join(",")}`);
+  return expected;
+};
+const requireBundlePath = () => {
+  if (!existsSync(attestationDirectory)) throw new Error("ATTESTATION_REQUIRED");
+  const files = readdirSync(attestationDirectory, { withFileTypes: true }).filter((entry) => entry.isFile() && /\.jsonl?$/.test(entry.name));
+  if (files.length !== 1) throw new Error("ATTESTATION_REQUIRED");
+  return resolve(attestationDirectory, files[0].name);
+};
+const verifyEvidenceAttestation = (path, bundlePath) => {
+  const proofId = path.replaceAll("\\", "/").split("/").at(-1).slice(0, -5);
+  const result = spawnSync("gh", ["attestation", "verify", path, "--bundle", bundlePath, "--repo", repository, "--signer-workflow", signerWorkflow, "--deny-self-hosted-runners", "--format", "json"], { cwd: root, encoding: "utf8", env: process.env, maxBuffer: 64 << 20 });
+  if (result.status !== 0) throw new Error(`ATTESTATION_VERIFICATION_FAILED:${proofId}`);
+  return parseVerifiedAttestation({ output: result.stdout, evidenceSha256: sha256(readFileSync(path)), environment: process.env });
+};
+const certifyRepositoryProof = ({ base, head, expectedJobs }) => {
+  if (expectedJobs !== "success:success:success:success:success") throw new Error("CI_JOB_RESULT_INCOMPLETE");
   if (git("rev-parse", "HEAD") !== head) throw new Error("HEAD_MISMATCH");
   if (Number(spawnSync("git", ["merge-base", "--is-ancestor", base, head], { cwd: root }).status) !== 0) throw new Error("BASE_NOT_ANCESTOR");
   const plan = compileProofPlan({ base, head });
-  requireCiEnvironment(environment, plan);
-  requireCanonicalEvidenceFiles(plan);
-  const evidence = plan.requiredProofs.map((proofId) => validateEvidenceFile({ path: resolve(canonicalDirectory, `${proofId}.json`), proofId, plan, environment }));
-  return { schemaVersion: 1, status: "REPOSITORY_PROOF_READY", headSha: head, treeSha: plan.treeSha, baseSha: base, impactHash: plan.impactHash, planHash: plan.planHash, evidence, certificateHash: sha256(JSON.stringify(evidence)) };
+  requireCiEnvironment(process.env, plan);
+  const paths = requireCanonicalEvidenceFiles(plan), bundlePath = requireBundlePath();
+  const attestations = plan.requiredProofs.map((proofId) => verifyEvidenceAttestation(paths.get(proofId), bundlePath));
+  const evidence = plan.requiredProofs.map((proofId) => validateEvidenceFile({ path: paths.get(proofId), proofId, plan }));
+  return { schemaVersion: 1, status: "REPOSITORY_PROOF_READY", headSha: head, treeSha: plan.treeSha, baseSha: base, impactHash: plan.impactHash, planHash: plan.planHash, evidence, attestations, certificateHash: sha256(JSON.stringify({ evidence, attestations })) };
 };
 
 if (process.argv[1] && resolve(process.argv[1]) === resolve(import.meta.filename)) {

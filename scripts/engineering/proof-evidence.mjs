@@ -14,7 +14,9 @@ const Command = z.object({
   commandIdentity: Hex,
   exitCode: z.number().int(),
   stdoutHash: Hex,
+  stdoutBytes: z.number().int().nonnegative(),
   stderrHash: Hex,
+  stderrBytes: z.number().int().nonnegative(),
   startedAt: Timestamp,
   endedAt: Timestamp,
 }).strict();
@@ -60,7 +62,7 @@ export const evidencePayloadHash = (evidence) => {
   return sha256(JSON.stringify(payload, (_, value) => value && typeof value === "object" && !Array.isArray(value) ? Object.fromEntries(Object.entries(value).sort(([left], [right]) => left.localeCompare(right))) : value));
 };
 export const readEvidenceFile = (path) => EvidenceSchema.parse(JSON.parse(readFileSync(path, "utf8")));
-export const provenanceFromEnvironment = (environment, expectedSourceJob) => environment.CI === "true" ? {
+export const provenanceFromEnvironment = (environment, expectedSourceJob) => environment.CI === "true" && environment.GITHUB_ACTIONS === "true" ? {
   provenanceMode: "GITHUB_ACTIONS",
   githubRepository: environment.GITHUB_REPOSITORY ?? "",
   githubWorkflow: environment.GITHUB_WORKFLOW ?? "",

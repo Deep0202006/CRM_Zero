@@ -1,6 +1,26 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { root, sha256 } from "./kernel-lib.mjs";
+import { root, safeEnvironment, sha256 } from "./kernel-lib.mjs";
+
+export const POSTGRES_SERVICE_PORT = "5432";
+const postgresKeys = new Set(["PGHOST", "PGPORT", "PGUSER", "PGPASSWORD", "PGSSLMODE", "PGDATABASE"]);
+export const assertDisposablePostgresEnvironment = (command, environment) => {
+  const expectedDatabase = command.database ?? "postgres";
+  if (!["127.0.0.1", "localhost"].includes(environment.PGHOST) || environment.PGPORT !== POSTGRES_SERVICE_PORT || environment.PGUSER !== "postgres" || environment.PGPASSWORD !== "postgres" || environment.PGSSLMODE !== "disable" || environment.PGDATABASE !== expectedDatabase || environment.CRM_MASTER_DB_DISPOSABLE !== "1" || environment.CRM_POSTGRES_SERVICE_DISPOSABLE !== "1") throw new Error("POSTGRES_DISPOSABLE_ENVIRONMENT_INVALID");
+  if (Object.keys(environment).some((key) => /^PG[A-Z0-9_]*$/i.test(key) && !postgresKeys.has(key.toUpperCase()))) throw new Error("POSTGRES_CONNECTION_VARIABLE_SURVIVED");
+  return environment;
+};
+export const disposablePostgresEnvironment = (command, source = process.env) => assertDisposablePostgresEnvironment(command, {
+  ...safeEnvironment(source),
+  PGHOST: "127.0.0.1",
+  PGPORT: POSTGRES_SERVICE_PORT,
+  PGUSER: "postgres",
+  PGPASSWORD: "postgres",
+  PGSSLMODE: "disable",
+  PGDATABASE: command.database ?? "postgres",
+  CRM_MASTER_DB_DISPOSABLE: "1",
+  CRM_POSTGRES_SERVICE_DISPOSABLE: "1",
+});
 
 const jobByKind = Object.freeze({
   unit: "preflight",

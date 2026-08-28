@@ -1,6 +1,6 @@
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
-import { classifyCommand, CommandClass } from "../command-policy.mjs";
+import { existsSync, readFileSync } from "node:fs";
+import { isAbsolute, relative, resolve } from "node:path";
+import { classifyCommand, CommandClass, parseWorktreeAddTokens } from "../command-policy.mjs";
 import { revalidateCandidate } from "../context.mjs";
 import { loadState, readHookInput, root } from "./state-store.mjs";
 
@@ -9,22 +9,27 @@ const tool = input.tool_name ?? "", payload = input.tool_input ?? {}, serialized
 const editTool = /^(?:apply_patch|Edit|Write)$/.test(tool), shellTool = /^(?:Bash|exec_command)$/.test(tool);
 const shellCommand = String(payload.cmd ?? payload.command ?? "");
 const classification = shellTool ? classifyCommand(shellCommand) : null;
-const shellMutation = classification && [CommandClass.SCOPED_MUTATION_ALLOWED, CommandClass.UNKNOWN_MUTATION_SHAPE, CommandClass.PROHIBITED].includes(classification.classification);
+const shellMutation = classification && [CommandClass.REPOSITORY_METADATA_ALLOWED, CommandClass.SCOPED_MUTATION_ALLOWED, CommandClass.UNKNOWN_MUTATION_SHAPE, CommandClass.PROHIBITED].includes(classification.classification);
 const mutating = editTool || shellMutation;
 const boundary = JSON.parse(readFileSync(resolve(root, "supabase/migrations/APPLIED_OWNER_MIGRATIONS.json"), "utf8")).immutableThrough;
 const migration = [...serialized.matchAll(/supabase[\\/]migrations[\\/](\d+)_/g)].some((match) => Number(match[1]) <= boundary);
 const credentialPath = /(?:^|[\\/])\.env(?:\.|[\\/]|$)|SUPABASE_SERVICE_ROLE_KEY|DATABASE_URL|POSTGRES_URL|PRODUCTION_|VERCEL_TOKEN/i.test(serialized);
 const controlEdit = mutating && /(?:^|["'\\/])(?:\.codex|\.github|scripts[\\/](?:engineering|quality)|docs[\\/]engineering|AGENTS\.md|CLAUDE\.md|package(?:-lock)?\.json)/i.test(serialized);
 const controlAuthorized = state.resolution?.status === "RESOLVED" && state.resolution?.risk === "R3" && state.resolution?.domains?.includes("engineering-control");
+const worktreeRequest = classification?.reason === "GIT_WORKTREE_ADD" ? parseWorktreeAddTokens(classification.tokens) : null;
+const worktreeRoot = resolve(root, ".worktrees"), worktreeDestination = worktreeRequest ? resolve(root, worktreeRequest.destination) : "";
+const worktreeRelative = worktreeRequest ? relative(worktreeRoot, worktreeDestination) : "";
+const worktreeAddAuthorized = worktreeRequest && controlAuthorized && worktreeRelative && !worktreeRelative.startsWith("..") && !isAbsolute(worktreeRelative) && !existsSync(worktreeDestination);
 const requestedPaths = [...serialized.replaceAll("\\", "/").matchAll(/(?:^|[^A-Za-z0-9_.-])((?:src|scripts|docs|e2e|supabase|\.github|\.codex)\/[A-Za-z0-9_.\[\]/-]+|\.gitignore|(?:AGENTS|CLAUDE|package(?:-lock)?)\.(?:md|json)|[A-Za-z0-9_.-]+\.(?:c?js|mjs|mts|cts|json|toml|ya?ml|md|sql|ts|tsx))/g)].map((match) => match[1]);
 const candidates = new Map((state.resolution?.candidatePaths ?? []).map((candidate) => [candidate.path, candidate]));
-const metadataOnly = classification?.reason === "GIT_COMMIT" || classification?.reason === "GIT_FEATURE_PUSH" || classification?.reason === "GITHUB_PR_CREATE";
-const outsideScope = mutating && !metadataOnly && (!requestedPaths.length || requestedPaths.some((path) => !candidates.has(path) || !revalidateCandidate(candidates.get(path))));
+const metadataOnly = ["GIT_COMMIT", "GIT_FEATURE_PUSH", "GIT_FETCH_METADATA", "GITHUB_PR_CREATE"].includes(classification?.reason);
+const outsideScope = mutating && !metadataOnly && !worktreeAddAuthorized && (!requestedPaths.length || requestedPaths.some((path) => !candidates.has(path) || !revalidateCandidate(candidates.get(path))));
 
 let conflict = "";
 if (classification?.classification === CommandClass.PROHIBITED || classification?.classification === CommandClass.UNKNOWN_MUTATION_SHAPE) conflict = `COMMAND_POLICY_${classification.reason}`;
 else if (migration) conflict = "IMMUTABLE_MIGRATION";
 else if (credentialPath) conflict = "CREDENTIAL_PATH";
 else if (mutating && controlEdit && !controlAuthorized) conflict = "CONTROL_SCOPE";
+else if (worktreeRequest && !worktreeAddAuthorized) conflict = "WORKTREE_SCOPE";
 else if (mutating && outsideScope) conflict = "SCOPE_OR_HASH";
 if (conflict) console.log(JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: `SAFETY_CONFLICT:${conflict}` } }));

@@ -13,6 +13,8 @@ env:
 
 jobs:
   preflight:
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -38,9 +40,11 @@ jobs:
           for candidate in "${changed_source[@]}"; do case "$candidate" in *.ts|*.tsx|*.js|*.jsx) affected+=("$candidate");; esac; done
           if [ "${#affected[@]}" -gt 0 ]; then npm test -- --runInBand --findRelatedTests "${affected[@]}"; fi
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with: { name: kernel-preflight, path: artifacts/engineering-evidence/*.json, if-no-files-found: error }
+        with: { name: kernel-preflight, path: artifacts/engineering-evidence/preflight/*.json, if-no-files-found: error }
 
   unit-build:
+    permissions:
+      contents: read
     needs: preflight
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -53,9 +57,11 @@ jobs:
       - name: Execute exact planned build proofs
         run: npm run proof:run -- --kind build --base "$KERNEL_BASE_SHA" --head "$KERNEL_HEAD_SHA"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with: { name: kernel-unit-build, path: artifacts/engineering-evidence/*.json, if-no-files-found: error }
+        with: { name: kernel-unit-build, path: artifacts/engineering-evidence/unit-build/*.json, if-no-files-found: error }
 
   receivables-postgres:
+    permissions:
+      contents: read
     needs: preflight
     if: always() && needs.preflight.result != 'cancelled'
     runs-on: ubuntu-latest
@@ -68,7 +74,7 @@ jobs:
         options: >-
           --health-cmd "pg_isready -U postgres -d postgres"
           --health-interval 5s --health-timeout 5s --health-retries 10
-    env: { PGHOST: localhost, PGPORT: 5432, PGDATABASE: postgres, PGUSER: postgres, PGPASSWORD: postgres, CI: "true" }
+    env: { PGHOST: 127.0.0.1, PGPORT: 5432, PGDATABASE: postgres, PGUSER: postgres, PGPASSWORD: postgres, PGSSLMODE: disable, CRM_MASTER_DB_DISPOSABLE: 1, CRM_POSTGRES_SERVICE_DISPOSABLE: 1, CI: "true" }
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { ref: "${{ github.event.pull_request.head.sha }}", fetch-depth: 0 }
@@ -84,9 +90,11 @@ jobs:
       - name: Execute exact planned PostgreSQL proofs
         run: node scripts/engineering/proof-runner.mjs --proof control-postgres-matrix --kind postgres --base "$KERNEL_BASE_SHA" --head "$KERNEL_HEAD_SHA"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with: { name: kernel-postgres, path: artifacts/engineering-evidence/*.json, if-no-files-found: error }
+        with: { name: kernel-postgres, path: artifacts/engineering-evidence/receivables-postgres/*.json, if-no-files-found: error }
 
   e2e:
+    permissions:
+      contents: read
     needs: [preflight, unit-build]
     if: always() && needs.preflight.result != 'cancelled' && needs.unit-build.result != 'cancelled'
     runs-on: ubuntu-latest
@@ -104,12 +112,40 @@ jobs:
       - name: Execute exact planned E2E proofs
         run: npm run proof:run -- --kind e2e --base "$KERNEL_BASE_SHA" --head "$KERNEL_HEAD_SHA"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with: { name: kernel-e2e, path: artifacts/engineering-evidence/*.json, if-no-files-found: error }
+        with: { name: kernel-e2e, path: artifacts/engineering-evidence/e2e/*.json, if-no-files-found: error }
+
+  attest-evidence:
+    needs: [preflight, unit-build, receivables-postgres, e2e]
+    if: ${{ always() && needs.preflight.result == 'success' && needs.unit-build.result == 'success' && needs.receivables-postgres.result == 'success' && needs.e2e.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with: { name: kernel-preflight, path: artifacts/engineering-evidence/preflight }
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with: { name: kernel-unit-build, path: artifacts/engineering-evidence/unit-build }
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with: { name: kernel-postgres, path: artifacts/engineering-evidence/receivables-postgres }
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with: { name: kernel-e2e, path: artifacts/engineering-evidence/e2e }
+      - name: Attest exact evidence files
+        id: attest
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6
+        with:
+          subject-path: artifacts/engineering-evidence/**/*.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: { name: kernel-evidence-attestation, path: "${{ steps.attest.outputs.bundle-path }}", if-no-files-found: error }
 
   verify:
-    needs: [preflight, unit-build, receivables-postgres, e2e]
-    if: always()
+    needs: [preflight, unit-build, receivables-postgres, e2e, attest-evidence]
+    if: ${{ always() && needs.preflight.result == 'success' && needs.unit-build.result == 'success' && needs.receivables-postgres.result == 'success' && needs.e2e.result == 'success' && needs.attest-evidence.result == 'success' }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { ref: "${{ github.event.pull_request.head.sha }}", fetch-depth: 0 }
@@ -117,9 +153,17 @@ jobs:
         with: { node-version: 24.13.0, cache: npm }
       - run: npm ci
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with: { pattern: kernel-*, path: artifacts/engineering-evidence, merge-multiple: true }
+        with: { name: kernel-preflight, path: artifacts/engineering-evidence/preflight }
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with: { name: kernel-unit-build, path: artifacts/engineering-evidence/unit-build }
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with: { name: kernel-postgres, path: artifacts/engineering-evidence/receivables-postgres }
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with: { name: kernel-e2e, path: artifacts/engineering-evidence/e2e }
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with: { name: kernel-evidence-attestation, path: artifacts/engineering-attestation }
       - name: Validate complete exact-head evidence
-        env: { BASE_SHA: "${{ github.event.pull_request.base.sha }}", HEAD_SHA: "${{ github.event.pull_request.head.sha }}" }
+        env: { BASE_SHA: "${{ github.event.pull_request.base.sha }}", HEAD_SHA: "${{ github.event.pull_request.head.sha }}", GH_TOKEN: "${{ github.token }}" }
         run: >-
           npm run proof:certify-ci -- --base "$BASE_SHA" --head "$HEAD_SHA"
-          --jobs "${{ needs.preflight.result }}:${{ needs.unit-build.result }}:${{ needs.receivables-postgres.result }}:${{ needs.e2e.result }}"
+          --jobs "${{ needs.preflight.result }}:${{ needs.unit-build.result }}:${{ needs.receivables-postgres.result }}:${{ needs.e2e.result }}:${{ needs.attest-evidence.result }}"
