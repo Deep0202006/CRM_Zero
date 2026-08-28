@@ -17,12 +17,12 @@ import { evidencePayloadHash } from "./proof-evidence.mjs";
 import { canonicalEvidencePath, runRegisteredProof } from "./proof-runner.mjs";
 import { executeRegressionCases, validateCaseResult } from "./regression-executors.mjs";
 import { revalidateCandidate } from "./context.mjs";
-import { evaluateStopState, remoteGate, requiredRemoteChecks } from "./hooks/stop.mjs";
+import { applyStallPolicy, evaluateStopState, protectedRequiredChecks, remoteGate, requiredRemoteChecks } from "./hooks/stop.mjs";
 import { beginExternalTask, compareAndSwap, loadState, requireContinuation, sessionPath, sessionsDirectory } from "./hooks/state-store.mjs";
 import { dirtyFingerprint, environmentPolicyHash, git, repositoryIdentity, root, safeEnvironment, sha256 } from "./kernel-lib.mjs";
 import { containsAssertionWeakening } from "../quality/assertion-policy.mjs";
 
-const matrix = { state: [], risk: [], proof: [], attestation: [], commandPolicy: [], regression: [], stopRemote: [], postgresEnvironment: [], tokenIsolation: [] }, tempRoots = [], createdEvidence = [];
+const matrix = { state: [], risk: [], proof: [], attestation: [], commandPolicy: [], regression: [], stopRemote: [], stall: [], postgresEnvironment: [], tokenIsolation: [] }, tempRoots = [], createdEvidence = [];
 const temp = (prefix) => { const path = mkdtempSync(resolve(tmpdir(), prefix)); tempRoots.push(path); return path; };
 const command = (cwd, file, args, env, input) => spawnSync(file, args, { cwd, encoding: "utf8", env: { ...process.env, ...env }, input });
 const gitAt = (cwd, ...args) => command(cwd, "git", args);
@@ -108,6 +108,12 @@ try {
     const postState = loadState(hookSession), storedState = readFileSync(sessionPath(hookSession), "utf8");
     assert.equal(postState.failureSignatures[0].length, 64); assert(!storedState.includes("synthetic-private"));
     matrix.state.push("corrupt-preserved-fail-closed", "hook-schema-valid", "failure-output-hashed-only");
+
+    const stallSession = `kernel-test-${randomUUID()}`, stopInvocation = () => command(root, process.execPath, ["scripts/engineering/hooks/stop.mjs"], isolatedEnvironment, JSON.stringify({ session_id: stallSession }));
+    const firstStop = JSON.parse(stopInvocation().stdout), secondStop = JSON.parse(stopInvocation().stdout), thirdStop = JSON.parse(stopInvocation().stdout), fourthStop = JSON.parse(stopInvocation().stdout);
+    assert.match(firstStop.reason, /strategy=FOCUSED_RETRY\|stallCount=1/); assert.match(secondStop.reason, /strategy=STRATEGY_CHANGE_REQUIRED\|stallCount=2/);
+    assert.equal(thirdStop.stopReason, "STALL_LIMIT"); assert.equal(fourthStop.stopReason, "STALL_LIMIT"); assert.equal(loadState(stallSession).stallCount, 3);
+    matrix.stall.push("stop-cli-third-stall-limit", "stop-cli-fourth-no-continuation");
 
     const runPreTool = (cmd) => command(root, process.execPath, ["scripts/engineering/hooks/pre-tool.mjs"], isolatedEnvironment, JSON.stringify({ session_id: `kernel-test-${randomUUID()}`, tool_name: "exec_command", tool_input: { cmd } }));
     for (const cmd of ["node -e require('fs').writeFileSync('x','y')", "python -c open('x','w')", "git apply patch.diff", "git checkout -- file", "git restore file", "git push origin HEAD:main", "git push origin feature/x --force", "git branch -D feature/x", "git remote set-url origin https://example.invalid/repo.git", "git worktree remove .worktrees/x", "git worktree prune", "supabase --project-ref X db push", "npx supabase db push", "npm exec -- vercel deploy", "printf fixture > file", "powershell -EncodedCommand ZgBpAHgAdAB1AHIAZQA="]) {
@@ -234,18 +240,31 @@ try {
   assert.notEqual(cleanFingerprint, firstFingerprint); assert.notEqual(firstFingerprint, dirtyFingerprint(repo)); unlinkSync(fingerprintPath); matrix.state.push("content-sensitive-worktree");
   const head = gitAt(repo, "rev-parse", "HEAD").stdout.trim(), staleBase = gitAt(repo, "commit-tree", "HEAD^{tree}", "-m", "unrelated").stdout.trim();
   const fixture = resolve(temp("kernel-gh-fixture-"), "gh-fixture.mjs");
-  const greenChecks = requiredRemoteChecks.map((name) => ({ name, state: "SUCCESS", bucket: "pass", link: "" }));
-  writeFileSync(fixture, `const a=process.argv.slice(2),s=process.env.SCENARIO;if(a[0]==='pr'&&a[1]==='view'){if(s==='no-pr'){console.error('no pull requests found');process.exit(1)}const base=s==='stale-base'?process.env.STALE_BASE:process.env.BASE_SHA;console.log(JSON.stringify({number:123,headRefOid:s==='wrong-head'?'0'.repeat(40):process.env.HEAD_SHA,baseRefOid:base,baseRefName:'main',url:'https://example.invalid/pr/123'}));process.exit(0)}if(s==='auth'){console.error('authentication network unavailable');process.exit(1)}if(s==='malformed'){console.log('{bad');process.exit(1)}const rows=${JSON.stringify(greenChecks)};if(s==='pending'){rows[0]={...rows[0],state:'PENDING',bucket:'pending'}}if(s==='failed'){rows[0]={...rows[0],state:'FAILURE',bucket:'fail'}}if(s==='missing-check'){rows.pop()}console.log(JSON.stringify(rows));process.exit(s==='pending'||s==='failed'?1:0);`);
+  const protectedChecks = protectedRequiredChecks.map((name) => ({ name, state: "SUCCESS", bucket: "pass", link: "" })), workflowChecks = requiredRemoteChecks.map((name) => ({ name, state: "SUCCESS", bucket: "pass", link: "" }));
+  writeFileSync(fixture, `const a=process.argv.slice(2),s=process.env.SCENARIO;if(a[0]==='pr'&&a[1]==='view'){if(s==='no-pr'){console.error('no pull requests found');process.exit(1)}const base=s==='stale-base'?process.env.STALE_BASE:process.env.BASE_SHA;console.log(JSON.stringify({number:123,headRefOid:s==='wrong-head'?'0'.repeat(40):process.env.HEAD_SHA,baseRefOid:base,baseRefName:'main',url:'https://example.invalid/pr/123'}));process.exit(0)}if(s==='auth'){console.error('authentication network unavailable');process.exit(1)}if(s==='malformed'){console.log('{bad');process.exit(1)}const required=a.includes('--required');let rows=required?${JSON.stringify(protectedChecks)}:${JSON.stringify(workflowChecks)};if(required&&s==='missing-protected-verify')rows=rows.filter(x=>x.name!=='verify');if(required&&s==='duplicate-protected')rows.push({...rows[0]});if(!required&&s==='missing-attest')rows=rows.filter(x=>x.name!=='attest-evidence');if(!required&&s==='pending-unit')rows=rows.map(x=>x.name==='unit-build'?{...x,state:'PENDING',bucket:'pending'}:x);if(!required&&s==='failed-attest')rows=rows.map(x=>x.name==='attest-evidence'?{...x,state:'FAILURE',bucket:'fail'}:x);if(!required&&s==='duplicate-workflow')rows.push({...rows.find(x=>x.name==='verify')});if(!required&&s==='optional-failed')rows.push({name:'optional',state:'FAILURE',bucket:'fail',link:''});if(required&&s==='pending-nonzero')rows[0]={...rows[0],state:'PENDING',bucket:'pending'};if(required&&s==='failed-nonzero')rows[0]={...rows[0],state:'FAILURE',bucket:'fail'};console.log(JSON.stringify(rows));process.exit(['pending-nonzero','failed-nonzero'].includes(s)&&required?1:0);`);
   const gate = (scenario) => remoteGate({ cwd: repo, gh: (args) => command(repo, process.execPath, [fixture, ...args], { SCENARIO: scenario, HEAD_SHA: head, BASE_SHA: base, STALE_BASE: staleBase }) });
-  assert.equal(gate("pending").status, "REMOTE_PENDING"); assert.equal(gate("failed").status, "REMOTE_FAILED"); assert.equal(gate("auth").status, "EXTERNAL_DEPENDENCY"); assert.equal(gate("success").status, "READY_TO_END"); assert.equal(gate("malformed").status, "REMOTE_FAILED"); assert.equal(gate("missing-check").reason, "REQUIRED_CHECK_SET_MISMATCH"); assert.equal(gate("wrong-head").reason, "HEAD_MISMATCH"); assert.equal(gate("stale-base").reason, "BASE_NOT_ANCESTOR"); assert.equal(gate("no-pr").status, "PR_REQUIRED");
-  process.env.stop_hook_active = "true"; assert.equal(gate("failed").status, "REMOTE_FAILED"); delete process.env.stop_hook_active;
+  assert.equal(gate("success").status, "READY_TO_END"); assert.equal(gate("missing-attest").status, "REMOTE_FAILED"); assert.equal(gate("pending-unit").status, "REMOTE_PENDING"); assert.equal(gate("failed-attest").status, "REMOTE_FAILED");
+  assert.equal(gate("missing-protected-verify").status, "REMOTE_FAILED"); assert.equal(gate("duplicate-protected").status, "REMOTE_FAILED"); assert.equal(gate("duplicate-workflow").status, "REMOTE_FAILED"); assert.equal(gate("optional-failed").status, "READY_TO_END");
+  assert.equal(gate("pending-nonzero").status, "REMOTE_PENDING"); assert.equal(gate("failed-nonzero").status, "REMOTE_FAILED"); assert.equal(gate("auth").status, "EXTERNAL_DEPENDENCY"); assert.equal(gate("malformed").status, "REMOTE_FAILED");
+  assert.equal(gate("wrong-head").reason, "HEAD_MISMATCH"); assert.equal(gate("stale-base").reason, "BASE_NOT_ANCESTOR"); assert.equal(gate("no-pr").status, "PR_REQUIRED");
+  process.env.stop_hook_active = "true"; assert.equal(gate("failed-attest").status, "REMOTE_FAILED"); delete process.env.stop_hook_active;
   const stopState = { taskId: "fixture", resolution: { status: "RESOLVED" }, baseline: { headSha: base, treeSha: baseTree, baseSha: base, dirtyFingerprint: cleanFingerprint }, evidence: [{ status: "PASS", name: "TASK_CERTIFIED", ownerApproval: true }] };
   let remoteCalls = 0; writeFileSync(fingerprintPath, "forged-local-change\n");
   const dirtyStop = evaluateStopState({ state: stopState, cwd: repo, remote: () => { remoteCalls += 1; return { status: "READY_TO_END" }; } });
   assert.equal(dirtyStop.status, "WORKTREE_DIRTY_COMMIT_REQUIRED"); assert.equal(remoteCalls, 0); assert(!JSON.stringify(dirtyStop).includes("TASK_CERTIFIED")); unlinkSync(fingerprintPath);
   assert.equal(evaluateStopState({ state: stopState, cwd: repo, remote: () => gate("success") }).status, "READY_TO_END");
   assert.equal(evaluateStopState({ state: { ...stopState, baseline: { headSha: head, treeSha: gitAt(repo, "rev-parse", "HEAD^{tree}").stdout.trim(), baseSha: base, dirtyFingerprint: cleanFingerprint } }, cwd: repo, remote: () => { throw new Error("REMOTE_MUST_NOT_RUN"); } }).status, "IMPLEMENTATION_IN_PROGRESS");
-  matrix.stopRemote.push("pending-nonzero", "failed-nonzero", "auth-external", "success", "malformed-closed", "required-set-exact", "head-mismatch", "stale-base", "no-pr", "active-flag-no-bypass", "dirty-forged-local-blocked-before-remote", "no-task-certified-or-owner-approval");
+  matrix.stopRemote.push("protected-four-workflow-six-pass", "workflow-attestation-missing", "workflow-unit-pending", "workflow-attestation-failed", "protected-verify-missing", "protected-duplicate", "workflow-gate-duplicate", "optional-failure-ignored", "pending-json-nonzero", "failed-json-nonzero", "auth-external", "malformed-closed", "head-mismatch", "stale-base", "no-pr", "active-flag-no-bypass", "dirty-forged-local-blocked-before-remote", "no-task-certified-or-owner-approval");
+
+  let stallState = { status: "IMPLEMENTATION_IN_PROGRESS", stallCount: 0 }, advance = (result) => { const decision = applyStallPolicy(stallState, result); stallState = { ...stallState, ...decision.state }; return decision; }, stallDecision;
+  stallDecision = advance({ status: "IMPLEMENTATION_IN_PROGRESS" }); assert.equal(stallDecision.state.stallCount, 1); assert.equal(stallDecision.continuation, "FOCUSED_RETRY");
+  stallDecision = advance({ status: "IMPLEMENTATION_IN_PROGRESS" }); assert.equal(stallDecision.state.stallCount, 2); assert.equal(stallDecision.continuation, "STRATEGY_CHANGE_REQUIRED");
+  stallDecision = advance({ status: "IMPLEMENTATION_IN_PROGRESS" }); assert.equal(stallDecision.result.status, "STALL_LIMIT"); assert.equal(stallDecision.state.stallCount, 3); assert.equal(stallDecision.continuation, undefined);
+  stallDecision = advance({ status: "IMPLEMENTATION_IN_PROGRESS" }); assert.equal(stallDecision.result.status, "STALL_LIMIT"); assert.equal(stallDecision.state.stallCount, 3); assert.equal(stallDecision.continuation, undefined);
+  stallDecision = advance({ status: "IMPLEMENTATION_IN_PROGRESS", reason: "CHANGED_PROGRESS" }); assert.equal(stallDecision.state.stallCount, 1); assert.equal(stallDecision.continuation, "FOCUSED_RETRY");
+  for (let count = 0; count < 4; count += 1) { stallDecision = advance({ status: "REMOTE_PENDING" }); assert.equal(stallDecision.result.status, "REMOTE_PENDING"); assert.equal(stallDecision.state.stallCount, 0); }
+  for (let count = 0; count < 4; count += 1) { stallDecision = advance({ status: "EXTERNAL_DEPENDENCY" }); assert.equal(stallDecision.result.status, "EXTERNAL_DEPENDENCY"); assert.equal(stallDecision.state.stallCount, 0); }
+  matrix.stall.push("focused-retry-count-1", "strategy-change-count-2", "stall-limit-count-3", "fourth-remains-stall-limit", "changed-signature-resets", "remote-pending-suspended", "external-dependency-suspended", "dirty-no-remote", "active-flag-no-bypass", "operational-store-unchanged");
 
   writeFileSync(resolve(repo, "old.mjs"), "export const oldValue=1;\n"); gitAt(repo, "add", "old.mjs"); gitAt(repo, "commit", "-q", "-m", "old"); gitAt(repo, "mv", "old.mjs", "new.mjs");
   const renameEntries = parseNameStatus(gitAt(repo, "diff", "--name-status", "-z", "--cached").stdout); assert.equal(renameEntries[0].status, "R"); assert.equal(renameEntries[0].oldPath, "old.mjs"); assert.equal(renameEntries[0].path, "new.mjs");
@@ -297,6 +316,7 @@ try {
   const productChanges = git("diff", "--name-only", "origin/main", "--", "src").split(/\r?\n/).filter((path) => path && !path.includes("/__tests__/"));
   const migrationChanges = git("diff", "--name-only", "origin/main", "--", "supabase/migrations").split(/\r?\n/).filter((path) => path.endsWith(".sql"));
   assert.deepEqual(productChanges, []); assert.deepEqual(migrationChanges, []);
+  assert.deepEqual(snapshotDirectory(operationalDirectory), operationalBefore, "OPERATIONAL_SESSION_STORE_MUTATED_BY_TEST");
   console.log(JSON.stringify({ code: "KERNEL_ADVERSARIAL_MATRIX_PASS", operationalStateBefore: operationalBefore, operationalStateAfter: snapshotDirectory(operationalDirectory), matrix }));
 } finally {
   for (const path of createdEvidence) if (existsSync(path)) rmSync(path, { force: true });
