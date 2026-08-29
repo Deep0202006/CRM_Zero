@@ -1,7 +1,8 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
 import { buildSourceIndex } from "./source-index.mjs";
-import { parseArgs, readJson, root, sha256 } from "./kernel-lib.mjs";
+import { git, parseArgs, readJson, root, safeEnvironment, sha256 } from "./kernel-lib.mjs";
 
 const matchesRoot = (path, pattern) => pattern.endsWith("/**") ? path === pattern.slice(0, -3) || path.startsWith(pattern.slice(0, -2)) : path === pattern || path.startsWith(`${pattern}/`);
 const words = (value) => new Set(String(value).toLowerCase().match(/[a-z0-9_-]{3,}/g) ?? []);
@@ -11,7 +12,26 @@ const includesWords = (taskWords, value) => {
 };
 const roleFor = (path, reason) => /(?:^|\/)(?:__tests__|e2e)(?:\/|$)|\.(?:test|spec)\./i.test(path) ? "test" : /^docs\/contracts\//.test(path) ? "contract" : /^src\/app\/api\//.test(path) ? "server" : reason === "REVERSE_IMPORT" ? "reader" : "implementation";
 const relationshipKinds = new Set(["IMPORT", "REVERSE_IMPORT", "RELATED_TEST"]);
+const graphifyFor = (task, index) => {
+  const fallback = { status: "TARGETED_SOURCE_FALLBACK", evidenceType: "fallback", confidence: 0, paths: [], grantsAuthority: false };
+  const graph = resolve(root, "graphify-out/graph.json"), stamp = resolve(root, "graphify-out/.crm-head");
+  if (!task || !existsSync(graph) || !existsSync(stamp) || readFileSync(stamp, "utf8").trim() !== git("rev-parse", "HEAD") || git("status", "--porcelain", "--untracked-files=no")) return fallback;
+  const environment = safeEnvironment(), executable = process.env.GRAPHIFY_BIN ?? "graphify", probe = spawnSync(executable, ["--version"], { cwd: root, encoding: "utf8", env: environment });
+  if (probe.error || probe.status !== 0) return fallback;
+  const query = spawnSync(executable, ["query", task, "--budget", "500"], { cwd: root, encoding: "utf8", env: { ...environment, GRAPHIFY_QUERY_LOG_DISABLE: "1" } });
+  if (query.status !== 0) return { ...fallback, status: "GRAPHIFY_QUERY_FAILED" };
+  const paths = [...new Set(query.stdout.match(/(?:src|scripts|e2e|supabase)\/[A-Za-z0-9_./\[\]-]+/g) ?? [])].flatMap((path) => {
+    const file = index.files.find((candidate) => candidate.path === path);
+    if (file) return [{ path, contentHash: file.contentHash }];
+    try {
+      if (git("ls-files", "--error-unmatch", path) !== path) return [];
+      return [{ path, contentHash: sha256(readFileSync(resolve(root, path))) }];
+    } catch { return []; }
+  }).slice(0, 5);
+  return { status: "GRAPHIFY_BOUNDED", evidenceType: "INFERRED", confidence: 0.82, paths, grantsAuthority: false };
+};
 export const resolveContext = ({ task = "", exactPath, index } = {}) => {
+  const suppliedIndex = Boolean(index);
   index ??= buildSourceIndex({ includePaths: exactPath ? [exactPath] : [] });
   const taskHash = sha256(task), taskWords = words(task), domains = readJson("docs/engineering/DOMAIN_MAP.json").domains;
   const authorities = readJson("docs/engineering/AUTHORITIES.json").facts;
@@ -30,12 +50,14 @@ export const resolveContext = ({ task = "", exactPath, index } = {}) => {
   const topDomainScore = domainScores[0]?.score ?? 0;
   const selected = domainScores.filter((item) => topDomainScore - item.score < 0.06).map((item) => item.domain);
   const evidence = new Map();
-  const add = (file, score, kind, value, role) => {
+  const add = (file, score, kind, value, role, evidenceType = "EXTRACTED") => {
     if (!file) return;
-    const existing = evidence.get(file.path) ?? { path: file.path, contentHash: file.contentHash, score: 0, role: role ?? roleFor(file.path, kind), matchedBy: [] };
+    const existing = evidence.get(file.path) ?? { path: file.path, contentHash: file.contentHash, score: 0, role: role ?? roleFor(file.path, kind), evidenceType, confidence: score, matchedBy: [] };
     existing.score = Math.max(existing.score, score);
+    existing.confidence = Math.max(existing.confidence, score);
+    if (existing.evidenceType !== "EXTRACTED") existing.evidenceType = evidenceType;
     existing.role = existing.role === "implementation" && role ? role : existing.role;
-    if (!existing.matchedBy.some((item) => item.kind === kind && item.value === value)) existing.matchedBy.push({ kind, value });
+    if (!existing.matchedBy.some((item) => item.kind === kind && item.value === value)) existing.matchedBy.push({ kind, value, evidenceType, confidence: score });
     evidence.set(file.path, existing);
   };
   for (const file of index.files) {
@@ -59,6 +81,8 @@ export const resolveContext = ({ task = "", exactPath, index } = {}) => {
     for (const path of file?.relatedTests ?? []) add(index.files.find((candidate) => candidate.path === path), 0.78, "RELATED_TEST", seed.path, "test");
     for (const path of file?.testedSources ?? []) add(index.files.find((candidate) => candidate.path === path), 0.78, "RELATED_TEST", seed.path);
   }
+  const graphifyEvidence = suppliedIndex ? { status: "TEST_INDEX_FALLBACK", evidenceType: "fallback", confidence: 0, paths: [], grantsAuthority: false } : graphifyFor(task, index);
+  for (const structural of graphifyEvidence.paths) add({ ...structural, imports: [], reverseImports: [], relatedTests: [], testedSources: [] }, graphifyEvidence.confidence, "GRAPHIFY", task, undefined, "INFERRED");
   const ordered = [...evidence.values()].sort((a, b) => b.score - a.score || a.path.localeCompare(b.path));
   const bounded = [];
   const take = (candidate) => { if (candidate && bounded.length < 7 && !bounded.some((item) => item.path === candidate.path)) bounded.push(candidate); };
@@ -87,6 +111,7 @@ export const resolveContext = ({ task = "", exactPath, index } = {}) => {
     capabilities: capabilities.filter((item) => capabilityIds.has(item.id)).map((item) => item.id),
     candidatePaths: bounded, requiredOpenPaths: status === "RESOLVED" ? bounded.map((item) => item.path) : [],
     requiredProofRefs: [...new Set([...selected.flatMap((domain) => domain.proofRefs ?? []), ...proofs.filter((proof) => (proof.domains ?? []).some((domain) => selected.some((item) => item.id === domain))).map((proof) => proof.id)])],
+    graphifyEvidence,
     unresolved: [!selected.length && "NO_DOMAIN_EVIDENCE", !ordered.length && "NO_PATH_EVIDENCE", conflicting && "CONFLICTING_AUTHORITIES", lexicalOnly && "LEXICAL_ONLY", relationshipOnly && "RELATIONSHIP_ONLY", ordered[0]?.score < 0.68 && "LOW_CONFIDENCE"].filter(Boolean),
   };
 };

@@ -29,6 +29,9 @@
       "id": "distributor_erp_assignment",
       "status": "PRODUCTION_CERTIFIED",
       "authority": "public.distributor_accounts.erp_id",
+      "writeSelectors": [
+        { "schema": "public", "resource": "distributor_accounts", "column": "erp_id" }
+      ],
       "identity": ["distributor_id"],
       "owns": ["official Distributor ERP assignment"],
       "rules": [
@@ -67,6 +70,12 @@
     {
       "id": "distributor_account",
       "authority": "public.distributor_accounts",
+      "writeSelectors": [
+        { "schema": "public", "resource": "distributor_accounts", "column": "erp_payment_status" },
+        { "schema": "public", "resource": "distributor_accounts" },
+        { "schema": "public", "resource": "distributor_status_events" },
+        { "schema": "public", "resource": "distributor_operation_receipts" }
+      ],
       "identity": ["distributor_id"],
       "owns": [
         "distributor operational identity",
@@ -96,6 +105,9 @@
     {
       "id": "renewal",
       "authority": "public.distributor_accounts.renewal_date",
+      "writeSelectors": [
+        { "schema": "public", "resource": "distributor_accounts", "column": "renewal_date" }
+      ],
       "identity": ["distributor_id"]
     },
     {

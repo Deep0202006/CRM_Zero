@@ -299,13 +299,36 @@ try {
     const impact = compileImpact({ entries: [{ status: "A", path }], patch: "" }); assert.equal(impact.risk, "R3"); assert.equal(impact.writable, false); assert(impact.unresolved.some((item) => item.code === "UNMAPPED_PATH"));
   }
   const multiline = compileImpact({ entries: [{ status: "M", path: "src/lib/pipeline/contract.ts" }], patch: "+const result = supabase\n+  .from(\"leads\")\n+  .update({ status: \"won\" })\n+  .eq(\"id\", leadId);" });
-  assert(multiline.changedAuthorities.includes("leads")); assert.equal(multiline.writable, true);
+  assert(multiline.changedAuthorities.includes("pipeline_stage")); assert.equal(multiline.writable, true);
   const unknownAuthority = compileImpact({ entries: [{ status: "M", path: "src/lib/pipeline/contract.ts" }], patch: "+await supabase.from(\"unknown_fixture\").update({ value: 1 });" });
   assert(unknownAuthority.unresolved.some((item) => item.code === "AUTHORITY_UNRESOLVED")); assert.equal(unknownAuthority.writable, false);
   const prohibitedAuthority = compileImpact({ entries: [{ status: "M", path: "src/app/mappings/page.tsx" }], patch: "+await supabase.from(\"leads\").update({ status: \"won\" });" });
   assert(prohibitedAuthority.unresolved.some((item) => item.code === "PROHIBITED_WRITE_AUTHORITY"));
   const immutable = compileImpact({ entries: [{ status: "M", path: "supabase/migrations/051_fixture.sql" }], patch: "" }); assert(immutable.unresolved.some((item) => item.code === "IMMUTABLE_MIGRATION"));
-  matrix.risk.push("nul-rename-delete", "sensitive-unmapped-r3", "multiline-write-detected", "unknown-authority", "prohibited-authority", "immutable-migration");
+  const authorityFacts = JSON.parse(readFileSync(resolve(root, "docs/engineering/AUTHORITIES.json"), "utf8")).facts;
+  const distributorSql = "alter table public.distributor_accounts add column erp_payment_status text; update public.distributor_accounts set erp_payment_status='paid' where renewal_date < current_date; select renewal_date from public.distributor_accounts;";
+  const distributorFixture = compileImpact({ entries: [{ status: "A", path: "supabase/migrations/900_fixture.sql" }], patch: distributorSql, selectedDomains: ["distributor-status", "renewals", "erp-partner"] });
+  assert.equal(distributorFixture.risk, "R3"); assert.equal(distributorFixture.writable, true); assert.deepEqual(distributorFixture.changedAuthorities, ["distributor_account"]); assert(!distributorFixture.unresolved.some((item) => item.code === "PROHIBITED_WRITE_AUTHORITY"));
+  assert.deepEqual(distributorFixture.writeOperations.map((item) => item.writtenColumns), [["erp_payment_status"], ["erp_payment_status"]]);
+  const withoutNewField = authorityFacts.map((fact) => fact.id === "distributor_account" ? { ...fact, writeSelectors: fact.writeSelectors.filter((selector) => selector.column !== "erp_payment_status") } : fact);
+  const unknownColumn = compileImpact({ entries: [{ status: "A", path: "supabase/migrations/900_fixture.sql" }], patch: distributorSql, selectedDomains: ["distributor-status", "renewals", "erp-partner"], authorityRegistry: withoutNewField });
+  assert.equal(unknownColumn.writable, false); assert(unknownColumn.unresolved.some((item) => item.code === "AUTHORITY_UNRESOLVED")); assert(!unknownColumn.unresolved.some((item) => item.code === "PROHIBITED_WRITE_AUTHORITY" && item.authority === "renewal"));
+  const erpRenewalWrite = compileImpact({ entries: [{ status: "M", path: "supabase/migrations/900_fixture.sql" }], patch: "update public.distributor_accounts set renewal_date=current_date;", selectedDomains: ["erp-partner"] });
+  assert(erpRenewalWrite.unresolved.some((item) => item.code === "PROHIBITED_WRITE_AUTHORITY" && item.authority === "renewal"));
+  const renewalWrite = compileImpact({ entries: [{ status: "M", path: "supabase/migrations/900_fixture.sql" }], patch: "update public.distributor_accounts set renewal_date=current_date;", selectedDomains: ["renewals"] });
+  assert.equal(renewalWrite.writable, true); assert.deepEqual(renewalWrite.changedAuthorities, ["renewal"]);
+  const financialWrite = compileImpact({ entries: [{ status: "M", path: "supabase/migrations/900_fixture.sql" }], patch: "update public.receivables set bill_amount=10;", selectedDomains: ["distributor-status"] });
+  assert(financialWrite.unresolved.some((item) => item.code === "PROHIBITED_WRITE_AUTHORITY" && item.authority === "receivable"));
+  const financialRead = compileImpact({ entries: [{ status: "M", path: "supabase/migrations/900_fixture.sql" }], patch: "select r.bill_amount,p.amount from public.receivables r join public.receivable_payments p using(receivable_id);", selectedDomains: ["distributor-status"] });
+  assert.equal(financialRead.writable, true); assert.deepEqual(financialRead.writeOperations, []);
+  const insideFunction = compileImpact({ entries: [{ status: "M", path: "supabase/migrations/900_fixture.sql" }], patch: "create or replace function public.fixture() returns void language sql as $$ update public.distributor_accounts set renewal_date=current_date; $$;", selectedDomains: ["renewals"] });
+  assert.equal(insideFunction.writeOperations[0].enclosingFunction, "public.fixture"); assert.equal(insideFunction.writable, true);
+  const ambiguousFacts = [...authorityFacts, { id: "fixture_duplicate_renewal", authority: "fixture", writeSelectors: [{ schema: "public", resource: "distributor_accounts", column: "renewal_date" }] }];
+  const ambiguousAuthority = compileImpact({ entries: [{ status: "M", path: "supabase/migrations/900_fixture.sql" }], patch: "update public.distributor_accounts set renewal_date=current_date;", selectedDomains: ["renewals"], authorityRegistry: ambiguousFacts });
+  assert(ambiguousAuthority.unresolved.some((item) => item.code === "AUTHORITY_AMBIGUOUS"));
+  const sourceWrites = compileImpact({ entries: [{ status: "M", path: "src/lib/distributors/contract.ts" }], patch: "+await supabase.from('distributor_accounts').upsert({ erp_id, activity_status: 'active' });\n+await supabase.from('distributor_accounts').delete().eq('distributor_id', id);\n+await supabase.rpc('distributor_command_v1', { p_payload: payload });", selectedDomains: ["distributor-status"] });
+  assert(sourceWrites.writeOperations.some((item) => item.operationKind === "upsert" && item.writtenColumns.includes("erp_id") && item.writtenColumns.includes("activity_status"))); assert(sourceWrites.writeOperations.some((item) => item.operationKind === "delete")); assert(sourceWrites.writeOperations.some((item) => item.operationKind === "rpc" && item.functionName === "public.distributor_command_v1"));
+  matrix.risk.push("nul-rename-delete", "sensitive-unmapped-r3", "multiline-fact-write-detected", "unknown-authority", "prohibited-authority", "immutable-migration-001-051", "pr90-reproduction", "new-column-selector-required", "domain-local-prohibition", "renewal-owned-migration", "financial-write-isolation", "financial-read-only", "sql-function-enclosure", "authority-ambiguity", "structured-supabase-writes");
 
   const impact = { ...compileImpact({ entries: [{ status: "M", path: "scripts/engineering/kernel.test.mjs" }], patch: "" }), domains: ["engineering-control"], effects: ["ENGINEERING_CONTROL"], risk: "R3", unresolved: [], writable: true };
   const plan = compileProofPlan({ impact }); for (const kind of ["unit", "build", "postgres", "e2e"]) assert(plan.requiredByKind[kind].length, `domain proof missing ${kind}`);

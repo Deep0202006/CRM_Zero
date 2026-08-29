@@ -25,8 +25,24 @@ the repository certificate to the exact PR head, contained base, manifest, plan,
 and real command results. Reports and caller-authored evidence are never proof.
 
 Graphify is an optional read-only structural locator. It grants no authority;
-when unavailable, use targeted exact source search. Lessons and rules change
-only through ordinary reviewed diffs.
+for every real resolution, merge one bounded fresh-graph query using the exact
+task with deterministic source-index evidence, then revalidate returned paths
+against current tracked source. When unavailable or stale, use targeted exact
+source search. Graphify cannot grant write authority, reduce risk, or overrule
+source, tests, contracts, or registries. Lessons and rules change only through
+ordinary reviewed diffs.
+
+For any new write, RPC, schema field, migration, or cross-domain authority,
+inspect and trace first, create the smallest write-bearing skeleton or proposed
+operation, and run `impact:compile` immediately. Resolve authority classification
+before completing UI, readers, or broad tests. Impact is evidence, not task
+self-certification.
+
+After implementation and focused proof, use the installed Ponytail skill when
+available for one final YAGNI/minimal-diff review. Ponytail is advisory: it
+cannot change authority, remove acceptance, weaken tests, bypass safety, or
+block completion for style preference. Its absence is not a proof failure and
+it is not a CI dependency.
 
 Production SQL and credential use are Owner-only. Never contact production,
 create production dummy data, expose privileged secrets to client code, mutate

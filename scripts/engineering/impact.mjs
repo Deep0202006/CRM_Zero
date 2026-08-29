@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
-import ts from "typescript";
 import { dirtyFingerprint, git, parseArgs, readJson, root, sha256 } from "./kernel-lib.mjs";
+import { extractSourceWrites, extractSqlWrites, resolveWriteAuthorities } from "./authority-resolution.mjs";
 
 const riskRank = { R0: 0, R1: 1, R2: 2, R3: 3 };
 const maxRisk = (...values) => values.reduce((best, value) => riskRank[value] > riskRank[best] ? value : best, "R0");
@@ -38,63 +38,26 @@ const currentDiff = (base, head) => {
     patch: execFileSync("git", ["diff", "--unified=0", revision, "--"], { cwd: root, encoding: "utf8", maxBuffer: 64 << 20 }),
   };
 };
-const authorityTokens = (facts) => facts.flatMap((fact) => [fact.id, fact.authority, ...(fact.identity ?? []), ...(fact.owns ?? [])].filter(Boolean).map((value) => String(value).toLowerCase()));
 const patchSections = (patch, entries) => {
+  if (!/^diff --git /m.test(String(patch))) {
+    const added = String(patch).split(/\r?\n/).filter((line) => line.startsWith("+")).map((line) => line.slice(1)).join("\n");
+    return [{ path: entries[0]?.path ?? "fixture.ts", added: added || String(patch) }];
+  }
   const sections = String(patch).split(/^diff --git /m).filter(Boolean).map((section) => {
     const path = /^\+\+\+ b\/(.+)$/m.exec(section)?.[1] ?? entries[0]?.path ?? "fixture.ts";
     const added = section.split(/\r?\n/).filter((line) => line.startsWith("+") && !line.startsWith("+++")).map((line) => line.slice(1)).join("\n");
     return { path, added };
   });
-  return sections.length ? sections : [{ path: entries[0]?.path ?? "fixture.ts", added: String(patch).split(/\r?\n/).filter((line) => line.startsWith("+")).map((line) => line.slice(1)).join("\n") || String(patch) }];
+  return sections;
 };
-const stringLiteral = (node) => node && ts.isStringLiteralLike(node) ? node.text : null;
-const findCallTarget = (node, method) => {
-  if (!node) return null;
-  if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)) {
-    if (node.expression.name.text === method) return stringLiteral(node.arguments[0]);
-    return findCallTarget(node.expression.expression, method);
-  }
-  if (ts.isPropertyAccessExpression(node)) return findCallTarget(node.expression, method);
-  return null;
-};
-const extractSourceWrites = (path, added) => {
-  if (!/\.(?:c?js|mjs|mts|cts|jsx|tsx?)$/i.test(path) || !added.trim()) return [];
-  const source = ts.createSourceFile(path, `async function __impact_fixture__(){\n${added}\n}`, ts.ScriptTarget.Latest, true, /\.tsx?$/i.test(path) ? ts.ScriptKind.TSX : ts.ScriptKind.JS), writes = [];
-  const visit = (node) => {
-    if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)) {
-      const method = node.expression.name.text;
-      if (["insert", "upsert", "update", "delete"].includes(method)) {
-        const target = findCallTarget(node.expression.expression, "from");
-        if (target) writes.push({ kind: "table", target });
-      }
-      if (method === "rpc") {
-        const target = stringLiteral(node.arguments[0]);
-        if (target) writes.push({ kind: "rpc", target });
-      }
-      if (/^(?:createUser|deleteUser|updateUserById|inviteUserByEmail|generateLink|signOut)$/.test(method) && added.slice(Math.max(0, node.pos - 80), node.end).includes(".auth.admin")) writes.push({ kind: "auth", target: `auth.admin.${method}` });
-    }
-    ts.forEachChild(node, visit);
-  };
-  visit(source);
-  if (!writes.length && source.parseDiagnostics.length && !/(?:__tests__|\.test\.|\.spec\.|^e2e\/)/i.test(path)) {
-    for (const match of added.matchAll(/\.from\s*\(\s*["']([^"']+)["']\s*\)[\s\S]*?\.(?:insert|upsert|update|delete)\s*\(/gi)) writes.push({ kind: "table", target: match[1] });
-    for (const match of added.matchAll(/\.rpc\s*\(\s*["']([^"']+)["']/gi)) writes.push({ kind: "rpc", target: match[1] });
-  }
-  return writes;
-};
-const extractSqlWrites = (path, added) => {
-  if (!/\.sql$/i.test(path)) return [];
-  const writes = [];
-  for (const match of added.matchAll(/\b(?:INSERT\s+INTO|UPDATE|DELETE\s+FROM|TRUNCATE(?:\s+TABLE)?|ALTER\s+TABLE|CREATE\s+TABLE|DROP\s+TABLE)\s+(?:public\.)?["']?([a-zA-Z_][\w]*)/gi)) writes.push({ kind: "sql", target: match[1] });
-  return writes;
-};
+const registry = (path, head) => head === "WORKTREE" ? readJson(path) : JSON.parse(execFileSync("git", ["show", `${head}:${path}`], { cwd: root, encoding: "utf8", maxBuffer: 16 << 20 }));
 
-export const compileImpact = ({ base = "origin/main", head = "WORKTREE", entries, patch } = {}) => {
+export const compileImpact = ({ base = "origin/main", head = "WORKTREE", entries, patch, selectedDomains, domainRegistry, authorityRegistry } = {}) => {
   ({ entries, patch } = entries ? { entries, patch: patch ?? "" } : currentDiff(base, head));
-  const domains = readJson("docs/engineering/DOMAIN_MAP.json").domains, facts = readJson("docs/engineering/AUTHORITIES.json").facts;
+  const domains = domainRegistry ?? registry("docs/engineering/DOMAIN_MAP.json", head).domains, facts = authorityRegistry ?? registry("docs/engineering/AUTHORITIES.json", head).facts;
   const mappedDomains = new Set(), effects = new Set(), unresolved = [], pathRecords = [];
   for (const entry of entries) {
-    const paths = [entry.oldPath, entry.path].filter(Boolean), matched = new Set();
+    const paths = [entry.oldPath, entry.path].filter(Boolean), matched = new Set(selectedDomains ?? []);
     for (const domain of domains) for (const path of paths) if ([...(domain.surfacePaths ?? []), ...(domain.codeRoots ?? []), ...(domain.serverBoundaries ?? []), ...(domain.contractPaths ?? []), ...(domain.criticalTests ?? []), ...(domain.pathPatterns ?? [])].some((pattern) => matches(path, pattern))) matched.add(domain.id);
     if (paths.some(controlPath)) matched.add("engineering-control");
     const pathEffects = paths.flatMap((path) => effectsFor(path, patch));
@@ -107,25 +70,28 @@ export const compileImpact = ({ base = "origin/main", head = "WORKTREE", entries
     pathRecords.push({ ...entry, domains: [...matched].sort(), effects: [...new Set(pathEffects)].sort(), risk: pathRisk, unknown });
   }
   const domainRisk = [...mappedDomains].map((id) => domains.find((domain) => domain.id === id)?.riskFloor ?? (id === "engineering-control" ? "R3" : "R0"));
-  const writes = patchSections(patch, entries).flatMap(({ path, added }) => [...extractSourceWrites(path, added), ...extractSqlWrites(path, added)]);
-  const targets = [...new Set(writes.map(({ target }) => target))], tokens = authorityTokens(facts);
-  for (const target of targets.filter((value) => !tokens.some((token) => token.includes(value.toLowerCase()) || value.toLowerCase().includes(token)))) unresolved.push({ code: "AUTHORITY_UNRESOLVED", target });
-  const protectedIds = new Set([...mappedDomains].flatMap((id) => domains.find((domain) => domain.id === id)?.mustNotWriteAuthorityRefs ?? []));
-  for (const target of targets) for (const fact of facts.filter((item) => protectedIds.has(item.id))) if (authorityTokens([fact]).some((token) => token.includes(target.toLowerCase()) || target.toLowerCase().includes(token))) unresolved.push({ code: "PROHIBITED_WRITE_AUTHORITY", target, authority: fact.id });
+  const writeOperations = patchSections(patch, entries).flatMap(({ path, added }) => [...extractSourceWrites(path, added), ...extractSqlWrites(path, added)]), authority = resolveWriteAuthorities(writeOperations, facts);
+  unresolved.push(...authority.unresolved);
+  for (const resolution of authority.resolutions) {
+    const pathDomains = selectedDomains ?? pathRecords.find((record) => record.path === resolution.sourcePath || record.oldPath === resolution.sourcePath)?.domains ?? [];
+    const relevant = pathDomains.map((id) => domains.find((domain) => domain.id === id)).filter(Boolean);
+    if (!relevant.some((domain) => (domain.authorityRefs ?? []).includes(resolution.authority) && !(domain.mustNotWriteAuthorityRefs ?? []).includes(resolution.authority))) unresolved.push({ code: "PROHIBITED_WRITE_AUTHORITY", target: resolution.target, authority: resolution.authority, sourcePath: resolution.sourcePath, relevantDomains: relevant.map((domain) => domain.id).sort() });
+  }
   for (const entry of entries) {
     const migration = /^supabase\/migrations\/(\d+)_/.exec(entry.path);
     if (migration && Number(migration[1]) <= 51) unresolved.push({ code: "IMMUTABLE_MIGRATION", path: entry.path });
   }
   const result = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     baseSha: git("rev-parse", base),
     headSha: head === "WORKTREE" ? git("rev-parse", "HEAD") : git("rev-parse", head),
     treeSha: head === "WORKTREE" ? git("rev-parse", "HEAD^{tree}") : git("rev-parse", `${head}^{tree}`),
     dirtyFingerprint: dirtyFingerprint(),
     changes: pathRecords,
     changedPaths: [...new Set(entries.flatMap((entry) => [entry.oldPath, entry.path].filter(Boolean)))],
-    domains: [...mappedDomains].sort(), effects: [...effects].sort(), changedAuthorities: targets,
-    risk: maxRisk(...domainRisk, ...pathRecords.map((entry) => entry.risk), targets.length || unresolved.some((item) => item.code.includes("AUTHORITY")) ? "R3" : "R0"),
+    domains: [...mappedDomains].sort(), effects: [...effects].sort(), changedAuthorities: [...new Set(authority.resolutions.map((item) => item.authority))].sort(),
+    writeOperations, writeResolutions: authority.resolutions,
+    risk: maxRisk(...domainRisk, ...pathRecords.map((entry) => entry.risk), writeOperations.length || unresolved.some((item) => item.code.includes("AUTHORITY")) ? "R3" : "R0"),
     unresolved,
     writable: unresolved.length === 0,
     impactHash: sha256(JSON.stringify({ entries, patch })),
