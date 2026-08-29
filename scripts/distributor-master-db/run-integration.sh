@@ -28,6 +28,7 @@ bash scripts/distributor-master-db/concurrency.sh
 psql -X -v ON_ERROR_STOP=1 -f scripts/erp-visibility-db/pre-047.sql
 psql -X -v ON_ERROR_STOP=1 -f supabase/migrations/047_distributor_erp_partner_visibility.sql
 psql -X -v ON_ERROR_STOP=1 -f supabase/migrations/050_distributor_erp_footprint.sql
+psql -X -v ON_ERROR_STOP=1 -f supabase/migrations/052_billed_renewals_erp_payment_status.sql
 psql -X -v ON_ERROR_STOP=1 -f scripts/erp-visibility-db/integration.sql
 
 echo "Distributor master and ERP visibility PostgreSQL integration passed."

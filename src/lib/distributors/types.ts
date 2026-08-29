@@ -2,6 +2,7 @@ import type { RenewalState } from "./domain";
 
 export type MappingStatus = "pending" | "done" | null;
 export type DistributorPaymentStatus = "COLLECTION_SETUP_REQUIRED" | "NOT_BILLED" | "DISPUTED" | "PAID" | "PARTIALLY_PAID" | "UNPAID";
+export type ErpPaymentStatus = "paid" | "not_paid" | null;
 
 export interface DistributorStatusRow {
   distributor_id: string;
@@ -34,6 +35,7 @@ export interface DistributorStatusRow {
   outstanding_amount: string;
   pending_verification_count: number;
   collection_state: DistributorPaymentStatus;
+  erp_payment_status: ErpPaymentStatus;
   billing_collection_mismatch: boolean;
 }
 

@@ -417,6 +417,9 @@
         "src/components/distributors",
         "src/components/analytics/ErpDistributionDonut.tsx"
       ],
+      "pathPatterns": [
+        "supabase/migrations/052_billed_renewals_erp_payment_status.sql"
+      ],
       "serverBoundaries": [
         "src/app/api/distributors/commands/route.ts",
         "src/app/api/distributors/metrics/route.ts"
@@ -443,6 +446,10 @@
       ],
       "criticalTests": [
         "src/lib/__tests__/distributors/routeMatrix.test.ts",
+        "src/lib/__tests__/distributors/erpCanonicalFilterRoute.test.ts",
+        "src/lib/__tests__/distributors/sqlContract.test.ts",
+        "scripts/distributor-master-db/run-integration.sh",
+        "scripts/erp-visibility-db/integration.sql",
         "e2e/distributors"
       ],
       "mustNotWriteAuthorityRefs": []
@@ -557,6 +564,9 @@
         "src/components/erpPartner",
         "src/app/erp"
       ],
+      "pathPatterns": [
+        "supabase/migrations/052_billed_renewals_erp_payment_status.sql"
+      ],
       "serverBoundaries": [
         "src/app/api/erp-partner/distributors/route.ts"
       ],
@@ -578,7 +588,9 @@
         "ERP_AUTHORITIES"
       ],
       "criticalTests": [
-        "src/lib/__tests__/erpVisibilityContract.test.ts"
+        "src/lib/__tests__/erpVisibilityContract.test.ts",
+        "scripts/distributor-master-db/run-integration.sh",
+        "scripts/erp-visibility-db/integration.sql"
       ],
       "mustNotWriteAuthorityRefs": [
         "renewal"
@@ -644,6 +656,9 @@
       "codeRoots": [
         "src/components/distributors/PaymentRenewalsPage.tsx",
         "src/app/payments/renewals"
+      ],
+      "pathPatterns": [
+        "supabase/migrations/052_billed_renewals_erp_payment_status.sql"
       ],
       "serverBoundaries": [
         "src/app/api/distributors/renewals/route.ts"

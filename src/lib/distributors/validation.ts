@@ -39,7 +39,8 @@ export const distributorCreateSchema = z.object({ ...commonFields, mapping_statu
 });
 export const distributorUpdateSchema = z.object({ ...commonFields, mapping_status: z.enum(mappingStatuses).nullable(), distributor_id: uuid, expected_version: z.number().int().positive() }).strict().superRefine(validate);
 export const distributorRenewSchema = z.object({ distributor_id: uuid, expected_version: z.number().int().positive(), renewal_date: date, note: z.string().trim().max(1000).default("") }).strict();
-export const distributorCommandSchema = z.object({ operation_id: uuid, operation_type: z.enum(["create", "update", "renew"]), payload: z.record(z.string(), z.unknown()) }).strict();
+export const distributorErpPaymentSchema = z.object({ distributor_id: uuid, expected_version: z.number().int().positive(), erp_payment_status: z.enum(["paid", "not_paid"]), note: z.string().trim().max(1000).default("") }).strict();
+export const distributorCommandSchema = z.object({ operation_id: uuid, operation_type: z.enum(["create", "update", "renew", "erp_payment"]), payload: z.record(z.string(), z.unknown()) }).strict();
 export const distributorListSchema = z.object({
   page: z.coerce.number().int().min(1).default(1), pageSize: z.coerce.number().int().min(1).max(50).default(50), search: z.string().trim().max(100).default(""),
   assignedTo: z.union([uuid, z.literal("")]).default(""),

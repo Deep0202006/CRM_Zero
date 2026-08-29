@@ -76,6 +76,23 @@ begin
     raise exception 'PAYMENT_COLLECTION_ERP_JOIN_FAILED';
   end if;
 
+  perform public.apply_distributor_master_payments_v1(v_actor,jsonb_build_array(jsonb_build_object(
+    'row_number',3,'payment_id','98000000-0000-4000-a000-000000000003',
+    'receivable_id','97000000-0000-4000-a000-000000000001','import_key','FIXTURE-PAYMENT-REMAINDER',
+    'amount','600.00','payment_date',current_date,'payment_mode','Bank',
+    'payment_reference','UTR-FIXTURE-REMAINDER','note','Complete fixture payment'
+  )));
+  select version into v_version from public.distributor_accounts where distributor_id=v_distributor;
+  select public.distributor_erp_payment_status_command_v1(
+    '94000000-0000-4000-a000-000000000052',v_actor,'erp_payment',repeat('5',64),
+    jsonb_build_object('distributor_id',v_distributor,'expected_version',v_version,'erp_payment_status','paid','note','ERP settled')
+  ) into v_result;
+  if not coalesce((v_result->>'success')::boolean,false)
+     or not exists(select 1 from public.distributor_accounts where distributor_id=v_distributor and erp_payment_status='paid')
+     or not exists(select 1 from public.distributor_status_events where distributor_id=v_distributor and event_type='erp_payment_status_updated') then
+    raise exception 'ERP_PAYMENT_STATUS_COMMAND_FAILED: %',v_result;
+  end if;
+
   update public.distributor_accounts set erp_id=v_tally where distributor_id=v_distributor;
   insert into public.distributor_accounts(
     distributor_id,erp_id,distributor_name,distributor_reference,identity_key,assigned_to,
@@ -94,6 +111,17 @@ begin
   select public.set_erp_partner_scopes_v1(v_actor,v_partner,jsonb_build_array(v_marg,v_tally)) into v_result;
   select public.erp_partner_distributors_v1(v_partner,null,null,1,50) into v_result;
   if (v_result->>'total')::integer<>2 then raise exception 'ERP_MULTI_SCOPE_UNION_FAILED: %',v_result; end if;
+  if not exists(select 1 from jsonb_array_elements(v_result->'rows') r where r->>'distributor_id'=v_distributor::text and r->>'erp_payment_status'='paid') then
+    raise exception 'ERP_PAYMENT_STATUS_NOT_VISIBLE_TO_SCOPED_PARTNER: %',v_result;
+  end if;
+  select public.erp_partner_renewals_v1(v_partner,v_marg,'all',1,50) into v_result;
+  if (v_result->>'total')::integer<>0 then raise exception 'ERP_UNBILLED_RENEWAL_VISIBLE: %',v_result; end if;
+  select version into v_version from public.distributor_accounts where distributor_id='96000000-0000-4000-a000-000000000002';
+  select public.distributor_erp_payment_status_command_v1(
+    '94000000-0000-4000-a000-000000000053',v_actor,'erp_payment',repeat('6',64),
+    jsonb_build_object('distributor_id','96000000-0000-4000-a000-000000000002','expected_version',v_version,'erp_payment_status','not_paid')
+  ) into v_result;
+  if v_result->>'code'<>'ERP_PAYMENT_STATUS_REQUIRES_PAID' then raise exception 'ERP_PAYMENT_STATUS_ACCEPTED_UNPAID: %',v_result; end if;
 
   begin
     insert into public.user_capabilities(user_id,capability_code) values(v_partner,'tech_support');

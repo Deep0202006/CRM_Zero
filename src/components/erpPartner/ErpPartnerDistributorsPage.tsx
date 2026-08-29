@@ -24,6 +24,7 @@ type Row = {
   mapped_at: string | null;
   activity_status: string;
   billing_status: string;
+  erp_payment_status: "paid" | "not_paid" | null;
   renewal_date: string | null;
   renewal_state: string;
   updated_at: string;
@@ -173,6 +174,7 @@ export function ErpPartnerDistributorsPage() {
                   "Mapping",
                   "Activity",
                   "Billing",
+                  "ERP Payment",
                   "Renewal",
                   "Renewal State",
                 ].map((h) => (
@@ -198,6 +200,9 @@ export function ErpPartnerDistributorsPage() {
                   </td>
                   <td className="p-3">{row.activity_status}</td>
                   <td className="p-3">{row.billing_status}</td>
+                  <td className="p-3">
+                    {row.erp_payment_status === "paid" ? "ERP Paid" : row.erp_payment_status === "not_paid" ? "ERP Not Paid" : "Not set"}
+                  </td>
                   <td className="p-3">{row.renewal_date ?? "Not set"}</td>
                   <td className="p-3">
                     {row.renewal_state.replaceAll("_", " ")}

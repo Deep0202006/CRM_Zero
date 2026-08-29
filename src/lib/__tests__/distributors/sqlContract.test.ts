@@ -4,6 +4,7 @@ import path from "path";
 const baseSql = fs.readFileSync(path.join(process.cwd(), "supabase/migrations/039_distributor_status_v1.sql"), "utf8");
 const sql = fs.readFileSync(path.join(process.cwd(), "supabase/migrations/041_distributor_mapped_status.sql"), "utf8");
 const renewalSql = fs.readFileSync(path.join(process.cwd(), "supabase/migrations/042_payment_collection_renewals.sql"), "utf8");
+const billedRenewalSql = fs.readFileSync(path.join(process.cwd(), "supabase/migrations/052_billed_renewals_erp_payment_status.sql"), "utf8");
 const routes = ["src/app/api/distributors/route.ts", "src/app/api/distributors/metrics/route.ts", "src/app/api/distributors/commands/route.ts", "src/app/api/distributors/import/route.ts", "src/lib/distributors/validation.ts"].map((file) => fs.readFileSync(path.join(process.cwd(), file), "utf8")).join("\n");
 
 describe("Distributor Status SQL/authority contract", () => {
@@ -59,5 +60,23 @@ describe("Distributor Status SQL/authority contract", () => {
   test("Renewal read migration cannot mutate any business authority", () => {
     expect(renewalSql).not.toMatch(/\b(insert\s+into|update|delete\s+from|truncate)\b/i);
     expect(renewalSql).not.toMatch(/receivable_payments|call_logs|field_visits|attendance|tasks|leads/i);
+  });
+  test("billed renewal readers and status-card filters stay server-side and bounded", () => {
+    for (const functionName of ["distributor_renewal_metrics_v1", "distributor_renewals_list_v2", "distributor_renewals_due_v2", "erp_partner_renewals_v1"])
+      expect(billedRenewalSql).toContain(`function public.${functionName}`);
+    expect(billedRenewalSql.match(/billing_status='billed'/g)?.length).toBeGreaterThanOrEqual(4);
+    for (const filter of ["p_installation_filter", "p_training_filter", "p_mapping_filter", "p_activity_filter", "p_renewal_filter"])
+      expect(billedRenewalSql).toContain(filter);
+    expect(billedRenewalSql.indexOf("), filtered as (")).toBeLessThan(billedRenewalSql.indexOf("), page_rows as ("));
+  });
+  test("ERP payment status is nullable, constrained, versioned, and gated by canonical financial PAID", () => {
+    expect(billedRenewalSql).toContain("add column erp_payment_status text");
+    expect(billedRenewalSql).not.toMatch(/update\s+public\.distributor_accounts\s+set\s+erp_payment_status\s*=\s*'(?:paid|not_paid)'/i);
+    expect(billedRenewalSql).toContain("distributor_is_financially_paid_v1");
+    expect(billedRenewalSql).toContain("from public.receivables r");
+    expect(billedRenewalSql).toContain("p.verification_status='confirmed' and p.reversed_at is null");
+    expect(billedRenewalSql).toContain("ERP_PAYMENT_STATUS_REQUIRES_PAID");
+    expect(billedRenewalSql).toContain("'erp_payment_status_updated'");
+    expect(billedRenewalSql).toContain("version=version+1");
   });
 });
