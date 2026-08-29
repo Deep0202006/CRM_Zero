@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { extname, join, resolve } from "node:path";
+import { containsAssertionWeakening } from "./assertion-policy.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
 const extensions = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"]);
@@ -40,7 +41,7 @@ for (const absolute of sourceFiles(join(root, "src"))) {
 for (const absolute of sourceFiles(join(root, "scripts/engineering"))) {
   const relative = absolute.slice(root.length + 1).replaceAll("\\", "/");
   const source = readFileSync(absolute, "utf8");
-  if (relative !== "scripts/engineering/os-acceptance.mjs" && /--updateSnapshot|--update-snapshot|updateSnapshot\s*\(/.test(source)) fail(`${relative} automates assertion/snapshot acceptance`);
+  if (containsAssertionWeakening(source)) fail(`${relative} automates assertion/snapshot acceptance`);
   if (/(?:execFileSync|spawnSync)[\s\S]{0,300}gwfjkpsoaoherntwhdyf[\s\S]{0,300}(?:push|reset|insert|update|delete|apply)/i.test(source)) fail(`${relative} contains a production mutation runner`);
 }
 if (process.exitCode) process.exit(process.exitCode);

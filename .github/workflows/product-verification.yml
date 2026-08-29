@@ -8,221 +8,162 @@ permissions:
 env:
   NEXT_PUBLIC_SUPABASE_URL: https://e2e.supabase.co
   NEXT_PUBLIC_SUPABASE_ANON_KEY: e2e-anon-key
-  SUPABASE_SERVICE_ROLE_KEY: BUILD_TIME_PLACEHOLDER_KEY
+  KERNEL_BASE_SHA: "${{ github.event.pull_request.base.sha }}"
+  KERNEL_HEAD_SHA: "${{ github.event.pull_request.head.sha }}"
 
 jobs:
   preflight:
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: { ref: "${{ github.event.pull_request.head.sha }}", fetch-depth: 0 }
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with: { node-version: 24.13.0, cache: npm }
       - run: npm ci
-      - run: npm run quality:repository
-      - run: npm run quality:knowledge
-      - run: npm run quality:legacy
-      - run: npm run quality:invariants
-      - run: npm run context:test
-      - run: npm run os:bootstrap-test
-      - run: npm run engineering:eval
-      - run: npm run semantic:graph
-      - run: npm run os:acceptance -- --mode preflight
-      - name: Compile exact-head impact and proof plan
-        env:
-          {
-            BASE_SHA: "${{ github.event.pull_request.base.sha }}",
-            HEAD_SHA: "${{ github.event.pull_request.head.sha }}",
-          }
+      - run: npm run kernel:doctor -- --ci
+      - name: Compile canonical impact and proof plan
+        env: { BASE_SHA: "${{ github.event.pull_request.base.sha }}", HEAD_SHA: "${{ github.event.pull_request.head.sha }}" }
         run: |
           npm run impact:compile -- --base "$BASE_SHA" --head "$HEAD_SHA"
           npm run proof:plan -- --base "$BASE_SHA" --head "$HEAD_SHA"
-          npm run verify:affected -- --kind unit --base "$BASE_SHA" --head "$HEAD_SHA"
-          npm run verify:affected -- --kind handover --execute --base "$BASE_SHA" --head "$HEAD_SHA"
-      - name: Check changed diff integrity
-        env:
-          {
-            BASE_SHA: "${{ github.event.pull_request.base.sha }}",
-            HEAD_SHA: "${{ github.event.pull_request.head.sha }}",
-          }
-        run: git diff --check "$BASE_SHA" "$HEAD_SHA"
-      - run: npm run typecheck
-      - name: Run related Jest tests for changed source
-        env:
-          {
-            BASE_SHA: "${{ github.event.pull_request.base.sha }}",
-            HEAD_SHA: "${{ github.event.pull_request.head.sha }}",
-          }
+      - name: Execute exact planned unit proofs
+        run: npm run proof:run -- --kind unit --base "$KERNEL_BASE_SHA" --head "$KERNEL_HEAD_SHA"
+      - name: Diff integrity and related tests
+        env: { BASE_SHA: "${{ github.event.pull_request.base.sha }}", HEAD_SHA: "${{ github.event.pull_request.head.sha }}" }
         run: |
+          git diff --check "$BASE_SHA" "$HEAD_SHA"
           mapfile -d '' changed_source < <(git diff --name-only -z "$BASE_SHA" "$HEAD_SHA" -- src)
           affected=()
           for candidate in "${changed_source[@]}"; do case "$candidate" in *.ts|*.tsx|*.js|*.jsx) affected+=("$candidate");; esac; done
-          if [ "${#affected[@]}" -eq 0 ]; then echo "No Jest-related source changes."; else npm test -- --runInBand --findRelatedTests "${affected[@]}"; fi
-      - name: Write preflight evidence
-        env:
-          {
-            BASE_SHA: "${{ github.event.pull_request.base.sha }}",
-            HEAD_SHA: "${{ github.event.pull_request.head.sha }}",
-          }
-        run: node scripts/engineering/release-evidence.mjs --kind preflight --base "$BASE_SHA" --head "$HEAD_SHA" --output .zerograph-evidence/preflight.json
-      - uses: actions/upload-artifact@v4
-        with:
-          {
-            name: zerograph-preflight,
-            path: .zerograph-evidence/preflight.json,
-          }
+          if [ "${#affected[@]}" -gt 0 ]; then npm test -- --runInBand --findRelatedTests "${affected[@]}"; fi
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: { name: kernel-preflight, path: artifacts/engineering-evidence/preflight/*.json, if-no-files-found: error }
 
   unit-build:
+    permissions:
+      contents: read
     needs: preflight
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: { ref: "${{ github.event.pull_request.head.sha }}", fetch-depth: 0 }
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with: { node-version: 24.13.0, cache: npm }
       - run: npm ci
-      - run: npm test -- --runInBand
-      - run: npm run lint
-      - run: npm run build
-      - name: Write unit/build evidence
-        env:
-          {
-            BASE_SHA: "${{ github.event.pull_request.base.sha }}",
-            HEAD_SHA: "${{ github.event.pull_request.head.sha }}",
-          }
-        run: node scripts/engineering/release-evidence.mjs --kind unit-build --base "$BASE_SHA" --head "$HEAD_SHA" --output .zerograph-evidence/unit-build.json
-      - uses: actions/upload-artifact@v4
-        with:
-          {
-            name: zerograph-unit-build,
-            path: .zerograph-evidence/unit-build.json,
-          }
+      - name: Execute exact planned build proofs
+        run: npm run proof:run -- --kind build --base "$KERNEL_BASE_SHA" --head "$KERNEL_HEAD_SHA"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: { name: kernel-unit-build, path: artifacts/engineering-evidence/unit-build/*.json, if-no-files-found: error }
 
   receivables-postgres:
+    permissions:
+      contents: read
     needs: preflight
     if: always() && needs.preflight.result != 'cancelled'
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     services:
       postgres:
         image: postgres:17.6-alpine
-        env:
-          {
-            POSTGRES_USER: postgres,
-            POSTGRES_PASSWORD: postgres,
-            POSTGRES_DB: postgres,
-          }
+        env: { POSTGRES_USER: postgres, POSTGRES_PASSWORD: postgres, POSTGRES_DB: postgres }
         ports: ["5432:5432"]
         options: >-
           --health-cmd "pg_isready -U postgres -d postgres"
           --health-interval 5s --health-timeout 5s --health-retries 10
-    env:
-      {
-        PGHOST: localhost,
-        PGPORT: 5432,
-        PGDATABASE: postgres,
-        PGUSER: postgres,
-        PGPASSWORD: postgres,
-      }
+    env: { PGHOST: 127.0.0.1, PGPORT: 5432, PGDATABASE: postgres, PGUSER: postgres, PGPASSWORD: postgres, PGSSLMODE: disable, CRM_MASTER_DB_DISPOSABLE: 1, CRM_POSTGRES_SERVICE_DISPOSABLE: 1, CI: "true" }
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 0
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: { ref: "${{ github.event.pull_request.head.sha }}", fetch-depth: 0 }
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with: { node-version: 24.13.0, cache: npm }
+      - run: npm ci
       - name: Activate preinstalled PostgreSQL client
         run: |
-          pg_bin="$(pg_config --bindir)"; test -x "$pg_bin/psql"; test -x "$pg_bin/createdb"; echo "$pg_bin" >> "$GITHUB_PATH"; "$pg_bin/psql" --version
-      - name: Run affected PostgreSQL proof plan
-        env:
-          {
-            CI: "true",
-            BASE_SHA: "${{ github.event.pull_request.base.sha }}",
-            HEAD_SHA: "${{ github.event.pull_request.head.sha }}",
-          }
-        run: node scripts/engineering/verify-affected.mjs --kind postgres --execute --base "$BASE_SHA" --head "$HEAD_SHA" --evidence .zerograph-evidence/evidence-postgres.json
-      - uses: actions/upload-artifact@v4
-        with:
-          {
-            name: zerograph-postgres,
-            path: .zerograph-evidence/evidence-postgres.json,
-          }
+          pg_bin="$(pg_config --bindir)"
+          test -x "$pg_bin/psql"
+          test -x "$pg_bin/createdb"
+          echo "$pg_bin" >> "$GITHUB_PATH"
+      - name: Execute exact planned PostgreSQL proofs
+        run: node scripts/engineering/proof-runner.mjs --proof control-postgres-matrix --kind postgres --base "$KERNEL_BASE_SHA" --head "$KERNEL_HEAD_SHA"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: { name: kernel-postgres, path: artifacts/engineering-evidence/receivables-postgres/*.json, if-no-files-found: error }
 
   e2e:
+    permissions:
+      contents: read
     needs: [preflight, unit-build]
     if: always() && needs.preflight.result != 'cancelled' && needs.unit-build.result != 'cancelled'
     runs-on: ubuntu-latest
-    timeout-minutes: 25
-    container:
-      {
-        image: "mcr.microsoft.com/playwright:v1.54.2-noble",
-        options: --ipc=host,
-      }
-    env:
-      {
-        PLAYWRIGHT_BROWSERS_PATH: /ms-playwright,
-        CI: "true",
-        PLAYWRIGHT_E2E_WEBPACK: "true",
-      }
+    timeout-minutes: 30
+    container: { image: "mcr.microsoft.com/playwright:v1.54.2-noble", options: --ipc=host }
+    env: { PLAYWRIGHT_BROWSERS_PATH: /ms-playwright, CI: "true", PLAYWRIGHT_E2E_WEBPACK: "true" }
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: { ref: "${{ github.event.pull_request.head.sha }}", fetch-depth: 0 }
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with: { node-version: 24.13.0, cache: npm }
-      - name: Trust the container-mounted exact-head checkout
-        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - run: npm ci
       - run: npm run build
-      - name: Run affected E2E proof plan and fail on flakes
-        env:
-          {
-            BASE_SHA: "${{ github.event.pull_request.base.sha }}",
-            HEAD_SHA: "${{ github.event.pull_request.head.sha }}",
-          }
-        run: node scripts/engineering/verify-affected.mjs --kind e2e --execute --base "$BASE_SHA" --head "$HEAD_SHA" --evidence .zerograph-evidence/evidence-e2e.json
-      - uses: actions/upload-artifact@v4
+      - name: Execute exact planned E2E proofs
+        run: npm run proof:run -- --kind e2e --base "$KERNEL_BASE_SHA" --head "$KERNEL_HEAD_SHA"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: { name: kernel-e2e, path: artifacts/engineering-evidence/e2e/*.json, if-no-files-found: error }
+
+  attest-evidence:
+    needs: [preflight, unit-build, receivables-postgres, e2e]
+    if: ${{ always() && needs.preflight.result == 'success' && needs.unit-build.result == 'success' && needs.receivables-postgres.result == 'success' && needs.e2e.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with: { name: kernel-preflight, path: artifacts/engineering-evidence/preflight }
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with: { name: kernel-unit-build, path: artifacts/engineering-evidence/unit-build }
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with: { name: kernel-postgres, path: artifacts/engineering-evidence/receivables-postgres }
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with: { name: kernel-e2e, path: artifacts/engineering-evidence/e2e }
+      - name: Attest exact evidence files
+        id: attest
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6
         with:
-          { name: zerograph-e2e, path: .zerograph-evidence/evidence-e2e.json }
+          subject-path: artifacts/engineering-evidence/**/*.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: { name: kernel-evidence-attestation, path: "${{ steps.attest.outputs.bundle-path }}", if-no-files-found: error }
 
   verify:
-    needs: [preflight, unit-build, receivables-postgres, e2e]
-    if: always()
+    needs: [preflight, unit-build, receivables-postgres, e2e, attest-evidence]
+    if: ${{ always() && needs.preflight.result == 'success' && needs.unit-build.result == 'success' && needs.receivables-postgres.result == 'success' && needs.e2e.result == 'success' && needs.attest-evidence.result == 'success' }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: { ref: "${{ github.event.pull_request.head.sha }}", fetch-depth: 0 }
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with: { node-version: 24.13.0, cache: npm }
       - run: npm ci
-      - uses: actions/download-artifact@v4
-        with:
-          {
-            pattern: zerograph-*,
-            path: .zerograph-evidence,
-            merge-multiple: true,
-          }
-      - name: Require exact PR head and complete jobs
-        env:
-          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
-        run: |
-          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
-          test "${{ needs.preflight.result }}:${{ needs.unit-build.result }}:${{ needs.receivables-postgres.result }}:${{ needs.e2e.result }}" = "success:success:success:success"
-      - name: Emit final exact-head repository certificate
-        env:
-          ZEROGRAPH_BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          ZEROGRAPH_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          ZEROGRAPH_EVIDENCE_DIR: .zerograph-evidence
-        run: |
-          result="$(npm run --silent quality:release)"
-          echo "$result"
-          echo "$result" | grep -q '"releaseReady":true'
-          echo "REPOSITORY_RELEASE_CANDIDATE_READY"
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with: { name: kernel-preflight, path: artifacts/engineering-evidence/preflight }
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with: { name: kernel-unit-build, path: artifacts/engineering-evidence/unit-build }
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with: { name: kernel-postgres, path: artifacts/engineering-evidence/receivables-postgres }
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with: { name: kernel-e2e, path: artifacts/engineering-evidence/e2e }
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with: { name: kernel-evidence-attestation, path: artifacts/engineering-attestation }
+      - name: Validate complete exact-head evidence
+        env: { BASE_SHA: "${{ github.event.pull_request.base.sha }}", HEAD_SHA: "${{ github.event.pull_request.head.sha }}", GH_TOKEN: "${{ github.token }}" }
+        run: >-
+          npm run proof:certify-ci -- --base "$BASE_SHA" --head "$HEAD_SHA"
+          --jobs "${{ needs.preflight.result }}:${{ needs.unit-build.result }}:${{ needs.receivables-postgres.result }}:${{ needs.e2e.result }}:${{ needs.attest-evidence.result }}"

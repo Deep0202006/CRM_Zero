@@ -4,10 +4,13 @@ import { extname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const reviewedServiceRolePaths = new Set([
+  ".codex/config.toml",
   ".github/workflows/product-verification.yml",
   "scripts/distributor-status-db/run-integration.sh",
   "scripts/handover/check.mjs",
   "scripts/handover/lib.mjs",
+  "scripts/engineering/hooks/pre-tool.mjs",
+  "scripts/engineering/kernel-lib.mjs",
   "scripts/quality/invariants.mjs",
   "scripts/quality/repository-safety.mjs",
   "scripts/receivables-db/run-integration.sh",
@@ -53,9 +56,14 @@ const reviewedServiceRolePaths = new Set([
   "src/lib/receivables/server.ts",
   "src/lib/teamChat/server.ts",
 ]);
+const reviewedServiceRoleReasons = new Map([...reviewedServiceRolePaths].map((path) => [path,
+  path.startsWith("src/app/api/") || path.endsWith("/server.ts") ? "server-only authorization boundary" :
+  path.includes("/__tests__/") ? "synthetic contract fixture" :
+  path.startsWith("scripts/engineering/") || path.startsWith("scripts/quality/") || path.startsWith(".codex/") ? "credential isolation enforcement" :
+  path.startsWith("scripts/handover/") ? "read-only handover verification" : "disposable CI integration",
+]));
 const reviewedDiagnosticPaths = new Set([
   "scripts/attendance-db/verify.sql",
-  "scripts/engineering/verify-affected.mjs",
   "scripts/handover/check.mjs",
   "scripts/handover/checksums.mjs",
   "scripts/mappings-db/verify.sql",
@@ -66,7 +74,7 @@ const reviewedSyntheticCredentialPaths = new Set([
 ]);
 
 const sourceExtensions = new Set([
-  ".bash", ".cjs", ".cts", ".js", ".jsx", ".mjs", ".mts", ".php", ".ps1", ".py", ".rb", ".sh", ".sql", ".ts", ".tsx", ".yaml", ".yml", ".zsh",
+  ".bash", ".cjs", ".cts", ".js", ".jsx", ".mjs", ".mts", ".php", ".ps1", ".py", ".rb", ".rules", ".sh", ".sql", ".toml", ".ts", ".tsx", ".yaml", ".yml", ".zsh",
 ]);
 const removedOperationalPaths = [
   "check.js",
@@ -74,6 +82,8 @@ const removedOperationalPaths = [
   "check_cols.js",
   "check_users.js",
   "check_users_paginated.js",
+  "diagnose_rpc.js",
+  "verify_migrations.js",
   "scripts/seed-production-users.js",
 ];
 
@@ -110,7 +120,7 @@ const stripComments = (text, extension) => {
   if (extension === ".php") return stripHashComments(stripCodeComments(text));
   if (extension === ".sql")
     return stripSqlComments(text);
-  if ([".bash", ".ps1", ".py", ".rb", ".sh", ".yaml", ".yml", ".zsh"].includes(extension))
+  if ([".bash", ".ps1", ".py", ".rb", ".rules", ".sh", ".toml", ".yaml", ".yml", ".zsh"].includes(extension))
     return stripHashComments(extension === ".ps1" ? text.replace(/<#[\s\S]*?#>/g, "") : text);
   return text;
 };
@@ -170,6 +180,29 @@ const stripSqlComments = (text) => {
 const machineAbsolutePath = /\b[A-Za-z]:[\\/][^\s`"']+|[`"']\/(?!api(?:\/|$)|[/*])(?:[A-Za-z0-9._-]+\/)+[A-Za-z0-9._-]+/;
 const hasMachineAbsolutePath = (text, extension) => machineAbsolutePath.test(text) ||
   ([".bash", ".md", ".ps1", ".sh", ".zsh"].includes(extension) && /(?:^|\s)\/(?![/*])(?:[A-Za-z0-9._-]+\/)+[A-Za-z0-9._-]+/m.test(text));
+const jobBlock = (workflow, job) => {
+  const marker = `\n  ${job}:\n`, start = workflow.indexOf(marker);
+  if (start < 0) return "";
+  const tail = workflow.slice(start + 1), next = tail.slice(marker.length - 1).search(/\n  [a-zA-Z0-9_-]+:\s*\n/);
+  return next < 0 ? tail : tail.slice(0, marker.length - 1 + next);
+};
+const controlPlaneViolations = (path, text) => {
+  const violations = [];
+  if (path === ".github/workflows/product-verification.yml") {
+    const attest = jobBlock(text, "attest-evidence"), verify = jobBlock(text, "verify");
+    if (!attest || !attest.includes("actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6")) violations.push("ATTESTATION_JOB_MISSING_OR_UNPINNED");
+    if (!["contents: read", "id-token: write", "attestations: write", "artifact-metadata: write"].every((permission) => attest.includes(permission)) || /actions\/checkout|npm\s+(?:ci|run)|scripts\//.test(attest)) violations.push("ATTESTATION_JOB_AUTHORITY_INVALID");
+    for (const job of ["preflight", "unit-build", "receivables-postgres", "e2e"]) if (/id-token:\s*write|attestations:\s*write|artifact-metadata:\s*write/.test(jobBlock(text, job))) violations.push("PRODUCER_OIDC_PERMISSION");
+    for (const directory of ["preflight", "unit-build", "receivables-postgres", "e2e"]) if (!text.includes(`artifacts/engineering-evidence/${directory}`)) violations.push("EVIDENCE_DIRECTORY_COLLISION");
+    if (/merge-multiple:\s*true/.test(text) || !verify.includes("artifacts/engineering-attestation") || !verify.includes("kernel-evidence-attestation")) violations.push("EVIDENCE_DIRECTORY_COLLISION");
+    if (!verify.includes("proof:certify-ci") || !verify.includes("GH_TOKEN:")) violations.push("ATTESTATION_VERIFICATION_MISSING");
+  }
+  if (path === "scripts/engineering/proof-certify-ci.mjs" && (!/spawnSync\(\s*["']gh["']/.test(text) || !["attestation", "verify", "--bundle", "--signer-workflow", "--deny-self-hosted-runners"].every((value) => text.includes(`"${value}"`)) || /export\s+(?:const|function)\s+certifyRepositoryProof/.test(text))) violations.push("CERTIFIER_ATTESTATION_BYPASS");
+  if (path === "scripts/engineering/hooks/stop.mjs" && (/evidenceCurrent|artifacts\/engineering-evidence|LOCAL_PROOFS_REQUIRED/.test(text) || !text.includes("WORKTREE_DIRTY_COMMIT_REQUIRED"))) violations.push("STOP_SHALLOW_EVIDENCE_AUTHORITY");
+  if (path === "scripts/engineering/kernel-lib.mjs" && (!text.includes("PG[A-Z0-9_]*") || !["GITHUB_TOKEN", "GH_TOKEN", "ACTIONS_ID_TOKEN_REQUEST_TOKEN", "ACTIONS_RUNTIME_TOKEN"].every((value) => text.includes(value)))) violations.push("PROOF_ENVIRONMENT_ISOLATION_MISSING");
+  if (path === "scripts/engineering/proof-runner.mjs" && (!text.includes("disposablePostgresEnvironment") || !text.includes('kind === "postgres"'))) violations.push("POSTGRES_LOOPBACK_RECONSTRUCTION_MISSING");
+  return [...new Set(violations)];
+};
 
 const trackedPaths = (root) => {
   const result = spawnSync("git", ["ls-files", "-z"], { cwd: root, encoding: "utf8" });
@@ -183,7 +216,7 @@ export const scanRepository = (root) => {
   for (const path of paths) {
     if (!existsSync(resolve(root, path))) continue;
     const extension = extname(path).toLowerCase(), rootFile = !path.includes("/"),
-      governancePath = /^(?:\.agents|\.codex|\.harness|\.crm-engineering|docs\/engineering|scripts\/(?:engineering|quality)|tools\/crm-graph)\//i.test(path),
+      governancePath = /^(?:\.agents|\.codex|docs\/engineering|scripts\/(?:engineering|quality))\//i.test(path),
       governanceJson = governancePath && extension === ".json",
       hookPath = /(^|\/)(?:hooks?|\.husky|\.githooks)\//i.test(path),
       configJson = extension === ".json" && !/(^|\/)package-lock\.json$/i.test(path);
@@ -196,12 +229,13 @@ export const scanRepository = (root) => {
     if (!sourceExtensions.has(extension) && !["package.json", ".codex/hooks.json"].includes(path) && !path.endsWith(".md") && !configJson && !hookPath) continue;
 
     const raw = readFileSync(resolve(root, path), "utf8"), executable = stripComments(raw, extension);
+    for (const code of controlPlaneViolations(path, executable)) fail(code, path);
     if (governanceJson) {
       if (hasMachineAbsolutePath(executable, extension))
         fail("MACHINE_ABSOLUTE_PATH", path);
     }
     if (path.endsWith(".md")) {
-      if (/(?:^|[`>\s])(?:node|bun|deno|tsx|npx(?:\s+tsx)?|pnpm(?:\s+exec)?|yarn|bash|sh|pwsh|powershell)\s+(?:\.\/)?(?:check(?:_[\w-]+)?\.js|scripts\/seed-production-users\.js)\b|(?:^|[`>\s])\.\/(?:check(?:_[\w-]+)?\.js|scripts\/seed-production-users\.js)\b/im.test(executable))
+      if (/(?:^|[`>\s])(?:node|bun|deno|tsx|npx(?:\s+tsx)?|pnpm(?:\s+exec)?|yarn|bash|sh|pwsh|powershell)\s+(?:\.\/)?(?:check(?:_[\w-]+)?\.js|diagnose_rpc\.js|verify_migrations\.js|scripts\/seed-production-users\.js)\b|(?:^|[`>\s])\.\/(?:check(?:_[\w-]+)?\.js|diagnose_rpc\.js|verify_migrations\.js|scripts\/seed-production-users\.js)\b/im.test(executable))
         fail("REMOVED_OPERATIONAL_COMMAND", path);
       if (hasMachineAbsolutePath(executable, extension) && /^(?:docs\/engineering|docs\/operations|\.codex)\//.test(path))
         fail("MACHINE_ABSOLUTE_PATH", path);
@@ -212,6 +246,8 @@ export const scanRepository = (root) => {
       ? executable
           .replace(/\b(?:POSTGRES_PASSWORD|PGPASSWORD):\s*postgres\b/g, "")
           .replace(/\bSUPABASE_SERVICE_ROLE_KEY:\s*BUILD_TIME_PLACEHOLDER_KEY\b/g, "")
+      : ["scripts/engineering/kernel.test.mjs", "scripts/engineering/proof-command-plan.mjs"].includes(path)
+        ? executable.replace(/\bPGPASSWORD:\s*["'](?:postgres|secret)["']/g, "")
       : executable;
     const credentialIdentifierPattern = "[A-Za-z0-9_-]*(?:password|passwd)[A-Za-z0-9_-]*",
       assignmentStart = "(?:^|[\\n,{;])\\s*(?:(?:const|let|var)\\s+)?",
@@ -228,7 +264,7 @@ export const scanRepository = (root) => {
       fail("DEFAULT_ADMIN_CREATION", path);
 
     const serviceRole = /SUPABASE_SERVICE_ROLE(?:_KEY)?|\bservice_role\b/i.test(executable);
-    if (extension !== ".sql" && serviceRole && !reviewedServiceRolePaths.has(path)) fail("SERVICE_ROLE_NOT_ALLOWLISTED", path);
+    if (extension !== ".sql" && serviceRole && !reviewedServiceRoleReasons.has(path)) fail("SERVICE_ROLE_NOT_ALLOWLISTED", path);
     if (/\.env\.local\b/i.test(executable) && /createClient\s*\(/.test(executable) && serviceRole)
       fail("ENV_LOCAL_PRIVILEGED_CLIENT", path);
 

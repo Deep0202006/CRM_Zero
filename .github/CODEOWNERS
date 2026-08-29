@@ -1,0 +1,13 @@
+.github/** @Deep0202006
+.codex/** @Deep0202006
+.gitignore @Deep0202006
+AGENTS.md @Deep0202006
+CLAUDE.md @Deep0202006
+scripts/engineering/** @Deep0202006
+scripts/quality/** @Deep0202006
+docs/engineering/** @Deep0202006
+docs/contracts/** @Deep0202006
+supabase/migrations/** @Deep0202006
+owner-*.sql @Deep0202006
+package.json @Deep0202006
+package-lock.json @Deep0202006

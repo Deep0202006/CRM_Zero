@@ -46,11 +46,12 @@ next-env.d.ts
 graphify-out/
 .graphify-venv/
 .handover/
-.zerograph-evidence/
 .codex-artifacts/
 .gstack/
-.harness/
 .repository-safety-fixtures/
+/artifacts/engineering-evidence/
+/artifacts/engineering-attestation/
+/artifacts/visual-review/
 playwright-report/
 test-results/
 docs/engineering/**/package-lock.json

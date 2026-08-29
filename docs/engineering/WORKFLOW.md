@@ -1,56 +1,38 @@
 # Engineering workflow
 
-## Task and resolve
+## Resolve
 
-Resolve natural-language intent first, inspect current main/worktree, use
-targeted `rg`/`git grep`/path search, open the exact current source, then select the affected
-contracts, authority, and reusable implementation. Use Graphify only when
-relationships are ambiguous/cross-domain or it materially lowers search cost;
-then run `graphify:sync`, make one bounded query, and open the result. Graphify
-is a locator, never authority, and unavailable Graphify never blocks ordinary
-product work.
+Start from a clean feature worktree and a fresh base. Resolve the natural-language
+task against current tracked source and registries. Exact paths, identifiers,
+tables, RPCs, routes, imports, tests, and registry links outrank filenames.
+Ambiguous scope is read-only until new exact evidence produces a revised scope.
 
-## Implement and impact
+## Change
 
-Lock outcome, canonical authority, must-not-write facts and minimum change.
-Compile the actual diff after implementation; requested risk never overrides
-detected effects. R0 is docs/presentation; R1 isolated non-critical
-behavior; R2 business logic/API/critical read/sync; R3 schema, RLS, auth,
-destructive, production, or foundational persistence.
+Open and hash-check every candidate before editing. Reuse the canonical authority
+and capability. Keep the diff minimal, preserve unknown records and Owner work,
+and never infer a business default from missing evidence. Rules and lessons are
+ordinary reviewed source; no hook mutates them.
 
-## Prove and certify
+## Prove
 
-Use `proof:plan` and `verify:affected`; declared business proofs remain required
-alongside related tests. R3 adds GitHub-hosted disposable PostgreSQL,
-security/isolation, E2E, and Owner SQL evidence where applicable. A retry-pass
-is `FLAKY_DETECTED`, not release PASS. GitHub exact-head CI is final repository
-proof; generated or refreshed tests never rewrite correctness expectations.
+The canonical impact manifest handles add, modify, delete, rename, and copy
+status and applies the maximum path, domain, effect, and semantic risk. The proof
+plan selects registered commands from domain requirements, effects, authorities,
+and explicit proof references. The runner derives status from subprocess results,
+records only hashes and identities, and treats retry-pass as a release failure.
 
-Release blockers are real evidence failures: unresolved authority, a
-security/auth leak, data-loss risk, relevant contract/implementation drift,
-an unsatisfied schema/production gate, relevant failing tests/CI, or a
-Graphify/source contradiction when Graphify was used. Do not invent process
-blockers. A fully authority-safe runtime fix proven by relevant tests and CI is
-not blocked solely to expand optional lesson metadata. Prevent recurring bugs
-in order: shared implementation, validation/invariant, regression test, then a
-durable lesson only when cross-cutting judgment cannot be mechanically enforced.
+## Certify
 
-## Schema release
+Local evidence is progress only. The protected PR workflow checks the exact head,
+contained base, complete artifact set, command results, and manifest/plan hashes.
+Pending and failed checks remain incomplete. Authentication or network failure is
+an external dependency, never success. The resulting certificate proves the
+repository revision; it does not certify prose or Owner task semantics.
 
-Run PR CI/preview first. The Owner reviews and manually applies SQL, then runs
-a read-only postcheck. The migration becomes immutable; every repair is forward
-only. Do not create durable task state files. Use a PR body or temporary
-uncommitted brief for complex work unless a design document is explicitly
-requested.
+## Release and learn
 
-## Learn
-
-Run `learn:close` for R2/R3 failures. Known rules strengthen their enforcement
-or eval; genuinely reusable unrepresented gaps add claim, enforcement and
-Golden evidence. Non-reusable mistakes do not create registry churn.
-
-`task:close` binds the task baseline, current impact, proof plan, proof evidence,
-and learning outcome. It returns local completion, remote-evidence waiting, a
-typed external/safety gate, or exact-head certification; it never accepts WIP as
-success. Low-confidence, close-margin, cross-domain tasks may use bounded
-Graphify navigation, whose sanitized outcome can only improve path ranking.
+Use a feature branch and protected PR. Never deploy or apply production SQL from
+the kernel. The Owner performs reviewed production actions and read-only
+postchecks. Durable rules change only when a reviewed diff adds real enforcement
+and an executable regression.

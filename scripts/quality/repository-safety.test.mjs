@@ -3,6 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { classifyCommand, CommandClass } from "../engineering/command-policy.mjs";
 
 const scanner = resolve(dirname(fileURLToPath(import.meta.url)), "repository-safety.mjs");
 const join = (...parts) => parts.join("");
@@ -92,7 +93,7 @@ const matrix = [
     "docs/engineering/cache.json": join('{"tool":"/ho', 'me/fixture/bin/tool"}\n'),
   }),
   expectFailure("governance-dependency-tree", "GOVERNANCE_DEPENDENCY_TREE", {
-    ".harness/node_modules/example/index.js": "export {};\n",
+    ".codex/node_modules/example/index.js": "export {};\n",
   }),
   expectFailure("agent-dependency-tree", "GOVERNANCE_DEPENDENCY_TREE", {
     ".agents/node_modules/example/index.js": "export {};\n",
@@ -105,6 +106,9 @@ const matrix = [
   }),
   expectFailure("hook-removed-command-reference", "REMOVED_OPERATIONAL_COMMAND", {
     "scripts/engineering/hooks/preflight.mjs": join('spawnSync(process.execPath, ["scripts/seed-production-', 'users.js"]);\n'),
+  }),
+  expectFailure("diagnostic-command-reference", "REMOVED_OPERATIONAL_COMMAND", {
+    "docs/operations/runbook.md": join("Run `node diagnose_", "rpc.js`.\n"),
   }),
   expectFailure("extensionless-hook-removed-command-reference", "REMOVED_OPERATIONAL_COMMAND", {
     ".husky/pre-commit": join('node scripts/seed-production-', 'users.js\n'),
@@ -130,6 +134,27 @@ const matrix = [
   expectFailure("scanner-self-content", "PRODUCTION_MUTATION_COMMAND", {
     "scripts/quality/repository-safety.mjs": join('execFileSync("supa', 'base", ["db", "push"]);\n'),
   }),
+  expectFailure("workflow-attestation-job-missing", "ATTESTATION_JOB_MISSING_OR_UNPINNED", {
+    ".github/workflows/product-verification.yml": "name: unsafe\njobs:\n  preflight:\n    permissions:\n      contents: read\n",
+  }),
+  expectFailure("workflow-producer-oidc", "PRODUCER_OIDC_PERMISSION", {
+    ".github/workflows/product-verification.yml": "name: unsafe\njobs:\n  preflight:\n    permissions:\n      id-token: write\n  attest-evidence:\n    permissions:\n      contents: read\n      id-token: write\n      attestations: write\n      artifact-metadata: write\n    steps:\n      - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6\n",
+  }),
+  expectFailure("workflow-merged-evidence", "EVIDENCE_DIRECTORY_COLLISION", {
+    ".github/workflows/product-verification.yml": "name: unsafe\njobs:\n  verify:\n    steps:\n      - uses: actions/download-artifact@fixture\n        with: { merge-multiple: true }\n",
+  }),
+  expectFailure("certifier-export-bypass", "CERTIFIER_ATTESTATION_BYPASS", {
+    "scripts/engineering/proof-certify-ci.mjs": "export const certifyRepositoryProof = () => ({ status: 'REPOSITORY_PROOF_READY' });\n",
+  }),
+  expectFailure("stop-local-evidence-authority", "STOP_SHALLOW_EVIDENCE_AUTHORITY", {
+    "scripts/engineering/hooks/stop.mjs": "const evidenceCurrent = () => true; const path = 'artifacts/engineering-evidence';\n",
+  }),
+  expectFailure("proof-environment-isolation", "PROOF_ENVIRONMENT_ISOLATION_MISSING", {
+    "scripts/engineering/kernel-lib.mjs": "export const safeEnvironment = (source) => source;\n",
+  }),
+  expectFailure("postgres-loopback-reconstruction", "POSTGRES_LOOPBACK_RECONSTRUCTION_MISSING", {
+    "scripts/engineering/proof-runner.mjs": "export const runProof = (environment) => environment;\n",
+  }),
   expectPass("reviewed-server-service-role", {
     "src/app/api/admin/create-user/route.ts": join("const key = process.env.SUPABASE_SERVICE_", "ROLE_KEY;\n"),
   }),
@@ -146,5 +171,30 @@ const matrix = [
     "src/app/api/example/route.ts": 'await client.from("synthetic").update({ safe: true });\n',
   }),
 ];
+
+for (const [name, command, expected] of [
+  ["policy-node-inline", "node -e process.exit(0)", CommandClass.PROHIBITED],
+  ["policy-python-inline", "python -c open('x','w')", CommandClass.PROHIBITED],
+  ["policy-shell-redirect", "printf fixture > file", CommandClass.PROHIBITED],
+  ["policy-git-refspec-main", "git push origin HEAD:refs/heads/main", CommandClass.PROHIBITED],
+  ["policy-git-force-tail", "git push origin feature/x --force", CommandClass.PROHIBITED],
+  ["policy-supabase-parameter", "supabase --project-ref X db push", CommandClass.PROHIBITED],
+  ["policy-supabase-wrapper", "npm exec -- supabase db push", CommandClass.PROHIBITED],
+  ["policy-vercel-wrapper", "npx vercel deploy", CommandClass.PROHIBITED],
+  ["policy-read-only", "git status --short", CommandClass.READ_ONLY_ALLOWED],
+  ["policy-feature-push", "git push origin chore/engineering-kernel-v4", CommandClass.SCOPED_MUTATION_ALLOWED],
+  ["policy-branch-delete", "git branch -D feature/x", CommandClass.PROHIBITED],
+  ["policy-remote-set-url", "git remote set-url origin https://example.invalid/repo.git", CommandClass.PROHIBITED],
+  ["policy-worktree-remove", "git worktree remove .worktrees/x", CommandClass.PROHIBITED],
+  ["policy-worktree-prune", "git worktree prune", CommandClass.PROHIBITED],
+  ["policy-branch-list", "git branch --list", CommandClass.READ_ONLY_ALLOWED],
+  ["policy-remote-read", "git remote get-url origin", CommandClass.READ_ONLY_ALLOWED],
+  ["policy-worktree-list", "git worktree list --porcelain", CommandClass.READ_ONLY_ALLOWED],
+  ["policy-worktree-add-scoped", "git worktree add .worktrees/x chore/x", CommandClass.SCOPED_MUTATION_ALLOWED],
+]) {
+  const actual = classifyCommand(command);
+  if (actual.classification !== expected) throw Error(`${name}:${actual.classification}:${actual.reason}`);
+  matrix.push({ name, expected, outcome: actual.classification });
+}
 
 console.log(JSON.stringify({ code: "REPOSITORY_SAFETY_FIXTURES_PASS", matrix }));

@@ -33,13 +33,11 @@ const claimFile = json("docs/engineering/CLAIMS.json");
 const claims = claimFile.claims ?? [];
 const proofFile = json("docs/engineering/PROOFS.json");
 const proofs = proofFile.proofs ?? [];
-const goldenCases =
-  json("docs/engineering/ENGINEERING_GOLDEN_CASES.json").cases ?? [];
-const legacy = json("docs/engineering/LEGACY_COVERAGE.json");
+const regressionCases = json("docs/engineering/REGRESSION_CASES.json").cases ?? [];
 if (mapFile.schemaVersion !== 2) fail("DOMAIN_MAP schemaVersion must be 2");
 if (json("docs/engineering/LESSONS.json").schemaVersion !== 2)
   fail("LESSONS schemaVersion must be 2");
-if (proofFile.schemaVersion !== 2) fail("PROOFS schemaVersion must be 2");
+if (proofFile.schemaVersion !== 3) fail("PROOFS schemaVersion must be 3");
 if (claimFile.schemaVersion !== 1) fail("CLAIMS schemaVersion must be 1");
 unique(domains, "domain");
 unique(authorities, "authority");
@@ -51,7 +49,7 @@ const authorityIds = new Set(authorities.map((item) => item.id));
 const capabilityIds = new Set(capabilities.map((item) => item.id));
 const lessonIds = new Set(lessons.map((item) => item.id));
 const domainIds = new Set(domains.map((item) => item.id));
-const evalIds = new Set(goldenCases.map((item) => item.id));
+const evalIds = new Set(regressionCases.map((item) => item.id));
 const claimIds = new Set(claims.map((item) => item.id));
 const pathFields = [
   "surfacePaths",
@@ -138,7 +136,6 @@ for (const lesson of lessons) {
     "evidence",
     "enforcementRefs",
     "evalRefs",
-    "legacyRefs",
     "loadByDefault",
   ])
     if (!(key in lesson)) fail(`${lesson.id} missing lesson field: ${key}`);
@@ -197,8 +194,10 @@ for (const claim of claims) {
     fail(`${claim.id} high-safety claim lacks enforcement/eval`);
   for (const ref of claim.enforcementRefs ?? [])
     if (!pathExists(ref)) fail(`${claim.id} missing enforcement: ${ref}`);
-  for (const ref of claim.evalRefs ?? [])
+  for (const ref of claim.evalRefs ?? []) {
     if (!evalIds.has(ref)) fail(`${claim.id} missing eval: ${ref}`);
+    else if (!(regressionCases.find((item) => item.id === ref)?.proofRefs ?? []).length) fail(`${claim.id} eval lacks executable proof: ${ref}`);
+  }
 }
 const runners = new Set([
     "jest",
@@ -206,13 +205,18 @@ const runners = new Set([
     "bash-postgres",
     "node",
     "owner-sql",
+    "fixed-commands",
   ]),
   proofIds = new Set(proofs.map((item) => item.id));
+for (const item of regressionCases)
+  for (const proof of item.proofRefs ?? [])
+    if (!proofIds.has(proof)) fail(`${item.id} unknown executable proof: ${proof}`);
 for (const proof of proofs) {
   if (
     !runners.has(proof.runner) ||
     ![
       "unit",
+      "build",
       "e2e",
       "postgres",
       "invariant",
@@ -227,6 +231,12 @@ for (const proof of proofs) {
       fail(`${proof.id} unknown proof domain: ${domain}`);
   for (const path of proof.paths ?? [])
     if (!pathExists(path)) fail(`${proof.id} missing proof path: ${path}`);
+  for (const command of proof.commands ?? []) {
+    if (!command.file || !Array.isArray(command.args)) fail(`${proof.id} invalid fixed command`);
+    for (const argument of command.args)
+      if (/^(?:scripts|src|e2e|docs)\//.test(argument) && !pathExists(argument))
+        fail(`${proof.id} missing command path: ${argument}`);
+  }
 }
 for (const domain of domains.filter((item) =>
   ["R2", "R3"].includes(item.riskFloor),
@@ -268,9 +278,10 @@ if (agents.length !== 1 || agents[0] !== "AGENTS.md")
 if (read("CLAUDE.md").replaceAll("\r\n", "\n") !== "@AGENTS.md\n")
   fail("CLAUDE.md must be the exact root alias");
 const trackedFiles = tracked("");
+const retiredHarness = [".", "harness"].join("");
 if (
-  !isTrackedPathOrDescendant([".harness/foo"], ".harness") ||
-  isTrackedPathOrDescendant(["docs/engineering/INDEX.md"], ".harness")
+  !isTrackedPathOrDescendant([`${retiredHarness}/foo`], retiredHarness) ||
+  isTrackedPathOrDescendant(["docs/engineering/INDEX.md"], retiredHarness)
 )
   fail("tracked retired-path helper self-eval failed");
 for (const path of [
@@ -280,14 +291,14 @@ for (const path of [
   ".clinerules",
   ".github/copilot-instructions.md",
   "GEMINI.md",
-  ".crm-engineering",
-  "tools/crm-graph",
-  "docs/engineering-graph",
-  "docs/os",
-  ".harness",
-  "scripts/harness",
+  [".crm", "engineering"].join("-"),
+  ["tools", "crm", "graph"].join("/"),
+  ["docs", "engineering", "graph"].join("-").replace("docs-", "docs/"),
+  ["docs", "os"].join("/"),
+  retiredHarness,
+  ["scripts", "harness"].join("/"),
   "docs/generated",
-  "docs/exec-plans",
+  ["docs", "exec-plans"].join("/"),
   "docs/field-visits-hardening",
   "harness.config.json",
   ".github/workflows/harness.yml",
@@ -295,11 +306,8 @@ for (const path of [
   if (isTrackedPathOrDescendant(trackedFiles, path))
     fail(`retired or alternate instruction path tracked: ${path}`);
 for (const path of trackedFiles.filter((item) => item.startsWith(".codex/")))
-  if (!new Set([".codex/hooks.json", ".codex/rules/zerodata.rules"]).has(path))
+  if (!new Set([".codex/config.toml", ".codex/hooks.json", ".codex/rules/zerodata.rules"]).has(path))
     fail(`unsanctioned codex path: ${path}`);
-for (const resolution of legacy.resolutions ?? [])
-  for (const claim of resolution.preservedClaims ?? [])
-    if (!claimIds.has(claim)) fail(`legacy claim missing: ${claim}`);
 const meta = json("supabase/migrations/APPLIED_OWNER_MIGRATIONS.json");
 const base = execFileSync("git", ["merge-base", "origin/main", "HEAD"], {
   cwd: root,

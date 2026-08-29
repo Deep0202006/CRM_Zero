@@ -43,11 +43,11 @@ async function expectResponsiveAnalytics(page: Page, heading: string, reviewName
     await expect(page.getByRole("heading", { name: heading })).toBeVisible();
     const dimensions = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth }));
     expect(dimensions.scroll, `horizontal overflow at ${width}px`).toBeLessThanOrEqual(dimensions.client + 1);
-    if (process.env.VISUAL_REVIEW && width === 375) await page.screenshot({ path: `.harness/visual-review/${reviewName}-mobile.png`, fullPage: true });
+    if (process.env.VISUAL_REVIEW && width === 375) await page.screenshot({ path: `artifacts/visual-review/${reviewName}-mobile.png`, fullPage: true });
   }
   expect(await page.locator("[data-chart-height='stable']").first().evaluate(node => node.getBoundingClientRect().height)).toBeGreaterThanOrEqual(220);
   await expect(page.locator("body")).not.toContainText(/NaN|Infinity/);
-  if (process.env.VISUAL_REVIEW) await page.screenshot({ path: `.harness/visual-review/${reviewName}-desktop.png`, fullPage: true });
+  if (process.env.VISUAL_REVIEW) await page.screenshot({ path: `artifacts/visual-review/${reviewName}-desktop.png`, fullPage: true });
 }
 
 test("My Day analytics reuses existing data paths and remains operational at every target width", async ({ page }) => {
@@ -102,7 +102,7 @@ test("Team Intelligence preserves exact contribution totals with one initial KPI
   await page.getByRole("button", { name: "Use dark theme" }).click();
   await expect.poll(() => page.evaluate(() => document.documentElement.dataset.theme)).toBe("dark");
   await expect(page.locator("[data-chart-height='stable']").first()).toBeVisible();
-  if (process.env.VISUAL_REVIEW) await page.screenshot({ path: ".harness/visual-review/team-kpi-dark.png", fullPage: true });
+  if (process.env.VISUAL_REVIEW) await page.screenshot({ path: "artifacts/visual-review/team-kpi-dark.png", fullPage: true });
 });
 
 test("Visits visual composition reconciles the bounded page and closes with server filters", async ({ page }) => {

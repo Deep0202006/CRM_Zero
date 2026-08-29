@@ -1,0 +1,350 @@
+import assert from "node:assert/strict";
+import { spawn, spawnSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, statSync, unlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, relative, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
+import { classifyCommand, CommandClass } from "./command-policy.mjs";
+import { buildSourceIndex } from "./source-index.mjs";
+import { compileImpact, parseNameStatus } from "./impact.mjs";
+import { compileProofPlan } from "./proof-plan.mjs";
+import * as certifierModule from "./proof-certify-ci.mjs";
+import { validateEvidenceFile } from "./proof-certify-ci.mjs";
+import { parseVerifiedAttestation } from "./proof-attestation.mjs";
+import { assertDisposablePostgresEnvironment, compileRegisteredCommandPlan, disposablePostgresEnvironment, proofDefinitionHash, proofRunnerIdentity } from "./proof-command-plan.mjs";
+import { evidencePayloadHash } from "./proof-evidence.mjs";
+import { canonicalEvidencePath, runRegisteredProof } from "./proof-runner.mjs";
+import { executeRegressionCases, validateCaseResult } from "./regression-executors.mjs";
+import { revalidateCandidate } from "./context.mjs";
+import { applyStallPolicy, evaluateStopState, protectedRequiredChecks, remoteGate, requiredRemoteChecks } from "./hooks/stop.mjs";
+import { beginExternalTask, compareAndSwap, loadState, requireContinuation, sessionPath, sessionsDirectory } from "./hooks/state-store.mjs";
+import { dirtyFingerprint, environmentPolicyHash, git, repositoryIdentity, root, safeEnvironment, sha256 } from "./kernel-lib.mjs";
+import { containsAssertionWeakening } from "../quality/assertion-policy.mjs";
+
+const matrix = { state: [], risk: [], proof: [], attestation: [], commandPolicy: [], regression: [], stopRemote: [], stall: [], postgresEnvironment: [], tokenIsolation: [] }, tempRoots = [], createdEvidence = [];
+const temp = (prefix) => { const path = mkdtempSync(resolve(tmpdir(), prefix)); tempRoots.push(path); return path; };
+const command = (cwd, file, args, env, input) => spawnSync(file, args, { cwd, encoding: "utf8", env: { ...process.env, ...env }, input });
+const gitAt = (cwd, ...args) => command(cwd, "git", args);
+const snapshotDirectory = (directory) => {
+  if (!existsSync(directory)) return { exists: false, files: [] };
+  const files = [];
+  const visit = (current) => {
+    for (const name of readdirSync(current)) {
+      const path = resolve(current, name), stat = statSync(path);
+      if (stat.isDirectory()) visit(path);
+      else files.push({ path: relative(directory, path).replaceAll("\\", "/"), size: stat.size, sha256: sha256(readFileSync(path)) });
+    }
+  };
+  visit(directory);
+  return { exists: true, files: files.sort((a, b) => a.path.localeCompare(b.path)) };
+};
+const withEnvironment = async (environment, work) => {
+  const previous = new Map(Object.keys(environment).map((key) => [key, process.env[key]]));
+  for (const [key, value] of Object.entries(environment)) process.env[key] = value;
+  try { return await work(); }
+  finally { for (const [key, value] of previous) if (value === undefined) delete process.env[key]; else process.env[key] = value; }
+};
+const expectClass = (commandText, expected, name) => {
+  const actual = classifyCommand(commandText);
+  assert.equal(actual.classification, expected, `${name}:${actual.reason}`);
+  matrix.commandPolicy.push({ name, classification: actual.classification });
+};
+const attestationOutput = (environment, digest, mutate = () => {}) => {
+  const workflow = `https://github.com/Deep0202006/CRM_Zero/.github/workflows/product-verification.yml@${environment.GITHUB_REF}`;
+  const row = { verificationResult: {
+    signature: { certificate: {
+      issuer: "https://token.actions.githubusercontent.com", subjectAlternativeName: workflow, githubWorkflowTrigger: environment.GITHUB_EVENT_NAME,
+      githubWorkflowSHA: environment.GITHUB_SHA, githubWorkflowRepository: environment.GITHUB_REPOSITORY, githubWorkflowRef: environment.GITHUB_REF,
+      buildSignerURI: workflow, buildSignerDigest: environment.GITHUB_SHA, buildConfigURI: workflow, buildConfigDigest: environment.GITHUB_SHA,
+      runnerEnvironment: "github-hosted", sourceRepositoryURI: "https://github.com/Deep0202006/CRM_Zero", sourceRepositoryOwnerURI: "https://github.com/Deep0202006",
+      sourceRepositoryDigest: environment.GITHUB_SHA, sourceRepositoryRef: environment.GITHUB_REF,
+      runInvocationURI: `https://github.com/Deep0202006/CRM_Zero/actions/runs/${environment.GITHUB_RUN_ID}/attempts/${environment.GITHUB_RUN_ATTEMPT}`,
+    } },
+    verifiedTimestamps: [{ type: "Tlog", uri: "https://rekor.sigstore.dev", timestamp: "2026-08-28T00:00:00Z" }],
+    statement: { subject: [{ name: "proof.json", digest: { sha256: digest } }] },
+  } };
+  mutate(row);
+  return JSON.stringify([row]);
+};
+
+const operationalDirectory = sessionsDirectory(), operationalBefore = snapshotDirectory(operationalDirectory);
+let isolatedGit = "", isolatedRemoved = false;
+try {
+  const baseSha = git("rev-parse", "origin/main"), currentHead = git("rev-parse", "HEAD"), currentTree = git("rev-parse", "HEAD^{tree}");
+  isolatedGit = temp("kernel-state-git-");
+  assert.equal(command(root, "git", ["clone", "-q", "--bare", "--shared", root, isolatedGit]).status, 0);
+  assert.equal(command(root, "git", ["--git-dir", isolatedGit, "config", "core.bare", "false"]).status, 0);
+  assert.equal(command(root, "git", ["--git-dir", isolatedGit, "update-ref", "refs/remotes/origin/main", baseSha]).status, 0);
+  assert.equal(command(root, "git", ["--git-dir", isolatedGit, "read-tree", "HEAD"]).status, 0);
+  const isolatedEnvironment = { GIT_DIR: isolatedGit, GIT_WORK_TREE: root };
+  await withEnvironment(isolatedEnvironment, async () => {
+    assert.equal(repositoryIdentity().headSha, currentHead);
+    const session = `kernel-test-${randomUUID()}`, first = beginExternalTask(session, "first external task");
+    compareAndSwap(session, first.revision, { ...first, evidence: [{ proofId: "old" }], failureSignatures: ["old"], resolution: { status: "RESOLVED" }, progressSignature: "old" });
+    const second = beginExternalTask(session, "second external task");
+    assert.notEqual(second.taskId, first.taskId); assert.deepEqual(second.evidence, []); assert.deepEqual(second.failureSignatures, []); assert.equal(second.resolution, undefined); assert.equal(second.progressSignature, undefined);
+    assert.equal(requireContinuation(session, second.taskId).taskId, second.taskId); assert.throws(() => requireContinuation(session, first.taskId), /CONTINUATION_TASK_MISMATCH/);
+    const expandHook = command(root, process.execPath, ["scripts/engineering/hooks/user-prompt.mjs"], isolatedEnvironment, JSON.stringify({ session_id: session, prompt: `KERNEL_SCOPE_EXPAND|taskId=${second.taskId}|path=scripts/engineering/context.mjs|task=inspect exact context resolver` }));
+    assert.equal(expandHook.status, 0); assert.equal(loadState(session).scopeRevision, 1); assert.equal(loadState(session).resolution.status, "RESOLVED");
+    matrix.state.push("external-reset", "exact-continuation", "evidence-backed-scope-expansion");
+
+    const staleSession = `kernel-test-${randomUUID()}`, stale = loadState(staleSession), stateModuleUrl = pathToFileURL(resolve(root, "scripts/engineering/hooks/state-store.mjs")).href;
+    const code = `import {compareAndSwap} from ${JSON.stringify(stateModuleUrl)};try{compareAndSwap(process.argv[1],Number(process.argv[2]),{status:'IMPLEMENTATION_IN_PROGRESS'});process.exit(0)}catch(e){console.error(e.message);process.exit(2)}`;
+    const children = [0, 1].map(() => new Promise((done) => { const child = spawn(process.execPath, ["--input-type=module", "-e", code, staleSession, String(stale.revision)], { cwd: root, env: { ...process.env, ...isolatedEnvironment }, stdio: ["ignore", "pipe", "pipe"] }); let stderr = ""; child.stderr.on("data", (chunk) => stderr += chunk); child.on("exit", (status) => done({ status, stderr })); }));
+    const writes = await Promise.all(children);
+    assert.deepEqual(writes.map((item) => item.status).sort(), [0, 2]); assert(writes.some((item) => item.stderr.includes("STATE_STALE_WRITE")));
+    const lockSession = `kernel-test-${randomUUID()}`, lockPath = `${sessionPath(lockSession)}.lock`;
+    mkdirSync(dirname(lockPath), { recursive: true }); writeFileSync(lockPath, "locked");
+    assert.throws(() => compareAndSwap(lockSession, 0, { status: "IMPLEMENTATION_IN_PROGRESS" }), /STATE_LOCK_TIMEOUT/); unlinkSync(lockPath);
+    matrix.state.push("concurrent-stale-rejected", "bounded-lock-timeout");
+
+    const corruptSession = `kernel-test-${randomUUID()}`, corruptPath = sessionPath(corruptSession);
+    mkdirSync(dirname(corruptPath), { recursive: true }); writeFileSync(corruptPath, "{interrupted");
+    assert.throws(() => loadState(corruptSession), /STATE_CORRUPT_PRESERVED/); assert(readdirSync(dirname(corruptPath)).some((name) => name.startsWith(`${corruptSession}.json.corrupt-`)));
+    const hookSession = `kernel-test-${randomUUID()}`;
+    assert.equal(command(root, process.execPath, ["scripts/engineering/hooks/session-start.mjs"], isolatedEnvironment, JSON.stringify({ session_id: hookSession })).status, 0);
+    assert.equal(command(root, process.execPath, ["scripts/engineering/hooks/post-tool.mjs"], isolatedEnvironment, JSON.stringify({ session_id: hookSession, tool_name: "fixture", tool_input: { command: "synthetic-private-input" }, tool_response: { exit_code: 9, stdout: "synthetic-private-output", stderr: "synthetic-private-error" } })).status, 0);
+    const postState = loadState(hookSession), storedState = readFileSync(sessionPath(hookSession), "utf8");
+    assert.equal(postState.failureSignatures[0].length, 64); assert(!storedState.includes("synthetic-private"));
+    matrix.state.push("corrupt-preserved-fail-closed", "hook-schema-valid", "failure-output-hashed-only");
+
+    const stallSession = `kernel-test-${randomUUID()}`, stopInvocation = () => command(root, process.execPath, ["scripts/engineering/hooks/stop.mjs"], isolatedEnvironment, JSON.stringify({ session_id: stallSession }));
+    const firstStop = JSON.parse(stopInvocation().stdout), secondStop = JSON.parse(stopInvocation().stdout), thirdStop = JSON.parse(stopInvocation().stdout), fourthStop = JSON.parse(stopInvocation().stdout);
+    assert.match(firstStop.reason, /strategy=FOCUSED_RETRY\|stallCount=1/); assert.match(secondStop.reason, /strategy=STRATEGY_CHANGE_REQUIRED\|stallCount=2/);
+    assert.equal(thirdStop.stopReason, "STALL_LIMIT"); assert.equal(fourthStop.stopReason, "STALL_LIMIT"); assert.equal(loadState(stallSession).stallCount, 3);
+    matrix.stall.push("stop-cli-third-stall-limit", "stop-cli-fourth-no-continuation");
+
+    const runPreTool = (cmd) => command(root, process.execPath, ["scripts/engineering/hooks/pre-tool.mjs"], isolatedEnvironment, JSON.stringify({ session_id: `kernel-test-${randomUUID()}`, tool_name: "exec_command", tool_input: { cmd } }));
+    for (const cmd of ["node -e require('fs').writeFileSync('x','y')", "python -c open('x','w')", "git apply patch.diff", "git checkout -- file", "git restore file", "git push origin HEAD:main", "git push origin feature/x --force", "git branch -D feature/x", "git remote set-url origin https://example.invalid/repo.git", "git worktree remove .worktrees/x", "git worktree prune", "supabase --project-ref X db push", "npx supabase db push", "npm exec -- vercel deploy", "printf fixture > file", "powershell -EncodedCommand ZgBpAHgAdAB1AHIAZQA="]) {
+      const hook = runPreTool(cmd); assert.equal(hook.status, 0); assert.match(hook.stdout, /SAFETY_CONFLICT:COMMAND_POLICY/);
+    }
+    assert.match(runPreTool("git worktree add .worktrees/x chore/x").stdout, /SAFETY_CONFLICT:WORKTREE_SCOPE/);
+    assert.equal(runPreTool("git status --short").stdout, ""); assert.equal(runPreTool("git push origin chore/engineering-kernel-v4").stdout, "");
+    const scopedWorktree = command(root, process.execPath, ["scripts/engineering/hooks/pre-tool.mjs"], isolatedEnvironment, JSON.stringify({ session_id: session, tool_name: "exec_command", tool_input: { cmd: "git worktree add .worktrees/kernel-test-safe chore/kernel-test-safe" } }));
+    assert.equal(scopedWorktree.stdout, "");
+    matrix.risk.push("pretool-command-matrix-denied", "pretool-read-only-allowed", "pretool-feature-push-scoped", "pretool-worktree-add-requires-resolved-scope", "pretool-worktree-add-exact-resolved-scope");
+
+    const identity = { schemaVersion: 1, baseSha, headSha: currentHead, treeSha: currentTree, dirtyFingerprint: dirtyFingerprint(), impactHash: "b".repeat(64), planHash: "a".repeat(64), requiredProofs: ["kernel-fixture-pass"], requiredByKind: { unit: ["kernel-fixture-pass"] }, notRequiredKinds: [] };
+    const ciEnvironment = { CI: "true", GITHUB_ACTIONS: "true", GITHUB_REPOSITORY: "Deep0202006/CRM_Zero", GITHUB_WORKFLOW: "CRM Product Verification", GITHUB_RUN_ID: "123456", GITHUB_RUN_ATTEMPT: "1", GITHUB_SHA: currentHead, GITHUB_REF: "refs/pull/89/merge", GITHUB_JOB: "preflight", GITHUB_EVENT_NAME: "pull_request", KERNEL_BASE_SHA: baseSha, KERNEL_HEAD_SHA: currentHead };
+    const passPath = canonicalEvidencePath("kernel-fixture-pass"); assert(!existsSync(passPath), "fixture evidence already exists");
+    const pass = await withEnvironment(ciEnvironment, () => runRegisteredProof({ proofId: "kernel-fixture-pass", plan: identity })); createdEvidence.push(passPath);
+    assert.equal(pass.status, "PASS");
+    validateEvidenceFile({ path: passPath, proofId: "kernel-fixture-pass", plan: identity, environment: ciEnvironment });
+    const forgedRoot = temp("kernel-forged-evidence-");
+    const rejectMutation = (name, mutate, pattern = /EVIDENCE|COMMAND|FLAKY|PROOF/) => {
+      const forged = structuredClone(pass); mutate(forged); forged.evidencePayloadHash = evidencePayloadHash(forged);
+      const path = resolve(forgedRoot, `${name}.json`); writeFileSync(path, JSON.stringify(forged));
+      assert.throws(() => validateEvidenceFile({ path, proofId: "kernel-fixture-pass", plan: identity, environment: ciEnvironment }), pattern, name);
+      matrix.proof.push(name);
+    };
+    rejectMutation("fabricated-pass", (item) => item.attempts[0].commands[0].commandIdentity = "0".repeat(64));
+    rejectMutation("wrong-command", (item) => item.attempts[0].commands[0].args = ["forged"]);
+    rejectMutation("wrong-order", (item) => item.attempts[0].commands.reverse());
+    rejectMutation("missing-command", (item) => item.attempts[0].commands.pop());
+    rejectMutation("extra-command", (item) => item.attempts[0].commands.push({ ...item.attempts[0].commands[0], commandIndex: 99 }));
+    rejectMutation("wrong-proof-definition", (item) => item.proofDefinitionHash = "0".repeat(64));
+    rejectMutation("wrong-command-plan", (item) => item.commandPlanHash = "0".repeat(64));
+    rejectMutation("wrong-runner", (item) => item.runnerIdentity = "0".repeat(64));
+    rejectMutation("wrong-repository", (item) => item.githubRepository = "Other/Repo");
+    rejectMutation("wrong-run", (item) => item.githubRunId = "999");
+    rejectMutation("wrong-job", (item) => item.githubJob = "unit-build");
+    rejectMutation("wrong-head", (item) => item.headSha = "0".repeat(40));
+    rejectMutation("wrong-base", (item) => item.baseSha = "0".repeat(40));
+    rejectMutation("wrong-tree", (item) => item.treeSha = "0".repeat(40));
+    rejectMutation("local-provenance", (item) => { item.provenanceMode = "LOCAL"; item.githubRepository = item.githubWorkflow = item.githubRunId = item.githubRunAttempt = item.githubJob = item.githubEvent = ""; });
+    rejectMutation("reversed-time", (item) => { item.startedAt = "2026-01-02T00:00:00.000Z"; item.endedAt = "2026-01-01T00:00:00.000Z"; }, /TIMESTAMP/);
+    rejectMutation("future-time", (item) => { item.startedAt = "2999-01-01T00:00:00.000Z"; item.endedAt = "2999-01-01T00:00:01.000Z"; }, /TIMESTAMP/);
+    rejectMutation("nonzero-command", (item) => item.attempts[0].commands[0].exitCode = 1);
+    rejectMutation("zero-output-arbitrary-digest", (item) => { item.attempts[0].commands[0].stdoutBytes = 0; item.attempts[0].commands[0].stdoutHash = "1".repeat(64); }, /OUTPUT/);
+    rejectMutation("nonzero-output-empty-digest", (item) => { item.attempts[0].commands[0].stdoutBytes = 1; item.attempts[0].commands[0].stdoutHash = sha256(""); }, /OUTPUT/);
+    rejectMutation("zero-output-zero-digest", (item) => { item.attempts[0].commands[0].stderrBytes = 0; item.attempts[0].commands[0].stderrHash = "0".repeat(64); }, /OUTPUT/);
+    rejectMutation("unknown-field", (item) => item.callerAuthored = true, /unrecognized|Unrecognized|unknown/i);
+    assert.equal(certifierModule.validateEvidenceItem, undefined, "in-memory evidence validator exposed");
+    assert.equal(certifierModule.certifyRepositoryProof, undefined, "repository certificate API exposed");
+    const selectedOutput = command(root, process.execPath, ["scripts/engineering/proof-runner.mjs", "--proof", "kernel-fixture-pass", "--output", resolve(forgedRoot, "caller.json")], isolatedEnvironment);
+    assert.equal(selectedOutput.status, 2); assert.match(selectedOutput.stderr, /UNKNOWN_ARGUMENT:--output/); matrix.proof.push("caller-output-rejected", "direct-object-api-absent", "real-runner-evidence-accepted");
+
+    const marker = resolve(root, git("rev-parse", "--git-path", "zd-kernel/fixtures/flaky-marker")); if (existsSync(marker)) unlinkSync(marker);
+    const flakyPath = canonicalEvidencePath("kernel-fixture-flaky"); assert(!existsSync(flakyPath), "flaky fixture evidence already exists");
+    const flakyPlan = { ...identity, requiredProofs: ["kernel-fixture-flaky"], requiredByKind: { unit: ["kernel-fixture-flaky"] } };
+    const flaky = await withEnvironment(ciEnvironment, () => runRegisteredProof({ proofId: "kernel-fixture-flaky", plan: flakyPlan })); createdEvidence.push(flakyPath);
+    assert.equal(flaky.status, "FLAKY_DETECTED"); assert.throws(() => validateEvidenceFile({ path: flakyPath, proofId: "kernel-fixture-flaky", plan: flakyPlan, environment: ciEnvironment }), /EVIDENCE_STALE|FLAKY/); matrix.proof.push("retry-pass-rejected");
+
+    const subjectDigest = "d".repeat(64), verified = attestationOutput(ciEnvironment, subjectDigest);
+    assert.equal(parseVerifiedAttestation({ output: verified, evidenceSha256: subjectDigest, environment: ciEnvironment }).repository, "Deep0202006/CRM_Zero");
+    const rejectAttestation = (name, mutate, environment = ciEnvironment) => {
+      assert.throws(() => parseVerifiedAttestation({ output: attestationOutput(ciEnvironment, subjectDigest, mutate), evidenceSha256: subjectDigest, environment }), /ATTESTATION/, name);
+      matrix.attestation.push(name);
+    };
+    rejectAttestation("wrong-subject-digest", (row) => row.verificationResult.statement.subject[0].digest.sha256 = "0".repeat(64));
+    rejectAttestation("wrong-signer-workflow", (row) => row.verificationResult.signature.certificate.buildSignerURI = "https://github.com/Other/Repo/.github/workflows/unsafe.yml@refs/heads/main");
+    rejectAttestation("wrong-certificate-repository", (row) => row.verificationResult.signature.certificate.sourceRepositoryURI = "https://github.com/Other/Repo");
+    rejectAttestation("wrong-run-attempt", (row) => row.verificationResult.signature.certificate.runInvocationURI = "https://github.com/Deep0202006/CRM_Zero/actions/runs/999/attempts/2");
+    rejectAttestation("self-hosted-signer", (row) => row.verificationResult.signature.certificate.runnerEnvironment = "self-hosted");
+    rejectAttestation("missing-verified-time", (row) => row.verificationResult.verifiedTimestamps = []);
+    rejectAttestation("wrong-current-repository", () => {}, { ...ciEnvironment, GITHUB_REPOSITORY: "Other/Repo" });
+    assert.throws(() => parseVerifiedAttestation({ output: "not-json", evidenceSha256: subjectDigest, environment: ciEnvironment }), /ATTESTATION/);
+    matrix.attestation.push("valid-certificate-accepted", "fake-output-rejected");
+  });
+  for (const path of [...createdEvidence]) { if (existsSync(path)) unlinkSync(path); createdEvidence.splice(createdEvidence.indexOf(path), 1); }
+  const attackPlan = compileProofPlan({ base: baseSha, head: currentHead }), proofRegistry = JSON.parse(readFileSync(resolve(root, "docs/engineering/PROOFS.json"), "utf8")).proofs;
+  const attackEnvironment = { CI: "true", GITHUB_ACTIONS: "true", GITHUB_REPOSITORY: "Deep0202006/CRM_Zero", GITHUB_WORKFLOW: "CRM Product Verification", GITHUB_RUN_ID: "123456", GITHUB_RUN_ATTEMPT: "1", GITHUB_SHA: currentHead, GITHUB_REF: "refs/pull/89/merge", GITHUB_EVENT_NAME: "pull_request", KERNEL_BASE_SHA: baseSha, KERNEL_HEAD_SHA: currentHead };
+  for (const proofId of attackPlan.requiredProofs) {
+    const proof = proofRegistry.find((item) => item.id === proofId), commandPlan = compileRegisteredCommandPlan({ proof, proofId, baseSha: attackPlan.baseSha, headSha: attackPlan.headSha }), now = new Date().toISOString();
+    const commands = commandPlan.commands.map((commandItem) => ({ ...commandItem, exitCode: 0, stdoutHash: sha256(""), stdoutBytes: 0, stderrHash: sha256(""), stderrBytes: 0, startedAt: now, endedAt: now }));
+    const evidence = { schemaVersion: 2, proofId, kind: proof.kind, status: "PASS", baseSha: attackPlan.baseSha, headSha: attackPlan.headSha, treeSha: attackPlan.treeSha, dirtyFingerprint: attackPlan.dirtyFingerprint, impactHash: attackPlan.impactHash, planHash: attackPlan.planHash, proofDefinitionHash: proofDefinitionHash(proof), runnerIdentity: proofRunnerIdentity(), commandPlanHash: commandPlan.commandPlanHash, environmentPolicyHash: environmentPolicyHash(), startedAt: now, endedAt: now, attempts: [{ attemptIndex: 1, commandPlanHash: commandPlan.commandPlanHash, startedAt: now, endedAt: now, commands }], provenanceMode: "GITHUB_ACTIONS", githubRepository: attackEnvironment.GITHUB_REPOSITORY, githubWorkflow: attackEnvironment.GITHUB_WORKFLOW, githubRunId: attackEnvironment.GITHUB_RUN_ID, githubRunAttempt: attackEnvironment.GITHUB_RUN_ATTEMPT, githubJob: commandPlan.expectedCiJob, githubEvent: attackEnvironment.GITHUB_EVENT_NAME, expectedSourceJob: commandPlan.expectedCiJob };
+    evidence.evidencePayloadHash = evidencePayloadHash(evidence);
+    const path = canonicalEvidencePath(proofId, commandPlan.expectedCiJob); mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, JSON.stringify(evidence)); createdEvidence.push(path);
+    validateEvidenceFile({ path, proofId, plan: attackPlan, environment: { ...attackEnvironment, GITHUB_JOB: commandPlan.expectedCiJob } });
+  }
+  const canonicalSet = certifierModule.requireCanonicalEvidenceFiles(attackPlan), firstProofId = attackPlan.requiredProofs[0], firstPath = canonicalSet.get(firstProofId), firstContents = readFileSync(firstPath);
+  const wrongDirectory = resolve(dirname(dirname(firstPath)), "unit-build", `${firstProofId}.json`); mkdirSync(dirname(wrongDirectory), { recursive: true }); renameSync(firstPath, wrongDirectory); assert.throws(() => certifierModule.requireCanonicalEvidenceFiles(attackPlan), /EVIDENCE_FILE_SET_MISMATCH/); renameSync(wrongDirectory, firstPath);
+  copyFileSync(firstPath, wrongDirectory); assert.throws(() => certifierModule.requireCanonicalEvidenceFiles(attackPlan), /EVIDENCE_FILE_SET_MISMATCH/); unlinkSync(wrongDirectory);
+  unlinkSync(firstPath); assert.throws(() => certifierModule.requireCanonicalEvidenceFiles(attackPlan), /EVIDENCE_FILE_SET_MISMATCH/); writeFileSync(firstPath, firstContents);
+  const extraEvidence = resolve(root, "artifacts/engineering-evidence/extra.json"); writeFileSync(extraEvidence, "{}\n"); assert.throws(() => certifierModule.requireCanonicalEvidenceFiles(attackPlan), /EVIDENCE_FILE_SET_MISMATCH/); unlinkSync(extraEvidence);
+  matrix.proof.push("wrong-job-directory-rejected", "duplicate-proof-id-rejected", "missing-proof-file-rejected", "extra-proof-file-rejected", "merged-artifact-layout-rejected");
+  const fakeBundle = resolve(root, "artifacts/engineering-attestation/fake.json"); mkdirSync(dirname(fakeBundle), { recursive: true }); writeFileSync(fakeBundle, "{}\n"); createdEvidence.push(fakeBundle);
+  const syntheticAttack = command(root, process.execPath, ["scripts/engineering/proof-certify-ci.mjs", "--base", baseSha, "--head", currentHead, "--jobs", "success:success:success:success:success"], attackEnvironment);
+  assert.equal(syntheticAttack.status, 2); assert.match(syntheticAttack.stderr, /ATTESTATION_VERIFICATION_FAILED|ATTESTATION_REQUIRED/); assert(!syntheticAttack.stdout.includes("REPOSITORY_PROOF_READY"));
+  matrix.attestation.push("synthetic-four-file-structurally-valid", "fake-bundle-rejected", "repository-certificate-not-emitted");
+  rmSync(isolatedGit, { recursive: true, force: true }); tempRoots.splice(tempRoots.indexOf(isolatedGit), 1); isolatedRemoved = !existsSync(isolatedGit);
+  assert(isolatedRemoved, "ISOLATED_STATE_FIXTURE_NOT_REMOVED");
+  assert.deepEqual(snapshotDirectory(operationalDirectory), operationalBefore, "OPERATIONAL_SESSION_STORE_MUTATED_BY_TEST");
+  matrix.state.push("operational-store-identical", "isolated-git-removed");
+
+  for (const [text, expected, name] of [
+    ["git status --short", CommandClass.READ_ONLY_ALLOWED, "git-read"], ["npm run kernel:test", CommandClass.REGISTERED_VERIFICATION_ALLOWED, "registered-test"],
+    ["git branch", CommandClass.READ_ONLY_ALLOWED, "branch-list-default"], ["git branch --list", CommandClass.READ_ONLY_ALLOWED, "branch-list"], ["git branch -a", CommandClass.READ_ONLY_ALLOWED, "branch-all"], ["git branch -r", CommandClass.READ_ONLY_ALLOWED, "branch-remotes"], ["git branch -vv", CommandClass.READ_ONLY_ALLOWED, "branch-verbose"], ["git branch --show-current", CommandClass.READ_ONLY_ALLOWED, "branch-current"],
+    ["git branch -d feature/x", CommandClass.PROHIBITED, "branch-delete"], ["git branch -D feature/x", CommandClass.PROHIBITED, "branch-force-delete"], ["git branch --delete feature/x", CommandClass.PROHIBITED, "branch-delete-long"], ["git branch -m old new", CommandClass.PROHIBITED, "branch-move"], ["git branch -M old new", CommandClass.PROHIBITED, "branch-force-move"], ["git branch feature/x", CommandClass.PROHIBITED, "branch-create"],
+    ["git remote", CommandClass.READ_ONLY_ALLOWED, "remote-list"], ["git remote -v", CommandClass.READ_ONLY_ALLOWED, "remote-verbose"], ["git remote get-url origin", CommandClass.READ_ONLY_ALLOWED, "remote-url"], ["git remote show origin", CommandClass.READ_ONLY_ALLOWED, "remote-show"], ["git remote add upstream https://example.invalid/repo.git", CommandClass.PROHIBITED, "remote-add"], ["git remote set-url origin https://example.invalid/repo.git", CommandClass.PROHIBITED, "remote-set-url"],
+    ["git worktree list", CommandClass.READ_ONLY_ALLOWED, "worktree-list"], ["git worktree list --porcelain", CommandClass.READ_ONLY_ALLOWED, "worktree-porcelain"], ["git worktree remove .worktrees/x", CommandClass.PROHIBITED, "worktree-remove"], ["git worktree prune", CommandClass.PROHIBITED, "worktree-prune"], ["git worktree add .worktrees/x chore/x", CommandClass.SCOPED_MUTATION_ALLOWED, "worktree-add-scoped"], ["git worktree add ../x main", CommandClass.PROHIBITED, "worktree-add-main"], ["git fetch origin main", CommandClass.REPOSITORY_METADATA_ALLOWED, "fetch-metadata"],
+    ["git push origin chore/engineering-kernel-v4", CommandClass.SCOPED_MUTATION_ALLOWED, "feature-push"], ["git push origin main", CommandClass.PROHIBITED, "main-push"],
+    ["git push origin HEAD:main", CommandClass.PROHIBITED, "refspec-main"], ["git push origin HEAD:refs/heads/main", CommandClass.PROHIBITED, "full-refspec-main"],
+    ["git push origin feature/x --force", CommandClass.PROHIBITED, "force-last"], ["git push --force origin feature/x", CommandClass.PROHIBITED, "force-first"],
+    ["git apply patch.diff", CommandClass.PROHIBITED, "git-apply"], ["git checkout -- file", CommandClass.PROHIBITED, "git-checkout"], ["git restore file", CommandClass.PROHIBITED, "git-restore"],
+    ["node -e require('fs').writeFileSync('x','y')", CommandClass.PROHIBITED, "node-write"], ["python -c open('x','w')", CommandClass.PROHIBITED, "python-write"],
+    ["node arbitrary.mjs", CommandClass.PROHIBITED, "node-script"], ["printf fixture > file", CommandClass.PROHIBITED, "redirect"], ["node fixture.mjs <<EOF", CommandClass.PROHIBITED, "heredoc"],
+    ["bash -c fixture", CommandClass.PROHIBITED, "shell-wrapper"], ["supabase --project-ref X db push", CommandClass.PROHIBITED, "supabase-parameter"],
+    ["supabase db push --project-ref X", CommandClass.PROHIBITED, "supabase-tail-parameter"], ["npx supabase db push", CommandClass.PROHIBITED, "supabase-npx"],
+    ["npm exec -- supabase db push", CommandClass.PROHIBITED, "supabase-npm"], ["psql -f owner-fixture.sql", CommandClass.PROHIBITED, "psql"],
+    ["npx vercel deploy", CommandClass.PROHIBITED, "vercel-npx"], ["npm exec -- vercel deploy", CommandClass.PROHIBITED, "vercel-npm"],
+    ["terraform apply", CommandClass.PROHIBITED, "terraform"], ["docker rm fixture", CommandClass.PROHIBITED, "docker"], ["kubectl delete pod fixture", CommandClass.PROHIBITED, "kubectl"],
+  ]) expectClass(text, expected, name);
+
+  const ignoreRepo = temp("kernel-ignore-");
+  assert.equal(gitAt(ignoreRepo, "init", "-q", "-b", "main").status, 0); gitAt(ignoreRepo, "config", "user.email", "fixture@example.invalid"); gitAt(ignoreRepo, "config", "user.name", "Kernel Fixture");
+  copyFileSync(resolve(root, ".gitignore"), resolve(ignoreRepo, ".gitignore")); writeFileSync(resolve(ignoreRepo, "baseline.txt"), "baseline\n");
+  assert.equal(gitAt(ignoreRepo, "add", ".gitignore", "baseline.txt").status, 0); assert.equal(gitAt(ignoreRepo, "commit", "-q", "-m", "baseline").status, 0);
+  const ignoreContents = readFileSync(resolve(root, ".gitignore"), "utf8"), workflowContents = readFileSync(resolve(root, ".github/workflows/product-verification.yml"), "utf8"), ignoredBaseline = dirtyFingerprint(ignoreRepo);
+  const statusIsClean = () => assert.equal(gitAt(ignoreRepo, "status", "--porcelain").stdout, "");
+  const writeIgnoreFixture = (path, contents) => { const absolute = resolve(ignoreRepo, path); mkdirSync(dirname(absolute), { recursive: true }); writeFileSync(absolute, contents); return absolute; };
+  const verifierIgnorePaths = ["artifacts/engineering-evidence/", "artifacts/engineering-attestation/"].map((path) => String.fromCharCode(47) + path);
+  for (const path of verifierIgnorePaths) assert.equal(ignoreContents.split(/\r?\n/).filter((line) => line === path).length, 1);
+  assert(!workflowContents.includes(".git/info/exclude")); assert(!workflowContents.includes("core.excludesFile"));
+  for (const artifact of ["kernel-preflight", "kernel-unit-build", "kernel-postgres", "kernel-e2e", "kernel-evidence-attestation"]) assert(workflowContents.includes(`name: ${artifact}`));
+  assert(workflowContents.includes("npm run proof:certify-ci")); assert.match(workflowContents, /verify:\s*\n\s*needs: \[preflight, unit-build, receivables-postgres, e2e, attest-evidence\]/);
+  statusIsClean(); assert.equal(dirtyFingerprint(ignoreRepo), ignoredBaseline);
+  writeIgnoreFixture("artifacts/engineering-evidence/preflight/fixture.json", "{}\n");
+  assert.equal(gitAt(ignoreRepo, "check-ignore", "-q", "artifacts/engineering-evidence/preflight/fixture.json").status, 0); statusIsClean(); assert.equal(dirtyFingerprint(ignoreRepo), ignoredBaseline);
+  writeIgnoreFixture("artifacts/engineering-attestation/fixture.jsonl", "{}\n");
+  assert.equal(gitAt(ignoreRepo, "check-ignore", "-q", "artifacts/engineering-attestation/fixture.jsonl").status, 0); statusIsClean(); assert.equal(dirtyFingerprint(ignoreRepo), ignoredBaseline);
+  writeIgnoreFixture("artifacts/engineering-evidence/preflight/both.json", "{}\n"); writeIgnoreFixture("artifacts/engineering-attestation/both.jsonl", "{}\n");
+  statusIsClean(); assert.equal(dirtyFingerprint(ignoreRepo), ignoredBaseline);
+  for (const path of ["scripts/unexpected-kernel-source.mjs", "artifacts/unexpected-source.mjs", "unexpected-kernel-source.mjs"]) assert.equal(gitAt(ignoreRepo, "check-ignore", "-q", path).status, 1, `OVERBROAD_IGNORE:${path}`);
+  writeIgnoreFixture("unexpected-kernel-source.mjs", "export const unexpected = true;\n");
+  assert.match(gitAt(ignoreRepo, "status", "--porcelain").stdout, /\?\? unexpected-kernel-source\.mjs/); assert.notEqual(dirtyFingerprint(ignoreRepo), ignoredBaseline);
+  unlinkSync(resolve(ignoreRepo, "unexpected-kernel-source.mjs")); statusIsClean();
+  writeFileSync(resolve(ignoreRepo, "baseline.txt"), "modified\n"); assert.notEqual(dirtyFingerprint(ignoreRepo), ignoredBaseline);
+  matrix.state.push("verifier-input-ignore-contract", "ignored-evidence-clean", "ignored-attestation-clean", "ignored-inputs-combined-clean", "ordinary-untracked-fingerprint-sensitive", "tracked-modification-fingerprint-sensitive", "no-overbroad-artifacts-ignore", "workflow-no-local-ignore-mutation");
+
+  const repo = temp("kernel-git-");
+  assert.equal(gitAt(repo, "init", "-q", "-b", "main").status, 0); gitAt(repo, "config", "user.email", "fixture@example.invalid"); gitAt(repo, "config", "user.name", "Kernel Fixture");
+  writeFileSync(resolve(repo, "base.txt"), "base\n"); gitAt(repo, "add", "base.txt"); gitAt(repo, "commit", "-q", "-m", "base");
+  const base = gitAt(repo, "rev-parse", "HEAD").stdout.trim(), baseTree = gitAt(repo, "rev-parse", "HEAD^{tree}").stdout.trim(); gitAt(repo, "update-ref", "refs/remotes/origin/main", base); gitAt(repo, "checkout", "-q", "-b", "feature"); writeFileSync(resolve(repo, "head.txt"), "head\n"); gitAt(repo, "add", "head.txt"); gitAt(repo, "commit", "-q", "-m", "head");
+  const cleanFingerprint = dirtyFingerprint(repo), fingerprintPath = resolve(repo, "fingerprint.txt"); writeFileSync(fingerprintPath, "one\n"); const firstFingerprint = dirtyFingerprint(repo); writeFileSync(fingerprintPath, "two\n");
+  assert.notEqual(cleanFingerprint, firstFingerprint); assert.notEqual(firstFingerprint, dirtyFingerprint(repo)); unlinkSync(fingerprintPath); matrix.state.push("content-sensitive-worktree");
+  const head = gitAt(repo, "rev-parse", "HEAD").stdout.trim(), staleBase = gitAt(repo, "commit-tree", "HEAD^{tree}", "-m", "unrelated").stdout.trim();
+  const fixture = resolve(temp("kernel-gh-fixture-"), "gh-fixture.mjs");
+  const protectedChecks = protectedRequiredChecks.map((name) => ({ name, state: "SUCCESS", bucket: "pass", link: "" })), workflowChecks = requiredRemoteChecks.map((name) => ({ name, state: "SUCCESS", bucket: "pass", link: "" }));
+  writeFileSync(fixture, `const a=process.argv.slice(2),s=process.env.SCENARIO;if(a[0]==='pr'&&a[1]==='view'){if(s==='no-pr'){console.error('no pull requests found');process.exit(1)}const base=s==='stale-base'?process.env.STALE_BASE:process.env.BASE_SHA;console.log(JSON.stringify({number:123,headRefOid:s==='wrong-head'?'0'.repeat(40):process.env.HEAD_SHA,baseRefOid:base,baseRefName:'main',url:'https://example.invalid/pr/123'}));process.exit(0)}if(s==='auth'){console.error('authentication network unavailable');process.exit(1)}if(s==='malformed'){console.log('{bad');process.exit(1)}const required=a.includes('--required');let rows=required?${JSON.stringify(protectedChecks)}:${JSON.stringify(workflowChecks)};if(required&&s==='missing-protected-verify')rows=rows.filter(x=>x.name!=='verify');if(required&&s==='duplicate-protected')rows.push({...rows[0]});if(!required&&s==='missing-attest')rows=rows.filter(x=>x.name!=='attest-evidence');if(!required&&s==='pending-unit')rows=rows.map(x=>x.name==='unit-build'?{...x,state:'PENDING',bucket:'pending'}:x);if(!required&&s==='failed-attest')rows=rows.map(x=>x.name==='attest-evidence'?{...x,state:'FAILURE',bucket:'fail'}:x);if(!required&&s==='duplicate-workflow')rows.push({...rows.find(x=>x.name==='verify')});if(!required&&s==='optional-failed')rows.push({name:'optional',state:'FAILURE',bucket:'fail',link:''});if(required&&s==='pending-nonzero')rows[0]={...rows[0],state:'PENDING',bucket:'pending'};if(required&&s==='failed-nonzero')rows[0]={...rows[0],state:'FAILURE',bucket:'fail'};console.log(JSON.stringify(rows));process.exit(['pending-nonzero','failed-nonzero'].includes(s)&&required?1:0);`);
+  const gate = (scenario) => remoteGate({ cwd: repo, gh: (args) => command(repo, process.execPath, [fixture, ...args], { SCENARIO: scenario, HEAD_SHA: head, BASE_SHA: base, STALE_BASE: staleBase }) });
+  assert.equal(gate("success").status, "READY_TO_END"); assert.equal(gate("missing-attest").status, "REMOTE_FAILED"); assert.equal(gate("pending-unit").status, "REMOTE_PENDING"); assert.equal(gate("failed-attest").status, "REMOTE_FAILED");
+  assert.equal(gate("missing-protected-verify").status, "REMOTE_FAILED"); assert.equal(gate("duplicate-protected").status, "REMOTE_FAILED"); assert.equal(gate("duplicate-workflow").status, "REMOTE_FAILED"); assert.equal(gate("optional-failed").status, "READY_TO_END");
+  assert.equal(gate("pending-nonzero").status, "REMOTE_PENDING"); assert.equal(gate("failed-nonzero").status, "REMOTE_FAILED"); assert.equal(gate("auth").status, "EXTERNAL_DEPENDENCY"); assert.equal(gate("malformed").status, "REMOTE_FAILED");
+  assert.equal(gate("wrong-head").reason, "HEAD_MISMATCH"); assert.equal(gate("stale-base").reason, "BASE_NOT_ANCESTOR"); assert.equal(gate("no-pr").status, "PR_REQUIRED");
+  process.env.stop_hook_active = "true"; assert.equal(gate("failed-attest").status, "REMOTE_FAILED"); delete process.env.stop_hook_active;
+  const stopState = { taskId: "fixture", resolution: { status: "RESOLVED" }, baseline: { headSha: base, treeSha: baseTree, baseSha: base, dirtyFingerprint: cleanFingerprint }, evidence: [{ status: "PASS", name: "TASK_CERTIFIED", ownerApproval: true }] };
+  let remoteCalls = 0; writeFileSync(fingerprintPath, "forged-local-change\n");
+  const dirtyStop = evaluateStopState({ state: stopState, cwd: repo, remote: () => { remoteCalls += 1; return { status: "READY_TO_END" }; } });
+  assert.equal(dirtyStop.status, "WORKTREE_DIRTY_COMMIT_REQUIRED"); assert.equal(remoteCalls, 0); assert(!JSON.stringify(dirtyStop).includes("TASK_CERTIFIED")); unlinkSync(fingerprintPath);
+  assert.equal(evaluateStopState({ state: stopState, cwd: repo, remote: () => gate("success") }).status, "READY_TO_END");
+  assert.equal(evaluateStopState({ state: { ...stopState, baseline: { headSha: head, treeSha: gitAt(repo, "rev-parse", "HEAD^{tree}").stdout.trim(), baseSha: base, dirtyFingerprint: cleanFingerprint } }, cwd: repo, remote: () => { throw new Error("REMOTE_MUST_NOT_RUN"); } }).status, "IMPLEMENTATION_IN_PROGRESS");
+  matrix.stopRemote.push("protected-four-workflow-six-pass", "workflow-attestation-missing", "workflow-unit-pending", "workflow-attestation-failed", "protected-verify-missing", "protected-duplicate", "workflow-gate-duplicate", "optional-failure-ignored", "pending-json-nonzero", "failed-json-nonzero", "auth-external", "malformed-closed", "head-mismatch", "stale-base", "no-pr", "active-flag-no-bypass", "dirty-forged-local-blocked-before-remote", "no-task-certified-or-owner-approval");
+
+  let stallState = { status: "IMPLEMENTATION_IN_PROGRESS", stallCount: 0 }, advance = (result) => { const decision = applyStallPolicy(stallState, result); stallState = { ...stallState, ...decision.state }; return decision; }, stallDecision;
+  stallDecision = advance({ status: "IMPLEMENTATION_IN_PROGRESS" }); assert.equal(stallDecision.state.stallCount, 1); assert.equal(stallDecision.continuation, "FOCUSED_RETRY");
+  stallDecision = advance({ status: "IMPLEMENTATION_IN_PROGRESS" }); assert.equal(stallDecision.state.stallCount, 2); assert.equal(stallDecision.continuation, "STRATEGY_CHANGE_REQUIRED");
+  stallDecision = advance({ status: "IMPLEMENTATION_IN_PROGRESS" }); assert.equal(stallDecision.result.status, "STALL_LIMIT"); assert.equal(stallDecision.state.stallCount, 3); assert.equal(stallDecision.continuation, undefined);
+  stallDecision = advance({ status: "IMPLEMENTATION_IN_PROGRESS" }); assert.equal(stallDecision.result.status, "STALL_LIMIT"); assert.equal(stallDecision.state.stallCount, 3); assert.equal(stallDecision.continuation, undefined);
+  stallDecision = advance({ status: "IMPLEMENTATION_IN_PROGRESS", reason: "CHANGED_PROGRESS" }); assert.equal(stallDecision.state.stallCount, 1); assert.equal(stallDecision.continuation, "FOCUSED_RETRY");
+  for (let count = 0; count < 4; count += 1) { stallDecision = advance({ status: "REMOTE_PENDING" }); assert.equal(stallDecision.result.status, "REMOTE_PENDING"); assert.equal(stallDecision.state.stallCount, 0); }
+  for (let count = 0; count < 4; count += 1) { stallDecision = advance({ status: "EXTERNAL_DEPENDENCY" }); assert.equal(stallDecision.result.status, "EXTERNAL_DEPENDENCY"); assert.equal(stallDecision.state.stallCount, 0); }
+  matrix.stall.push("focused-retry-count-1", "strategy-change-count-2", "stall-limit-count-3", "fourth-remains-stall-limit", "changed-signature-resets", "remote-pending-suspended", "external-dependency-suspended", "dirty-no-remote", "active-flag-no-bypass", "operational-store-unchanged");
+
+  writeFileSync(resolve(repo, "old.mjs"), "export const oldValue=1;\n"); gitAt(repo, "add", "old.mjs"); gitAt(repo, "commit", "-q", "-m", "old"); gitAt(repo, "mv", "old.mjs", "new.mjs");
+  const renameEntries = parseNameStatus(gitAt(repo, "diff", "--name-status", "-z", "--cached").stdout); assert.equal(renameEntries[0].status, "R"); assert.equal(renameEntries[0].oldPath, "old.mjs"); assert.equal(renameEntries[0].path, "new.mjs");
+  assert.equal(gitAt(repo, "commit", "-q", "-m", "rename").status, 0); assert.equal(gitAt(repo, "rm", "-q", "new.mjs").status, 0); assert.equal(parseNameStatus(gitAt(repo, "diff", "--name-status", "-z", "--cached").stdout)[0].status, "D");
+  for (const path of ["tools/unmapped-runner.mjs", "config/tool.ini", "db/queries.prisma"]) {
+    const impact = compileImpact({ entries: [{ status: "A", path }], patch: "" }); assert.equal(impact.risk, "R3"); assert.equal(impact.writable, false); assert(impact.unresolved.some((item) => item.code === "UNMAPPED_PATH"));
+  }
+  const multiline = compileImpact({ entries: [{ status: "M", path: "src/lib/pipeline/contract.ts" }], patch: "+const result = supabase\n+  .from(\"leads\")\n+  .update({ status: \"won\" })\n+  .eq(\"id\", leadId);" });
+  assert(multiline.changedAuthorities.includes("leads")); assert.equal(multiline.writable, true);
+  const unknownAuthority = compileImpact({ entries: [{ status: "M", path: "src/lib/pipeline/contract.ts" }], patch: "+await supabase.from(\"unknown_fixture\").update({ value: 1 });" });
+  assert(unknownAuthority.unresolved.some((item) => item.code === "AUTHORITY_UNRESOLVED")); assert.equal(unknownAuthority.writable, false);
+  const prohibitedAuthority = compileImpact({ entries: [{ status: "M", path: "src/app/mappings/page.tsx" }], patch: "+await supabase.from(\"leads\").update({ status: \"won\" });" });
+  assert(prohibitedAuthority.unresolved.some((item) => item.code === "PROHIBITED_WRITE_AUTHORITY"));
+  const immutable = compileImpact({ entries: [{ status: "M", path: "supabase/migrations/051_fixture.sql" }], patch: "" }); assert(immutable.unresolved.some((item) => item.code === "IMMUTABLE_MIGRATION"));
+  matrix.risk.push("nul-rename-delete", "sensitive-unmapped-r3", "multiline-write-detected", "unknown-authority", "prohibited-authority", "immutable-migration");
+
+  const impact = { ...compileImpact({ entries: [{ status: "M", path: "scripts/engineering/kernel.test.mjs" }], patch: "" }), domains: ["engineering-control"], effects: ["ENGINEERING_CONTROL"], risk: "R3", unresolved: [], writable: true };
+  const plan = compileProofPlan({ impact }); for (const kind of ["unit", "build", "postgres", "e2e"]) assert(plan.requiredByKind[kind].length, `domain proof missing ${kind}`);
+  assert(compileProofPlan({ impact: { ...impact, domains: [], risk: "R3" } }).requiredProofs.length > 0);
+  assert.throws(() => certifierModule.requireCanonicalEvidenceFiles({ requiredProofs: ["missing-required-proof"] }), /EVIDENCE_FILE_SET_MISMATCH|EVIDENCE_DIRECTORY_MISSING|PROOF_UNMAPPED/);
+  matrix.proof.push("missing-required-proof-rejected");
+  assert.equal(containsAssertionWeakening(`npx jest --update${"Snapshot"}`), true); assert.equal(containsAssertionWeakening("npx jest --runInBand"), false);
+  const hostileEnvironment = { PGHOST: "production.example.invalid", PGPORT: "6543", PGDATABASE: "customer_prod", PGUSER: "prod_admin", PGPASSWORD: "secret", PGSERVICE: "production", PGPASSFILE: ["", "tmp", "prod.pgpass"].join("/"), GITHUB_TOKEN: "github-secret", GH_TOKEN: "gh-secret", ACTIONS_ID_TOKEN_REQUEST_TOKEN: "oidc-secret", ACTIONS_ID_TOKEN_REQUEST_URL: "https://oidc.invalid", ACTIONS_RUNTIME_TOKEN: "runtime-secret", KEEP: "yes" };
+  const isolated = safeEnvironment({ ...hostileEnvironment, NEXT_PUBLIC_SUPABASE_URL: "https://production.example.invalid", NEXT_PUBLIC_SUPABASE_ANON_KEY: "synthetic-invalid", [["SUPABASE", "SERVICE_ROLE_KEY"].join("_")]: "synthetic-invalid" }); assert.deepEqual(isolated, { KEEP: "yes" });
+  const postgresProof = JSON.parse(readFileSync(resolve(root, "docs/engineering/PROOFS.json"), "utf8")).proofs.find((proof) => proof.id === "control-postgres-matrix");
+  const postgresPlan = compileRegisteredCommandPlan({ proof: postgresProof, baseSha, headSha: currentHead }), registeredPostgresCommand = postgresPlan.commands.find((item) => item.database);
+  const postgresEnvironment = disposablePostgresEnvironment(registeredPostgresCommand, hostileEnvironment);
+  const captured = command(root, process.execPath, ["-p", "JSON.stringify(Object.fromEntries(Object.entries(process.env).filter(([key])=>/^PG|^CRM_(?:MASTER_DB|POSTGRES_SERVICE)_DISPOSABLE$/.test(key))))"], postgresEnvironment);
+  assert.equal(captured.status, 0); const childEnvironment = JSON.parse(captured.stdout);
+  assert.deepEqual(childEnvironment, { CRM_MASTER_DB_DISPOSABLE: "1", CRM_POSTGRES_SERVICE_DISPOSABLE: "1", PGDATABASE: registeredPostgresCommand.database, PGHOST: "127.0.0.1", PGPASSWORD: "postgres", PGPORT: "5432", PGSSLMODE: "disable", PGUSER: "postgres" });
+  assert(!Object.values(childEnvironment).some((value) => Object.values(hostileEnvironment).includes(value)));
+  let processExecuted = false;
+  assert.throws(() => { assertDisposablePostgresEnvironment(registeredPostgresCommand, { ...postgresEnvironment, PGHOST: "production.example.invalid" }); processExecuted = true; }, /POSTGRES_DISPOSABLE/);
+  assert.equal(processExecuted, false);
+  matrix.postgresEnvironment.push("hostile-libpq-stripped", "registered-loopback-child", "external-target-pre-execution-rejected");
+  matrix.tokenIsolation.push("non-postgres-no-pg", "proof-command-no-github-token", "proof-command-no-oidc-token");
+  assert.equal(revalidateCandidate({ path: "scripts/engineering/fixtures/missing-candidate.mjs", contentHash: "0".repeat(64) }), false);
+
+  const index = buildSourceIndex({ writeCache: false }), criticalClaim = [{ id: "FIXTURE_CRITICAL", severity: "CRITICAL" }];
+  const missingSemantic = executeRegressionCases({ cases: [{ id: "fixture-semantic", kind: "semantic", executorId: "missing", requiredClaims: ["FIXTURE_CRITICAL"], proofRefs: ["kernel-fixture-pass"] }], claims: criticalClaim, index });
+  assert.match(missingSemantic.results[0].failureReason, /CASE_EXECUTOR_MISSING/); assert.equal(missingSemantic.coverageFailures.length, 1);
+  const wrongBlocker = executeRegressionCases({ cases: [{ id: "platform-snapshot-blocker", kind: "blocker", expectedBlocker: "FALSE_BLOCKER", requiredClaims: ["FIXTURE_CRITICAL"] }], claims: criticalClaim, index });
+  assert.equal(wrongBlocker.results[0].pass, false); assert.match(wrongBlocker.results[0].failureReason, /BLOCKER:SOURCE_SNAPSHOT_UNBOUND/);
+  const missingControl = executeRegressionCases({ cases: [{ id: "fixture-control", kind: "control", executorId: "missing", requiredClaims: ["FIXTURE_CRITICAL"] }], claims: criticalClaim, index }); assert.match(missingControl.results[0].failureReason, /CASE_EXECUTOR_MISSING/);
+  const unknownKind = executeRegressionCases({ cases: [{ id: "fixture-unknown", kind: "unknown", requiredClaims: ["FIXTURE_CRITICAL"] }], claims: criticalClaim, index }); assert.match(unknownKind.results[0].failureReason, /CASE_EXECUTOR_MISSING/);
+  assert.throws(() => validateCaseResult({ caseId: "zero", executed: true, assertionCount: 0, pass: true }), /CASE_ZERO_ASSERTIONS/);
+  matrix.regression.push("semantic-proofref-only-rejected", "false-blocker-rejected", "control-executor-missing", "unknown-kind-rejected", "zero-assertions-rejected", "unexecuted-critical-claim-rejected");
+
+  const productChanges = git("diff", "--name-only", "origin/main", "--", "src").split(/\r?\n/).filter((path) => path && !path.includes("/__tests__/"));
+  const migrationChanges = git("diff", "--name-only", "origin/main", "--", "supabase/migrations").split(/\r?\n/).filter((path) => path.endsWith(".sql"));
+  assert.deepEqual(productChanges, []); assert.deepEqual(migrationChanges, []);
+  assert.deepEqual(snapshotDirectory(operationalDirectory), operationalBefore, "OPERATIONAL_SESSION_STORE_MUTATED_BY_TEST");
+  console.log(JSON.stringify({ code: "KERNEL_ADVERSARIAL_MATRIX_PASS", operationalStateBefore: operationalBefore, operationalStateAfter: snapshotDirectory(operationalDirectory), matrix }));
+} finally {
+  for (const path of createdEvidence) if (existsSync(path)) rmSync(path, { force: true });
+  for (const path of tempRoots) if (existsSync(path)) rmSync(path, { recursive: true, force: true });
+}

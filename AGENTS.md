@@ -7,41 +7,28 @@ caching, rendering, middleware, or conventions, read the relevant guide under
 `node_modules/next/dist/docs/`.
 <!-- END:nextjs-agent-rules -->
 
-# ZeroData engineering map
+# ZeroData engineering kernel
 
-Repository scope is `Deep0202006/CRM_Zero`. Preserve unknown work and use a
-clean feature worktree below `.worktrees/`; never reset, clean, force-push, or
-push directly to `main`.
+Scope is `Deep0202006/CRM_Zero`. Preserve unknown work; use a clean feature
+worktree; never reset, clean, force-push, or push directly to `main`.
 
-Run task-only resolution first:
+Resolve intent with `npm run context:resolve -- --task "<outcome>"`. Open every
+returned candidate and revalidate its content hash before editing. Ambiguous or
+unknown scope permits inspection only. Current source and tests are behavior
+evidence; contracts state invariants; AUTHORITIES owns facts; CAPABILITIES marks
+required reuse; DOMAIN_MAP sets risk floors; PROOFS registers executable proof.
 
-`npm run context:resolve -- --task "<outcome>"`
+After a change run `impact:compile`, `proof:plan`, and only registered proofs.
+Unknown executable/config paths, control-plane changes, schema, RLS, auth,
+money, platform, production, migrations, and workflows are R3. GitHub CI binds
+the repository certificate to the exact PR head, contained base, manifest, plan,
+and real command results. Reports and caller-authored evidence are never proof.
 
-Then follow: Task -> Resolve -> open current source -> Authority -> Reuse -> minimum
-diff -> Impact -> Prove -> exact-head Certify -> Learn -> End. Current source/tests are
-behavior evidence, contracts are intended invariants, AUTHORITIES owns facts,
-CAPABILITIES identifies reuse, and PROOFS determines evidence. One fact has one
-writable authority. If evidence conflicts, fresh source and read-only deployed
-fact outrank docs; correct stale docs in scope.
+Graphify is an optional read-only structural locator. It grants no authority;
+when unavailable, use targeted exact source search. Lessons and rules change
+only through ordinary reviewed diffs.
 
-After implementation run `impact:compile`, `proof:plan`, and `task:close`; actual diff effects
-may raise risk. R3 database/auth/security work requires its mapped disposable
-PostgreSQL and Owner pre/post proof. `verify:affected` never substitutes related
-tests for a declared contract proof. GitHub re-certifies every exact PR head.
-
-Graphify is an optional bounded structural locator, never authority. Use it only
-when relationships are ambiguous or cross-domain, then open the exact source.
-Unavailable Graphify does not block targeted repository search.
-
-Production SQL is Owner-only; postchecks are read-only. Applied migrations are
-immutable. Never create production dummy data, expose service-role/private
-keys to client code, delete protected history, clear durable browser recovery,
+Production SQL and credential use are Owner-only. Never contact production,
+create production dummy data, expose privileged secrets to client code, mutate
+applied migrations, delete protected history, clear durable offline recovery,
 or bypass approved server confirmation for Calls and Field Visits.
-
-Every implementation task keeps its baseline and current proof in Git-metadata
-session state. A green OS installation never certifies a later unfinished task.
-Prevent recurrence in this order: shared implementation, invariant/validation,
-regression proof, then a durable lesson only for reusable judgment. Close R2/R3
-through `learn:close`; do not duplicate known lesson prose. Self-healing may
-refresh generated navigation/proof selection, never expected business facts,
-authorization, RLS, money semantics, assertions, snapshots, or required proof.

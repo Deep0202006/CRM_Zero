@@ -19,7 +19,7 @@ const manifest = Object.fromEntries(
 );
 const output = execFileSync(
   "git",
-  ["rev-parse", "--git-path", "zerograph/cache/semantic-graph.json"],
+  ["rev-parse", "--git-path", "zd-kernel/registry-index.json"],
   { cwd: root, encoding: "utf8" },
 ).trim();
 const map = JSON.parse(text(files[0]));

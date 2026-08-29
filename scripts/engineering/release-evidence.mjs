@@ -1,4 +1,0 @@
-import { execFileSync } from "node:child_process";
-import { mkdirSync, writeFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
-const root=resolve(import.meta.dirname,"../.."),args=process.argv.slice(2),value=flag=>{const i=args.indexOf(flag);return i<0?undefined:args[i+1]},kind=value("--kind"),output=value("--output");if(!kind||!output)throw Error("EVIDENCE_ARGUMENT_REQUIRED");const base=value("--base")??"origin/main",head=value("--head")??"HEAD",plan=JSON.parse(execFileSync("node",["scripts/engineering/proof-plan.mjs","--base",base,"--head",head],{cwd:root,encoding:"utf8"})),evidence={schemaVersion:1,kind,status:"PASS",headSha:plan.headSha,treeSha:plan.treeSha,planHash:plan.planHash};mkdirSync(dirname(resolve(root,output)),{recursive:true});writeFileSync(resolve(root,output),`${JSON.stringify(evidence,null,2)}\n`);console.log(JSON.stringify(evidence));

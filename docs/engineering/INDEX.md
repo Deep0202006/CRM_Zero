@@ -1,25 +1,15 @@
-# CRM Engineering Intelligence
+# ZeroData Engineering Kernel
 
-This directory is the compact engineering knowledge layer. Current product
-code, schema, tests, exact `docs/contracts/**`, and GitHub CI remain
-authoritative implementation evidence.
+This directory is the current compact business and engineering registry. Begin
+with [ARCHITECTURE.md](ARCHITECTURE.md), then consult the exact affected contract
+and only the relevant entries in DOMAIN_MAP, AUTHORITIES, CAPABILITIES, CLAIMS,
+LESSONS, PROOFS, and REGRESSION_CASES.
 
-Start with [ARCHITECTURE.md](ARCHITECTURE.md), then use
-[DOMAIN_MAP.json](DOMAIN_MAP.json), [AUTHORITIES.json](AUTHORITIES.json),
-[CAPABILITIES.json](CAPABILITIES.json), [LESSONS.json](LESSONS.json),
-[CLAIMS.json](CLAIMS.json), [PROOFS.json](PROOFS.json),
-[INVARIANTS.md](INVARIANTS.md), and the exact
-contract named by the domain. `LEGACY_KNOWLEDGE` is certification provenance,
-not ordinary task context; Golden cases exercise its preserved claims.
+The deterministic loop is Resolve -> Open and revalidate -> Impact -> Proof plan
+-> Registered proof runner -> exact-head CI certificate. Missing evidence yields
+`UNKNOWN` or `SCOPE_AMBIGUOUS`; it never grants write scope. The source index and
+session state are caches under Git metadata, not committed task authority.
 
-Focused context accepts a natural-language `--task` without path hints, then
-opens the returned current source and contracts. Platform context is a
-compact discovery map (`--mode platform`); it does not authorize a product or
-schema write, which must return to focused evidence. Prefer query, targeted
-read, then modification; never preload the registry, history, or graph cache.
-
-The executable loop is Task -> Resolve -> Implement -> Impact -> Prove ->
-Certify -> Learn -> End. `task:close` enforces current task evidence after the
-OS installation is healthy. The semantic graph is generated in Git metadata.
-Graphify adds optional navigation evidence only. Production remains behind the
-Owner gate. Supabase movement uses the R3 [platform contract](PLATFORM_HANDOVER.md).
+Graphify is optional read-only navigation for ambiguous cross-domain structure.
+The Owner remains the only production SQL and deployment authority. Platform
+handover stays governed by [PLATFORM_HANDOVER.md](PLATFORM_HANDOVER.md).

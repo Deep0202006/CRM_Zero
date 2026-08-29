@@ -1,39 +1,35 @@
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
-import { readInput, root } from "./state.mjs";
-const input = await readInput(),
-  tool = input.tool_name ?? "",
-  payload = JSON.stringify(input.tool_input ?? {}),
-  editTool = /^(apply_patch|Edit|Write)$/.test(tool),
-  mutatingBash =
-    tool === "Bash" &&
-    /(?:^|[;&|]\s*)(?:Set-Content|Add-Content|Remove-Item|Move-Item|Copy-Item|sed\s+-i|perl\s+-pi)|(?:^|\s)(?:>|>>)/i.test(
-      payload,
-    ),
-  boundary = JSON.parse(
-    readFileSync(
-      resolve(root, "supabase/migrations/APPLIED_OWNER_MIGRATIONS.json"),
-    ),
-  ).immutableThrough;
-const migration =
-  (editTool || mutatingBash) &&
-  [...payload.matchAll(/supabase[\\/]migrations[\\/](\d+)_/g)].some(
-    (m) => Number(m[1]) <= boundary,
-  );
-const locked =
-  (editTool || mutatingBash) &&
-  /OS_V3_ACCEPTANCE(?:\.lock)?\.json|\.codex[\\/]hooks\.json/.test(payload);
-const dangerous =
-  /git\s+reset\s+--hard|git\s+clean\s+-[^\s]*[fd]|git\s+push[^\n]*(?:--force|-f)|git\s+push[^\n]*\bmain\b|supabase[^\n]*(?:db\s+(?:push|reset)|migration\s+up)|gwfjkpsoaoherntwhdyf[^\n]*(?:insert|update|delete|apply)|(?:install|choco|winget|apt)[^\n]*(?:postgres|docker)/i.test(
-    payload,
-  );
-if (locked || migration || dangerous)
-  console.log(
-    JSON.stringify({
-      hookSpecificOutput: {
-        hookEventName: "PreToolUse",
-        permissionDecision: "deny",
-        permissionDecisionReason: `SAFETY_CONFLICT:${tool}`,
-      },
-    }),
-  );
+import { existsSync, readFileSync } from "node:fs";
+import { isAbsolute, relative, resolve } from "node:path";
+import { classifyCommand, CommandClass, parseWorktreeAddTokens } from "../command-policy.mjs";
+import { revalidateCandidate } from "../context.mjs";
+import { loadState, readHookInput, root } from "./state-store.mjs";
+
+const input = await readHookInput(), sessionId = input.session_id ?? "unknown", state = loadState(sessionId);
+const tool = input.tool_name ?? "", payload = input.tool_input ?? {}, serialized = JSON.stringify(payload);
+const editTool = /^(?:apply_patch|Edit|Write)$/.test(tool), shellTool = /^(?:Bash|exec_command)$/.test(tool);
+const shellCommand = String(payload.cmd ?? payload.command ?? "");
+const classification = shellTool ? classifyCommand(shellCommand) : null;
+const shellMutation = classification && [CommandClass.REPOSITORY_METADATA_ALLOWED, CommandClass.SCOPED_MUTATION_ALLOWED, CommandClass.UNKNOWN_MUTATION_SHAPE, CommandClass.PROHIBITED].includes(classification.classification);
+const mutating = editTool || shellMutation;
+const boundary = JSON.parse(readFileSync(resolve(root, "supabase/migrations/APPLIED_OWNER_MIGRATIONS.json"), "utf8")).immutableThrough;
+const migration = [...serialized.matchAll(/supabase[\\/]migrations[\\/](\d+)_/g)].some((match) => Number(match[1]) <= boundary);
+const credentialPath = /(?:^|[\\/])\.env(?:\.|[\\/]|$)|SUPABASE_SERVICE_ROLE_KEY|DATABASE_URL|POSTGRES_URL|PRODUCTION_|VERCEL_TOKEN/i.test(serialized);
+const controlEdit = mutating && /(?:^|["'\\/])(?:\.codex|\.github|scripts[\\/](?:engineering|quality)|docs[\\/]engineering|AGENTS\.md|CLAUDE\.md|package(?:-lock)?\.json)/i.test(serialized);
+const controlAuthorized = state.resolution?.status === "RESOLVED" && state.resolution?.risk === "R3" && state.resolution?.domains?.includes("engineering-control");
+const worktreeRequest = classification?.reason === "GIT_WORKTREE_ADD" ? parseWorktreeAddTokens(classification.tokens) : null;
+const worktreeRoot = resolve(root, ".worktrees"), worktreeDestination = worktreeRequest ? resolve(root, worktreeRequest.destination) : "";
+const worktreeRelative = worktreeRequest ? relative(worktreeRoot, worktreeDestination) : "";
+const worktreeAddAuthorized = worktreeRequest && controlAuthorized && worktreeRelative && !worktreeRelative.startsWith("..") && !isAbsolute(worktreeRelative) && !existsSync(worktreeDestination);
+const requestedPaths = [...serialized.replaceAll("\\", "/").matchAll(/(?:^|[^A-Za-z0-9_.-])((?:src|scripts|docs|e2e|supabase|\.github|\.codex)\/[A-Za-z0-9_.\[\]/-]+|\.gitignore|(?:AGENTS|CLAUDE|package(?:-lock)?)\.(?:md|json)|[A-Za-z0-9_.-]+\.(?:c?js|mjs|mts|cts|json|toml|ya?ml|md|sql|ts|tsx))/g)].map((match) => match[1]);
+const candidates = new Map((state.resolution?.candidatePaths ?? []).map((candidate) => [candidate.path, candidate]));
+const metadataOnly = ["GIT_COMMIT", "GIT_FEATURE_PUSH", "GIT_FETCH_METADATA", "GITHUB_PR_CREATE"].includes(classification?.reason);
+const outsideScope = mutating && !metadataOnly && !worktreeAddAuthorized && (!requestedPaths.length || requestedPaths.some((path) => !candidates.has(path) || !revalidateCandidate(candidates.get(path))));
+
+let conflict = "";
+if (classification?.classification === CommandClass.PROHIBITED || classification?.classification === CommandClass.UNKNOWN_MUTATION_SHAPE) conflict = `COMMAND_POLICY_${classification.reason}`;
+else if (migration) conflict = "IMMUTABLE_MIGRATION";
+else if (credentialPath) conflict = "CREDENTIAL_PATH";
+else if (mutating && controlEdit && !controlAuthorized) conflict = "CONTROL_SCOPE";
+else if (worktreeRequest && !worktreeAddAuthorized) conflict = "WORKTREE_SCOPE";
+else if (mutating && outsideScope) conflict = "SCOPE_OR_HASH";
+if (conflict) console.log(JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: `SAFETY_CONFLICT:${conflict}` } }));
