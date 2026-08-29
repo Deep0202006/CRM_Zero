@@ -79,7 +79,7 @@ begin
   perform public.apply_distributor_master_payments_v1(v_actor,jsonb_build_array(jsonb_build_object(
     'row_number',3,'payment_id','98000000-0000-4000-a000-000000000003',
     'receivable_id','97000000-0000-4000-a000-000000000001','import_key','FIXTURE-PAYMENT-REMAINDER',
-    'amount','600.00','payment_date',current_date,'payment_mode','Bank',
+    'amount','500.00','payment_date',current_date,'payment_mode','Bank',
     'payment_reference','UTR-FIXTURE-REMAINDER','note','Complete fixture payment'
   )));
   select version into v_version from public.distributor_accounts where distributor_id=v_distributor;
