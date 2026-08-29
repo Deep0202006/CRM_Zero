@@ -162,8 +162,6 @@ jobs:
         with: { name: kernel-e2e, path: artifacts/engineering-evidence/e2e }
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with: { name: kernel-evidence-attestation, path: artifacts/engineering-attestation }
-      - name: Keep verifier inputs outside the source dirty fingerprint
-        run: echo "artifacts/engineering-attestation/" >> .git/info/exclude
       - name: Validate complete exact-head evidence
         env: { BASE_SHA: "${{ github.event.pull_request.base.sha }}", HEAD_SHA: "${{ github.event.pull_request.head.sha }}", GH_TOKEN: "${{ github.token }}" }
         run: >-

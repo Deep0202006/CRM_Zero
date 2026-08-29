@@ -50,6 +50,7 @@ graphify-out/
 .gstack/
 .repository-safety-fixtures/
 /artifacts/engineering-evidence/
+/artifacts/engineering-attestation/
 /artifacts/visual-review/
 playwright-report/
 test-results/

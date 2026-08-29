@@ -232,6 +232,32 @@ try {
     ["terraform apply", CommandClass.PROHIBITED, "terraform"], ["docker rm fixture", CommandClass.PROHIBITED, "docker"], ["kubectl delete pod fixture", CommandClass.PROHIBITED, "kubectl"],
   ]) expectClass(text, expected, name);
 
+  const ignoreRepo = temp("kernel-ignore-");
+  assert.equal(gitAt(ignoreRepo, "init", "-q", "-b", "main").status, 0); gitAt(ignoreRepo, "config", "user.email", "fixture@example.invalid"); gitAt(ignoreRepo, "config", "user.name", "Kernel Fixture");
+  copyFileSync(resolve(root, ".gitignore"), resolve(ignoreRepo, ".gitignore")); writeFileSync(resolve(ignoreRepo, "baseline.txt"), "baseline\n");
+  assert.equal(gitAt(ignoreRepo, "add", ".gitignore", "baseline.txt").status, 0); assert.equal(gitAt(ignoreRepo, "commit", "-q", "-m", "baseline").status, 0);
+  const ignoreContents = readFileSync(resolve(root, ".gitignore"), "utf8"), workflowContents = readFileSync(resolve(root, ".github/workflows/product-verification.yml"), "utf8"), ignoredBaseline = dirtyFingerprint(ignoreRepo);
+  const statusIsClean = () => assert.equal(gitAt(ignoreRepo, "status", "--porcelain").stdout, "");
+  const writeIgnoreFixture = (path, contents) => { const absolute = resolve(ignoreRepo, path); mkdirSync(dirname(absolute), { recursive: true }); writeFileSync(absolute, contents); return absolute; };
+  const verifierIgnorePaths = ["artifacts/engineering-evidence/", "artifacts/engineering-attestation/"].map((path) => String.fromCharCode(47) + path);
+  for (const path of verifierIgnorePaths) assert.equal(ignoreContents.split(/\r?\n/).filter((line) => line === path).length, 1);
+  assert(!workflowContents.includes(".git/info/exclude")); assert(!workflowContents.includes("core.excludesFile"));
+  for (const artifact of ["kernel-preflight", "kernel-unit-build", "kernel-postgres", "kernel-e2e", "kernel-evidence-attestation"]) assert(workflowContents.includes(`name: ${artifact}`));
+  assert(workflowContents.includes("npm run proof:certify-ci")); assert.match(workflowContents, /verify:\s*\n\s*needs: \[preflight, unit-build, receivables-postgres, e2e, attest-evidence\]/);
+  statusIsClean(); assert.equal(dirtyFingerprint(ignoreRepo), ignoredBaseline);
+  writeIgnoreFixture("artifacts/engineering-evidence/preflight/fixture.json", "{}\n");
+  assert.equal(gitAt(ignoreRepo, "check-ignore", "-q", "artifacts/engineering-evidence/preflight/fixture.json").status, 0); statusIsClean(); assert.equal(dirtyFingerprint(ignoreRepo), ignoredBaseline);
+  writeIgnoreFixture("artifacts/engineering-attestation/fixture.jsonl", "{}\n");
+  assert.equal(gitAt(ignoreRepo, "check-ignore", "-q", "artifacts/engineering-attestation/fixture.jsonl").status, 0); statusIsClean(); assert.equal(dirtyFingerprint(ignoreRepo), ignoredBaseline);
+  writeIgnoreFixture("artifacts/engineering-evidence/preflight/both.json", "{}\n"); writeIgnoreFixture("artifacts/engineering-attestation/both.jsonl", "{}\n");
+  statusIsClean(); assert.equal(dirtyFingerprint(ignoreRepo), ignoredBaseline);
+  for (const path of ["scripts/unexpected-kernel-source.mjs", "artifacts/unexpected-source.mjs", "unexpected-kernel-source.mjs"]) assert.equal(gitAt(ignoreRepo, "check-ignore", "-q", path).status, 1, `OVERBROAD_IGNORE:${path}`);
+  writeIgnoreFixture("unexpected-kernel-source.mjs", "export const unexpected = true;\n");
+  assert.match(gitAt(ignoreRepo, "status", "--porcelain").stdout, /\?\? unexpected-kernel-source\.mjs/); assert.notEqual(dirtyFingerprint(ignoreRepo), ignoredBaseline);
+  unlinkSync(resolve(ignoreRepo, "unexpected-kernel-source.mjs")); statusIsClean();
+  writeFileSync(resolve(ignoreRepo, "baseline.txt"), "modified\n"); assert.notEqual(dirtyFingerprint(ignoreRepo), ignoredBaseline);
+  matrix.state.push("verifier-input-ignore-contract", "ignored-evidence-clean", "ignored-attestation-clean", "ignored-inputs-combined-clean", "ordinary-untracked-fingerprint-sensitive", "tracked-modification-fingerprint-sensitive", "no-overbroad-artifacts-ignore", "workflow-no-local-ignore-mutation");
+
   const repo = temp("kernel-git-");
   assert.equal(gitAt(repo, "init", "-q", "-b", "main").status, 0); gitAt(repo, "config", "user.email", "fixture@example.invalid"); gitAt(repo, "config", "user.name", "Kernel Fixture");
   writeFileSync(resolve(repo, "base.txt"), "base\n"); gitAt(repo, "add", "base.txt"); gitAt(repo, "commit", "-q", "-m", "base");
