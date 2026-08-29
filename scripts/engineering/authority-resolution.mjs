@@ -62,11 +62,12 @@ export const extractSourceWrites = (path, added) => {
   return writes;
 };
 
-const sqlFunctions = (sql) => [...sql.matchAll(/\bCREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION\s+((?:"?[\w]+"?\.)?"?[\w]+"?)[\s\S]*?\bAS\s+(\$[A-Za-z0-9_]*\$)([\s\S]*?)\2/gi)].map((match) => {
+const sqlFunctions = (sql) => [...sql.matchAll(/\bCREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION\s+((?:"?[\w]+"?\.)?"?[\w]+"?)([\s\S]*?)\bAS\s+(\$[A-Za-z0-9_]*\$)([\s\S]*?)\3/gi)].map((match) => {
   const { schema, resource } = qualified(match[1]);
-  const bodyOffset = match[0].indexOf(match[3]);
-  return { name: `${schema}.${resource}`, start: match.index + bodyOffset, end: match.index + bodyOffset + match[3].length };
+  const bodyOffset = match[0].indexOf(match[4]);
+  return { name: `${schema}.${resource}`, stable: /\b(?:STABLE|IMMUTABLE)\b/i.test(match[2]), start: match.index + bodyOffset, end: match.index + bodyOffset + match[4].length };
 });
+export const extractSqlReadFunctions = (path, added) => /\.sql$/i.test(path) ? sqlFunctions(added.replace(/--[^\r\n]*/g, "")).filter((item) => item.stable).map((item) => item.name) : [];
 const sqlColumns = (value) => [...new Set(String(value).split(",").map((item) => /^\s*"?([A-Za-z_][\w]*)"?/.exec(item)?.[1]).filter(Boolean))];
 const sqlOperation = (path, kind, target, columns, schemaChanging, index, functions) => {
   const { schema, resource } = qualified(target);

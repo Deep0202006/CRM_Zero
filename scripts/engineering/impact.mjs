@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
 import { dirtyFingerprint, git, parseArgs, readJson, root, sha256 } from "./kernel-lib.mjs";
-import { extractSourceWrites, extractSqlWrites, resolveWriteAuthorities } from "./authority-resolution.mjs";
+import { extractSourceWrites, extractSqlReadFunctions, extractSqlWrites, resolveWriteAuthorities } from "./authority-resolution.mjs";
 
 const riskRank = { R0: 0, R1: 1, R2: 2, R3: 3 };
 const maxRisk = (...values) => values.reduce((best, value) => riskRank[value] > riskRank[best] ? value : best, "R0");
@@ -70,7 +70,8 @@ export const compileImpact = ({ base = "origin/main", head = "WORKTREE", entries
     pathRecords.push({ ...entry, domains: [...matched].sort(), effects: [...new Set(pathEffects)].sort(), risk: pathRisk, unknown });
   }
   const domainRisk = [...mappedDomains].map((id) => domains.find((domain) => domain.id === id)?.riskFloor ?? (id === "engineering-control" ? "R3" : "R0"));
-  const writeOperations = patchSections(patch, entries).flatMap(({ path, added }) => [...extractSourceWrites(path, added), ...extractSqlWrites(path, added)]), authority = resolveWriteAuthorities(writeOperations, facts);
+  const sections = patchSections(patch, entries), stableReadFunctions = new Set(sections.flatMap(({ path, added }) => extractSqlReadFunctions(path, added))), detectedOperations = sections.flatMap(({ path, added }) => [...extractSourceWrites(path, added), ...extractSqlWrites(path, added)]);
+  const readOperations = detectedOperations.filter((operation) => operation.operationKind === "rpc" && stableReadFunctions.has(operation.functionName)), writeOperations = detectedOperations.filter((operation) => !readOperations.includes(operation)), authority = resolveWriteAuthorities(writeOperations, facts);
   unresolved.push(...authority.unresolved);
   for (const resolution of authority.resolutions) {
     const pathDomains = selectedDomains ?? pathRecords.find((record) => record.path === resolution.sourcePath || record.oldPath === resolution.sourcePath)?.domains ?? [];
@@ -90,7 +91,7 @@ export const compileImpact = ({ base = "origin/main", head = "WORKTREE", entries
     changes: pathRecords,
     changedPaths: [...new Set(entries.flatMap((entry) => [entry.oldPath, entry.path].filter(Boolean)))],
     domains: [...mappedDomains].sort(), effects: [...effects].sort(), changedAuthorities: [...new Set(authority.resolutions.map((item) => item.authority))].sort(),
-    writeOperations, writeResolutions: authority.resolutions,
+    writeOperations, readOperations, writeResolutions: authority.resolutions,
     risk: maxRisk(...domainRisk, ...pathRecords.map((entry) => entry.risk), writeOperations.length || unresolved.some((item) => item.code.includes("AUTHORITY")) ? "R3" : "R0"),
     unresolved,
     writable: unresolved.length === 0,
