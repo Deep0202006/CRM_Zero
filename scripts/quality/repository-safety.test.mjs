@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -171,6 +171,31 @@ const matrix = [
     "src/app/api/example/route.ts": 'await client.from("synthetic").update({ safe: true });\n',
   }),
 ];
+
+const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../.."), workflowPath = ".github/workflows/product-verification.yml";
+const workflowLf = readFileSync(resolve(repositoryRoot, workflowPath), "utf8").replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n");
+const representations = {
+  LF: workflowLf,
+  CRLF: workflowLf.replace(/\n/g, "\r\n"),
+  BOM_CRLF: `\uFEFF${workflowLf.replace(/\n/g, "\r\n")}`,
+};
+const workflowMutations = [
+  ["attest-action", "ATTESTATION_JOB_MISSING_OR_UNPINNED", (text) => text.replace("actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6", "actions/attest@main")],
+  ["attest-permission", "ATTESTATION_JOB_AUTHORITY_INVALID", (text) => text.replace("attestations: write", "attestations: read")],
+  ["evidence-collision", "EVIDENCE_DIRECTORY_COLLISION", (text) => text.replaceAll("artifacts/engineering-evidence/e2e", "artifacts/engineering-evidence/preflight")],
+  ["verification-command", "ATTESTATION_VERIFICATION_MISSING", (text) => text.replace("proof:certify-ci", "proof:certify")],
+  ["producer-oidc", "PRODUCER_OIDC_PERMISSION", (text) => text.replace(/(  preflight:[\s\S]*?permissions:[\s\S]*?contents: read)/, "$1\n      id-token: write")],
+];
+for (const [representation, workflow] of Object.entries(representations)) {
+  matrix.push(expectPass(`workflow-${representation.toLowerCase()}`, { [workflowPath]: workflow }));
+  for (const [name, code, mutate] of workflowMutations)
+    matrix.push(expectFailure(`workflow-${representation.toLowerCase()}-${name}`, code, { [workflowPath]: mutate(workflow) }));
+}
+const impersonated = workflowLf
+  .replace(/^  attest-evidence:/m, "  attest-evidence-copy:")
+  .replace(/^  verify:/m, "  verify-copy:")
+  .concat("\n#   attest-evidence:\n#   verify:\n");
+matrix.push(expectFailure("workflow-similarly-named-jobs-cannot-impersonate", "ATTESTATION_JOB_MISSING_OR_UNPINNED", { [workflowPath]: impersonated }));
 
 for (const [name, command, expected] of [
   ["policy-node-inline", "node -e process.exit(0)", CommandClass.PROHIBITED],
