@@ -70,6 +70,7 @@ const attestationOutput = (environment, digest, mutate = () => {}) => {
 };
 
 const operationalDirectory = sessionsDirectory(), operationalBefore = snapshotDirectory(operationalDirectory);
+const productBefore = snapshotDirectory(resolve(root, "src")), migrationsBefore = snapshotDirectory(resolve(root, "supabase/migrations"));
 let isolatedGit = "", isolatedRemoved = false;
 try {
   const baseSha = git("rev-parse", "origin/main"), currentHead = git("rev-parse", "HEAD"), currentTree = git("rev-parse", "HEAD^{tree}");
@@ -412,9 +413,8 @@ try {
   assert.throws(() => validateCaseResult({ caseId: "zero", executed: true, assertionCount: 0, pass: true }), /CASE_ZERO_ASSERTIONS/);
   matrix.regression.push("semantic-proofref-only-rejected", "false-blocker-rejected", "control-executor-missing", "unknown-kind-rejected", "zero-assertions-rejected", "unexecuted-critical-claim-rejected");
 
-  const productChanges = git("diff", "--name-only", "origin/main", "--", "src").split(/\r?\n/).filter((path) => path && !path.includes("/__tests__/"));
-  const migrationChanges = git("diff", "--name-only", "origin/main", "--", "supabase/migrations").split(/\r?\n/).filter((path) => path.endsWith(".sql"));
-  assert.deepEqual(productChanges, []); assert.deepEqual(migrationChanges, []);
+  assert.deepEqual(snapshotDirectory(resolve(root, "src")), productBefore, "PRODUCT_SOURCE_MUTATED_BY_TEST");
+  assert.deepEqual(snapshotDirectory(resolve(root, "supabase/migrations")), migrationsBefore, "MIGRATION_SOURCE_MUTATED_BY_TEST");
   assert.deepEqual(snapshotDirectory(operationalDirectory), operationalBefore, "OPERATIONAL_SESSION_STORE_MUTATED_BY_TEST");
   console.log(JSON.stringify({ code: "KERNEL_ADVERSARIAL_MATRIX_PASS", operationalStateBefore: operationalBefore, operationalStateAfter: snapshotDirectory(operationalDirectory), matrix }));
 } finally {
