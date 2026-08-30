@@ -71,6 +71,7 @@
       "id": "distributor_account",
       "authority": "public.distributor_accounts",
       "writeSelectors": [
+        { "function": "public.distributor_erp_payment_status_command_v1" },
         { "schema": "public", "resource": "distributor_accounts", "column": "erp_payment_status" },
         { "schema": "public", "resource": "distributor_accounts" },
         { "schema": "public", "resource": "distributor_status_events" },

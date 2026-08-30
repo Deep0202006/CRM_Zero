@@ -44,6 +44,29 @@ cannot change authority, remove acceptance, weaken tests, bypass safety, or
 block completion for style preference. Its absence is not a proof failure and
 it is not a CI dependency.
 
+Classify failures as `INTERNAL_TASK_DEFECT`, `INTERNAL_KERNEL_DEFECT`,
+`ENVIRONMENT_PARITY_DEFECT`, `EXTERNAL_DEPENDENCY`, `HUMAN_PRODUCTION_GATE`,
+`SAFETY_CONFLICT`, `GENUINE_BUSINESS_AMBIGUITY`, or
+`UNEXPECTED_SYSTEM_FAILURE`. Local test/code defects, local/CI or platform
+parser mismatches, stale caches, kernel false positives, and mechanically
+derivable registry reconciliation are internal: reproduce, identify the shared
+source, add the smallest regression, repair it, rerun the focused and
+invalidated gates, then resume the original task. An unchanged tracked file
+that passes exact-head CI but fails locally is first an
+`ENVIRONMENT_PARITY_DEFECT`; inspect line endings, paths, process/shell
+semantics, and environment. If a product PR exposes an out-of-scope kernel
+defect, preserve it, repair the kernel on an isolated branch from current main,
+open one kernel PR, and resume the preserved product PR after the Owner merge
+gate—never discard completed work.
+
+Final `BLOCKED` is limited to a verified external service/account/network
+dependency, explicit Owner production approval, irreducible safety conflict,
+genuine business-authority ambiguity, or unexpected tool/runtime failure after
+one focused retry and one distinct strategy. Do not loop indefinitely. Run
+impact and proof planning early for writes, RPCs, schema fields, migrations,
+authorization, and cross-domain work; do not rerun a green broad suite unless a
+later change invalidated it.
+
 Production SQL and credential use are Owner-only. Never contact production,
 create production dummy data, expose privileged secrets to client code, mutate
 applied migrations, delete protected history, clear durable offline recovery,

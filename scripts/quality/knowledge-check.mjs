@@ -51,6 +51,32 @@ const lessonIds = new Set(lessons.map((item) => item.id));
 const domainIds = new Set(domains.map((item) => item.id));
 const evalIds = new Set(regressionCases.map((item) => item.id));
 const claimIds = new Set(claims.map((item) => item.id));
+const selectorKeys = new Set(["schema", "resource", "table", "column", "columns", "function", "rpc", "operationKind", "operationKinds", "wholeResource", "delegatedAuthorities"]);
+const operationKinds = new Set(["insert", "upsert", "update", "delete", "truncate", "merge", "alter_table_add_column", "alter_table_drop_column", "alter_table_alter_column", "alter_table_rename_column", "alter_table_constraint", "create_table", "drop_table", "drop_function", "policy_change", "rls_change", "create_trigger", "grant_privilege", "revoke_privilege", "grant_function", "revoke_function", "function_definition", "rpc", "auth_admin"]);
+const selectorOwners = new Map();
+for (const authority of authorities) {
+  if (!Object.hasOwn(authority, "writeSelectors")) continue;
+  if (!Array.isArray(authority.writeSelectors)) { fail(`${authority.id} writeSelectors must be an array`); continue; }
+  const local = new Set();
+  for (const selector of authority.writeSelectors) {
+    if (!selector || typeof selector !== "object" || Array.isArray(selector)) { fail(`${authority.id} malformed write selector`); continue; }
+    for (const key of Object.keys(selector)) if (!selectorKeys.has(key)) fail(`${authority.id} unknown write selector key: ${key}`);
+    const resource = selector.resource ?? selector.table, fn = selector.function ?? selector.rpc, columns = selector.columns ?? (selector.column ? [selector.column] : []), kinds = selector.operationKinds ?? (selector.operationKind ? [selector.operationKind] : []), delegated = selector.delegatedAuthorities ?? [];
+    if (selector.resource && selector.table || selector.function && selector.rpc || fn && resource) fail(`${authority.id} malformed write selector target`);
+    if (!fn && !resource || columns.length && !resource) fail(`${authority.id} write selector column requires resource`);
+    for (const value of [selector.schema, resource, fn, ...columns]) if (value !== undefined && (typeof value !== "string" || !/^[A-Za-z_][A-Za-z0-9_.]*$/.test(value) || value.includes("*"))) fail(`${authority.id} malformed write selector value`);
+    if (!Array.isArray(columns) || !Array.isArray(kinds) || !Array.isArray(delegated) || delegated.length && !fn || typeof selector.wholeResource !== "undefined" && typeof selector.wholeResource !== "boolean") fail(`${authority.id} malformed write selector shape`);
+    for (const kind of kinds) if (!operationKinds.has(kind)) fail(`${authority.id} invalid write selector operation kind: ${kind}`);
+    for (const id of delegated) if (!authorityIds.has(id)) fail(`${authority.id} unknown delegated authority: ${id}`);
+    const specificity = fn ? 3 : columns.length ? 2 : 1, targets = fn ? [fn.toLowerCase()] : columns.length ? columns.map((column) => `${selector.schema ?? "public"}.${resource}.${column}`.toLowerCase()) : [`${selector.schema ?? "public"}.${resource}`.toLowerCase()];
+    for (const target of targets) {
+      const key = JSON.stringify([specificity, target, [...kinds].sort(), selector.wholeResource === true]);
+      if (local.has(key)) fail(`${authority.id} duplicate write selector: ${target}`);
+      local.add(key); const owners = selectorOwners.get(key) ?? new Set(); owners.add(authority.id); selectorOwners.set(key, owners);
+    }
+  }
+}
+for (const [selector, owners] of selectorOwners) if (owners.size > 1) fail(`equal-specificity write selector collision: ${selector} -> ${[...owners].sort().join(",")}`);
 const pathFields = [
   "surfacePaths",
   "codeRoots",
