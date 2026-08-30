@@ -23,7 +23,7 @@ import { beginExternalTask, compareAndSwap, loadState, requireContinuation, sess
 import { dirtyFingerprint, environmentPolicyHash, git, repositoryIdentity, root, safeEnvironment, sha256 } from "./kernel-lib.mjs";
 import { containsAssertionWeakening } from "../quality/assertion-policy.mjs";
 
-const matrix = { state: [], risk: [], proof: [], attestation: [], commandPolicy: [], regression: [], stopRemote: [], stall: [], postgresEnvironment: [], tokenIsolation: [] }, tempRoots = [], createdEvidence = [];
+const matrix = { state: [], risk: [], proof: [], attestation: [], commandPolicy: [], regression: [], stopRemote: [], stall: [], postgresEnvironment: [], tokenIsolation: [] }, tempRoots = [], createdEvidence = [], preservedEvidence = new Map();
 const temp = (prefix) => { const path = mkdtempSync(resolve(tmpdir(), prefix)); tempRoots.push(path); return path; };
 const command = (cwd, file, args, env, input) => spawnSync(file, args, { cwd, encoding: "utf8", env: { ...process.env, ...env }, input });
 const gitAt = (cwd, ...args) => command(cwd, "git", args);
@@ -39,6 +39,10 @@ const snapshotDirectory = (directory) => {
   };
   visit(directory);
   return { exists: true, files: files.sort((a, b) => a.path.localeCompare(b.path)) };
+};
+const restorePreservedEvidence = () => {
+  for (const [path, contents] of preservedEvidence) if (contents === null) { if (existsSync(path)) unlinkSync(path); } else writeFileSync(path, contents);
+  preservedEvidence.clear();
 };
 const withEnvironment = async (environment, work) => {
   const previous = new Map(Object.keys(environment).map((key) => [key, process.env[key]]));
@@ -69,7 +73,7 @@ const attestationOutput = (environment, digest, mutate = () => {}) => {
   return JSON.stringify([row]);
 };
 
-const operationalDirectory = sessionsDirectory(), operationalBefore = snapshotDirectory(operationalDirectory);
+const operationalDirectory = sessionsDirectory(), operationalBefore = snapshotDirectory(operationalDirectory), evidenceDirectory = resolve(root, "artifacts/engineering-evidence"), evidenceBefore = snapshotDirectory(evidenceDirectory);
 const productBefore = snapshotDirectory(resolve(root, "src")), migrationsBefore = snapshotDirectory(resolve(root, "supabase/migrations"));
 let isolatedGit = "", isolatedRemoved = false;
 try {
@@ -197,7 +201,7 @@ try {
     const commands = commandPlan.commands.map((commandItem) => ({ ...commandItem, exitCode: 0, stdoutHash: sha256(""), stdoutBytes: 0, stderrHash: sha256(""), stderrBytes: 0, startedAt: now, endedAt: now }));
     const evidence = { schemaVersion: 2, proofId, kind: proof.kind, status: "PASS", baseSha: attackPlan.baseSha, headSha: attackPlan.headSha, treeSha: attackPlan.treeSha, dirtyFingerprint: attackPlan.dirtyFingerprint, impactHash: attackPlan.impactHash, planHash: attackPlan.planHash, proofDefinitionHash: proofDefinitionHash(proof), runnerIdentity: proofRunnerIdentity(), commandPlanHash: commandPlan.commandPlanHash, environmentPolicyHash: environmentPolicyHash(), startedAt: now, endedAt: now, attempts: [{ attemptIndex: 1, commandPlanHash: commandPlan.commandPlanHash, startedAt: now, endedAt: now, commands }], provenanceMode: "GITHUB_ACTIONS", githubRepository: attackEnvironment.GITHUB_REPOSITORY, githubWorkflow: attackEnvironment.GITHUB_WORKFLOW, githubRunId: attackEnvironment.GITHUB_RUN_ID, githubRunAttempt: attackEnvironment.GITHUB_RUN_ATTEMPT, githubJob: commandPlan.expectedCiJob, githubEvent: attackEnvironment.GITHUB_EVENT_NAME, expectedSourceJob: commandPlan.expectedCiJob };
     evidence.evidencePayloadHash = evidencePayloadHash(evidence);
-    const path = canonicalEvidencePath(proofId, commandPlan.expectedCiJob); mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, JSON.stringify(evidence)); createdEvidence.push(path);
+    const path = canonicalEvidencePath(proofId, commandPlan.expectedCiJob); mkdirSync(dirname(path), { recursive: true }); preservedEvidence.set(path, existsSync(path) ? readFileSync(path) : null); writeFileSync(path, JSON.stringify(evidence));
     validateEvidenceFile({ path, proofId, plan: attackPlan, environment: { ...attackEnvironment, GITHUB_JOB: commandPlan.expectedCiJob } });
   }
   const canonicalSet = certifierModule.requireCanonicalEvidenceFiles(attackPlan), firstProofId = attackPlan.requiredProofs[0], firstPath = canonicalSet.get(firstProofId), firstContents = readFileSync(firstPath);
@@ -209,6 +213,7 @@ try {
   const fakeBundle = resolve(root, "artifacts/engineering-attestation/fake.json"); mkdirSync(dirname(fakeBundle), { recursive: true }); writeFileSync(fakeBundle, "{}\n"); createdEvidence.push(fakeBundle);
   const syntheticAttack = command(root, process.execPath, ["scripts/engineering/proof-certify-ci.mjs", "--base", baseSha, "--head", currentHead, "--jobs", "success:success:success:success:success"], attackEnvironment);
   assert.equal(syntheticAttack.status, 2); assert.match(syntheticAttack.stderr, /ATTESTATION_VERIFICATION_FAILED|ATTESTATION_REQUIRED/); assert(!syntheticAttack.stdout.includes("REPOSITORY_PROOF_READY"));
+  restorePreservedEvidence(); assert.deepEqual(snapshotDirectory(evidenceDirectory), evidenceBefore, "PROOF_EVIDENCE_MUTATED_BY_TEST");
   matrix.attestation.push("synthetic-four-file-structurally-valid", "fake-bundle-rejected", "repository-certificate-not-emitted");
   rmSync(isolatedGit, { recursive: true, force: true }); tempRoots.splice(tempRoots.indexOf(isolatedGit), 1); isolatedRemoved = !existsSync(isolatedGit);
   assert(isolatedRemoved, "ISOLATED_STATE_FIXTURE_NOT_REMOVED");
@@ -418,6 +423,7 @@ try {
   assert.deepEqual(snapshotDirectory(operationalDirectory), operationalBefore, "OPERATIONAL_SESSION_STORE_MUTATED_BY_TEST");
   console.log(JSON.stringify({ code: "KERNEL_ADVERSARIAL_MATRIX_PASS", operationalStateBefore: operationalBefore, operationalStateAfter: snapshotDirectory(operationalDirectory), matrix }));
 } finally {
+  restorePreservedEvidence();
   for (const path of createdEvidence) if (existsSync(path)) rmSync(path, { force: true });
   for (const path of tempRoots) if (existsSync(path)) rmSync(path, { recursive: true, force: true });
 }
