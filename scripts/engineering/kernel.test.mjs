@@ -330,11 +330,12 @@ try {
     const one={alpha:1}; const many=[{beta:1},{gamma:2}]; const spread={delta:1}; const literalKey='epsilon';
     client.schema('private').from('records').insert({alpha:1}); client.from('records').upsert(many); client.from('records').update(one);
     client.from('records').update({...spread}); client.from('records').update({...importedPayload}); client.from('records').update({[literalKey]:1}); client.from('records').update({['zeta']:1});
-    client.from(tableName).update({alpha:1}); client.rpc(rpcName,{}); client.query('update public.records set alpha=1'); client.execute(sqlText); client.from('records').delete();
+    client.from(tableName).update({alpha:1}); client.from().update({alpha:1}); client.rpc(rpcName,{}); client.query('update public.records set alpha=1'); client.execute(sqlText); client.from('records').delete();
   `);
   assert(sourceCases.some((item) => item.schema === "private" && item.writtenColumns.includes("alpha"))); assert(sourceCases.some((item) => item.operationKind === "upsert" && item.writtenColumns.includes("beta") && item.writtenColumns.includes("gamma"))); assert(sourceCases.some((item) => item.operationKind === "update" && item.writtenColumns.includes("delta") && item.columnsKnown));
   for (const code of ["WRITE_COLUMNS_UNKNOWN", "WRITE_TARGET_UNKNOWN", "RPC_EFFECT_UNKNOWN", "DYNAMIC_SQL_EFFECT_UNKNOWN"]) assert(sourceCases.some((item) => item.analysisError === code), code);
   assert(sourceCases.some((item) => item.parserEvidence === "TS_LITERAL_SQL" && item.operationKind === "update")); assert(sourceCases.some((item) => item.operationKind === "delete" && item.wholeResourceMutation));
+  assert.deepEqual(extractSourceOperations("generic.ts", "cache.delete(key); model.update(value);"), []);
   const partial = compileImpact({ entries: [{ status: "M", path: "src/lib/distributors/contract.ts" }], fileVersions: { "src/lib/distributors/contract.ts": { base: "const q=supabase.from('distributor_accounts');", head: "const q=supabase\n .from('distributor_accounts')\n .update({ activity_status:'active' });" } } }); assert(partial.writeOperations.some((item) => item.writtenColumns.includes("activity_status")));
 
   const sqlCases = extractSqlOperations(migrationPath, "update public.a set x=1; insert into public.a(x) values(1); delete from public.a; truncate public.a; merge into public.a using public.b on true when matched then update set x=2; alter table public.a add column y text, drop column z, rename column q to r; create policy p on public.a using(true); alter table public.a enable row level security; grant select on public.a to anon;");

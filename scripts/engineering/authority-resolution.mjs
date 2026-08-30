@@ -15,12 +15,12 @@ const operation = (sourcePath, sourceContentHash, values) => {
   return item;
 };
 const callArgument = (node, method) => {
-  if (!node) return null;
+  if (!node) return undefined;
   if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)) {
-    if (node.expression.name.text === method) return node.arguments[0] ?? null;
+    if (node.expression.name.text === method) return node.arguments.length ? node.arguments[0] : null;
     return callArgument(node.expression.expression, method);
   }
-  return ts.isPropertyAccessExpression(node) ? callArgument(node.expression, method) : null;
+  return ts.isPropertyAccessExpression(node) ? callArgument(node.expression, method) : undefined;
 };
 const immutableConsts = (source) => {
   const values = new Map();
@@ -69,6 +69,7 @@ const payloadShape = (node, constants, seen = new Set()) => {
   return { columns: [...new Set(columns)], known: true };
 };
 const staticString = (node, constants) => {
+  if (!node) return null;
   const value = literal(node);
   if (value !== null) return value;
   return ts.isIdentifier(node) ? literal(constants.get(node.text)) : null;
@@ -83,7 +84,8 @@ export const extractSourceOperations = (path, text, { contentHash = sha256(text)
       const kind = node.expression.name.text;
       if (["insert", "upsert", "update", "delete"].includes(kind)) {
         const targetNode = callArgument(node.expression.expression, "from"), target = staticString(targetNode, constants), schemaNode = callArgument(node.expression.expression, "schema"), schemaValue = schemaNode ? staticString(schemaNode, constants) : "public";
-        if (target === null || schemaNode && schemaValue === null) unknown(kind, "WRITE_TARGET_UNKNOWN", { isDml: true });
+        if (targetNode === undefined) { /* generic method, not a Supabase mutation chain */ }
+        else if (target === null || schemaNode !== undefined && schemaValue === null) unknown(kind, "WRITE_TARGET_UNKNOWN", { isDml: true });
         else {
           const { schema, resource } = qualified(target, schemaValue), shape = kind === "delete" ? { columns: [], known: true } : payloadShape(node.arguments[0], constants);
           records.push(operation(path, contentHash, { operationKind: kind, schema, resource, writtenColumns: shape.columns, columnsKnown: shape.known, isDml: true, wholeResourceMutation: kind === "delete", parserEvidence: "TS_AST", effect: shape.known ? "WRITE" : "UNKNOWN", analysisError: shape.known ? undefined : "WRITE_COLUMNS_UNKNOWN" }));
