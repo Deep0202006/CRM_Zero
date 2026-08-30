@@ -14,8 +14,14 @@ declare
   v_before_receivables bigint;
   v_before_payments bigint;
   v_version bigint;
+  v_event_count bigint;
+  v_receipt_count bigint;
   v_result jsonb;
   v_rows jsonb;
+  v_metrics_before jsonb;
+  v_metrics_after jsonb;
+  v_due_before jsonb;
+  v_due_after jsonb;
 begin
   if exists(select 1 from public.distributor_accounts where erp_id is not null) then
     raise exception 'MIGRATION_047_BACKFILLED_ERP';
@@ -89,11 +95,41 @@ begin
   ) into v_result;
   if not coalesce((v_result->>'success')::boolean,false)
      or not exists(select 1 from public.distributor_accounts where distributor_id=v_distributor and erp_payment_status='paid')
-     or not exists(select 1 from public.distributor_status_events where distributor_id=v_distributor and event_type='erp_payment_status_updated') then
+     or not exists(select 1 from public.distributor_status_events where distributor_id=v_distributor and event_type='erp_payment_status_updated')
+     or not exists(select 1 from public.distributor_operation_receipts where operation_id='94000000-0000-4000-a000-000000000052') then
     raise exception 'ERP_PAYMENT_STATUS_COMMAND_FAILED: %',v_result;
   end if;
+  select count(*) into v_event_count from public.distributor_status_events where distributor_id=v_distributor and event_type='erp_payment_status_updated';
+  select count(*) into v_receipt_count from public.distributor_operation_receipts where operation_id='94000000-0000-4000-a000-000000000052';
+  select public.distributor_erp_payment_status_command_v1(
+    '94000000-0000-4000-a000-000000000052',v_actor,'erp_payment',repeat('5',64),
+    jsonb_build_object('distributor_id',v_distributor,'expected_version',v_version,'erp_payment_status','paid','note','ERP settled')
+  ) into v_result;
+  if not coalesce((v_result->>'success')::boolean,false)
+     or (select count(*) from public.distributor_status_events where distributor_id=v_distributor and event_type='erp_payment_status_updated')<>v_event_count
+     or (select count(*) from public.distributor_operation_receipts where operation_id='94000000-0000-4000-a000-000000000052')<>v_receipt_count then
+    raise exception 'ERP_PAYMENT_STATUS_REPLAY_NOT_IDEMPOTENT: %',v_result;
+  end if;
+  select public.distributor_erp_payment_status_command_v1(
+    '94000000-0000-4000-a000-000000000052',v_actor,'erp_payment',repeat('7',64),
+    jsonb_build_object('distributor_id',v_distributor,'expected_version',v_version,'erp_payment_status','paid')
+  ) into v_result;
+  if v_result->>'code'<>'DISTRIBUTOR_OPERATION_MISMATCH' then raise exception 'ERP_PAYMENT_STATUS_MISMATCH_REPLAY_ACCEPTED: %',v_result; end if;
+  select public.distributor_erp_payment_status_command_v1(
+    '94000000-0000-4000-a000-000000000054',v_actor,'erp_payment',repeat('8',64),
+    jsonb_build_object('distributor_id',v_distributor,'expected_version',v_version,'erp_payment_status','not_paid')
+  ) into v_result;
+  if v_result->>'code'<>'DISTRIBUTOR_CONFLICT' then raise exception 'ERP_PAYMENT_STATUS_STALE_VERSION_ACCEPTED: %',v_result; end if;
+  select version into v_version from public.distributor_accounts where distributor_id=v_distributor;
+  select public.distributor_erp_payment_status_command_v1(
+    '94000000-0000-4000-a000-000000000055',v_employee,'erp_payment',repeat('9',64),
+    jsonb_build_object('distributor_id',v_distributor,'expected_version',v_version,'erp_payment_status','not_paid')
+  ) into v_result;
+  if v_result->>'code'<>'ADMIN_REQUIRED' then raise exception 'ERP_PAYMENT_STATUS_EMPLOYEE_WRITE_ACCEPTED: %',v_result; end if;
 
   update public.distributor_accounts set erp_id=v_tally where distributor_id=v_distributor;
+  select public.distributor_renewal_metrics_v1(v_actor,true) into v_metrics_before;
+  select public.distributor_renewals_due_v2(v_actor,true,50) into v_due_before;
   insert into public.distributor_accounts(
     distributor_id,erp_id,distributor_name,distributor_reference,identity_key,assigned_to,
     installation_status,training_status,mapping_status,activity_status,billing_status,renewal_date,created_by
@@ -101,6 +137,13 @@ begin
     '96000000-0000-4000-a000-000000000002',v_marg,'MARG Only','MARG-ONLY','code:marg-only',v_employee,
     'pending','pending','pending','not_applicable','not_billed',current_date+1,v_actor
   );
+  select public.distributor_renewal_metrics_v1(v_actor,true) into v_metrics_after;
+  select public.distributor_renewals_due_v2(v_actor,true,50) into v_due_after;
+  if v_metrics_after<>v_metrics_before or v_due_after<>v_due_before then raise exception 'UNBILLED_INTERNAL_RENEWAL_VISIBLE'; end if;
+  select public.distributor_renewals_list_v2(v_actor,true,'all',1,50,v_marg,false) into v_result;
+  if (v_result->>'total')::integer<>0 then raise exception 'UNBILLED_ADMIN_RENEWAL_VISIBLE: %',v_result; end if;
+  select public.distributor_renewals_list_v2(v_employee,false,'all',1,50,v_marg,false) into v_result;
+  if (v_result->>'total')::integer<>0 then raise exception 'UNBILLED_EMPLOYEE_RENEWAL_VISIBLE: %',v_result; end if;
   select public.set_erp_partner_scopes_v1(v_actor,v_partner,jsonb_build_array(v_marg)) into v_result;
   if not coalesce((v_result->>'success')::boolean,false) then raise exception 'ERP_SCOPE_SET_FAILED: %',v_result; end if;
   select public.erp_partner_distributors_v1(v_partner,null,null,1,50) into v_result;
@@ -116,12 +159,50 @@ begin
   end if;
   select public.erp_partner_renewals_v1(v_partner,v_marg,'all',1,50) into v_result;
   if (v_result->>'total')::integer<>0 then raise exception 'ERP_UNBILLED_RENEWAL_VISIBLE: %',v_result; end if;
+  insert into public.receivables(
+    receivable_id,distributor_id,bill_reference,bill_reference_key,distributor_name,distributor_identity_key,
+    distributor_code,contact_person,bill_amount,bill_due_date,next_follow_up_date,assigned_to,source,created_by
+  ) values(
+    '97000000-0000-4000-a000-000000000052','96000000-0000-4000-a000-000000000002','ERP-PENDING','erp-pending','MARG Only','code:marg-only',
+    'MARG-ONLY','A',100.00,current_date,current_date,v_employee,'manual',v_actor
+  );
+  insert into public.receivable_payments(payment_id,receivable_id,amount,payment_date,reported_by,verification_status)
+  values('98000000-0000-4000-a000-000000000052','97000000-0000-4000-a000-000000000052',100.00,current_date,v_employee,'reported');
+  select public.distributor_financial_projection_v2(
+    v_actor,1,50,'MARG Only',v_employee,'NOT_PAID','not_billed',v_marg,false,'pending','pending','pending','not_applicable','due_soon'
+  ) into v_result;
+  if (v_result->>'total')::integer<>1 or v_result#>>'{rows,0,distributor_id}'<>'96000000-0000-4000-a000-000000000002' then
+    raise exception 'DISTRIBUTOR_FILTER_PIPELINE_NOT_CLOSED: %',v_result;
+  end if;
   select version into v_version from public.distributor_accounts where distributor_id='96000000-0000-4000-a000-000000000002';
   select public.distributor_erp_payment_status_command_v1(
     '94000000-0000-4000-a000-000000000053',v_actor,'erp_payment',repeat('6',64),
     jsonb_build_object('distributor_id','96000000-0000-4000-a000-000000000002','expected_version',v_version,'erp_payment_status','not_paid')
   ) into v_result;
-  if v_result->>'code'<>'ERP_PAYMENT_STATUS_REQUIRES_PAID' then raise exception 'ERP_PAYMENT_STATUS_ACCEPTED_UNPAID: %',v_result; end if;
+  if v_result->>'code'<>'ERP_PAYMENT_STATUS_REQUIRES_PAID' then raise exception 'ERP_PAYMENT_STATUS_ACCEPTED_REPORTED_PAYMENT: %',v_result; end if;
+  update public.receivable_payments set verification_status='confirmed',verified_by=v_actor,verified_at=now()
+  where payment_id='98000000-0000-4000-a000-000000000052';
+  select public.distributor_erp_payment_status_command_v1(
+    '94000000-0000-4000-a000-000000000056',v_actor,'erp_payment',repeat('a',64),
+    jsonb_build_object('distributor_id','96000000-0000-4000-a000-000000000002','expected_version',v_version,'erp_payment_status','not_paid')
+  ) into v_result;
+  if not coalesce((v_result->>'success')::boolean,false) then raise exception 'ERP_PAYMENT_STATUS_REJECTED_CONFIRMED_PAID: %',v_result; end if;
+  update public.receivable_payments set verification_status='reversed',reversed_by=v_actor,reversed_at=now(),reversal_reason='Integration reversal'
+  where payment_id='98000000-0000-4000-a000-000000000052';
+  select version into v_version from public.distributor_accounts where distributor_id='96000000-0000-4000-a000-000000000002';
+  select public.distributor_erp_payment_status_command_v1(
+    '94000000-0000-4000-a000-000000000057',v_actor,'erp_payment',repeat('b',64),
+    jsonb_build_object('distributor_id','96000000-0000-4000-a000-000000000002','expected_version',v_version,'erp_payment_status','paid')
+  ) into v_result;
+  if v_result->>'code'<>'ERP_PAYMENT_STATUS_REQUIRES_PAID' then raise exception 'ERP_PAYMENT_STATUS_ACCEPTED_REVERSED_PAYMENT: %',v_result; end if;
+  insert into public.receivable_payments(payment_id,receivable_id,amount,payment_date,reported_by,verification_status,verified_by,verified_at)
+  values('98000000-0000-4000-a000-000000000053','97000000-0000-4000-a000-000000000052',100.00,current_date,v_actor,'confirmed',v_actor,now());
+  update public.receivables set lifecycle_status='disputed' where receivable_id='97000000-0000-4000-a000-000000000052';
+  select public.distributor_erp_payment_status_command_v1(
+    '94000000-0000-4000-a000-000000000058',v_actor,'erp_payment',repeat('c',64),
+    jsonb_build_object('distributor_id','96000000-0000-4000-a000-000000000002','expected_version',v_version,'erp_payment_status','paid')
+  ) into v_result;
+  if v_result->>'code'<>'ERP_PAYMENT_STATUS_REQUIRES_PAID' then raise exception 'ERP_PAYMENT_STATUS_ACCEPTED_DISPUTED_RECEIVABLE: %',v_result; end if;
 
   begin
     insert into public.user_capabilities(user_id,capability_code) values(v_partner,'tech_support');
@@ -152,6 +233,7 @@ declare
   v_total bigint;
   v_before bigint;
   v_after bigint;
+  v_result jsonb;
 begin
   insert into public.distributor_accounts(
     distributor_id,erp_id,distributor_name,distributor_reference,identity_key,assigned_to,
@@ -160,6 +242,11 @@ begin
     '96000000-0000-4000-a000-000000000003',null,'ERP Unset','ERP-UNSET','code:erp-unset',v_employee,
     'pending','pending','pending','not_applicable','not_billed',current_date+1,v_actor
   );
+  select public.distributor_financial_projection_v2(v_actor,1,50,null,null,null,null,null,true,null,null,null,null,null) into v_result;
+  if (v_result->>'total')::bigint<>(select count(*) from public.distributor_accounts where erp_id is null)
+     or exists(select 1 from jsonb_array_elements(v_result->'rows') row where row->>'erp_id' is not null) then
+    raise exception 'ERP_UNSET_FILTER_LEAK: %',v_result;
+  end if;
   select count(*) into v_before from public.distributor_accounts;
   select public.distributor_status_metrics_v1(v_actor,true) into v_metrics;
   select count(*) into v_after from public.distributor_accounts;
@@ -176,5 +263,27 @@ begin
   select public.distributor_status_metrics_v1(v_employee,true) into v_metrics;
   if (v_metrics->>'total')::bigint<>0 then raise exception 'ERP_METRICS_NONADMIN_ADMIN_SCOPE_ALLOWED: %',v_metrics; end if;
 end $$;
+
+reset role;
+set role authenticated;
+do $$ begin
+  begin
+    perform public.distributor_erp_payment_status_command_v1(
+      '94000000-0000-4000-a000-000000000059','91000000-0000-4000-a000-000000000001','erp_payment',repeat('d',64),'{}'
+    );
+    raise exception 'AUTHENTICATED_ERP_PAYMENT_COMMAND_ALLOWED';
+  exception when insufficient_privilege then null; end;
+end $$;
+reset role;
+set role anon;
+do $$ begin
+  begin
+    perform public.distributor_erp_payment_status_command_v1(
+      '94000000-0000-4000-a000-000000000060','91000000-0000-4000-a000-000000000001','erp_payment',repeat('e',64),'{}'
+    );
+    raise exception 'ANON_ERP_PAYMENT_COMMAND_ALLOWED';
+  exception when insufficient_privilege then null; end;
+end $$;
+reset role;
 
 select 'Migration 047 ERP visibility integration passed' as result;

@@ -446,6 +446,7 @@
       ],
       "criticalTests": [
         "src/lib/__tests__/distributors/routeMatrix.test.ts",
+        "src/lib/__tests__/distributors/commandsRoute.test.ts",
         "src/lib/__tests__/distributors/erpCanonicalFilterRoute.test.ts",
         "src/lib/__tests__/distributors/sqlContract.test.ts",
         "scripts/distributor-master-db/run-integration.sh",

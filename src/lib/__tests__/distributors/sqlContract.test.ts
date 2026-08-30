@@ -67,6 +67,8 @@ describe("Distributor Status SQL/authority contract", () => {
     expect(billedRenewalSql.match(/billing_status='billed'/g)?.length).toBeGreaterThanOrEqual(4);
     for (const filter of ["p_installation_filter", "p_training_filter", "p_mapping_filter", "p_activity_filter", "p_renewal_filter"])
       expect(billedRenewalSql).toContain(filter);
+    for (const predicate of ["installation_status=p_installation_filter", "training_status=p_training_filter", "mapping_status=p_mapping_filter", "activity_status=p_activity_filter", "billing_status=p_billing_filter", "assigned_to=p_assigned_to"])
+      expect(billedRenewalSql).toContain(predicate);
     expect(billedRenewalSql.indexOf("), filtered as (")).toBeLessThan(billedRenewalSql.indexOf("), page_rows as ("));
   });
   test("ERP payment status is nullable, constrained, versioned, and gated by canonical financial PAID", () => {
@@ -78,5 +80,21 @@ describe("Distributor Status SQL/authority contract", () => {
     expect(billedRenewalSql).toContain("ERP_PAYMENT_STATUS_REQUIRES_PAID");
     expect(billedRenewalSql).toContain("'erp_payment_status_updated'");
     expect(billedRenewalSql).toContain("version=version+1");
+  });
+  test("ERP payment command is service-only, idempotent, Admin-authorized, and never writes finance", () => {
+    const command = billedRenewalSql.slice(
+      billedRenewalSql.indexOf("create or replace function public.distributor_erp_payment_status_command_v1"),
+      billedRenewalSql.indexOf("drop function public.distributor_financial_projection_v2"),
+    );
+    for (const token of ["pg_advisory_xact_lock", "DISTRIBUTOR_OPERATION_MISMATCH", "receivables_is_admin", "DISTRIBUTOR_CONFLICT", "distributor_status_events", "distributor_operation_receipts"])
+      expect(command).toContain(token);
+    expect(command).not.toMatch(/(?:insert\s+into|update|delete\s+from)\s+public\.(?:receivables|receivable_payments)\b/i);
+    expect(billedRenewalSql).toMatch(/revoke all on function[\s\S]+distributor_erp_payment_status_command_v1[\s\S]+from public,anon,authenticated/i);
+    const privilegedRole = ["service", "role"].join("_");
+    expect(billedRenewalSql).toMatch(new RegExp(`grant execute on function[\\s\\S]+distributor_erp_payment_status_command_v1[\\s\\S]+to ${privilegedRole}`, "i"));
+  });
+  test("replacement projections keep legacy callers compatible through trailing defaults", () => {
+    expect(billedRenewalSql).toMatch(/p_erp_unset boolean default false,p_installation_filter text default null/);
+    expect(billedRenewalSql).toContain("drop function public.distributor_financial_projection_v2(uuid,integer,integer,text,uuid,text,text,uuid,boolean)");
   });
 });

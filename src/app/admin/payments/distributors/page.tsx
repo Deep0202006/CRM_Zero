@@ -446,9 +446,10 @@ export default function DistributorStatusPage() {
             className="field-control"
             aria-label="Assigned employee"
             value={filters.assignedTo ?? ""}
-            onChange={(e) =>
-              setFilters({ ...filters, assignedTo: e.target.value })
-            }
+            onChange={(e) => {
+              setFilters({ ...filters, assignedTo: e.target.value });
+              setPage(1);
+            }}
           >
             <option value="">All employees</option>
             {assignees.map((user) => (
@@ -461,9 +462,10 @@ export default function DistributorStatusPage() {
             className="field-control"
             aria-label="Renewal state"
             value={filters.renewal ?? ""}
-            onChange={(e) =>
-              setFilters({ ...filters, renewal: e.target.value })
-            }
+            onChange={(e) => {
+              setFilters({ ...filters, renewal: e.target.value });
+              setPage(1);
+            }}
           >
             <option value="">All renewals</option>
             <option value="due_soon">Renewal Due Soon</option>
@@ -760,6 +762,7 @@ function DistributorEditor({
   onSave: (form: FormData) => Promise<void>;
 }) {
   const [error, setError] = useState("");
+  const [pendingAction, setPendingAction] = useState("");
   const value = row
     ? {
         ...blank,
@@ -787,16 +790,21 @@ function DistributorEditor({
       <form
         key={row?.distributor_id ?? "new"}
         className="grid gap-3 sm:grid-cols-2"
+        aria-busy={Boolean(pendingAction)}
         onSubmit={(event) => {
           event.preventDefault();
+          if (pendingAction) return;
           setError("");
           const submitter = (event.nativeEvent as SubmitEvent).submitter;
-          void onSave(new FormData(event.currentTarget, submitter)).catch(
-            (cause) =>
+          const action = String((submitter as HTMLButtonElement | null)?.value ?? "update");
+          setPendingAction(action);
+          void onSave(new FormData(event.currentTarget, submitter))
+            .catch((cause) =>
               setError(
                 cause instanceof Error ? cause.message : "Update failed.",
               ),
-          );
+            )
+            .finally(() => setPendingAction(""));
         }}
       >
         <Input
@@ -949,16 +957,16 @@ function DistributorEditor({
             Cancel
           </Button>
           {row && (
-            <Button type="submit" variant="outline" name="action" value="renew">
+            <Button type="submit" variant="outline" name="action" value="renew" disabled={Boolean(pendingAction)}>
               Set Renewal
             </Button>
           )}
           {row?.collection_state === "PAID" && (
-            <Button type="submit" variant="outline" name="action" value="erp_payment">
-              Save ERP Payment
+            <Button type="submit" variant="outline" name="action" value="erp_payment" isLoading={pendingAction === "erp_payment"} disabled={Boolean(pendingAction)}>
+              {pendingAction === "erp_payment" ? "Saving ERP Payment" : "Save ERP Payment"}
             </Button>
           )}
-          <Button type="submit" name="action" value="update">
+          <Button type="submit" name="action" value="update" disabled={Boolean(pendingAction)}>
             Save Status
           </Button>
         </div>

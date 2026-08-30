@@ -52,7 +52,14 @@ export async function POST(request: Request) {
       : ["ADMIN_REQUIRED", "DISTRIBUTOR_NOT_ASSIGNED"].includes(code) ? 403
       : code === "ERP_PAYMENT_STATUS_REQUIRES_PAID" ? 409
       : 400;
-    return apiError(status, code, "Distributor update was rejected.", data.current);
+    const message = code === "DISTRIBUTOR_CONFLICT"
+      ? "Distributor status changed. Refresh and try again."
+      : code === "ERP_PAYMENT_STATUS_REQUIRES_PAID"
+        ? "ERP payment status requires a canonically paid Distributor."
+        : code === "ADMIN_REQUIRED"
+          ? "System Administrator access required."
+          : "Distributor update was rejected.";
+    return apiError(status, code, message, data.current);
   }
   return Response.json(data);
 }
