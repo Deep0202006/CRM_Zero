@@ -11,6 +11,9 @@ const read = (file: string) =>
 const migration = read(
   "supabase/migrations/047_distributor_erp_partner_visibility.sql",
 );
+const paymentStatusMigration = read(
+  "supabase/migrations/052_billed_renewals_erp_payment_status.sql",
+);
 
 describe("CRM-P1-047 ERP authority and external-view contract", () => {
   test("normalizes Unicode, case, and whitespace to one deterministic ERP identity", () => {
@@ -86,6 +89,18 @@ describe("CRM-P1-047 ERP authority and external-view contract", () => {
       "src/app/api/receivables/commands/route.ts",
     ])
       expect(read(route)).toContain("externalViewerDenied");
+  });
+
+  test("scoped ERP Partner readers receive only the operational ERP payment status and billed renewals", () => {
+    const distributorProjection = paymentStatusMigration.slice(
+      paymentStatusMigration.indexOf("create or replace function public.erp_partner_distributors_v1"),
+      paymentStatusMigration.indexOf("create or replace function public.erp_partner_renewals_v1"),
+    );
+    expect(distributorProjection).toContain("d.erp_payment_status");
+    for (const forbidden of ["bill_amount", "outstanding_amount", "receivable_id", "payment_reference", "assigned_to", "lead_id"])
+      expect(distributorProjection).not.toContain(forbidden);
+    const renewalProjection = paymentStatusMigration.slice(paymentStatusMigration.indexOf("create or replace function public.erp_partner_renewals_v1"));
+    expect(renewalProjection).toContain("d.billing_status='billed'");
   });
 
   test("external sessions skip attendance verification and every internal sync queue", () => {

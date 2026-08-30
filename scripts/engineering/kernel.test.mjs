@@ -18,12 +18,13 @@ import { evidencePayloadHash } from "./proof-evidence.mjs";
 import { canonicalEvidencePath, runRegisteredProof } from "./proof-runner.mjs";
 import { executeRegressionCases, validateCaseResult } from "./regression-executors.mjs";
 import { queryGraphify, resolveContext, revalidateCandidate } from "./context.mjs";
+import { doctor } from "./kernel-doctor.mjs";
 import { applyStallPolicy, evaluateStopState, protectedRequiredChecks, remoteGate, requiredRemoteChecks } from "./hooks/stop.mjs";
 import { beginExternalTask, compareAndSwap, loadState, requireContinuation, sessionPath, sessionsDirectory } from "./hooks/state-store.mjs";
-import { dirtyFingerprint, environmentPolicyHash, git, repositoryIdentity, root, safeEnvironment, sha256 } from "./kernel-lib.mjs";
+import { dirtyFingerprint, environmentPolicyHash, git, inspectMigrationBoundaryTransition, parseMigrationNumber, repositoryIdentity, root, safeEnvironment, sha256, validateMigrationBoundaryTransition, validateMigrationLedger } from "./kernel-lib.mjs";
 import { containsAssertionWeakening } from "../quality/assertion-policy.mjs";
 
-const matrix = { state: [], risk: [], proof: [], attestation: [], commandPolicy: [], regression: [], stopRemote: [], stall: [], postgresEnvironment: [], tokenIsolation: [] }, tempRoots = [], createdEvidence = [];
+const matrix = { state: [], risk: [], proof: [], attestation: [], commandPolicy: [], regression: [], stopRemote: [], stall: [], postgresEnvironment: [], tokenIsolation: [] }, tempRoots = [], createdEvidence = [], preservedEvidence = new Map();
 const temp = (prefix) => { const path = mkdtempSync(resolve(tmpdir(), prefix)); tempRoots.push(path); return path; };
 const command = (cwd, file, args, env, input) => spawnSync(file, args, { cwd, encoding: "utf8", env: { ...process.env, ...env }, input });
 const gitAt = (cwd, ...args) => command(cwd, "git", args);
@@ -39,6 +40,10 @@ const snapshotDirectory = (directory) => {
   };
   visit(directory);
   return { exists: true, files: files.sort((a, b) => a.path.localeCompare(b.path)) };
+};
+const restorePreservedEvidence = () => {
+  for (const [path, contents] of preservedEvidence) if (contents === null) { if (existsSync(path)) unlinkSync(path); } else writeFileSync(path, contents);
+  preservedEvidence.clear();
 };
 const withEnvironment = async (environment, work) => {
   const previous = new Map(Object.keys(environment).map((key) => [key, process.env[key]]));
@@ -69,7 +74,8 @@ const attestationOutput = (environment, digest, mutate = () => {}) => {
   return JSON.stringify([row]);
 };
 
-const operationalDirectory = sessionsDirectory(), operationalBefore = snapshotDirectory(operationalDirectory);
+const operationalDirectory = sessionsDirectory(), operationalBefore = snapshotDirectory(operationalDirectory), evidenceDirectory = resolve(root, "artifacts/engineering-evidence"), evidenceBefore = snapshotDirectory(evidenceDirectory);
+const productBefore = snapshotDirectory(resolve(root, "src")), migrationsBefore = snapshotDirectory(resolve(root, "supabase/migrations"));
 let isolatedGit = "", isolatedRemoved = false;
 try {
   const baseSha = git("rev-parse", "origin/main"), currentHead = git("rev-parse", "HEAD"), currentTree = git("rev-parse", "HEAD^{tree}");
@@ -196,7 +202,7 @@ try {
     const commands = commandPlan.commands.map((commandItem) => ({ ...commandItem, exitCode: 0, stdoutHash: sha256(""), stdoutBytes: 0, stderrHash: sha256(""), stderrBytes: 0, startedAt: now, endedAt: now }));
     const evidence = { schemaVersion: 2, proofId, kind: proof.kind, status: "PASS", baseSha: attackPlan.baseSha, headSha: attackPlan.headSha, treeSha: attackPlan.treeSha, dirtyFingerprint: attackPlan.dirtyFingerprint, impactHash: attackPlan.impactHash, planHash: attackPlan.planHash, proofDefinitionHash: proofDefinitionHash(proof), runnerIdentity: proofRunnerIdentity(), commandPlanHash: commandPlan.commandPlanHash, environmentPolicyHash: environmentPolicyHash(), startedAt: now, endedAt: now, attempts: [{ attemptIndex: 1, commandPlanHash: commandPlan.commandPlanHash, startedAt: now, endedAt: now, commands }], provenanceMode: "GITHUB_ACTIONS", githubRepository: attackEnvironment.GITHUB_REPOSITORY, githubWorkflow: attackEnvironment.GITHUB_WORKFLOW, githubRunId: attackEnvironment.GITHUB_RUN_ID, githubRunAttempt: attackEnvironment.GITHUB_RUN_ATTEMPT, githubJob: commandPlan.expectedCiJob, githubEvent: attackEnvironment.GITHUB_EVENT_NAME, expectedSourceJob: commandPlan.expectedCiJob };
     evidence.evidencePayloadHash = evidencePayloadHash(evidence);
-    const path = canonicalEvidencePath(proofId, commandPlan.expectedCiJob); mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, JSON.stringify(evidence)); createdEvidence.push(path);
+    const path = canonicalEvidencePath(proofId, commandPlan.expectedCiJob); mkdirSync(dirname(path), { recursive: true }); preservedEvidence.set(path, existsSync(path) ? readFileSync(path) : null); writeFileSync(path, JSON.stringify(evidence));
     validateEvidenceFile({ path, proofId, plan: attackPlan, environment: { ...attackEnvironment, GITHUB_JOB: commandPlan.expectedCiJob } });
   }
   const canonicalSet = certifierModule.requireCanonicalEvidenceFiles(attackPlan), firstProofId = attackPlan.requiredProofs[0], firstPath = canonicalSet.get(firstProofId), firstContents = readFileSync(firstPath);
@@ -208,6 +214,7 @@ try {
   const fakeBundle = resolve(root, "artifacts/engineering-attestation/fake.json"); mkdirSync(dirname(fakeBundle), { recursive: true }); writeFileSync(fakeBundle, "{}\n"); createdEvidence.push(fakeBundle);
   const syntheticAttack = command(root, process.execPath, ["scripts/engineering/proof-certify-ci.mjs", "--base", baseSha, "--head", currentHead, "--jobs", "success:success:success:success:success"], attackEnvironment);
   assert.equal(syntheticAttack.status, 2); assert.match(syntheticAttack.stderr, /ATTESTATION_VERIFICATION_FAILED|ATTESTATION_REQUIRED/); assert(!syntheticAttack.stdout.includes("REPOSITORY_PROOF_READY"));
+  restorePreservedEvidence(); assert.deepEqual(snapshotDirectory(evidenceDirectory), evidenceBefore, "PROOF_EVIDENCE_MUTATED_BY_TEST");
   matrix.attestation.push("synthetic-four-file-structurally-valid", "fake-bundle-rejected", "repository-certificate-not-emitted");
   rmSync(isolatedGit, { recursive: true, force: true }); tempRoots.splice(tempRoots.indexOf(isolatedGit), 1); isolatedRemoved = !existsSync(isolatedGit);
   assert(isolatedRemoved, "ISOLATED_STATE_FIXTURE_NOT_REMOVED");
@@ -305,7 +312,27 @@ try {
   assert(unknownAuthority.unresolved.some((item) => item.code === "AUTHORITY_UNRESOLVED")); assert.equal(unknownAuthority.writable, false);
   const prohibitedAuthority = compileImpact({ entries: [{ status: "M", path: "src/app/mappings/page.tsx" }], patch: "+await supabase.from(\"leads\").update({ status: \"won\" });" });
   assert(prohibitedAuthority.unresolved.some((item) => item.code === "PROHIBITED_WRITE_AUTHORITY"));
-  const immutable = compileImpact({ entries: [{ status: "M", path: "supabase/migrations/051_fixture.sql" }], patch: "" }); assert(immutable.unresolved.some((item) => item.code === "IMMUTABLE_MIGRATION"));
+  const ledger = (boundary, immutableThrough = boundary) => ({ schemaVersion: 1, source: "fixture", lastAppliedOwnerMigration: boundary, immutableThrough });
+  const migration = (number, name = "fixture") => `supabase/migrations/${String(number).padStart(3, "0")}_${name}.sql`;
+  const transition = ({ baseBoundary = 51, headBoundary = baseBoundary, basePaths = [migration(baseBoundary)], headPaths = [migration(headBoundary)], changes = [] } = {}) => validateMigrationBoundaryTransition({ baseLedger: ledger(baseBoundary), headLedger: ledger(headBoundary), baseMigrationPaths: basePaths, headMigrationPaths: headPaths, changes });
+  assert.equal(parseMigrationNumber(migration(52)), 52); assert.equal(parseMigrationNumber("supabase/migrations/patch_052.sql"), null); assert.throws(() => validateMigrationLedger(null), /MIGRATION_LEDGER_INVALID/); assert.throws(() => validateMigrationLedger(ledger(52, 51)), /MIGRATION_LEDGER_INVALID/);
+  assert.equal(transition({ headPaths: [migration(51), migration(52)], changes: [{ status: "A", path: migration(52) }] }).transition, "STABLE_CURRENT_BOUNDARY");
+  assert.equal(transition({ headBoundary: 52, headPaths: [migration(51), migration(52)], changes: [{ status: "A", path: migration(52) }] }).transition, "LEGAL_SINGLE_STEP_CERTIFICATION");
+  assert.equal(transition({ headBoundary: 52, basePaths: [migration(51), migration(52)], headPaths: [migration(51), migration(52)] }).transition, "LEGAL_SINGLE_STEP_CERTIFICATION");
+  assert.throws(() => transition({ headBoundary: 52, headPaths: [migration(51)] }), /CERTIFIED_MIGRATION_MISSING/);
+  assert.throws(() => transition({ headBoundary: 53, headPaths: [migration(51), migration(53)] }), /MIGRATION_BOUNDARY_JUMP/);
+  assert.throws(() => transition({ baseBoundary: 52, headBoundary: 51, basePaths: [migration(52)], headPaths: [migration(51)] }), /MIGRATION_BOUNDARY_ROLLBACK/);
+  for (const changes of [[{ status: "M", path: migration(51) }], [{ status: "D", path: migration(51) }], [{ status: "R", oldPath: migration(51), path: migration(99) }]]) assert.throws(() => transition({ headPaths: [migration(51), migration(99)], changes }), /IMMUTABLE_MIGRATION_CHANGED/);
+  for (const changes of [[{ status: "M", path: migration(52) }], [{ status: "D", path: migration(52) }], [{ status: "R", oldPath: migration(52), path: migration(99) }]]) assert.throws(() => transition({ baseBoundary: 52, basePaths: [migration(52)], headPaths: [migration(52), migration(99)], changes }), /IMMUTABLE_MIGRATION_CHANGED/);
+  assert.throws(() => transition({ headBoundary: 52, headPaths: [migration(51), migration(52, "one"), migration(52, "two")] }), /DUPLICATE_MIGRATION_NUMBER/);
+  assert.throws(() => transition({ headBoundary: 52, basePaths: [migration(51), migration(60)], headPaths: [migration(51), migration(52)], changes: [{ status: "R", oldPath: migration(60), path: migration(52) }] }), /CERTIFIED_MIGRATION_IDENTITY_INVALID/);
+  assert.throws(() => validateMigrationBoundaryTransition({ baseLedger: ledger(51), headLedger: ledger(52, 51), baseMigrationPaths: [migration(51)], headMigrationPaths: [migration(51), migration(52)] }), /MIGRATION_LEDGER_INVALID/);
+  assert.throws(() => transition({ basePaths: [migration(50)], headPaths: [migration(50), migration(51)] }), /CERTIFIED_MIGRATION_MISSING/);
+  const currentMigration = inspectMigrationBoundaryTransition(); assert.equal(currentMigration.baseImmutableThrough, 51); assert.equal(currentMigration.migrationBoundary, "52/52"); assert.equal(currentMigration.nextLegalMigration, 53); assert.equal(currentMigration.transition, "LEGAL_SINGLE_STEP_CERTIFICATION");
+  const forwardMigration = compileImpact({ entries: [{ status: "A", path: migration(52) }], patch: "", baseImmutableThrough: 51 }); assert(!forwardMigration.unresolved.some((item) => item.code === "IMMUTABLE_MIGRATION"));
+  const immutable = compileImpact({ entries: [{ status: "M", path: migration(52) }], patch: "", baseImmutableThrough: 52 }); assert(immutable.unresolved.some((item) => item.code === "IMMUTABLE_MIGRATION"));
+  const ledgerImpact = compileImpact({ entries: [{ status: "M", path: "supabase/migrations/APPLIED_OWNER_MIGRATIONS.json" }], patch: "", baseImmutableThrough: 51 }); assert(ledgerImpact.domains.includes("engineering-control")); assert(!ledgerImpact.unresolved.some((item) => item.code === "UNMAPPED_PATH"));
+  const dynamicDoctor = doctor({ ci: true }); assert.equal(dynamicDoctor.status, "KERNEL_HEALTHY", JSON.stringify(dynamicDoctor)); assert.equal(dynamicDoctor.migrationBoundary, "52/52"); assert.equal(dynamicDoctor.immutableThrough, 52); assert.equal(dynamicDoctor.nextLegalMigration, 53); assert.equal(dynamicDoctor.transition, "LEGAL_SINGLE_STEP_CERTIFICATION");
   const authorityFacts = JSON.parse(readFileSync(resolve(root, "docs/engineering/AUTHORITIES.json"), "utf8")).facts, domainFacts = JSON.parse(readFileSync(resolve(root, "docs/engineering/DOMAIN_MAP.json"), "utf8")).domains;
   const migrationPath = "supabase/migrations/900_fixture.sql", mapMigration = (...ids) => domainFacts.map((domain) => ids.includes(domain.id) ? { ...domain, pathPatterns: [...(domain.pathPatterns ?? []), migrationPath] } : domain);
   const migrationImpact = (sql, ids, options = {}) => compileImpact({ entries: [{ status: "A", path: migrationPath }], patch: sql, domainRegistry: mapMigration(...ids), selectedDomains: options.selectedDomains ?? ids, ...options });
@@ -352,7 +379,7 @@ try {
   const missingOrchestration = deriveFunctionAuthorities(commandCatalogue, authorityFacts, { functionNames: new Set(["public.multi_command"]) }); assert(missingOrchestration.unresolved.some((item) => item.code === "FUNCTION_AUTHORITY_AMBIGUOUS"));
   const stableRpc = compileImpact({ entries: [{ status: "M", path: "src/lib/distributors/reader.ts" }], fileVersions: { "src/lib/distributors/reader.ts": { base: "", head: "await supabase.rpc('read_parent', {});" } }, sqlCatalogueFiles: { base: [], head: functionFiles } }); assert.equal(stableRpc.writable, true); assert.equal(stableRpc.writeOperations.length, 0); assert.equal(stableRpc.readOperations[0].functionName, "public.read_parent");
   const unknownRpc = compileImpact({ entries: [{ status: "M", path: "src/lib/distributors/reader.ts" }], fileVersions: { "src/lib/distributors/reader.ts": { base: "", head: "await supabase.rpc('external_missing', {});" } } }); assert(unknownRpc.unresolved.some((item) => item.code === "RPC_EFFECT_UNKNOWN"));
-  matrix.risk.push("nul-rename-delete", "sensitive-unmapped-r3", "multiline-fact-write-detected", "unknown-authority", "prohibited-authority", "immutable-migration-001-051", "pr90-reproduction", "new-column-selector-required", "domain-local-prohibition", "renewal-owned-migration", "financial-write-isolation", "financial-read-only", "sql-function-enclosure", "authority-ambiguity", "full-file-partial-hunk", "structured-supabase-payloads", "dynamic-write-fail-closed", "sql-ddl-dml-matrix", "recursive-rpc-effects", "stable-rpc-read-only", "selected-domain-no-authority", "shared-delete-blocked", "rpc-derived-single-reconciliation", "rpc-declaration-match", "rpc-declaration-mismatch", "rpc-omitted-write-mismatch", "rpc-valid-orchestration", "rpc-missing-orchestration-blocked");
+  matrix.risk.push("nul-rename-delete", "sensitive-unmapped-r3", "multiline-fact-write-detected", "unknown-authority", "prohibited-authority", "immutable-migration-001-051", "generic-migration-boundary-transition-matrix", "base-boundary-immutability", "dynamic-doctor-boundary", "pr90-reproduction", "new-column-selector-required", "domain-local-prohibition", "renewal-owned-migration", "financial-write-isolation", "financial-read-only", "sql-function-enclosure", "authority-ambiguity", "full-file-partial-hunk", "structured-supabase-payloads", "dynamic-write-fail-closed", "sql-ddl-dml-matrix", "recursive-rpc-effects", "stable-rpc-read-only", "selected-domain-no-authority", "shared-delete-blocked", "rpc-derived-single-reconciliation", "rpc-declaration-match", "rpc-declaration-mismatch", "rpc-omitted-write-mismatch", "rpc-valid-orchestration", "rpc-missing-orchestration-blocked");
 
   const graphRoot = temp("kernel-graphify-"), graphPath = resolve(graphRoot, "graphify-out/graph.json"), stampPath = resolve(graphRoot, "graphify-out/.crm-head"), cachePath = resolve(graphRoot, "cache/result.json"), graphHead = "1".repeat(40), graphIndex = { files: [{ path: "src/lib/distributors/contract.ts", contentHash: "c".repeat(64) }] };
   mkdirSync(dirname(graphPath), { recursive: true }); writeFileSync(graphPath, "{}\n"); writeFileSync(stampPath, `${graphHead}\n`);
@@ -412,12 +439,12 @@ try {
   assert.throws(() => validateCaseResult({ caseId: "zero", executed: true, assertionCount: 0, pass: true }), /CASE_ZERO_ASSERTIONS/);
   matrix.regression.push("semantic-proofref-only-rejected", "false-blocker-rejected", "control-executor-missing", "unknown-kind-rejected", "zero-assertions-rejected", "unexecuted-critical-claim-rejected");
 
-  const productChanges = git("diff", "--name-only", "origin/main", "--", "src").split(/\r?\n/).filter((path) => path && !path.includes("/__tests__/"));
-  const migrationChanges = git("diff", "--name-only", "origin/main", "--", "supabase/migrations").split(/\r?\n/).filter((path) => path.endsWith(".sql"));
-  assert.deepEqual(productChanges, []); assert.deepEqual(migrationChanges, []);
+  assert.deepEqual(snapshotDirectory(resolve(root, "src")), productBefore, "PRODUCT_SOURCE_MUTATED_BY_TEST");
+  assert.deepEqual(snapshotDirectory(resolve(root, "supabase/migrations")), migrationsBefore, "MIGRATION_SOURCE_MUTATED_BY_TEST");
   assert.deepEqual(snapshotDirectory(operationalDirectory), operationalBefore, "OPERATIONAL_SESSION_STORE_MUTATED_BY_TEST");
   console.log(JSON.stringify({ code: "KERNEL_ADVERSARIAL_MATRIX_PASS", operationalStateBefore: operationalBefore, operationalStateAfter: snapshotDirectory(operationalDirectory), matrix }));
 } finally {
+  restorePreservedEvidence();
   for (const path of createdEvidence) if (existsSync(path)) rmSync(path, { force: true });
   for (const path of tempRoots) if (existsSync(path)) rmSync(path, { recursive: true, force: true });
 }

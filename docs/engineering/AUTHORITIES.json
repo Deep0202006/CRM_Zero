@@ -86,7 +86,11 @@
         "training",
         "mapping",
         "activity",
-        "billing milestone"
+        "billing milestone",
+        "operational ERP paid/not-paid status",
+        "distributor_status_events immutable operational history",
+        "distributor_operation_receipts idempotency evidence",
+        "distributor_financial_projection_v2 bounded read projection"
       ],
       "mustNotOwn": ["financial paid/received/outstanding truth"]
     },

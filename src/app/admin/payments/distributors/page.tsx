@@ -61,6 +61,7 @@ const blank = {
   mapped_at: "",
   activity_status: "not_applicable",
   billing_status: "not_billed",
+  erp_payment_status: "",
   billed_at: "",
   bill_reference: "",
   renewal_date: "",
@@ -187,11 +188,15 @@ export default function DistributorStatusPage() {
       operation_type = editing
         ? value.action === "renew"
           ? "renew"
-          : "update"
+          : value.action === "erp_payment"
+            ? "erp_payment"
+            : "update"
         : "create",
       clearErp = value.erp_clear === "on";
     delete value.action;
     delete value.erp_clear;
+    const erpPaymentStatus = value.erp_payment_status;
+    delete value.erp_payment_status;
     const enteredErp = String(value.erp_name ?? "")
         .normalize("NFKC")
         .trim()
@@ -212,7 +217,14 @@ export default function DistributorStatusPage() {
             renewal_date: value.renewal_date,
             note: value.note ?? "",
           }
-        : {
+        : operation_type === "erp_payment"
+          ? {
+              distributor_id: editing!.distributor_id,
+              expected_version: editing!.version,
+              erp_payment_status: erpPaymentStatus,
+              note: value.note ?? "",
+            }
+          : {
             ...value,
             erp_name: enteredErp,
             erp_action,
@@ -246,6 +258,8 @@ export default function DistributorStatusPage() {
     setMessage(
       operation_type === "renew"
         ? "Renewal date confirmed."
+        : operation_type === "erp_payment"
+          ? "ERP payment status confirmed."
         : "Distributor status confirmed.",
     );
     await Promise.all([loadList(), loadMetrics()]);
@@ -432,9 +446,10 @@ export default function DistributorStatusPage() {
             className="field-control"
             aria-label="Assigned employee"
             value={filters.assignedTo ?? ""}
-            onChange={(e) =>
-              setFilters({ ...filters, assignedTo: e.target.value })
-            }
+            onChange={(e) => {
+              setFilters({ ...filters, assignedTo: e.target.value });
+              setPage(1);
+            }}
           >
             <option value="">All employees</option>
             {assignees.map((user) => (
@@ -447,9 +462,10 @@ export default function DistributorStatusPage() {
             className="field-control"
             aria-label="Renewal state"
             value={filters.renewal ?? ""}
-            onChange={(e) =>
-              setFilters({ ...filters, renewal: e.target.value })
-            }
+            onChange={(e) => {
+              setFilters({ ...filters, renewal: e.target.value });
+              setPage(1);
+            }}
           >
             <option value="">All renewals</option>
             <option value="due_soon">Renewal Due Soon</option>
@@ -490,6 +506,7 @@ export default function DistributorStatusPage() {
                   "Activity",
                   "Billing",
                   "Payment",
+                  "ERP Payment",
                   "Received",
                   "Outstanding",
                   "Renewal Date",
@@ -529,6 +546,9 @@ export default function DistributorStatusPage() {
                       {row.collection_state?.replaceAll("_", " ") ??
                         "Unavailable"}
                     </Chip>
+                  </td>
+                  <td className="p-3">
+                    <Chip>{row.erp_payment_status === "paid" ? "ERP Paid" : row.erp_payment_status === "not_paid" ? "ERP Not Paid" : "Not set"}</Chip>
                   </td>
                   <td className="p-3">
                     {formatInr(row.confirmed_collected_amount ?? "0.00")}
@@ -742,6 +762,7 @@ function DistributorEditor({
   onSave: (form: FormData) => Promise<void>;
 }) {
   const [error, setError] = useState("");
+  const [pendingAction, setPendingAction] = useState("");
   const value = row
     ? {
         ...blank,
@@ -769,16 +790,21 @@ function DistributorEditor({
       <form
         key={row?.distributor_id ?? "new"}
         className="grid gap-3 sm:grid-cols-2"
+        aria-busy={Boolean(pendingAction)}
         onSubmit={(event) => {
           event.preventDefault();
+          if (pendingAction) return;
           setError("");
           const submitter = (event.nativeEvent as SubmitEvent).submitter;
-          void onSave(new FormData(event.currentTarget, submitter)).catch(
-            (cause) =>
+          const action = String((submitter as HTMLButtonElement | null)?.value ?? "update");
+          setPendingAction(action);
+          void onSave(new FormData(event.currentTarget, submitter))
+            .catch((cause) =>
               setError(
                 cause instanceof Error ? cause.message : "Update failed.",
               ),
-          );
+            )
+            .finally(() => setPendingAction(""));
         }}
       >
         <Input
@@ -882,6 +908,20 @@ function DistributorEditor({
           label="Renewal Date"
           defaultValue={value.renewal_date}
         />
+        {row?.collection_state === "PAID" && (
+          <label className="text-xs font-semibold">
+            ERP Payment
+            <select
+              name="erp_payment_status"
+              className="field-control mt-1.5 w-full"
+              defaultValue={value.erp_payment_status ?? ""}
+            >
+              <option value="">Select ERP payment status</option>
+              <option value="paid">ERP Paid</option>
+              <option value="not_paid">ERP Not Paid</option>
+            </select>
+          </label>
+        )}
         <Input name="note" label="Update Note" />
         <input type="hidden" name="lead_id" value={value.lead_id} />
         {row && (
@@ -917,11 +957,16 @@ function DistributorEditor({
             Cancel
           </Button>
           {row && (
-            <Button type="submit" variant="outline" name="action" value="renew">
+            <Button type="submit" variant="outline" name="action" value="renew" disabled={Boolean(pendingAction)}>
               Set Renewal
             </Button>
           )}
-          <Button type="submit" name="action" value="update">
+          {row?.collection_state === "PAID" && (
+            <Button type="submit" variant="outline" name="action" value="erp_payment" isLoading={pendingAction === "erp_payment"} disabled={Boolean(pendingAction)}>
+              {pendingAction === "erp_payment" ? "Saving ERP Payment" : "Save ERP Payment"}
+            </Button>
+          )}
+          <Button type="submit" name="action" value="update" disabled={Boolean(pendingAction)}>
             Save Status
           </Button>
         </div>

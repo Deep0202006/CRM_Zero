@@ -227,7 +227,10 @@
       ],
       "implementationPaths": ["src/app/api/distributors/commands/route.ts"],
       "testPaths": ["src/lib/__tests__/distributors/routeMatrix.test.ts"],
-      "reuse": "required"
+      "reuse": "required",
+      "notes": [
+        "ERP payment status is an operational Distributor Status fact gated by the canonical derived financial PAID state."
+      ]
     },
     {
       "id": "distributor-erp-footprint",

@@ -54,3 +54,77 @@ export const safeEnvironment = (source = process.env) => {
 };
 export const environmentPolicyHash = () =>
   sha256(JSON.stringify({ inherit: "core", network: false, excluded: ["PG*", "GITHUB_TOKEN", "GH_TOKEN", "ACTIONS_ID_TOKEN_REQUEST_TOKEN", "ACTIONS_ID_TOKEN_REQUEST_URL", "ACTIONS_RUNTIME_TOKEN", "ACTIONS_RUNTIME_URL", "ACTIONS_CACHE_URL", "ACTIONS_RESULTS_URL", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_URL", "SUPABASE_ANON_KEY", "NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_ANON_KEY", "DATABASE_URL", "POSTGRES_URL*", "PRODUCTION_*", "VERCEL_TOKEN", "AWS_SECRET_ACCESS_KEY", "AZURE_*", "CLOUDFLARE_API_TOKEN"], postgres: { host: "127.0.0.1", port: "5432", user: "postgres", sslmode: "disable", disposable: true } }));
+
+const migrationLedgerPath = "supabase/migrations/APPLIED_OWNER_MIGRATIONS.json";
+const migrationError = (code, detail) => new Error(detail ? `${code}:${detail}` : code);
+export const parseMigrationNumber = (path) => {
+  const match = /^supabase\/migrations\/(\d+)_([^/]+)\.sql$/.exec(String(path).replaceAll("\\", "/"));
+  if (!match || !Number.isSafeInteger(Number(match[1])) || Number(match[1]) <= 0) return null;
+  return Number(match[1]);
+};
+export const validateMigrationLedger = (ledger) => {
+  if (!ledger || typeof ledger !== "object" || Array.isArray(ledger) || ledger.schemaVersion !== 1 || typeof ledger.source !== "string" || !ledger.source.trim() || !Number.isInteger(ledger.lastAppliedOwnerMigration) || ledger.lastAppliedOwnerMigration <= 0 || !Number.isInteger(ledger.immutableThrough) || ledger.immutableThrough <= 0 || ledger.lastAppliedOwnerMigration !== ledger.immutableThrough) throw migrationError("MIGRATION_LEDGER_INVALID");
+  return ledger;
+};
+export const isBaseImmutableMigrationPath = (path, baseImmutableThrough) => {
+  const number = parseMigrationNumber(path);
+  return number !== null && number <= baseImmutableThrough;
+};
+const requireUniqueMigrationNumbers = (paths) => {
+  const seen = new Map();
+  for (const path of paths) {
+    const number = parseMigrationNumber(path);
+    if (number === null) continue;
+    if (seen.has(number)) throw migrationError("DUPLICATE_MIGRATION_NUMBER", number);
+    seen.set(number, path);
+  }
+  return seen;
+};
+const requireBoundaryMigration = (migrations, boundary) => {
+  const path = migrations.get(boundary);
+  if (!path) throw migrationError("CERTIFIED_MIGRATION_MISSING", boundary);
+  const expected = `${String(boundary).padStart(3, "0")}_`;
+  if (!path.replaceAll("\\", "/").split("/").at(-1).startsWith(expected)) throw migrationError("CERTIFIED_MIGRATION_IDENTITY_INVALID", path);
+};
+export const validateMigrationBoundaryTransition = ({ baseLedger, headLedger, baseMigrationPaths = [], headMigrationPaths = [], changes = [] }) => {
+  const base = validateMigrationLedger(baseLedger), head = validateMigrationLedger(headLedger), baseBoundary = base.immutableThrough, headBoundary = head.immutableThrough;
+  if (headBoundary < baseBoundary) throw migrationError("MIGRATION_BOUNDARY_ROLLBACK", `${baseBoundary}->${headBoundary}`);
+  if (headBoundary > baseBoundary + 1) throw migrationError("MIGRATION_BOUNDARY_JUMP", `${baseBoundary}->${headBoundary}`);
+  const baseMigrations = requireUniqueMigrationNumbers(baseMigrationPaths), headMigrations = requireUniqueMigrationNumbers(headMigrationPaths);
+  for (const entry of changes) {
+    const oldNumber = parseMigrationNumber(entry.oldPath), newNumber = parseMigrationNumber(entry.path);
+    if (headBoundary === baseBoundary + 1 && /^[RC]$/.test(entry.status) && ((newNumber === headBoundary && oldNumber !== headBoundary) || (oldNumber === headBoundary && newNumber !== headBoundary))) throw migrationError("CERTIFIED_MIGRATION_IDENTITY_INVALID", `${entry.oldPath}->${entry.path}`);
+    if ([entry.oldPath, entry.path].some((path) => path && isBaseImmutableMigrationPath(path, baseBoundary))) throw migrationError("IMMUTABLE_MIGRATION_CHANGED", entry.oldPath ?? entry.path);
+  }
+  requireBoundaryMigration(baseMigrations, baseBoundary);
+  requireBoundaryMigration(headMigrations, headBoundary);
+  return {
+    migrationBoundary: `${head.lastAppliedOwnerMigration}/${head.immutableThrough}`,
+    baseImmutableThrough: baseBoundary,
+    immutableThrough: headBoundary,
+    nextLegalMigration: headBoundary + 1,
+    transition: headBoundary === baseBoundary ? "STABLE_CURRENT_BOUNDARY" : "LEGAL_SINGLE_STEP_CERTIFICATION",
+  };
+};
+const parseMigrationChanges = (buffer) => {
+  const tokens = buffer.toString("utf8").split("\0").filter(Boolean), entries = [];
+  for (let index = 0; index < tokens.length;) {
+    const raw = tokens[index++], status = raw[0];
+    if (/[RC]/.test(status)) entries.push({ status, oldPath: tokens[index++], path: tokens[index++] });
+    else entries.push({ status, path: tokens[index++] });
+  }
+  return entries;
+};
+export const inspectMigrationBoundaryTransition = ({ cwd = root, base = "origin/main", head = "WORKTREE" } = {}) => {
+  const headRevision = head === "WORKTREE" ? "HEAD" : head;
+  const baseSha = execFileSync("git", ["merge-base", base, headRevision], { cwd, encoding: "utf8" }).trim();
+  const readLedger = (revision) => {
+    try { return revision === "WORKTREE" ? JSON.parse(readFileSync(resolve(cwd, migrationLedgerPath), "utf8")) : JSON.parse(execFileSync("git", ["show", `${revision}:${migrationLedgerPath}`], { cwd, encoding: "utf8" })); }
+    catch { throw migrationError("MIGRATION_LEDGER_INVALID", revision); }
+  };
+  const listMigrations = (revision) => (revision === "WORKTREE" ? execFileSync("git", ["ls-files", "-co", "--exclude-standard", "-z", "--", "supabase/migrations"], { cwd }) : execFileSync("git", ["ls-tree", "-r", "-z", "--name-only", revision, "--", "supabase/migrations"], { cwd })).toString("utf8").split("\0").filter((path) => path && (revision !== "WORKTREE" || existsSync(resolve(cwd, path))));
+  const committed = parseMigrationChanges(execFileSync("git", ["diff", "--name-status", "-z", "--find-renames", "--find-copies", `${baseSha}...${headRevision}`, "--", "supabase/migrations"], { cwd }));
+  const working = head === "WORKTREE" ? parseMigrationChanges(execFileSync("git", ["diff", "--name-status", "-z", "--find-renames", "--find-copies", "HEAD", "--", "supabase/migrations"], { cwd })) : [];
+  const untracked = head === "WORKTREE" ? execFileSync("git", ["ls-files", "--others", "--exclude-standard", "-z", "--", "supabase/migrations"], { cwd }).toString("utf8").split("\0").filter(Boolean).map((path) => ({ status: "A", path })) : [];
+  return { baseSha, ...validateMigrationBoundaryTransition({ baseLedger: readLedger(baseSha), headLedger: readLedger(head), baseMigrationPaths: listMigrations(baseSha), headMigrationPaths: listMigrations(head), changes: [...committed, ...working, ...untracked] }) };
+};

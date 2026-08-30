@@ -17,4 +17,6 @@ Employee eligibility for Distributor Status and Payment Collection comes from th
 
 ERP Partner Viewer is a separate, exclusive external account type—not an operational employee. It may read only `/erp/distributors` and `/erp/renewals` through dedicated server-scoped projections for assigned canonical ERP systems. It has no attendance, employee assignment, internal synchronization, Distributor mutation, import, Receivable, Payment, Admin, employee-directory, or broad internal read access. Scope and capability changes use the Admin ERP Partner Access service path; the ordinary mixed capability matrix cannot grant this role.
 
+The scoped ERP Distributor projection may additionally expose the operational ERP paid/not-paid status. It exposes no Receivable or Payment identifiers, amounts, references, or events.
+
 CI must keep distinct fixtures for Admin, field Attendance, office Attendance, assigned employee, unassigned employee, and inactive/unlinked user. Every successful important mutation requires authoritative write-to-read closure in all readers listed above.

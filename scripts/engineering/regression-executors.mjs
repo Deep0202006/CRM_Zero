@@ -5,7 +5,7 @@ import { classifyCommand, CommandClass } from "./command-policy.mjs";
 import { resolveContext } from "./context.mjs";
 import { compileImpact } from "./impact.mjs";
 import { compileRegisteredCommandPlan } from "./proof-command-plan.mjs";
-import { git, readJson, root, run, safeEnvironment } from "./kernel-lib.mjs";
+import { git, inspectMigrationBoundaryTransition, readJson, root, run, safeEnvironment } from "./kernel-lib.mjs";
 import { containsAssertionWeakening } from "../quality/assertion-policy.mjs";
 import { scanRepository } from "../quality/repository-safety.mjs";
 import { evaluateOwnerGate, requiredCapabilities } from "../handover/lib.mjs";
@@ -46,10 +46,11 @@ const semanticProofEvaluator = ({ item, counter, proofCache }) => {
 };
 const controlEvaluator = ({ item, counter }) => {
   if (item.id === "production-safety") {
-    const boundary = readJson("supabase/migrations/APPLIED_OWNER_MIGRATIONS.json");
-    assertCase(boundary.lastAppliedOwnerMigration === 51 && boundary.immutableThrough === 51, "MIGRATION_BOUNDARY", counter);
+    const migration = inspectMigrationBoundaryTransition(), boundary = migration.baseImmutableThrough, fixture = (number) => `supabase/migrations/${String(number).padStart(3, "0")}_fixture.sql`;
+    assertCase(migration.immutableThrough >= boundary && migration.immutableThrough <= boundary + 1, "MIGRATION_BOUNDARY", counter);
     assertCase(scanRepository(root).violations.length === 0, "REPOSITORY_SAFETY", counter);
-    assertCase(compileImpact({ entries: [{ status: "M", path: "supabase/migrations/051_fixture.sql" }], patch: "" }).unresolved.some((entry) => entry.code === "IMMUTABLE_MIGRATION"), "IMMUTABLE_MIGRATION", counter);
+    assertCase(compileImpact({ entries: [{ status: "M", path: fixture(boundary) }], patch: "", baseImmutableThrough: boundary }).unresolved.some((entry) => entry.code === "IMMUTABLE_MIGRATION"), "IMMUTABLE_MIGRATION", counter);
+    assertCase(!compileImpact({ entries: [{ status: "A", path: fixture(boundary + 1) }], patch: "", baseImmutableThrough: boundary }).unresolved.some((entry) => entry.code === "IMMUTABLE_MIGRATION"), "FORWARD_MIGRATION_FALSE_POSITIVE", counter);
   } else if (item.id === "repository-proof") {
     const proof = proofs().find((candidate) => candidate.id === "kernel-fixture-pass");
     const one = compileRegisteredCommandPlan({ proof, proofId: proof.id, baseSha: "1".repeat(40), headSha: "2".repeat(40), attemptIndex: 1 });

@@ -102,6 +102,7 @@ const row = {
   outstanding_amount: "600.00",
   pending_verification_count: 0,
   collection_state: "PARTIALLY_PAID",
+  erp_payment_status: null,
   billing_collection_mismatch: false,
 };
 const numericProjectionRow = {
@@ -629,6 +630,19 @@ for (const viewport of [
     await expect(page.getByText("Renewal tomorrow")).toBeVisible();
   });
 
+test("Distributor Status metric cards filter the bounded server list", async ({ page }) => {
+  const requests: URL[] = [];
+  await mock(page);
+  await page.route("**/api/distributors?**", (route) => {
+    requests.push(new URL(route.request().url()));
+    return route.fulfill({ json: { rows: [numericProjectionRow], page: 1, pageSize: 50, total: 1 } });
+  });
+  await seed(page, admin, true);
+  await page.goto("/admin/payments/distributors");
+  await page.getByRole("button", { name: /Training Pending/ }).click();
+  await expect.poll(() => requests.some((url) => url.searchParams.get("installation") === "done" && url.searchParams.get("training") === "pending")).toBe(true);
+});
+
 test("Admin edit exposes assignment, mapping and independent status controls", async ({
   page,
 }) => {
@@ -649,7 +663,59 @@ test("Admin edit exposes assignment, mapping and independent status controls", a
   await expect(dialog.locator('input[name="mapped_at"]')).toHaveValue(
     "2026-08-03",
   );
+  await expect(dialog.locator('select[name="erp_payment_status"]')).toHaveCount(0);
+  await expect(dialog.getByRole("button", { name: "Save ERP Payment" })).toHaveCount(0);
   await expect(dialog).toContainText("does not create or modify a Receivable");
+});
+
+test("Admin records ERP payment status only from a financially paid Distributor", async ({ page }) => {
+  await mock(page);
+  let commandBody = "";
+  let commandCount = 0;
+  let releaseCommand!: () => void;
+  const commandGate = new Promise<void>((resolve) => { releaseCommand = resolve; });
+  await page.route("**/api/distributors?**", (route) =>
+    route.fulfill({ json: { rows: [{ ...numericProjectionRow, collection_state: "PAID", outstanding_amount: 0 }], total: 1 } }),
+  );
+  await page.route("**/api/distributors/commands", async (route) => {
+    commandCount += 1;
+    commandBody = route.request().postData() ?? "{}";
+    await commandGate;
+    await route.fulfill({ json: { success: true, record: { ...row, collection_state: "PAID", erp_payment_status: "paid", version: 3 } } });
+  });
+  await seed(page, admin, true);
+  await page.goto("/admin/payments/distributors");
+  await page.getByRole("button", { name: "Edit Alpha Distributor" }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.locator('select[name="erp_payment_status"]').selectOption("paid");
+  const save = dialog.getByRole("button", { name: "Save ERP Payment" });
+  await save.click();
+  await expect(dialog.getByRole("button", { name: "Saving ERP Payment" })).toBeDisabled();
+  await expect.poll(() => commandCount).toBe(1);
+  releaseCommand();
+  await expect(dialog).toBeHidden();
+  expect(JSON.parse(commandBody)).toMatchObject({
+    operation_type: "erp_payment",
+    payload: { distributor_id: distributorId, expected_version: 2, erp_payment_status: "paid" },
+  });
+});
+
+test("ERP payment command shows an authoritative version conflict", async ({ page }) => {
+  await mock(page);
+  await page.route("**/api/distributors?**", (route) =>
+    route.fulfill({ json: { rows: [{ ...numericProjectionRow, collection_state: "PAID", outstanding_amount: 0 }], total: 1 } }),
+  );
+  await page.route("**/api/distributors/commands", (route) =>
+    route.fulfill({ status: 409, json: { code: "DISTRIBUTOR_CONFLICT", message: "Distributor status changed. Refresh and try again." } }),
+  );
+  await seed(page, admin, true);
+  await page.goto("/admin/payments/distributors");
+  await page.getByRole("button", { name: "Edit Alpha Distributor" }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.locator('select[name="erp_payment_status"]').selectOption("paid");
+  await dialog.getByRole("button", { name: "Save ERP Payment" }).click();
+  await expect(dialog).toContainText("Distributor status changed. Refresh and try again.");
+  await expect(dialog).toBeVisible();
 });
 
 test("Admin Set Renewal sends the minimal renewal command", async ({
@@ -1015,6 +1081,7 @@ test("ERP Partner Viewer sees only scoped read-only Distributor and Renewal page
             mapping_status: row.mapping_status,
             activity_status: row.activity_status,
             billing_status: row.billing_status,
+            erp_payment_status: "paid",
             renewal_date: row.renewal_date,
             renewal_state: row.renewal_state,
             updated_at: row.updated_at,
@@ -1058,6 +1125,7 @@ test("ERP Partner Viewer sees only scoped read-only Distributor and Renewal page
   ).toBeVisible();
   await expect(page.getByText("MARG", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("Alpha Distributor")).toBeVisible();
+  await expect(page.getByText("ERP Paid", { exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "ERP Renewals" })).toBeVisible();
   for (const forbidden of [
     "My Day",
