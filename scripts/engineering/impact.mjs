@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { dirtyFingerprint, git, parseArgs, readJson, root, sha256 } from "./kernel-lib.mjs";
+import { dirtyFingerprint, git, isBaseImmutableMigrationPath, parseArgs, readJson, root, sha256, validateMigrationLedger } from "./kernel-lib.mjs";
 import { buildSqlFunctionCatalogue, deriveFunctionAuthorities, extractSourceOperations, extractSqlOperations, resolveWriteAuthorities } from "./authority-resolution.mjs";
 
 const riskRank = { R0: 0, R1: 1, R2: 2, R3: 3 };
@@ -69,7 +69,7 @@ const versionsFor = (entry, base, head, fileVersions, patch) => {
   return { base: entry.status === "A" ? "" : safeShow(base, entry.oldPath ?? entry.path), head: entry.status === "D" ? "" : safeShow(head, entry.path) };
 };
 
-export const compileImpact = ({ base = "origin/main", head = "WORKTREE", entries, patch, selectedDomains = [], domainRegistry, authorityRegistry, fileVersions, sqlCatalogueFiles } = {}) => {
+export const compileImpact = ({ base = "origin/main", head = "WORKTREE", entries, patch, selectedDomains = [], domainRegistry, authorityRegistry, fileVersions, sqlCatalogueFiles, baseImmutableThrough } = {}) => {
   const suppliedEntries = Boolean(entries);
   if (!entries) ({ entries, patch } = currentDiff(base, head));
   if (!fileVersions && suppliedEntries && /^diff --git /m.test(String(patch))) fileVersions = Object.fromEntries(String(patch).split(/^diff --git /m).filter(Boolean).map((section) => {
@@ -80,6 +80,8 @@ export const compileImpact = ({ base = "origin/main", head = "WORKTREE", entries
   const fixtureSql = (side) => Object.entries(fileVersions ?? {}).filter(([path]) => path.endsWith(".sql")).map(([path, versions]) => ({ path, text: versions[side] ?? "" })).filter((file) => file.text).map((file) => ({ ...file, contentHash: sha256(file.text) }));
   const baseSql = sqlCatalogueFiles?.base ?? (suppliedEntries ? fixtureSql("base") : trackedSql(base)), headSql = sqlCatalogueFiles?.head ?? (suppliedEntries ? fixtureSql("head") : trackedSql(head));
   const baseCatalogue = buildSqlFunctionCatalogue(baseSql), headCatalogue = buildSqlFunctionCatalogue(headSql), mappedDomains = new Set(), effects = new Set(), unresolved = [], pathRecords = [], introducedOperations = [], removedOperations = [], baseSchemaOperations = [];
+  try { baseImmutableThrough ??= validateMigrationLedger(registry("supabase/migrations/APPLIED_OWNER_MIGRATIONS.json", base)).immutableThrough; }
+  catch (error) { unresolved.push({ code: error.message }); }
   for (const entry of entries) {
     const paths = [entry.oldPath, entry.path].filter(Boolean), matched = new Set();
     for (const domain of domains) for (const path of paths) if (domainPaths(domain).some((pattern) => matches(path, pattern))) matched.add(domain.id);
@@ -104,7 +106,7 @@ export const compileImpact = ({ base = "origin/main", head = "WORKTREE", entries
     const relevantIds = pathRecords.find((record) => record.path === resolution.sourcePath || record.oldPath === resolution.sourcePath)?.domains ?? [], relevant = relevantIds.map((id) => domains.find((domain) => domain.id === id)).filter(Boolean);
     if (!relevant.some((domain) => (domain.authorityRefs ?? []).includes(resolution.authority) && !(domain.mustNotWriteAuthorityRefs ?? []).includes(resolution.authority))) unresolved.push({ code: "PROHIBITED_WRITE_AUTHORITY", target: resolution.target, authority: resolution.authority, sourcePath: resolution.sourcePath, relevantDomains: relevant.map((domain) => domain.id).sort() });
   }
-  for (const entry of entries) { const migration = /^supabase\/migrations\/(\d+)_/.exec(entry.path); if (migration && Number(migration[1]) <= 51) unresolved.push({ code: "IMMUTABLE_MIGRATION", path: entry.path }); }
+  if (baseImmutableThrough !== undefined) for (const entry of entries) if ([entry.oldPath, entry.path].some((path) => path && isBaseImmutableMigrationPath(path, baseImmutableThrough))) unresolved.push({ code: "IMMUTABLE_MIGRATION", path: entry.path, oldPath: entry.oldPath, immutableThrough: baseImmutableThrough });
   const domainRisk = [...mappedDomains].map((id) => domains.find((domain) => domain.id === id)?.riskFloor ?? (id === "engineering-control" ? "R3" : "R0"));
   return {
     schemaVersion: 3, baseSha: git("rev-parse", base), headSha: head === "WORKTREE" ? git("rev-parse", "HEAD") : git("rev-parse", head), treeSha: head === "WORKTREE" ? git("rev-parse", "HEAD^{tree}") : git("rev-parse", `${head}^{tree}`), dirtyFingerprint: dirtyFingerprint(),

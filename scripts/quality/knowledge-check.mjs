@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { execFileSync } from "node:child_process";
 import { isTrackedPathOrDescendant } from "./tracked-paths.mjs";
+import { inspectMigrationBoundaryTransition } from "../engineering/kernel-lib.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
 const read = (file) => readFileSync(resolve(root, file), "utf8");
@@ -334,61 +335,8 @@ for (const path of [
 for (const path of trackedFiles.filter((item) => item.startsWith(".codex/")))
   if (!new Set([".codex/config.toml", ".codex/hooks.json", ".codex/rules/zerodata.rules"]).has(path))
     fail(`unsanctioned codex path: ${path}`);
-const meta = json("supabase/migrations/APPLIED_OWNER_MIGRATIONS.json");
-const base = execFileSync("git", ["merge-base", "origin/main", "HEAD"], {
-  cwd: root,
-  encoding: "utf8",
-}).trim();
-const baseMeta = JSON.parse(
-  execFileSync(
-    "git",
-    ["show", `${base}:supabase/migrations/APPLIED_OWNER_MIGRATIONS.json`],
-    { cwd: root, encoding: "utf8" },
-  ),
-);
-for (const [name, value] of [
-  ["base", baseMeta],
-  ["head", meta],
-])
-  if (
-    !Number.isInteger(value.lastAppliedOwnerMigration) ||
-    value.lastAppliedOwnerMigration <= 0 ||
-    value.lastAppliedOwnerMigration !== value.immutableThrough
-  )
-    fail(`${name} migration boundary invalid`);
-if (
-  meta.lastAppliedOwnerMigration < baseMeta.lastAppliedOwnerMigration ||
-  meta.lastAppliedOwnerMigration > baseMeta.lastAppliedOwnerMigration + 1
-)
-  fail("migration boundary is not monotonic single-step");
-const changed = execFileSync(
-  "git",
-  ["diff", "--name-only", `${base}...HEAD`, "--", "supabase/migrations"],
-  { cwd: root, encoding: "utf8" },
-)
-  .trim()
-  .split(/\r?\n/)
-  .filter(Boolean);
-const number = (path) =>
-  Number(/^supabase\/migrations\/(\d+)_/.exec(path)?.[1]);
-for (const file of changed)
-  if (number(file) <= baseMeta.immutableThrough)
-    fail(`immutable migration changed: ${file}`);
-if (meta.lastAppliedOwnerMigration === baseMeta.lastAppliedOwnerMigration + 1) {
-  const certified = meta.lastAppliedOwnerMigration;
-  const baseMigrations = execFileSync(
-    "git",
-    ["ls-tree", "-r", "--name-only", base, "supabase/migrations"],
-    { cwd: root, encoding: "utf8" },
-  )
-    .trim()
-    .split(/\r?\n/)
-    .filter(Boolean);
-  if (!baseMigrations.some((file) => number(file) === certified))
-    fail("certification boundary references nonexistent migration");
-  if (changed.some((file) => number(file) <= certified))
-    fail("certification boundary edited immutable migration");
-}
+try { inspectMigrationBoundaryTransition(); }
+catch (error) { fail(error.message); }
 if (!process.exitCode)
   console.log(
     `Knowledge checks passed (${domains.length} domains, ${lessons.length} lessons).`,
