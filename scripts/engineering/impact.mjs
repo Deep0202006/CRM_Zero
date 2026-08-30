@@ -9,7 +9,7 @@ const maxRisk = (...values) => values.reduce((best, value) => riskRank[value] > 
 const matches = (path, pattern) => pattern.endsWith("/**") ? path === pattern.slice(0, -3) || path.startsWith(pattern.slice(0, -2)) : path === pattern || path.startsWith(`${pattern}/`);
 const domainPaths = (domain) => [...(domain.surfacePaths ?? []), ...(domain.codeRoots ?? []), ...(domain.serverBoundaries ?? []), ...(domain.contractPaths ?? []), ...(domain.criticalTests ?? []), ...(domain.pathPatterns ?? [])];
 const sensitiveUnknownPath = (path) => /(?:^|\/)(?:Dockerfile|Makefile|Containerfile|Jenkinsfile)$/i.test(path) || /(?:^|\/)(?:config|configs|configuration|db|database|queries|query|schema|scripts|tools|workflows?|security|auth|rls|infra|infrastructure)(?:\/|$)/i.test(path) || /(?:^|\/)[^/]+\.(?:c?js|mjs|mts|cts|jsx|tsx?|py|rb|php|go|rs|java|sh|bash|zsh|fish|ps1|bat|cmd|ya?ml|toml|json|sql|ini|cfg|conf|properties|prisma|graphql|gql|env)$/i.test(path) || /(?:^|\/)\.env(?:\.|$)/i.test(path);
-const controlPath = (path) => /^(?:scripts\/(?:engineering|quality)|docs\/engineering|\.github|\.codex|\.gitignore$|AGENTS\.md$|CLAUDE\.md$|package(?:-lock)?\.json$)/.test(path);
+const controlPath = (path) => /^(?:scripts\/(?:engineering|quality)|docs\/engineering|supabase\/migrations\/APPLIED_OWNER_MIGRATIONS\.json$|\.github|\.codex|\.gitignore$|AGENTS\.md$|CLAUDE\.md$|package(?:-lock)?\.json$)/.test(path);
 const effectsFor = (path, text) => {
   const effects = [];
   if (controlPath(path)) effects.push("ENGINEERING_CONTROL", "SECURITY");
