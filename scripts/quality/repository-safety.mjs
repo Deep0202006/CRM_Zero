@@ -180,11 +180,26 @@ const stripSqlComments = (text) => {
 const machineAbsolutePath = /\b[A-Za-z]:[\\/][^\s`"']+|[`"']\/(?!api(?:\/|$)|[/*])(?:[A-Za-z0-9._-]+\/)+[A-Za-z0-9._-]+/;
 const hasMachineAbsolutePath = (text, extension) => machineAbsolutePath.test(text) ||
   ([".bash", ".md", ".ps1", ".sh", ".zsh"].includes(extension) && /(?:^|\s)\/(?![/*])(?:[A-Za-z0-9._-]+\/)+[A-Za-z0-9._-]+/m.test(text));
+export const normalizePolicyText = (text) => String(text).replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n");
 const jobBlock = (workflow, job) => {
-  const marker = `\n  ${job}:\n`, start = workflow.indexOf(marker);
+  const lines = workflow.split("\n"), jobsIndex = lines.findIndex((line) => /^(\s*)jobs:\s*$/.test(line));
+  if (jobsIndex < 0) return "";
+  const jobsIndent = /^(\s*)/.exec(lines[jobsIndex])[1].length;
+  let start = -1, jobIndent = -1;
+  for (let index = jobsIndex + 1; index < lines.length; index += 1) {
+    const match = /^(\s*)([A-Za-z0-9_-]+):\s*$/.exec(lines[index]);
+    if (!match) continue;
+    const indent = match[1].length;
+    if (indent <= jobsIndent) break;
+    if (indent === jobsIndent + 2 && match[2] === job) { start = index; jobIndent = indent; break; }
+  }
   if (start < 0) return "";
-  const tail = workflow.slice(start + 1), next = tail.slice(marker.length - 1).search(/\n  [a-zA-Z0-9_-]+:\s*\n/);
-  return next < 0 ? tail : tail.slice(0, marker.length - 1 + next);
+  let end = lines.length;
+  for (let index = start + 1; index < lines.length; index += 1) {
+    const match = /^(\s*)([A-Za-z0-9_-]+):\s*$/.exec(lines[index]);
+    if (match && match[1].length <= jobIndent) { end = index; break; }
+  }
+  return lines.slice(start, end).join("\n");
 };
 const controlPlaneViolations = (path, text) => {
   const violations = [];
@@ -228,7 +243,7 @@ export const scanRepository = (root) => {
     ) fail("OPERATIONAL_SCRATCH_PATH", path);
     if (!sourceExtensions.has(extension) && !["package.json", ".codex/hooks.json"].includes(path) && !path.endsWith(".md") && !configJson && !hookPath) continue;
 
-    const raw = readFileSync(resolve(root, path), "utf8"), executable = stripComments(raw, extension);
+    const raw = readFileSync(resolve(root, path), "utf8"), executable = stripComments(normalizePolicyText(raw), extension);
     for (const code of controlPlaneViolations(path, executable)) fail(code, path);
     if (governanceJson) {
       if (hasMachineAbsolutePath(executable, extension))
