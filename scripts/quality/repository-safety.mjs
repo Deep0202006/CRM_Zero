@@ -221,6 +221,15 @@ const jobBlock = (workflow, job) => {
 };
 const controlPlaneViolations = (path, text) => {
   const violations = [];
+  if (path === "scripts/engineering/release-controller.mjs") {
+    const required = [
+      'spawnSync(file, args, call.options)', 'shell: false', '["push", "origin", branch]',
+      '["pr", "merge", String(pr), "--repo", TARGETS.repo, "--merge", "--match-head-commit", head]',
+      '["deploy", "--prod", "--skip-domain", "--yes", "--scope", TARGETS.team, "--cwd", dir]',
+      '["promote", stage.id, "--yes", "--scope", TARGETS.team]',
+    ];
+    if (required.some((shape) => !text.includes(shape)) || /shell\s*:\s*true|\bexec(?:Sync|File)?\s*\(\s*["'`]|["']--(?:force|force-with-lease|token|env)["']|runner\s*\(\s*["']gh["'][\s\S]{0,240}["']--admin["']/.test(text)) violations.push("RELEASE_CONTROLLER_MUTATION_SHAPE_INVALID");
+  }
   if (path === ".github/workflows/product-verification.yml") {
     const attest = jobBlock(text, "attest-evidence"), verify = jobBlock(text, "verify");
     if (!attest || !attest.includes("actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6")) violations.push("ATTESTATION_JOB_MISSING_OR_UNPINNED");
@@ -313,7 +322,7 @@ export const scanRepository = (root) => {
         directProductionMutation = new RegExp(`${launcher}\\s*\\([\\s\\S]{0,40}[\"'][^\"'\\r\\n]{0,120}\\b(?:supabase|vercel|psql)\\b[\\s\\S]{0,240}\\b${mutation}\\b`, "i").test(executable);
       const indirectProductionMutation = [...executable.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*["'](?:supabase|vercel|psql)["']/gi)]
         .some(([, variable]) => new RegExp(`${launcher}\\s*\\(\\s*${variable}\\b[\\s\\S]{0,240}\\b${mutation}\\b`, "i").test(executable));
-      if (directShellMutation || directProductionMutation || indirectProductionMutation) fail("PRODUCTION_MUTATION_COMMAND", path);
+      if ((directShellMutation || directProductionMutation || indirectProductionMutation) && path !== "scripts/engineering/release-controller.mjs") fail("PRODUCTION_MUTATION_COMMAND", path);
     }
 
     const clientSource = path.startsWith("src/") && (/^\s*["']use client["']/m.test(executable) || (path.endsWith(".tsx") && !path.startsWith("src/app/api/")));
