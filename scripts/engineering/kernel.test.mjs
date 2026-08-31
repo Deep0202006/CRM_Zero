@@ -269,6 +269,7 @@ try {
   for (const path of verifierIgnorePaths) assert.equal(ignoreContents.split(/\r?\n/).filter((line) => line === path).length, 1);
   assert(!workflowContents.includes(".git/info/exclude")); assert(!workflowContents.includes("core.excludesFile"));
   for (const artifact of ["kernel-preflight", "kernel-unit-build", "kernel-postgres", "kernel-e2e", "kernel-evidence-attestation"]) assert(workflowContents.includes(`name: ${artifact}`));
+  assert(workflowContents.includes("proof:run -- --kind handover"));
   assert(workflowContents.includes("npm run proof:certify-ci")); assert.match(workflowContents, /verify:\s*\n\s*needs: \[preflight, unit-build, receivables-postgres, e2e, attest-evidence\]/);
   statusIsClean(); assert.equal(dirtyFingerprint(ignoreRepo), ignoredBaseline);
   writeIgnoreFixture("artifacts/engineering-evidence/preflight/fixture.json", "{}\n");

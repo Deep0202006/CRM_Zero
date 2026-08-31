@@ -31,6 +31,8 @@ jobs:
           npm run proof:plan -- --base "$BASE_SHA" --head "$HEAD_SHA"
       - name: Execute exact planned unit proofs
         run: npm run proof:run -- --kind unit --base "$KERNEL_BASE_SHA" --head "$KERNEL_HEAD_SHA"
+      - name: Execute exact planned handover proofs
+        run: npm run proof:run -- --kind handover --base "$KERNEL_BASE_SHA" --head "$KERNEL_HEAD_SHA"
       - name: Diff integrity and related tests
         env: { BASE_SHA: "${{ github.event.pull_request.base.sha }}", HEAD_SHA: "${{ github.event.pull_request.head.sha }}" }
         run: |
