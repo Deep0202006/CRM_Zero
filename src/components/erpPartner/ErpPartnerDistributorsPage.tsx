@@ -9,6 +9,30 @@ import { Chip } from "@/components/ui/Chip";
 import { Button } from "@/components/ui/Button";
 
 type Scope = { erp_id: string; erp_name: string };
+type Metrics = {
+  total: number;
+  installation_pending: number;
+  training_pending: number;
+  not_billed: number;
+  active: number;
+  billed: number;
+  paid: number;
+  renewal_due_soon: number;
+  renewal_overdue: number;
+};
+const kpiFilters = {
+  total: {},
+  installation_pending: { installation: "pending" },
+  training_pending: { installation: "done", training: "pending" },
+  not_billed: { billing: "not_billed" },
+  active: { activity: "active" },
+  billed: { billing: "billed" },
+  paid: { erpPayment: "paid" },
+  renewal_due_soon: { renewal: "due_soon" },
+  renewal_overdue: { renewal: "overdue" },
+} as const;
+type KpiFilter = keyof typeof kpiFilters;
+const emptyMetrics: Metrics = { total: 0, installation_pending: 0, training_pending: 0, not_billed: 0, active: 0, billed: 0, paid: 0, renewal_due_soon: 0, renewal_overdue: 0 };
 type Row = {
   distributor_id: string;
   distributor_name: string;
@@ -33,9 +57,11 @@ export function ErpPartnerDistributorsPage() {
   const { isErpPartnerViewer } = useAuth(),
     [rows, setRows] = useState<Row[]>([]),
     [scopes, setScopes] = useState<Scope[]>([]),
+    [metrics, setMetrics] = useState<Metrics>(emptyMetrics),
     [total, setTotal] = useState(0),
     [search, setSearch] = useState(""),
     [erp, setErp] = useState(""),
+    [activeKpi, setActiveKpi] = useState<KpiFilter>("total"),
     [page, setPage] = useState(1),
     [error, setError] = useState("");
   const query = useMemo(
@@ -45,8 +71,9 @@ export function ErpPartnerDistributorsPage() {
         pageSize: "50",
         search,
         ...(erp ? { erp } : {}),
+        ...kpiFilters[activeKpi],
       }).toString(),
-    [page, search, erp],
+    [page, search, erp, activeKpi],
   );
   const load = useCallback(async () => {
     const { data } = await supabase.auth.getSession();
@@ -59,6 +86,7 @@ export function ErpPartnerDistributorsPage() {
       throw new Error(result.message ?? "ERP Distributor Status unavailable.");
     setRows(result.rows ?? []);
     setScopes(result.scopes ?? []);
+    setMetrics({ ...emptyMetrics, ...result.metrics });
     setTotal(result.total ?? 0);
     setError("");
   }, [query]);
@@ -70,8 +98,6 @@ export function ErpPartnerDistributorsPage() {
     );
     return () => window.clearTimeout(timer);
   }, [isErpPartnerViewer, load]);
-  const count = (predicate: (row: Row) => boolean) =>
-    rows.filter(predicate).length;
   if (!isErpPartnerViewer)
     return (
       <div className="app-page">
@@ -99,35 +125,27 @@ export function ErpPartnerDistributorsPage() {
       </div>
       {error && <div className="alert-panel alert-panel--danger">{error}</div>}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {[
-          ["Total Distributors", total],
-          [
-            "Installation Pending",
-            count((r) => r.installation_status === "pending"),
-          ],
-          ["Training Pending", count((r) => r.training_status === "pending")],
-          ["Mapped", count((r) => r.mapping_status === "done")],
-          ["Active", count((r) => r.activity_status === "active")],
-          ["Billed", count((r) => r.billing_status === "billed")],
-          [
-            "Renewal Due Soon",
-            count((r) =>
-              [
-                "renewal_due_today",
-                "renewal_due_tomorrow",
-                "renewal_due_in_2_days",
-              ].includes(r.renewal_state),
-            ),
-          ],
-          [
-            "Renewal Overdue",
-            count((r) => r.renewal_state === "renewal_overdue"),
-          ],
-        ].map(([label, value]) => (
-          <div className="surface-panel p-4" key={String(label)}>
+        {([
+          ["total", "Total Distributors"],
+          ["installation_pending", "Installation Pending"],
+          ["training_pending", "Training Pending"],
+          ["not_billed", "Not Billed"],
+          ["active", "Active"],
+          ["billed", "Billed"],
+          ["paid", "Paid"],
+          ["renewal_due_soon", "Renewal Due Soon"],
+          ["renewal_overdue", "Renewal Overdue"],
+        ] as const).map(([key, label]) => (
+          <button
+            type="button"
+            aria-pressed={activeKpi === key}
+            className={`surface-panel p-4 text-left ${activeKpi === key ? "ring-2 ring-[var(--brand-500)]" : ""}`}
+            key={key}
+            onClick={() => { setActiveKpi(key); setPage(1); }}
+          >
             <p className="section-kicker">{label}</p>
-            <p className="mt-2 text-2xl font-semibold">{value}</p>
-          </div>
+            <p className="mt-2 text-2xl font-semibold">{metrics[key]}</p>
+          </button>
         ))}
       </div>
       <section className="surface-panel overflow-hidden">
@@ -205,7 +223,7 @@ export function ErpPartnerDistributorsPage() {
                   </td>
                   <td className="p-3">{row.renewal_date ?? "Not set"}</td>
                   <td className="p-3">
-                    {row.renewal_state.replaceAll("_", " ")}
+                    {row.renewal_state === "not_actionable" ? "Not actionable until billed" : row.renewal_state.replaceAll("_", " ")}
                   </td>
                 </tr>
               ))}

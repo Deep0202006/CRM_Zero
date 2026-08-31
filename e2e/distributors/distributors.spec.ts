@@ -1059,15 +1059,17 @@ test("Renewals never converts a metrics failure into an empty state", async ({
 test("ERP Partner Viewer sees only scoped read-only Distributor and Renewal pages", async ({
   page,
 }) => {
-  const internalRequests: string[] = [];
+  const internalRequests: string[] = [], distributorRequests: URL[] = [];
   await page.route("https://e2e.supabase.co/**", (route) =>
     route.fulfill({ status: 200, contentType: "application/json", body: "[]" }),
   );
-  await page.route("**/api/erp-partner/distributors?**", (route) =>
-    route.fulfill({
+  await page.route("**/api/erp-partner/distributors?**", (route) => {
+    distributorRequests.push(new URL(route.request().url()));
+    return route.fulfill({
       json: {
-        total: 1,
-        scopes: [{ erp_id: row.erp_id, erp_name: "MARG" }],
+        total: 77,
+        metrics: { total: 77, installation_pending: 11, training_pending: 12, not_billed: 13, active: 14, billed: 64, paid: 15, renewal_due_soon: 16, renewal_overdue: 17 },
+        scopes: [{ erp_id: row.erp_id, erp_name: "MARG" }, { erp_id: "00000000-0000-4000-8000-000000000099", erp_name: "Tally" }],
         rows: [
           {
             distributor_id: distributorId,
@@ -1088,8 +1090,8 @@ test("ERP Partner Viewer sees only scoped read-only Distributor and Renewal page
           },
         ],
       },
-    }),
-  );
+    });
+  });
   await page.route("**/api/erp-partner/renewals?**", (route) =>
     route.fulfill({
       json: {
@@ -1126,6 +1128,40 @@ test("ERP Partner Viewer sees only scoped read-only Distributor and Renewal page
   await expect(page.getByText("MARG", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("Alpha Distributor")).toBeVisible();
   await expect(page.getByText("ERP Paid", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Total Distributors 77/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Not Billed 13/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Paid 15/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Mapped/ })).toHaveCount(0);
+  await expect(page.getByText("Mapping", { exact: true })).toBeVisible();
+  await page.getByRole("textbox", { name: "Search" }).fill("Alpha");
+  await page.getByLabel("ERP scope").selectOption(row.erp_id);
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await expect.poll(() => distributorRequests.at(-1)?.searchParams.get("page")).toBe("2");
+  const training = page.getByRole("button", { name: /Training Pending 12/ });
+  await training.click();
+  await expect(training).toHaveAttribute("aria-pressed", "true");
+  await expect.poll(() => distributorRequests.at(-1)?.search).toContain("page=1");
+  const trainingRequest = distributorRequests.at(-1)!;
+  expect(trainingRequest.searchParams.get("search")).toBe("Alpha");
+  expect(trainingRequest.searchParams.get("erp")).toBe(row.erp_id);
+  expect(trainingRequest.searchParams.get("installation")).toBe("done");
+  expect(trainingRequest.searchParams.get("training")).toBe("pending");
+  await page.getByRole("button", { name: /Total Distributors 77/ }).click();
+  await expect.poll(() => distributorRequests.at(-1)?.searchParams.get("training")).toBeNull();
+  expect(distributorRequests.at(-1)?.searchParams.get("installation")).toBeNull();
+  for (const [name, parameter, value] of [
+    [/Installation Pending 11/, "installation", "pending"],
+    [/Not Billed 13/, "billing", "not_billed"],
+    [/Active 14/, "activity", "active"],
+    [/Billed 64/, "billing", "billed"],
+    [/Paid 15/, "erpPayment", "paid"],
+    [/Renewal Due Soon 16/, "renewal", "due_soon"],
+    [/Renewal Overdue 17/, "renewal", "overdue"],
+  ] as const) {
+    await page.getByRole("button", { name }).click();
+    await expect.poll(() => distributorRequests.at(-1)?.searchParams.get(parameter)).toBe(value);
+    expect(distributorRequests.at(-1)?.searchParams.get("page")).toBe("1");
+  }
   await expect(page.getByRole("link", { name: "ERP Renewals" })).toBeVisible();
   for (const forbidden of [
     "My Day",

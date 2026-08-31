@@ -1,8 +1,7 @@
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmdirSync, rmSync, statSync, unlinkSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmdirSync, rmSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { classifyCommand, CommandClass } from "./command-policy.mjs";
@@ -24,9 +23,11 @@ import { beginExternalTask, compareAndSwap, loadState, requireContinuation, sess
 import { dirtyFingerprint, environmentPolicyHash, git, gitEnvironmentFor, gitNullConfig, inspectMigrationBoundaryTransition, parseMigrationNumber, repositoryIdentity, root, safeEnvironment, sha256, validateMigrationBoundaryTransition, validateMigrationLedger } from "./kernel-lib.mjs";
 import { containsAssertionWeakening } from "../quality/assertion-policy.mjs";
 import { inspectMigrationGate, runReleaseSelfTest, TARGETS, validateReleaseReceipt, waitForChecks, waitForGitDeployment } from "./release-controller.mjs";
+import { assertManagedPath, engineeringTempRoot, makeEngineeringTemp, removeEngineeringTemp } from "./managed-paths.mjs";
+import { releaseEnvironment } from "./release-entry.mjs";
 
 const matrix = { state: [], risk: [], proof: [], attestation: [], commandPolicy: [], regression: [], stopRemote: [], stall: [], postgresEnvironment: [], tokenIsolation: [] }, tempRoots = [], createdEvidence = [], preservedEvidence = new Map();
-const temp = (prefix) => { const path = mkdtempSync(resolve(tmpdir(), prefix)); tempRoots.push(path); return path; };
+const temp = (prefix) => { const path = makeEngineeringTemp(prefix); tempRoots.push(path); return path; };
 const command = (cwd, file, args, env, input) => spawnSync(file, args, { cwd, encoding: "utf8", env: { ...process.env, ...env }, input });
 const gitAt = (cwd, ...args) => spawnSync("git", ["-c", "core.hooksPath=", ...args], { cwd, encoding: "utf8", env: gitEnvironmentFor(cwd) });
 const snapshotDirectory = (directory) => {
@@ -84,6 +85,13 @@ const operationalDirectory = sessionsDirectory(), operationalBefore = snapshotDi
 const productBefore = snapshotDirectory(resolve(root, "src")), migrationsBefore = snapshotDirectory(resolve(root, "supabase/migrations"));
 let isolatedGit = "", isolatedRemoved = false;
 try {
+  const releaseEnv = releaseEnvironment({});
+  assert.equal(releaseEnv.TEMP, releaseEnv.TMP);
+  assert.equal(releaseEnv.TEMP, releaseEnv.TMPDIR);
+  assert.match(relative(root, releaseEnv.TEMP).replaceAll("\\", "/"), /^\.tmp\/engineering\/release$/);
+  assert.throws(() => engineeringTempRoot("../outside"), /CRM_MANAGED_SCOPE_INVALID/);
+  assert.throws(() => assertManagedPath(resolve(root, "outside")), /CRM_MANAGED_PATH_OUTSIDE_ROOT/);
+  matrix.regression.push("release-cli-temp-root-local", "managed-temp-traversal-rejected");
   const emptyTree = temp("kernel-empty-tree-"); mkdirSync(resolve(emptyTree, "a/b"), { recursive: true }); restoreDirectoryExistence(emptyTree, { exists: false }); assert(!existsSync(emptyTree)); matrix.state.push("empty-evidence-tree-restored");
   const baseSha = git("rev-parse", "origin/main"), currentHead = git("rev-parse", "HEAD"), currentTree = git("rev-parse", "HEAD^{tree}");
   isolatedGit = temp("kernel-state-git-");
@@ -475,5 +483,5 @@ try {
   restorePreservedEvidence();
   for (const path of createdEvidence) if (existsSync(path)) rmSync(path, { force: true });
   restoreDirectoryExistence(evidenceDirectory, evidenceBefore);
-  for (const path of tempRoots) if (existsSync(path)) rmSync(path, { recursive: true, force: true });
+  for (const path of tempRoots) if (existsSync(path)) removeEngineeringTemp(path);
 }

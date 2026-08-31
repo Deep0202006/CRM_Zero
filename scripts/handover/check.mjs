@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { assertDeepInventoryBudget, assertRedacted, classifyBudget, compareManifests, evaluateOwnerGate, migrationBoundary, requiredCapabilities, sha256, sourceIdentity, supabaseArgv, validateMigrationBoundary } from './lib.mjs';
+import { makeEngineeringTemp, removeEngineeringTemp } from '../engineering/managed-paths.mjs';
 
 const root = process.cwd();
 const read = (path) => readFileSync(resolve(root, path), 'utf8');
@@ -135,12 +135,12 @@ assert.equal(compareManifests(base, storageWithoutFinalDelta).status, 'HANDOVER_
 const volatileTarget = structuredClone(base); volatileTarget.inventory.database.bytes = 9; volatileTarget.inventory.cron[0].jobid = 99;
 assert.equal(compareManifests(base, volatileTarget).status, 'HANDOVER_PARITY_PASS');
 
-const temp = mkdtempSync(join(tmpdir(), 'handover-check-'));
+const temp = makeEngineeringTemp('handover-check');
 writeFileSync(join(temp, 'artifact'), 'one');
 const sum = sha256(readFileSync(join(temp, 'artifact')));
 assert.equal(sum, sha256('one'));
 writeFileSync(join(temp, 'artifact'), 'two');
 assert.notEqual(sum, sha256(readFileSync(join(temp, 'artifact'))));
-rmSync(temp, { recursive: true, force: true });
+removeEngineeringTemp(temp);
 for (const phrase of ['FULL object integrity', 'MANUAL_DASHBOARD_EVIDENCE', 'VERCEL_ENV_HANDOFF_REQUIRED', 'TARGET_PLATFORM_INCOMPATIBLE', 'EXPECTED_REAUTHENTICATION', 'platform-policies.sql', 'encrypted', 'Owner gates', 'SOURCE_BASELINE', 'ROLLBACK_WRITE_RECONCILIATION_REQUIRED']) assert.match(docs, new RegExp(phrase, 'i'));
 console.log('HANDOVER_CHECK_PASS');

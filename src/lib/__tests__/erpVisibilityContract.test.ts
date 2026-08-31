@@ -14,6 +14,9 @@ const migration = read(
 const paymentStatusMigration = read(
   "supabase/migrations/052_billed_renewals_erp_payment_status.sql",
 );
+const statusFilterMigration = read(
+  "supabase/migrations/053_erp_partner_distributor_status_filters.sql",
+);
 
 describe("CRM-P1-047 ERP authority and external-view contract", () => {
   test("normalizes Unicode, case, and whitespace to one deterministic ERP identity", () => {
@@ -111,5 +114,29 @@ describe("CRM-P1-047 ERP authority and external-view contract", () => {
     expect(auth).toContain("!externalViewer");
     expect(layout).toMatch(/pathname === "\/login"\s*\|\|\s*isErpPartnerViewer/);
     expect(layout).toContain("!isErpPartnerViewer && (");
+  });
+
+  test("serves full-scope ERP status metrics and filters before bounded pagination", () => {
+    const projection = statusFilterMigration.slice(statusFilterMigration.indexOf("create function public.erp_partner_distributors_v2"));
+    for (const key of ["total", "installation_pending", "training_pending", "not_billed", "active", "billed", "paid", "renewal_due_soon", "renewal_overdue"])
+      expect(projection).toContain(`'${key}'`);
+    expect(projection).toContain("installation_status='done' and training_status='pending'");
+    expect(projection).toContain("erp_payment_status='paid'");
+    expect(projection).toMatch(/billing_status='billed' and renewal_date between business_date and business_date\+2/);
+    expect(projection.indexOf("), metrics as (")).toBeLessThan(projection.indexOf("), filtered as ("));
+    expect(projection.indexOf("), filtered as (")).toBeLessThan(projection.indexOf("), page_rows as ("));
+    expect(projection).toContain("least(50,greatest(1,coalesce(p_page_size,50)))");
+  });
+
+  test("keeps the external projection private and the UI dependent on server metrics", () => {
+    const projection = statusFilterMigration.slice(statusFilterMigration.indexOf("create function public.erp_partner_distributors_v2"));
+    for (const forbidden of ["bill_amount", "outstanding_amount", "receivable_id", "payment_reference", "assigned_to", "lead_id", "notes"])
+      expect(projection).not.toContain(forbidden);
+    const page = read("src/components/erpPartner/ErpPartnerDistributorsPage.tsx");
+    expect(page).not.toContain("rows.filter");
+    expect(page).not.toContain('["Mapped"');
+    expect(page).toContain("mapping_status");
+    expect(page).toContain("aria-pressed");
+    expect(page).toContain("result.metrics");
   });
 });

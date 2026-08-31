@@ -8,6 +8,12 @@ export const querySchema = z
     pageSize: z.coerce.number().int().min(1).max(50).default(50),
     search: z.string().trim().max(100).default(""),
     erp: optionalCanonicalErpIdSchema.default(""),
+    installation: z.enum(["", "pending", "done"]).default(""),
+    training: z.enum(["", "pending"]).default(""),
+    billing: z.enum(["", "not_billed", "billed"]).default(""),
+    activity: z.enum(["", "active"]).default(""),
+    erpPayment: z.enum(["", "paid"]).default(""),
+    renewal: z.enum(["", "due_soon", "overdue"]).default(""),
   })
   .strict();
 export const dynamic = "force-dynamic";
@@ -30,13 +36,19 @@ export async function GET(request: Request) {
       parsed.error.issues[0]?.message ?? "Invalid filters.",
     );
   const { data, error } = await context.service.rpc(
-    "erp_partner_distributors_v1",
+    "erp_partner_distributors_v2",
     {
       p_actor_id: context.userId,
       p_erp_id: parsed.data.erp || null,
       p_search: parsed.data.search || null,
       p_page: parsed.data.page,
       p_page_size: parsed.data.pageSize,
+      p_installation_filter: parsed.data.installation || null,
+      p_training_filter: parsed.data.training || null,
+      p_billing_filter: parsed.data.billing || null,
+      p_activity_filter: parsed.data.activity || null,
+      p_erp_payment_filter: parsed.data.erpPayment || null,
+      p_renewal_filter: parsed.data.renewal || null,
     },
   );
   if (error)

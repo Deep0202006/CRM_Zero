@@ -5,6 +5,7 @@ const baseSql = fs.readFileSync(path.join(process.cwd(), "supabase/migrations/03
 const sql = fs.readFileSync(path.join(process.cwd(), "supabase/migrations/041_distributor_mapped_status.sql"), "utf8");
 const renewalSql = fs.readFileSync(path.join(process.cwd(), "supabase/migrations/042_payment_collection_renewals.sql"), "utf8");
 const billedRenewalSql = fs.readFileSync(path.join(process.cwd(), "supabase/migrations/052_billed_renewals_erp_payment_status.sql"), "utf8");
+const partnerStatusSql = fs.readFileSync(path.join(process.cwd(), "supabase/migrations/053_erp_partner_distributor_status_filters.sql"), "utf8");
 const routes = ["src/app/api/distributors/route.ts", "src/app/api/distributors/metrics/route.ts", "src/app/api/distributors/commands/route.ts", "src/app/api/distributors/import/route.ts", "src/lib/distributors/validation.ts"].map((file) => fs.readFileSync(path.join(process.cwd(), file), "utf8")).join("\n");
 
 describe("Distributor Status SQL/authority contract", () => {
@@ -96,5 +97,17 @@ describe("Distributor Status SQL/authority contract", () => {
   test("replacement projections keep legacy callers compatible through trailing defaults", () => {
     expect(billedRenewalSql).toMatch(/p_erp_unset boolean default false,p_installation_filter text default null/);
     expect(billedRenewalSql).toContain("drop function public.distributor_financial_projection_v2(uuid,integer,integer,text,uuid,text,text,uuid,boolean)");
+  });
+  test("internal and ERP Partner actionable renewal filters remain billed-only", () => {
+    expect(partnerStatusSql.match(/p_renewal_filter='due_soon' and billing_status='billed'/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(partnerStatusSql).toContain("p_renewal_filter='overdue' and billing_status='billed'");
+    expect(partnerStatusSql).toContain("else 'not_actionable' end renewal_state");
+  });
+  test("migration 053 is a forward-only service projection with no business-row mutation", () => {
+    const ledger = JSON.parse(fs.readFileSync(path.join(process.cwd(), "supabase/migrations/APPLIED_OWNER_MIGRATIONS.json"), "utf8"));
+    expect(ledger.immutableThrough).toBe(52);
+    expect(partnerStatusSql).not.toMatch(/\b(create\s+table|alter\s+table|insert\s+into|update\s+public|delete\s+from|truncate)\b/i);
+    expect(partnerStatusSql).toMatch(/revoke all on function public\.erp_partner_distributors_v2[\s\S]+from public,anon,authenticated/i);
+    expect(partnerStatusSql).toMatch(new RegExp(`grant execute on function public\\.erp_partner_distributors_v2[\\s\\S]+to ${["service", "role"].join("_")}`, "i"));
   });
 });
