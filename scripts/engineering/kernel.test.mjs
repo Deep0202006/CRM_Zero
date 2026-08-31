@@ -23,6 +23,7 @@ import { applyStallPolicy, evaluateStopState, protectedRequiredChecks, remoteGat
 import { beginExternalTask, compareAndSwap, loadState, requireContinuation, sessionPath, sessionsDirectory } from "./hooks/state-store.mjs";
 import { dirtyFingerprint, environmentPolicyHash, git, gitEnvironmentFor, gitNullConfig, inspectMigrationBoundaryTransition, parseMigrationNumber, repositoryIdentity, root, safeEnvironment, sha256, validateMigrationBoundaryTransition, validateMigrationLedger } from "./kernel-lib.mjs";
 import { containsAssertionWeakening } from "../quality/assertion-policy.mjs";
+import { inspectMigrationGate, runReleaseSelfTest, TARGETS, validateReleaseReceipt, waitForChecks, waitForGitDeployment } from "./release-controller.mjs";
 
 const matrix = { state: [], risk: [], proof: [], attestation: [], commandPolicy: [], regression: [], stopRemote: [], stall: [], postgresEnvironment: [], tokenIsolation: [] }, tempRoots = [], createdEvidence = [], preservedEvidence = new Map();
 const temp = (prefix) => { const path = mkdtempSync(resolve(tmpdir(), prefix)); tempRoots.push(path); return path; };
@@ -436,6 +437,24 @@ try {
   matrix.postgresEnvironment.push("hostile-libpq-stripped", "registered-loopback-child", "external-target-pre-execution-rejected");
   matrix.tokenIsolation.push("non-postgres-no-pg", "proof-command-no-github-token", "proof-command-no-oidc-token");
   assert.equal(revalidateCandidate({ path: "scripts/engineering/fixtures/missing-candidate.mjs", contentHash: "0".repeat(64) }), false);
+  assert.equal((await runReleaseSelfTest()).code, "CRM_RELEASE_TEST_PASS");
+  assert.equal(validateReleaseReceipt({ status: "RELEASE_COMPLETE", releaseReceipt: "forged" }), false);
+  const releaseHead = "a".repeat(40), releaseBase = "b".repeat(40), releaseBranch = "fix/release-fixture";
+  const releaseChecks = TARGETS.requiredJobs.map((name) => ({ name, state: "SUCCESS", bucket: "pass", link: `https://example.invalid/${name}` }));
+  const releasePr = { number: 123, url: "https://example.invalid/pr/123", headRefName: releaseBranch, headRefOid: releaseHead, baseRefName: "main", baseRefOid: releaseBase, state: "OPEN", isDraft: false, mergeable: "MERGEABLE" };
+  const fakeGh = (_file, args) => ({ status: 0, stderr: "", stdout: JSON.stringify(args[1] === "view" ? releasePr : releaseChecks) });
+  assert.equal((await waitForChecks({ runner: fakeGh, pr: 123, head: releaseHead, branch: releaseBranch, base: releaseBase, timeout: 10, interval: 0, wait: async () => {} })).length, 6);
+  await assert.rejects(() => waitForChecks({ runner: fakeGh, pr: 123, head: "c".repeat(40), branch: releaseBranch, base: releaseBase, timeout: 0, interval: 0 }), /DRIFT/);
+  const fakeVercel = (_file, args) => {
+    if (args[0] === "teams") return { status: 0, stderr: "", stdout: JSON.stringify({ teams: [{ id: TARGETS.teamId, slug: TARGETS.team }] }) };
+    if (args[0] === "project") return { status: 0, stderr: "", stdout: `Found Project ${TARGETS.team}/${TARGETS.project} ID ${TARGETS.projectId}` };
+    if (args[0] === "list") return { status: 0, stderr: "", stdout: JSON.stringify({ contextName: TARGETS.team, deployments: [{ url: "fixture.vercel.app", name: TARGETS.project, state: "READY", target: null, createdAt: 1, meta: { githubCommitSha: releaseHead, githubCommitRef: releaseBranch, githubOrg: "Deep0202006", githubRepo: "CRM_Zero", githubDeployment: "1" } }] }) };
+    return { status: 0, stderr: "", stdout: JSON.stringify({ id: "dpl_fixture", name: TARGETS.project, contextName: TARGETS.team, readyState: "READY", target: null }) };
+  };
+  assert.equal((await waitForGitDeployment({ runner: fakeVercel, branch: releaseBranch, head: releaseHead, target: "preview", timeout: 10, interval: 0, wait: async () => {} })).id, "dpl_fixture");
+  const migrationRunner = (_file, args) => ({ status: 0, stderr: "", stdout: args[0] === "show" ? JSON.stringify({ schemaVersion: 1, lastAppliedOwnerMigration: args[1].startsWith(releaseHead) ? 52 : 52, immutableThrough: 52 }) : "A\tsupabase/migrations/053_fixture.sql" });
+  assert.equal(inspectMigrationGate({ runner: migrationRunner, base: releaseBase, head: releaseHead }).status, "OWNER_REQUIRED");
+  matrix.state.push("release-controller-fixtures", "release-receipt-forgery-rejected", "release-fake-gh-exact-head", "release-fake-vercel-git-preview", "release-migration-owner-gate");
 
   const index = buildSourceIndex({ writeCache: false }), criticalClaim = [{ id: "FIXTURE_CRITICAL", severity: "CRITICAL" }];
   const multiDomainContext = resolveContext({ task: "Distributor renewal external ERP partner projection", index }); assert.equal(multiDomainContext.status, "RESOLVED"); for (const id of ["distributor-status", "renewals", "erp-partner"]) assert(multiDomainContext.domains.includes(id)); assert(multiDomainContext.candidatePaths.length <= 7); assert(multiDomainContext.candidatePaths.some((item) => item.domainRoles.includes("WRITER_CANDIDATE"))); assert(multiDomainContext.candidatePaths.some((item) => item.domainRoles.some((role) => ["READER", "PROJECTION", "CALLER", "TEST", "CONTRACT"].includes(role))));
