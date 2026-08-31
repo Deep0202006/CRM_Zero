@@ -223,7 +223,7 @@ const controlPlaneViolations = (path, text) => {
   const violations = [];
   if (path === "scripts/engineering/release-controller.mjs") {
     const required = [
-      'spawnSync(file, args, call.options)', 'shell: false', '["push", "origin", branch]',
+      'createRunner = ({ spawn = spawnSync } = {})', 'spawn(call.file, call.args, call.options)', 'shell: false', '["push", "origin", branch]',
       '["pr", "merge", String(pr), "--repo", TARGETS.repo, "--merge", "--match-head-commit", head]',
       '["deploy", "--prod", "--skip-domain", "--yes", "--scope", TARGETS.team, "--cwd", dir]',
       '["promote", stage.id, "--yes", "--scope", TARGETS.team]',
