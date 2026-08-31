@@ -181,6 +181,24 @@ const machineAbsolutePath = /\b[A-Za-z]:[\\/][^\s`"']+|[`"']\/(?!api(?:\/|$)|[/*
 const hasMachineAbsolutePath = (text, extension) => machineAbsolutePath.test(text) ||
   ([".bash", ".md", ".ps1", ".sh", ".zsh"].includes(extension) && /(?:^|\s)\/(?![/*])(?:[A-Za-z0-9._-]+\/)+[A-Za-z0-9._-]+/m.test(text));
 export const normalizePolicyText = (text) => String(text).replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n");
+const codexModelSelectionPinned = (path, text) => {
+  if (path === ".codex/config.toml") {
+    let table = "";
+    for (const line of text.split("\n")) {
+      const header = /^\s*\[([^\]]+)\]\s*$/.exec(line);
+      if (header) { table = header[1]; continue; }
+      const assignment = /^\s*([A-Za-z0-9_.-]+)\s*=/.exec(line);
+      if (!assignment) continue;
+      const key = assignment[1];
+      if ((table === "" && /^(?:model|model_reasoning_effort)$/.test(key)) ||
+          (table === "models.new_thread" && /^(?:model|model_reasoning_effort)$/.test(key)) ||
+          (table === "agents" && /^default_subagent_(?:model|reasoning_effort)$/.test(key)) ||
+          (table === "memories" && /^(?:extract_model|consolidation_model)$/.test(key)) ||
+          /^(?:agents\.default_subagent_(?:model|reasoning_effort)|memories\.(?:extract_model|consolidation_model))$/.test(key)) return true;
+    }
+  }
+  return /\bcodex(?:\.cmd)?\b[^\r\n]*(?:\s(?:-m|--model)\b|\s(?:-c|--config)(?:\s+|=)["']?(?:model|model_reasoning_effort)\s*=)/i.test(text);
+};
 const jobBlock = (workflow, job) => {
   const lines = workflow.split("\n"), jobsIndex = lines.findIndex((line) => /^(\s*)jobs:\s*$/.test(line));
   if (jobsIndex < 0) return "";
@@ -245,6 +263,7 @@ export const scanRepository = (root) => {
 
     const raw = readFileSync(resolve(root, path), "utf8"), executable = stripComments(normalizePolicyText(raw), extension);
     for (const code of controlPlaneViolations(path, executable)) fail(code, path);
+    if (codexModelSelectionPinned(path, executable)) fail("CODEX_MODEL_SELECTION_PINNED", path);
     if (governanceJson) {
       if (hasMachineAbsolutePath(executable, extension))
         fail("MACHINE_ABSOLUTE_PATH", path);

@@ -35,6 +35,48 @@ const expectPass = (name, files) => {
 };
 
 const matrix = [
+  expectPass("codex-config-without-model-selection", {
+    ".codex/config.toml": 'approval_policy = "on-request"\n',
+  }),
+  expectFailure("codex-top-level-model", "CODEX_MODEL_SELECTION_PINNED", {
+    ".codex/config.toml": 'model = "synthetic-model"\n',
+  }),
+  expectFailure("codex-top-level-reasoning", "CODEX_MODEL_SELECTION_PINNED", {
+    ".codex/config.toml": 'model_reasoning_effort = "high"\n',
+  }),
+  expectFailure("codex-new-thread-model", "CODEX_MODEL_SELECTION_PINNED", {
+    ".codex/config.toml": '[models.new_thread]\nmodel = "synthetic-model"\n',
+  }),
+  expectFailure("codex-new-thread-reasoning", "CODEX_MODEL_SELECTION_PINNED", {
+    ".codex/config.toml": '[models.new_thread]\nmodel_reasoning_effort = "high"\n',
+  }),
+  expectFailure("codex-subagent-model", "CODEX_MODEL_SELECTION_PINNED", {
+    ".codex/config.toml": '[agents]\ndefault_subagent_model = "synthetic-model"\n',
+  }),
+  expectFailure("codex-subagent-reasoning", "CODEX_MODEL_SELECTION_PINNED", {
+    ".codex/config.toml": '[agents]\ndefault_subagent_reasoning_effort = "high"\n',
+  }),
+  expectFailure("codex-memory-extract-model", "CODEX_MODEL_SELECTION_PINNED", {
+    ".codex/config.toml": '[memories]\nextract_model = "synthetic-model"\n',
+  }),
+  expectFailure("codex-memory-consolidation-model", "CODEX_MODEL_SELECTION_PINNED", {
+    ".codex/config.toml": '[memories]\nconsolidation_model = "synthetic-model"\n',
+  }),
+  expectFailure("command-short-model", "CODEX_MODEL_SELECTION_PINNED", {
+    "package.json": join('{"scripts":{"co', 'dex":"co', 'dex -m synthetic-model"}}\n'),
+  }),
+  expectFailure("command-long-model", "CODEX_MODEL_SELECTION_PINNED", {
+    "package.json": join('{"scripts":{"co', 'dex":"co', 'dex --model synthetic-model"}}\n'),
+  }),
+  expectFailure("command-config-model", "CODEX_MODEL_SELECTION_PINNED", {
+    "package.json": join('{"scripts":{"co', 'dex":"co', 'dex -c model=\\"synthetic-model\\""}}\n'),
+  }),
+  expectPass("codex-model-documentation", {
+    "docs/engineering/model.md": "GPT-5.6 may be selected by the Owner.\n",
+  }),
+  expectPass("codex-model-source-comment", {
+    "tools/safe.mjs": "// Codex model choice belongs to the Owner.\nexport const safe = true;\n",
+  }),
   expectFailure("hardcoded-password", "HARDCODED_PASSWORD", {
     "tools/create-admin.mjs": join('const DEFAULT_', 'PASS', 'WORD = process.env.ADMIN_', 'PASS', 'WORD || "synthetic-invalid-only"; client.auth.admin.create', 'User({ email, pass', 'word: DEFAULT_', 'PASS', 'WORD });\n'),
   }),
