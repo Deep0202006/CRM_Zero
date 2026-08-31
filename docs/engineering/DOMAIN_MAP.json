@@ -903,6 +903,8 @@
         "scripts/engineering",
         "scripts/quality",
         "docs/engineering",
+        "docs/contracts/engineering-os.md",
+        "docs/contracts/release-automation.md",
         ".github",
         ".codex"
       ],
@@ -910,6 +912,8 @@
         "scripts/engineering/**",
         "scripts/quality/**",
         "docs/engineering/**",
+        "docs/contracts/engineering-os.md",
+        "docs/contracts/release-automation.md",
         ".github/**",
         ".codex/**"
       ],
@@ -918,7 +922,10 @@
         "scripts/quality"
       ],
       "serverBoundaries": [],
-      "contractPaths": [],
+      "contractPaths": [
+        "docs/contracts/engineering-os.md",
+        "docs/contracts/release-automation.md"
+      ],
       "authorityRefs": [],
       "capabilityRefs": [],
       "lessonRefs": [

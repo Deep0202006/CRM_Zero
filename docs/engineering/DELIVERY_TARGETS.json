@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "repo": "Deep0202006/CRM_Zero",
+  "base": "main",
+  "team": "zero-data",
+  "teamId": "team_La6Dho38pKuEQEQS2UQMKq1N",
+  "project": "zero_crm",
+  "projectId": "prj_VmSH2jViyB6pHVfvicpEMVEqXTPc",
+  "productionBranch": "main",
+  "requiredJobs": ["preflight", "unit-build", "receivables-postgres", "e2e", "attest-evidence", "verify"]
+}

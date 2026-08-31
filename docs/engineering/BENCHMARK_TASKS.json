@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    {"id":"calls","task":"Calls visibility must use employee identity and server confirmation","domains":["calls"],"primary":["src/lib/callLogs/","src/app/call-logs/","src/app/api/call-logs/"],"tests":["call"]},
+    {"id":"attendance","task":"Attendance offline confirmation and IST business date","domains":["attendance"],"primary":["src/lib/attendance/","src/app/attendance/","src/app/api/attendance/"],"tests":["attendance"]},
+    {"id":"field-visits","task":"Field Visits evidence confirmation and media lifecycle","domains":["field-visits"],"primary":["src/lib/fieldVisits/","src/app/visits/","src/app/api/field-visits/"],"tests":["field-visits","visit"]},
+    {"id":"mapping","task":"Mapping attribution logged completed must preserve identity","domains":["mappings"],"primary":["src/lib/mappings/","src/app/mappings/"],"tests":["mappings"]},
+    {"id":"pipeline","task":"Pipeline retry idempotency and stale write protection","domains":["pipeline"],"primary":["src/lib/pipeline/","src/app/pipeline/","src/app/api/pipeline/"],"tests":["pipeline"]},
+    {"id":"receivables","task":"Receivables exact payment derived financial state","domains":["receivables"],"primary":["src/lib/receivables/","src/app/receivables/"],"tests":["receivables"]},
+    {"id":"distributor-renewal","task":"Distributor renewal reminder authority","domains":["distributor-status","renewals"],"primary":["src/lib/distributors/","src/app/distributors/","src/app/api/distributors/","src/app/admin/payments/renewals/"],"tests":["distributor","renewal"]},
+    {"id":"erp","task":"ERP assignment distributor canonical identity","domains":["distributor-status","erp"],"primary":["src/lib/distributors/","src/lib/erp/","src/app/api/erp","src/app/api/distributors/","src/app/api/admin/visits/erp"],"tests":["distributor","erp"]},
+    {"id":"imports","task":"Spreadsheet import must be atomic and preserve unknown data","domains":["imports"],"primary":["src/lib/import","src/components/","src/app/api/distributors/import","src/app/api/distributors/master-import"],"tests":["import"]},
+    {"id":"team-kpi","task":"Team KPI reporting authority","domains":["team-kpi"],"primary":["src/lib/teamKpi/","src/app/manager/kpi/","src/app/api/team-kpi/"],"tests":["teamKpi","employees"]},
+    {"id":"shared-ui","task":"Shared UI layout navigation presentation","domains":["shared-ui"],"primary":["src/components/","src/app/"],"tests":["component","layout"]},
+    {"id":"delivery","task":"GitHub Vercel delivery exact head preview","domains":["engineering-control"],"primary":["scripts/engineering/",".github/workflows/",".codex/"],"tests":["kernel.test","repository-safety.test","context.test"]},
+    {"id":"typo","task":"recevables exact paymnt","expected":"UNKNOWN_OR_AMBIGUOUS"},
+    {"id":"unknown","task":"Add lunar telemetry quaternion allocator","expected":"UNKNOWN_OR_AMBIGUOUS"},
+    {"id":"ambiguity","task":"calls versus attendance","expected":"SCOPE_AMBIGUOUS"},
+    {"id":"dangerous-write","task":"git push origin HEAD:main --force","expected":"DANGEROUS_WRITE"},
+    {"id":"shared-authority","task":"Distributor renewal external ERP partner projection","domains":["distributor-status","renewals","erp-partner"],"primary":["src/lib/distributors/","src/app/api/erp-partner/","src/app/api/distributors/","src/app/admin/payments/renewals/"],"tests":["distributor","renewal","erp"]},
+    {"id":"cross-domain","task":"Receivables and distributor status payment import writer readers","domains":["receivables","distributor-status"],"primary":["src/lib/receivables/","src/lib/distributors/","src/app/api/receivables/","src/app/api/distributors/"],"tests":["receivables","distributor"]}
+  ],
+  "history": {"prs":[90,83,80,79]}
+}

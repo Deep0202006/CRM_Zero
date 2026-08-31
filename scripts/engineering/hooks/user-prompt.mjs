@@ -1,6 +1,12 @@
 import { resolveContext } from "../context.mjs";
+import { mintOwnerPermit } from "../release-controller.mjs";
 import { beginExternalTask, readHookInput, requireContinuation, updateState } from "./state-store.mjs";
 const input = await readHookInput(), sessionId = input.session_id ?? "unknown", prompt = input.prompt ?? input.user_prompt ?? "";
+if (/^OWNER_RELEASE_APPROVED\|/.test(prompt)) {
+  const permit = mintOwnerPermit({ line: prompt, sessionId });
+  console.log(JSON.stringify({ hookSpecificOutput: { hookEventName: "UserPromptSubmit", additionalContext: JSON.stringify({ ownerReleasePermit: permit, completionClaim: false }) } }));
+  process.exit(0);
+}
 const continuation = /^KERNEL_CONTINUE\|taskId=([a-f0-9-]+)\b/i.exec(prompt);
 const expansion = /^KERNEL_SCOPE_EXPAND\|taskId=([a-f0-9-]+)\|path=([^|\s]+)\|task=(.+)$/i.exec(prompt);
 let state;

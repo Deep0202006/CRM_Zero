@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { buildSourceIndex } from "./source-index.mjs";
 import { resolveContext, revalidateCandidate } from "./context.mjs";
 
-const index = buildSourceIndex({ writeCache: false }), relationshipKinds = new Set(["IMPORT", "REVERSE_IMPORT", "RELATED_TEST"]), matrix = [];
+const index = buildSourceIndex({ writeCache: false }), relationshipKinds = new Set(["IMPORT", "REVERSE_IMPORT", "RELATED_TEST", "CALL", "CALLED_BY"]), matrix = [];
 const golden = [
   ["calls visibility employee server confirmation", ["calls"], "R2", ["call_history"], "src/app/api/call-logs/confirm/route.ts"],
   ["attendance offline confirmation", ["attendance"], "R2", ["attendance"], "src/app/api/attendance/confirm/route.ts"],
@@ -37,6 +37,8 @@ assert.equal(sameDomainTie.status, "RESOLVED");
 assert(sameDomainTie.candidatePaths.filter((candidate) => candidate.score === sameDomainTie.candidatePaths[0].score).length >= 1);
 const conflict = resolveContext({ task: "receivable renewal payment authority conflict", index });
 assert.equal(conflict.status, "SCOPE_AMBIGUOUS"); assert(conflict.unresolved.includes("CONFLICTING_AUTHORITIES")); assert.deepEqual(conflict.requiredOpenPaths, []);
+const crossDomain = resolveContext({ task: "Receivables and distributor status payment import writer readers", index });
+assert.equal(crossDomain.status, "RESOLVED"); assert(crossDomain.domains.includes("receivables")); assert(crossDomain.domains.includes("distributor-status"));
 for (const task of ["unmapped imaginary subsystem", "attendnce offlne confirmiton"]) {
   const unknown = resolveContext({ task, index });
   assert.equal(unknown.status, "UNKNOWN"); assert.deepEqual(unknown.requiredOpenPaths, []);
@@ -46,5 +48,8 @@ assert.equal(exact.status, "RESOLVED"); assert(exact.candidatePaths[0].matchedBy
 assert.equal(revalidateCandidate({ ...exact.candidatePaths[0], contentHash: "f".repeat(64) }), false);
 assert(index.files.some((file) => file.imports.length && file.reverseImports.length), "import graph missing");
 assert(index.files.some((file) => file.relatedTests.length || file.testedSources.length), "test relationships missing");
+assert(index.files.every((file) => file.gitBlobSha && file.contentHash && file.byteSize >= 0 && file.lineCount >= 0 && file.language && file.lastChangedCommit), "tracked manifest incomplete");
+assert(index.files.some((file) => file.symbols.some((symbol) => symbol.startLine > 0 && symbol.endLine >= symbol.startLine)), "line-addressable symbols missing");
+assert(index.edges.some((edge) => edge.currentPath && edge.currentHash && edge.reason && edge.evidenceType), "edge provenance missing");
 matrix.push({ task: "cross-domain conflict", status: conflict.status }, { task: "hash drift", status: "INVALIDATED" }, { task: "graph unavailable", status: exact.status });
 console.log(JSON.stringify({ code: "CONTEXT_TEST_MATRIX_PASS", relationshipCases, matrix }));
