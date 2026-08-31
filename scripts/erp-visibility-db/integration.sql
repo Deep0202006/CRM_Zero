@@ -304,7 +304,7 @@ begin
     distributor_id,erp_id,distributor_name,distributor_reference,identity_key,assigned_to,
     installation_status,training_status,mapping_status,activity_status,billing_status,renewal_date,created_by
   ) values(md5('erp-kpi-unscoped')::uuid,v_zoho,'Unscoped ERP KPI','ERP-KPI-UNSCOPED','code:erp-kpi-unscoped',v_employee,
-    'pending','pending','pending','active','billed',v_today+1,v_actor);
+    'done','done','pending','active','billed',v_today+1,v_actor);
 
   select public.set_erp_partner_scopes_v1(v_actor,v_partner,jsonb_build_array(v_marg,v_tally)) into v_result;
   select public.erp_partner_distributors_v2(v_partner,null,null,1,50,null,null,null,null,null,null) into v_baseline;
