@@ -292,9 +292,9 @@ begin
   )
   select md5('erp-kpi-'||i)::uuid,v_marg,'ERP KPI '||lpad(i::text,2,'0'),'ERP-KPI-'||i,'code:erp-kpi-'||i,v_employee,
     case when i<=10 then 'pending' else 'done' end,
-    case when i between 11 and 20 then 'pending' else 'done' end,
-    case when i%2=0 then 'done' else 'pending' end,
-    case when i<=55 then 'active' else 'inactive' end,
+    case when i<=20 then 'pending' else 'done' end,
+    case when i>20 and i%2=0 then 'done' else 'pending' end,
+    case when i<=20 then 'not_applicable' when i<=55 then 'active' else 'inactive' end,
     case when i<=15 then 'not_billed' else 'billed' end,
     case when i<=7 then 'paid' else null end,
     case when i<=5 then v_today+1 when i between 16 and 20 then v_today+1 when i between 21 and 25 then v_today-1 else v_today+10 end,
