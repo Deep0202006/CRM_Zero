@@ -246,9 +246,10 @@ try {
   ]) expectClass(text, expected, name);
 
   const ignoreRepo = temp("kernel-ignore-");
+  assert.deepEqual(gitEnvironmentFor(ignoreRepo, { PATH: "fixture", GIT_DIR: "hostile", GIT_CONFIG_COUNT: "1", GIT_AUTHOR_NAME: "hostile" }), { PATH: "fixture" }); matrix.state.push("disposable-git-environment-scrubbed");
   assert.equal(gitAt(ignoreRepo, "init", "-q", "-b", "main").status, 0); gitAt(ignoreRepo, "config", "user.email", "fixture@example.invalid"); gitAt(ignoreRepo, "config", "user.name", "Kernel Fixture");
   copyFileSync(resolve(root, ".gitignore"), resolve(ignoreRepo, ".gitignore")); writeFileSync(resolve(ignoreRepo, "baseline.txt"), "baseline\n");
-  assert.equal(gitAt(ignoreRepo, "add", ".gitignore", "baseline.txt").status, 0); assert.equal(gitAt(ignoreRepo, "commit", "-q", "-m", "baseline").status, 0);
+  assert.equal(gitAt(ignoreRepo, "add", ".gitignore", "baseline.txt").status, 0); assert.equal(gitAt(ignoreRepo, "-c", "user.email=fixture@example.invalid", "-c", "user.name=Kernel Fixture", "-c", "commit.gpgsign=false", "commit", "-q", "-m", "baseline").status, 0);
   const ignoreContents = readFileSync(resolve(root, ".gitignore"), "utf8"), workflowContents = readFileSync(resolve(root, ".github/workflows/product-verification.yml"), "utf8"), ignoredBaseline = dirtyFingerprint(ignoreRepo);
   const statusIsClean = () => assert.equal(gitAt(ignoreRepo, "status", "--porcelain").stdout, "");
   const writeIgnoreFixture = (path, contents) => { const absolute = resolve(ignoreRepo, path); mkdirSync(dirname(absolute), { recursive: true }); writeFileSync(absolute, contents); return absolute; };

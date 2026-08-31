@@ -6,7 +6,7 @@ import { dirname, resolve } from "node:path";
 export const root = resolve(import.meta.dirname, "../..");
 export const sha256 = (value) =>
   createHash("sha256").update(value).digest("hex");
-export const gitEnvironmentFor = (cwd) => resolve(cwd) === root ? process.env : Object.fromEntries(Object.entries(process.env).filter(([key]) => !/^(?:GIT_DIR|GIT_WORK_TREE|GIT_INDEX_FILE|GIT_COMMON_DIR|GIT_OBJECT_DIRECTORY|GIT_ALTERNATE_OBJECT_DIRECTORIES)$/i.test(key)));
+export const gitEnvironmentFor = (cwd, source = process.env) => resolve(cwd) === root ? source : Object.fromEntries(Object.entries(source).filter(([key]) => !/^GIT_/i.test(key)));
 export const git = (...args) =>
   execFileSync("git", args, { cwd: root, encoding: "utf8", maxBuffer: 64 << 20 }).trim();
 export const run = (file, args, options = {}) => {
