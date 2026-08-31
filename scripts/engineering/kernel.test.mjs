@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, statSync, unlinkSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmdirSync, rmSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -46,7 +46,9 @@ const restorePreservedEvidence = () => {
   preservedEvidence.clear();
 };
 const restoreDirectoryExistence = (directory, snapshot) => {
-  if (!snapshot.exists && existsSync(directory) && readdirSync(directory).length === 0) rmSync(directory);
+  if (snapshot.exists || !existsSync(directory)) return;
+  const prune = (current) => { for (const name of readdirSync(current)) { const path = resolve(current, name); if (statSync(path).isDirectory()) prune(path); } if (readdirSync(current).length === 0) rmdirSync(current); };
+  prune(directory);
 };
 const withEnvironment = async (environment, work) => {
   const previous = new Map(Object.keys(environment).map((key) => [key, process.env[key]]));
@@ -81,6 +83,7 @@ const operationalDirectory = sessionsDirectory(), operationalBefore = snapshotDi
 const productBefore = snapshotDirectory(resolve(root, "src")), migrationsBefore = snapshotDirectory(resolve(root, "supabase/migrations"));
 let isolatedGit = "", isolatedRemoved = false;
 try {
+  const emptyTree = temp("kernel-empty-tree-"); mkdirSync(resolve(emptyTree, "a/b"), { recursive: true }); restoreDirectoryExistence(emptyTree, { exists: false }); assert(!existsSync(emptyTree)); matrix.state.push("empty-evidence-tree-restored");
   const baseSha = git("rev-parse", "origin/main"), currentHead = git("rev-parse", "HEAD"), currentTree = git("rev-parse", "HEAD^{tree}");
   isolatedGit = temp("kernel-state-git-");
   assert.equal(command(root, "git", ["clone", "-q", "--bare", "--shared", root, isolatedGit]).status, 0);
