@@ -12,7 +12,7 @@ const includesWords = (taskWords, value) => {
 };
 const roleFor = (path, reason) => /(?:^|\/)(?:__tests__|e2e)(?:\/|$)|\.(?:test|spec)\./i.test(path) ? "test" : /^docs\/contracts\//.test(path) ? "contract" : /^src\/app\/api\//.test(path) ? "server" : reason === "REVERSE_IMPORT" ? "reader" : "implementation";
 const domainRoleFor = (path, reason) => /(?:^|\/)(?:__tests__|e2e)(?:\/|$)|\.(?:test|spec)\./i.test(path) ? "TEST" : /^docs\/contracts\//.test(path) ? "CONTRACT" : reason === "REVERSE_IMPORT" ? "READER" : reason === "IMPORT" ? "CALLER" : /^src\/app\/api\//.test(path) ? "WRITER_CANDIDATE" : reason === "SURFACE_PATH" ? "PROJECTION" : "CALLER";
-const relationshipKinds = new Set(["IMPORT", "REVERSE_IMPORT", "RELATED_TEST"]);
+const relationshipKinds = new Set(["IMPORT", "REVERSE_IMPORT", "RELATED_TEST", "CALL", "CALLED_BY"]);
 const graphifyTaskResults = new Map();
 export const queryGraphify = (task, index, options = {}) => {
   const fallback = (status) => ({ status, evidenceType: "FALLBACK", paths: [], grantsAuthority: false });
@@ -66,8 +66,7 @@ export const resolveContext = ({ task = "", exactPath, index } = {}) => {
     }
     return { domain, score };
   }).filter((item) => item.score > 0).sort((a, b) => b.score - a.score || a.domain.id.localeCompare(b.domain.id));
-  const topDomainScore = domainScores[0]?.score ?? 0;
-  const selected = domainScores.filter((item) => topDomainScore - item.score < 0.06).map((item) => item.domain);
+  const selected = domainScores.filter((item) => item.score >= 0.9).map((item) => item.domain);
   const evidence = new Map();
   const add = (file, score, kind, value, role, evidenceType = "EXTRACTED", reportedConfidence = score) => {
     if (!file) return;
@@ -100,6 +99,8 @@ export const resolveContext = ({ task = "", exactPath, index } = {}) => {
     for (const path of file?.imports ?? []) add(index.files.find((candidate) => candidate.path === path), 0.8, "IMPORT", seed.path);
     for (const path of file?.relatedTests ?? []) add(index.files.find((candidate) => candidate.path === path), 0.78, "RELATED_TEST", seed.path, "test");
     for (const path of file?.testedSources ?? []) add(index.files.find((candidate) => candidate.path === path), 0.78, "RELATED_TEST", seed.path);
+    for (const caller of file?.calledBy ?? []) add(index.files.find((candidate) => candidate.path === caller.path), 0.86, "CALLED_BY", `${seed.path}:${caller.symbol}`, "reader");
+    for (const call of file?.calls ?? []) for (const target of index.files.filter((candidate) => candidate.symbols?.some((symbol) => symbol.name === call.name))) add(target, 0.82, "CALL", `${seed.path}:${call.name}`);
   }
   const graphifyEvidence = suppliedIndex ? { status: "TEST_INDEX_FALLBACK", evidenceType: "FALLBACK", paths: [], grantsAuthority: false } : queryGraphify(task, index);
   for (const structural of graphifyEvidence.paths) add({ ...structural, imports: [], reverseImports: [], relatedTests: [], testedSources: [] }, 0.74, "GRAPHIFY", task, undefined, "INFERRED", null);
@@ -114,7 +115,7 @@ export const resolveContext = ({ task = "", exactPath, index } = {}) => {
   for (const domain of selected) take(ordered.find((candidate) => domainForPath(domain, candidate.path)));
   for (const candidate of ordered) take(candidate);
   bounded.sort((a, b) => b.score - a.score || a.path.localeCompare(b.path));
-  const conflicting = selected.length > 1 && /\b(?:conflict|versus|either|vs)\b/i.test(task) && domainScores.filter((item) => topDomainScore - item.score < 0.06).length > 1;
+  const conflicting = selected.length > 1 && /\b(?:conflict|versus|either|vs)\b/i.test(task) && domainScores.filter((item) => item.score >= 0.9).length > 1;
   const lexicalOnly = ordered.length > 0 && ordered.every((candidate) => candidate.matchedBy.every((match) => match.kind === "FILENAME"));
   const relationshipOnly = ordered.length > 0 && ordered.every((candidate) => candidate.matchedBy.every((match) => relationshipKinds.has(match.kind)));
   const status = !selected.length || !ordered.length ? "UNKNOWN" : conflicting || lexicalOnly || relationshipOnly || ordered[0].score < 0.68 ? "SCOPE_AMBIGUOUS" : "RESOLVED";

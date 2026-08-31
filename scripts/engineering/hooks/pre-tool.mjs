@@ -3,6 +3,8 @@ import { isAbsolute, relative, resolve } from "node:path";
 import { classifyCommand, CommandClass, parseWorktreeAddTokens } from "../command-policy.mjs";
 import { revalidateCandidate } from "../context.mjs";
 import { loadState, readHookInput, root } from "./state-store.mjs";
+import { findActiveTask, taskDirectory } from "../task-state.mjs";
+import { sha256 } from "../kernel-lib.mjs";
 
 const input = await readHookInput(), sessionId = input.session_id ?? "unknown", state = loadState(sessionId);
 const tool = input.tool_name ?? "", payload = input.tool_input ?? {}, serialized = JSON.stringify(payload);
@@ -24,12 +26,16 @@ const requestedPaths = [...serialized.replaceAll("\\", "/").matchAll(/(?:^|[^A-Z
 const candidates = new Map((state.resolution?.candidatePaths ?? []).map((candidate) => [candidate.path, candidate]));
 const metadataOnly = ["GIT_COMMIT", "GIT_FEATURE_PUSH", "GIT_FETCH_METADATA", "GITHUB_PR_CREATE"].includes(classification?.reason);
 const outsideScope = mutating && !metadataOnly && !worktreeAddAuthorized && (!requestedPaths.length || requestedPaths.some((path) => !candidates.has(path) || !revalidateCandidate(candidates.get(path))));
+const activeTask = findActiveTask(), taskPlan = activeTask ? JSON.parse(readFileSync(resolve(taskDirectory(activeTask.taskId), "plan.json"), "utf8")) : null, taskScope = new Map((taskPlan?.writeScope ?? []).map((item) => [item.path, item]));
+const taskContext = activeTask ? JSON.parse(readFileSync(resolve(taskDirectory(activeTask.taskId), "context.json"), "utf8")) : null, taskControlAuthorized = activeTask?.status === "IMPLEMENTATION_READY" && taskContext?.risk === "R3" && taskContext?.domains?.includes("engineering-control");
+const outsideTaskScope = activeTask && mutating && !metadataOnly && (!requestedPaths.length || requestedPaths.some((path) => { const scoped = taskScope.get(path), absolute = resolve(root, path); if (!scoped) return true; if (scoped.contentHash === "ABSENT") return existsSync(absolute); return !existsSync(absolute) || sha256(readFileSync(absolute)) !== scoped.contentHash; }));
 
 let conflict = "";
 if (classification?.classification === CommandClass.PROHIBITED || classification?.classification === CommandClass.UNKNOWN_MUTATION_SHAPE) conflict = `COMMAND_POLICY_${classification.reason}`;
 else if (migration) conflict = "IMMUTABLE_MIGRATION";
 else if (credentialPath) conflict = "CREDENTIAL_PATH";
-else if (mutating && controlEdit && !controlAuthorized) conflict = "CONTROL_SCOPE";
+else if (mutating && controlEdit && !controlAuthorized && !taskControlAuthorized) conflict = "CONTROL_SCOPE";
 else if (worktreeRequest && !worktreeAddAuthorized) conflict = "WORKTREE_SCOPE";
-else if (mutating && outsideScope) conflict = "SCOPE_OR_HASH";
+else if (outsideTaskScope) conflict = "TASK_SCOPE_OR_HASH";
+else if (!activeTask && mutating && outsideScope) conflict = "SCOPE_OR_HASH";
 if (conflict) console.log(JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: `SAFETY_CONFLICT:${conflict}` } }));

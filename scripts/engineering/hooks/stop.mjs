@@ -1,6 +1,8 @@
 import { resolve } from "node:path";
 import { loadState, readHookInput, repositoryIdentity, root, updateState } from "./state-store.mjs";
 import { run, sha256 } from "../kernel-lib.mjs";
+import { readFileSync } from "node:fs";
+import { findActiveTask, taskDirectory } from "../task-state.mjs";
 
 export const protectedRequiredChecks = Object.freeze(["preflight", "verify", "receivables-postgres", "e2e"]);
 export const requiredRemoteChecks = Object.freeze(["preflight", "unit-build", "receivables-postgres", "e2e", "attest-evidence", "verify"]);
@@ -59,6 +61,8 @@ export const evaluateStopState = ({ state, cwd = root, remote = () => remoteGate
   if (current.dirtyFingerprint !== sha256("")) return { status: "WORKTREE_DIRTY_COMMIT_REQUIRED" };
   return remote();
 };
+export const previewGate = ({ head, cwd = root, vercel = (args) => run("vercel", args, { cwd }) } = {}) => { const result = vercel(["list", "zero_crm", "--scope", "zero-data", "--meta", `githubCommitSha=${head}`, "--json", "--limit", "20"]); if (result.status !== 0) return { status: /auth|login|network|connect|permission|timeout/i.test(`${result.stderr} ${result.error ?? ""}`) ? "EXTERNAL_DEPENDENCY" : "REMOTE_FAILED", reason: "PREVIEW_QUERY_FAILED" }; let rows; try { const parsed = JSON.parse(result.stdout); rows = Array.isArray(parsed) ? parsed : parsed.deployments; } catch { return { status: "REMOTE_FAILED", reason: "PREVIEW_OUTPUT_INVALID" }; } const preview = rows?.find((item) => (item.uid || item.id) && item.url && ["READY", "ready"].includes(item.state ?? item.status) && (item.target ?? item.environment) !== "production" && (item.meta?.githubCommitSha ?? item.gitSource?.sha ?? head) === head); return preview ? { status: "READY_TO_END", preview: { id: preview.uid ?? preview.id, url: String(preview.url).startsWith("http") ? preview.url : `https://${preview.url}`, head } } : { status: "REMOTE_PENDING", reason: "EXACT_HEAD_PREVIEW_NOT_READY" }; };
+export const evaluateDurableTaskStop = (task, { remote = () => remoteGate({ cwd: root }), preview = (head) => previewGate({ head, cwd: root }) } = {}) => { if (!task) return null; if (task.inspectOnly && task.status === "INSPECTION_READY") return { status: "READY_TO_END", reason: "INSPECTION_COMPLETE" }; const directory = taskDirectory(task.taskId), read = (name) => JSON.parse(readFileSync(resolve(directory, name), "utf8")), acceptance = read("acceptance.json"), plan = read("plan.json"), proof = read("proof.json"), current = repositoryIdentity(root); if (task.headSha !== current.headSha || task.treeSha !== current.treeSha) return { status: "IMPLEMENTATION_IN_PROGRESS", reason: "TASK_HEAD_REFRESH_REQUIRED" }; if (!acceptance.items?.length || acceptance.items.some((item) => item.status !== "PASS" || !item.evidence)) return { status: "IMPLEMENTATION_IN_PROGRESS", reason: "ACCEPTANCE_EVIDENCE_REQUIRED" }; if (!plan.rootCause || plan.rootCause === "PENDING" || !plan.writeScope?.length) return { status: "SCOPE_UNRESOLVED", reason: "ROOT_CAUSE_WRITE_SCOPE_REQUIRED" }; if (!proof.focusedRuns?.length || proof.focusedRuns.some((item) => item.status !== "PASS" || item.head !== task.headSha)) return { status: "IMPLEMENTATION_IN_PROGRESS", reason: "CURRENT_FOCUSED_PROOF_REQUIRED" }; if (current.dirtyFingerprint !== sha256("")) return { status: "WORKTREE_DIRTY_COMMIT_REQUIRED" }; const github = remote(); if (github.status !== "READY_TO_END") return github; const vercel = preview(current.headSha); return vercel.status === "READY_TO_END" ? { status: "READY_TO_END", reason: "EXACT_HEAD_GITHUB_AND_PREVIEW_READY", pr: github.pr, preview: vercel.preview } : vercel; };
 
 const stallEligible = new Set(["SCOPE_UNRESOLVED", "IMPLEMENTATION_IN_PROGRESS", "WORKTREE_DIRTY_COMMIT_REQUIRED"]);
 export const applyStallPolicy = (state, result) => {
@@ -72,7 +76,7 @@ export const applyStallPolicy = (state, result) => {
 if (process.argv[1] && resolve(process.argv[1]) === resolve(import.meta.filename)) {
   const input = await readHookInput(), sessionId = input.session_id ?? "unknown", state = loadState(sessionId);
   let result;
-  try { result = evaluateStopState({ state }); }
+  try { result = evaluateDurableTaskStop(findActiveTask()) ?? evaluateStopState({ state }); }
   catch (error) { result = { status: "SAFETY_CONFLICT", reason: error.message }; }
   let decision;
   updateState(sessionId, (current) => { decision = applyStallPolicy(current, result); return { ...current, ...decision.state }; });

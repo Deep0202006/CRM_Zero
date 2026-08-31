@@ -63,6 +63,7 @@ const safeNpmScripts = new Set([
   "quality:repository", "quality:knowledge", "quality:invariants", "kernel:doctor", "kernel:test", "kernel:status",
   "context:resolve", "context:explain", "context:test", "registry:index", "impact:compile", "proof:plan", "proof:run",
   "proof:certify-ci", "regression:test", "typecheck", "lint", "build", "test", "handover:check", "graphify:verify",
+  "crm:task", "crm:benchmark", "crm:release", "crm:workspace",
 ]);
 const databaseClients = new Set(["psql", "pgcli", "mysql", "sqlcmd"]);
 const infrastructure = new Set(["vercel", "terraform", "docker", "kubectl", "aws", "az", "gcloud", "cloudflare", "supabase"]);

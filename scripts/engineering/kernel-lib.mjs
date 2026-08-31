@@ -6,14 +6,17 @@ import { dirname, resolve } from "node:path";
 export const root = resolve(import.meta.dirname, "../..");
 export const sha256 = (value) =>
   createHash("sha256").update(value).digest("hex");
+export const gitNullConfig = process.platform === "win32" ? "NUL" : `${String.fromCharCode(47)}dev${String.fromCharCode(47)}null`;
+export const gitEnvironmentFor = (cwd, source = process.env) => resolve(cwd) === root ? source : { ...Object.fromEntries(Object.entries(source).filter(([key]) => !/^GIT_/i.test(key))), GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: gitNullConfig };
 export const git = (...args) =>
   execFileSync("git", args, { cwd: root, encoding: "utf8", maxBuffer: 64 << 20 }).trim();
 export const run = (file, args, options = {}) => {
   const windowsNodeCli = process.platform === "win32" && ["npm", "npx"].includes(file) ? resolve(dirname(process.execPath), "node_modules/npm/bin", `${file}-cli.js`) : null;
+  const cwd = options.cwd ?? root;
   return spawnSync(windowsNodeCli ? process.execPath : file, windowsNodeCli ? [windowsNodeCli, ...args] : args, {
-    cwd: options.cwd ?? root,
+    cwd,
     encoding: "utf8",
-    env: options.env ?? process.env,
+    env: options.env ?? (file === "git" ? gitEnvironmentFor(cwd) : process.env),
     stdio: options.inherit ? "inherit" : "pipe",
     maxBuffer: 64 << 20,
   });
@@ -28,7 +31,7 @@ export const parseArgs = (args = process.argv.slice(2)) => ({
   },
 });
 export const dirtyFingerprint = (cwd = root) => {
-  const status = execFileSync("git", ["status", "--porcelain=v1", "-z", "--untracked-files=all"], { cwd });
+  const status = execFileSync("git", ["status", "--porcelain=v1", "-z", "--untracked-files=all"], { cwd, env: gitEnvironmentFor(cwd) });
   const digest = createHash("sha256").update(status);
   const entries = status.toString("utf8").split("\0").filter(Boolean);
   for (let index = 0; index < entries.length; index += 1) {
@@ -40,9 +43,9 @@ export const dirtyFingerprint = (cwd = root) => {
   return digest.digest("hex");
 };
 export const repositoryIdentity = (cwd = root, base = "origin/main") => ({
-  headSha: execFileSync("git", ["rev-parse", "HEAD"], { cwd, encoding: "utf8" }).trim(),
-  treeSha: execFileSync("git", ["rev-parse", "HEAD^{tree}"], { cwd, encoding: "utf8" }).trim(),
-  baseSha: execFileSync("git", ["rev-parse", base], { cwd, encoding: "utf8" }).trim(),
+  headSha: execFileSync("git", ["rev-parse", "HEAD"], { cwd, encoding: "utf8", env: gitEnvironmentFor(cwd) }).trim(),
+  treeSha: execFileSync("git", ["rev-parse", "HEAD^{tree}"], { cwd, encoding: "utf8", env: gitEnvironmentFor(cwd) }).trim(),
+  baseSha: execFileSync("git", ["rev-parse", base], { cwd, encoding: "utf8", env: gitEnvironmentFor(cwd) }).trim(),
   dirtyFingerprint: dirtyFingerprint(cwd),
 });
 export const safeEnvironment = (source = process.env) => {
