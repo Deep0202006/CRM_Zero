@@ -90,6 +90,8 @@ try {
   const isolatedEnvironment = { GIT_DIR: isolatedGit, GIT_WORK_TREE: root };
   await withEnvironment(isolatedEnvironment, async () => {
     assert.equal(repositoryIdentity().headSha, currentHead);
+    const isolatedRegistry = command(root, process.execPath, ["scripts/engineering/registry-index.mjs"], isolatedEnvironment);
+    assert.equal(isolatedRegistry.status, 0, isolatedRegistry.stderr); assert.match(isolatedRegistry.stdout, /"nodes":/); matrix.state.push("registry-index-disposable-git");
     const session = `kernel-test-${randomUUID()}`, first = beginExternalTask(session, "first external task");
     compareAndSwap(session, first.revision, { ...first, evidence: [{ proofId: "old" }], failureSignatures: ["old"], resolution: { status: "RESOLVED" }, progressSignature: "old" });
     const second = beginExternalTask(session, "second external task");
