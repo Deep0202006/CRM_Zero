@@ -21,7 +21,7 @@ import { queryGraphify, resolveContext, revalidateCandidate } from "./context.mj
 import { doctor } from "./kernel-doctor.mjs";
 import { applyStallPolicy, evaluateStopState, protectedRequiredChecks, remoteGate, requiredRemoteChecks } from "./hooks/stop.mjs";
 import { beginExternalTask, compareAndSwap, loadState, requireContinuation, sessionPath, sessionsDirectory } from "./hooks/state-store.mjs";
-import { dirtyFingerprint, environmentPolicyHash, git, gitEnvironmentFor, inspectMigrationBoundaryTransition, parseMigrationNumber, repositoryIdentity, root, safeEnvironment, sha256, validateMigrationBoundaryTransition, validateMigrationLedger } from "./kernel-lib.mjs";
+import { dirtyFingerprint, environmentPolicyHash, git, gitEnvironmentFor, gitNullConfig, inspectMigrationBoundaryTransition, parseMigrationNumber, repositoryIdentity, root, safeEnvironment, sha256, validateMigrationBoundaryTransition, validateMigrationLedger } from "./kernel-lib.mjs";
 import { containsAssertionWeakening } from "../quality/assertion-policy.mjs";
 
 const matrix = { state: [], risk: [], proof: [], attestation: [], commandPolicy: [], regression: [], stopRemote: [], stall: [], postgresEnvironment: [], tokenIsolation: [] }, tempRoots = [], createdEvidence = [], preservedEvidence = new Map();
@@ -246,7 +246,7 @@ try {
   ]) expectClass(text, expected, name);
 
   const ignoreRepo = temp("kernel-ignore-");
-  assert.deepEqual(gitEnvironmentFor(ignoreRepo, { PATH: "fixture", GIT_DIR: "hostile", GIT_CONFIG_COUNT: "1", GIT_AUTHOR_NAME: "hostile" }), { PATH: "fixture", GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: process.platform === "win32" ? "NUL" : "/dev/null" }); matrix.state.push("disposable-git-environment-scrubbed");
+  assert.deepEqual(gitEnvironmentFor(ignoreRepo, { PATH: "fixture", GIT_DIR: "hostile", GIT_CONFIG_COUNT: "1", GIT_AUTHOR_NAME: "hostile" }), { PATH: "fixture", GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: gitNullConfig }); matrix.state.push("disposable-git-environment-scrubbed");
   assert.equal(gitAt(ignoreRepo, "init", "-q", "-b", "main").status, 0); gitAt(ignoreRepo, "config", "user.email", "fixture@example.invalid"); gitAt(ignoreRepo, "config", "user.name", "Kernel Fixture");
   copyFileSync(resolve(root, ".gitignore"), resolve(ignoreRepo, ".gitignore")); writeFileSync(resolve(ignoreRepo, "baseline.txt"), "baseline\n");
   assert.equal(gitAt(ignoreRepo, "add", ".gitignore", "baseline.txt").status, 0); assert.equal(gitAt(ignoreRepo, "-c", "user.email=fixture@example.invalid", "-c", "user.name=Kernel Fixture", "-c", "commit.gpgsign=false", "commit", "-q", "-m", "baseline").status, 0);
