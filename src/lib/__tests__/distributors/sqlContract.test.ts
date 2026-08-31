@@ -105,7 +105,8 @@ describe("Distributor Status SQL/authority contract", () => {
   });
   test("migration 053 is a forward-only service projection with no business-row mutation", () => {
     const ledger = JSON.parse(fs.readFileSync(path.join(process.cwd(), "supabase/migrations/APPLIED_OWNER_MIGRATIONS.json"), "utf8"));
-    expect(ledger.immutableThrough).toBe(52);
+    expect(ledger.lastAppliedOwnerMigration).toBe(ledger.immutableThrough);
+    expect(ledger.immutableThrough).toBeGreaterThanOrEqual(53);
     expect(partnerStatusSql).not.toMatch(/\b(create\s+table|alter\s+table|insert\s+into|update\s+public|delete\s+from|truncate)\b/i);
     expect(partnerStatusSql).toMatch(/revoke all on function public\.erp_partner_distributors_v2[\s\S]+from public,anon,authenticated/i);
     expect(partnerStatusSql).toMatch(new RegExp(`grant execute on function public\\.erp_partner_distributors_v2[\\s\\S]+to ${["service", "role"].join("_")}`, "i"));
