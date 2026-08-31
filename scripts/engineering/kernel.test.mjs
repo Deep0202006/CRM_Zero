@@ -27,7 +27,7 @@ import { containsAssertionWeakening } from "../quality/assertion-policy.mjs";
 const matrix = { state: [], risk: [], proof: [], attestation: [], commandPolicy: [], regression: [], stopRemote: [], stall: [], postgresEnvironment: [], tokenIsolation: [] }, tempRoots = [], createdEvidence = [], preservedEvidence = new Map();
 const temp = (prefix) => { const path = mkdtempSync(resolve(tmpdir(), prefix)); tempRoots.push(path); return path; };
 const command = (cwd, file, args, env, input) => spawnSync(file, args, { cwd, encoding: "utf8", env: { ...process.env, ...env }, input });
-const gitAt = (cwd, ...args) => spawnSync("git", args, { cwd, encoding: "utf8", env: gitEnvironmentFor(cwd) });
+const gitAt = (cwd, ...args) => spawnSync("git", ["-c", "core.hooksPath=", ...args], { cwd, encoding: "utf8", env: gitEnvironmentFor(cwd) });
 const snapshotDirectory = (directory) => {
   if (!existsSync(directory)) return { exists: false, files: [] };
   const files = [];
@@ -246,7 +246,7 @@ try {
   ]) expectClass(text, expected, name);
 
   const ignoreRepo = temp("kernel-ignore-");
-  assert.deepEqual(gitEnvironmentFor(ignoreRepo, { PATH: "fixture", GIT_DIR: "hostile", GIT_CONFIG_COUNT: "1", GIT_AUTHOR_NAME: "hostile" }), { PATH: "fixture" }); matrix.state.push("disposable-git-environment-scrubbed");
+  assert.deepEqual(gitEnvironmentFor(ignoreRepo, { PATH: "fixture", GIT_DIR: "hostile", GIT_CONFIG_COUNT: "1", GIT_AUTHOR_NAME: "hostile" }), { PATH: "fixture", GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: process.platform === "win32" ? "NUL" : "/dev/null" }); matrix.state.push("disposable-git-environment-scrubbed");
   assert.equal(gitAt(ignoreRepo, "init", "-q", "-b", "main").status, 0); gitAt(ignoreRepo, "config", "user.email", "fixture@example.invalid"); gitAt(ignoreRepo, "config", "user.name", "Kernel Fixture");
   copyFileSync(resolve(root, ".gitignore"), resolve(ignoreRepo, ".gitignore")); writeFileSync(resolve(ignoreRepo, "baseline.txt"), "baseline\n");
   assert.equal(gitAt(ignoreRepo, "add", ".gitignore", "baseline.txt").status, 0); assert.equal(gitAt(ignoreRepo, "-c", "user.email=fixture@example.invalid", "-c", "user.name=Kernel Fixture", "-c", "commit.gpgsign=false", "commit", "-q", "-m", "baseline").status, 0);

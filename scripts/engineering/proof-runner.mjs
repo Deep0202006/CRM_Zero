@@ -5,6 +5,8 @@ import { evidencePayloadHash, provenanceFromEnvironment } from "./proof-evidence
 import { compileProofPlan } from "./proof-plan.mjs";
 import { dirtyFingerprint, environmentPolicyHash, parseArgs, readJson, root, run, safeEnvironment, sha256 } from "./kernel-lib.mjs";
 
+const executionDiagnostics = new Map();
+const boundedDiagnostic = (value) => String(value).replace(/\b(token|password|secret|authorization|api[_-]?key)\s*[:=]\s*\S+/gi, "$1=[REDACTED]").slice(0, 2048);
 export const canonicalEvidencePath = (proofId, sourceJob) => {
   sourceJob ??= expectedCiJob(readJson("docs/engineering/PROOFS.json").proofs.find((proof) => proof.id === proofId));
   if (!sourceJob) throw new Error(`PROOF_SOURCE_JOB_UNMAPPED:${proofId}`);
@@ -27,6 +29,7 @@ const executeAttempt = (commandPlan, kind) => {
       startedAt: commandStartedAt,
       endedAt: new Date().toISOString(),
     };
+    if (record.exitCode !== 0) executionDiagnostics.set(record.commandIdentity, boundedDiagnostic(stderr));
     commands.push(record);
     if (record.exitCode !== 0) break;
   }
@@ -102,6 +105,7 @@ if (process.argv[1] && resolve(process.argv[1]) === resolve(import.meta.filename
       throw new Error("PROOF_UNMAPPED");
     }
     const results = selected.map((id) => runRegisteredProof({ proofId: id, base, head, plan }));
+    for (const result of results.filter((item) => item.status !== "PASS")) for (const attempt of result.attempts) for (const command of attempt.commands.filter((item) => item.exitCode !== 0)) console.error(`PROOF_COMMAND_FAILED:${result.proofId}:attempt=${attempt.attemptIndex}:command=${command.commandIndex}:${command.executable} ${command.args.join(" ")}\n${executionDiagnostics.get(command.commandIdentity) ?? "NO_DIAGNOSTIC"}`);
     console.log(JSON.stringify(results, null, 2));
     if (results.some((item) => item.status !== "PASS")) process.exitCode = 1;
   } catch (error) { console.error(error.message); process.exitCode = 2; }
