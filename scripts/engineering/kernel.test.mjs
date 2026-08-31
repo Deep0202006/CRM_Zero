@@ -21,13 +21,13 @@ import { queryGraphify, resolveContext, revalidateCandidate } from "./context.mj
 import { doctor } from "./kernel-doctor.mjs";
 import { applyStallPolicy, evaluateStopState, protectedRequiredChecks, remoteGate, requiredRemoteChecks } from "./hooks/stop.mjs";
 import { beginExternalTask, compareAndSwap, loadState, requireContinuation, sessionPath, sessionsDirectory } from "./hooks/state-store.mjs";
-import { dirtyFingerprint, environmentPolicyHash, git, inspectMigrationBoundaryTransition, parseMigrationNumber, repositoryIdentity, root, safeEnvironment, sha256, validateMigrationBoundaryTransition, validateMigrationLedger } from "./kernel-lib.mjs";
+import { dirtyFingerprint, environmentPolicyHash, git, gitEnvironmentFor, inspectMigrationBoundaryTransition, parseMigrationNumber, repositoryIdentity, root, safeEnvironment, sha256, validateMigrationBoundaryTransition, validateMigrationLedger } from "./kernel-lib.mjs";
 import { containsAssertionWeakening } from "../quality/assertion-policy.mjs";
 
 const matrix = { state: [], risk: [], proof: [], attestation: [], commandPolicy: [], regression: [], stopRemote: [], stall: [], postgresEnvironment: [], tokenIsolation: [] }, tempRoots = [], createdEvidence = [], preservedEvidence = new Map();
 const temp = (prefix) => { const path = mkdtempSync(resolve(tmpdir(), prefix)); tempRoots.push(path); return path; };
 const command = (cwd, file, args, env, input) => spawnSync(file, args, { cwd, encoding: "utf8", env: { ...process.env, ...env }, input });
-const gitAt = (cwd, ...args) => command(cwd, "git", args);
+const gitAt = (cwd, ...args) => spawnSync("git", args, { cwd, encoding: "utf8", env: gitEnvironmentFor(cwd) });
 const snapshotDirectory = (directory) => {
   if (!existsSync(directory)) return { exists: false, files: [] };
   const files = [];
