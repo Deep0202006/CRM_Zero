@@ -80,7 +80,46 @@
       "runner": "jest",
       "paths": [
         "src/lib/__tests__/callLogContract.test.ts",
-        "src/lib/__tests__/callHistoryAuthority.test.ts"
+        "src/lib/__tests__/callHistoryAuthority.test.ts",
+        "src/lib/__tests__/callOwnerUpdate.test.ts",
+        "src/lib/__tests__/followUpContract.test.ts"
+      ]
+    },
+    {
+      "id": "call-owner-e2e",
+      "kind": "e2e",
+      "domains": [
+        "calls"
+      ],
+      "effects": [
+        "UI",
+        "API",
+        "OFFLINE",
+        "AUTHORIZATION"
+      ],
+      "runner": "playwright",
+      "paths": [
+        "e2e/call-logs"
+      ]
+    },
+    {
+      "id": "product-054-postgres",
+      "kind": "postgres",
+      "domains": [
+        "calls",
+        "mappings",
+        "distributor-status",
+        "receivables"
+      ],
+      "effects": [
+        "DATABASE",
+        "AUTHORIZATION",
+        "SECURITY",
+        "MONEY"
+      ],
+      "runner": "bash-postgres",
+      "paths": [
+        "scripts/distributor-master-db/run-integration.sh"
       ]
     },
     {
@@ -189,7 +228,7 @@
       ],
       "runner": "owner-sql",
       "paths": [
-        "supabase/manual/precheck_051_mapping_attribution_visibility.sql"
+        "supabase/manual/precheck_054_creator_updates_billed_erp_payment.sql"
       ]
     },
     {
@@ -203,7 +242,7 @@
       ],
       "runner": "owner-sql",
       "paths": [
-        "supabase/manual/verify_051_mapping_attribution_visibility.sql"
+        "supabase/manual/verify_054_creator_updates_billed_erp_payment.sql"
       ]
     },
     {
@@ -267,7 +306,8 @@
       ],
       "runner": "jest",
       "paths": [
-        "src/lib/__tests__/teamKpiContract.test.ts"
+        "src/lib/__tests__/teamKpiContract.test.ts",
+        "src/lib/__tests__/teamKpiWorkflowAttribution.test.ts"
       ]
     },
     {

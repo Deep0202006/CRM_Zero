@@ -179,14 +179,14 @@ begin
     '94000000-0000-4000-a000-000000000053',v_actor,'erp_payment',repeat('6',64),
     jsonb_build_object('distributor_id','96000000-0000-4000-a000-000000000002','expected_version',v_version,'erp_payment_status','not_paid')
   ) into v_result;
-  if v_result->>'code'<>'ERP_PAYMENT_STATUS_REQUIRES_PAID' then raise exception 'ERP_PAYMENT_STATUS_ACCEPTED_REPORTED_PAYMENT: %',v_result; end if;
+  if v_result->>'code'<>'ERP_PAYMENT_STATUS_REQUIRES_BILLED' then raise exception 'ERP_PAYMENT_STATUS_ACCEPTED_NOT_BILLED_REPORTED_PAYMENT: %',v_result; end if;
   update public.receivable_payments set verification_status='confirmed',verified_by=v_actor,verified_at=now()
   where payment_id='98000000-0000-4000-a000-000000000052';
   select public.distributor_erp_payment_status_command_v1(
     '94000000-0000-4000-a000-000000000056',v_actor,'erp_payment',repeat('a',64),
     jsonb_build_object('distributor_id','96000000-0000-4000-a000-000000000002','expected_version',v_version,'erp_payment_status','not_paid')
   ) into v_result;
-  if not coalesce((v_result->>'success')::boolean,false) then raise exception 'ERP_PAYMENT_STATUS_REJECTED_CONFIRMED_PAID: %',v_result; end if;
+  if v_result->>'code'<>'ERP_PAYMENT_STATUS_REQUIRES_BILLED' then raise exception 'ERP_PAYMENT_STATUS_ACCEPTED_NOT_BILLED_CONFIRMED_PAYMENT: %',v_result; end if;
   update public.receivable_payments set verification_status='reversed',reversed_by=v_actor,reversed_at=now(),reversal_reason='Integration reversal'
   where payment_id='98000000-0000-4000-a000-000000000052';
   select version into v_version from public.distributor_accounts where distributor_id='96000000-0000-4000-a000-000000000002';
@@ -194,7 +194,7 @@ begin
     '94000000-0000-4000-a000-000000000057',v_actor,'erp_payment',repeat('b',64),
     jsonb_build_object('distributor_id','96000000-0000-4000-a000-000000000002','expected_version',v_version,'erp_payment_status','paid')
   ) into v_result;
-  if v_result->>'code'<>'ERP_PAYMENT_STATUS_REQUIRES_PAID' then raise exception 'ERP_PAYMENT_STATUS_ACCEPTED_REVERSED_PAYMENT: %',v_result; end if;
+  if v_result->>'code'<>'ERP_PAYMENT_STATUS_REQUIRES_BILLED' then raise exception 'ERP_PAYMENT_STATUS_ACCEPTED_NOT_BILLED_REVERSED_PAYMENT: %',v_result; end if;
   insert into public.receivable_payments(payment_id,receivable_id,amount,payment_date,reported_by,verification_status,verified_by,verified_at)
   values('98000000-0000-4000-a000-000000000053','97000000-0000-4000-a000-000000000052',100.00,current_date,v_actor,'confirmed',v_actor,now());
   update public.receivables set lifecycle_status='disputed' where receivable_id='97000000-0000-4000-a000-000000000052';
@@ -202,7 +202,7 @@ begin
     '94000000-0000-4000-a000-000000000058',v_actor,'erp_payment',repeat('c',64),
     jsonb_build_object('distributor_id','96000000-0000-4000-a000-000000000002','expected_version',v_version,'erp_payment_status','paid')
   ) into v_result;
-  if v_result->>'code'<>'ERP_PAYMENT_STATUS_REQUIRES_PAID' then raise exception 'ERP_PAYMENT_STATUS_ACCEPTED_DISPUTED_RECEIVABLE: %',v_result; end if;
+  if v_result->>'code'<>'ERP_PAYMENT_STATUS_REQUIRES_BILLED' then raise exception 'ERP_PAYMENT_STATUS_ACCEPTED_NOT_BILLED_DISPUTED_RECEIVABLE: %',v_result; end if;
 
   begin
     insert into public.user_capabilities(user_id,capability_code) values(v_partner,'tech_support');
@@ -283,7 +283,7 @@ declare
   v_version bigint;
 begin
   insert into public.users(user_id,name,email,is_active) values(v_employee_two,'Second Employee','second-employee@example.com',true);
-  insert into public.user_capabilities(user_id,capability_code) values(v_employee_two,'tech_support');
+  insert into public.user_capabilities(user_id,capability_code) values(v_employee_two,'tech_support'),(v_employee_two,'ret_support'),(v_employee,'ret_support');
   select (public.resolve_or_create_erp_system_v1(v_actor,'Zoho')->>'erp_id')::uuid into v_zoho;
 
   insert into public.distributor_accounts(
@@ -296,7 +296,7 @@ begin
     case when i>20 and i%2=0 then 'done' else 'pending' end,
     case when i<=20 then 'not_applicable' when i<=55 then 'active' else 'inactive' end,
     case when i<=15 then 'not_billed' else 'billed' end,
-    case when i<=7 then 'paid' else null end,
+    case when i between 16 and 22 then 'paid' else null end,
     case when i<=5 then v_today+1 when i between 16 and 20 then v_today+1 when i between 21 and 25 then v_today-1 else v_today+10 end,
     v_actor
   from generate_series(1,60)i;

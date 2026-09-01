@@ -130,8 +130,15 @@
       "id": "canonical-call-confirmation",
       "status": "ACTIVE",
       "authorityRefs": ["call_history"],
-      "implementationPaths": ["src/app/api/call-logs/confirm/route.ts"],
-      "testPaths": ["src/lib/__tests__/callLogContract.test.ts"],
+      "implementationPaths": [
+        "src/app/api/call-logs/confirm/route.ts",
+        "src/app/api/call-logs/[log_id]/route.ts",
+        "src/lib/callLogs/serverContract.ts"
+      ],
+      "testPaths": [
+        "src/lib/__tests__/callLogContract.test.ts",
+        "src/lib/__tests__/callOwnerUpdate.test.ts"
+      ],
       "reuse": "required"
     },
     {
@@ -172,7 +179,10 @@
       "authorityRefs": ["mapping_request"],
       "implementationPaths": ["src/app/mappings/page.tsx"],
       "testPaths": ["src/lib/__tests__/mappingStandaloneContract.test.ts"],
-      "reuse": "required"
+      "reuse": "required",
+      "notes": [
+        "Creator edits coalesce by request_id and never create a second Mapping row."
+      ]
     },
     {
       "id": "query-resolution-export",
@@ -229,7 +239,7 @@
       "testPaths": ["src/lib/__tests__/distributors/routeMatrix.test.ts"],
       "reuse": "required",
       "notes": [
-        "ERP payment status is an operational Distributor Status fact gated by the canonical derived financial PAID state."
+        "ERP payment status is an operational Distributor Status fact available only while billing_status is billed; it is not Receivables truth."
       ]
     },
     {

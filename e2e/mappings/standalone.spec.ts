@@ -66,6 +66,29 @@ test("Mapping accepts canonical suggestions and arbitrary text with zero Lead si
   await expect(page.getByText("Logged by: Support Employee")).toBeVisible();
   await expect(page.getByText("Completed by: —")).toBeVisible();
 
+  const stableRequestId = first.mappings[0].request_id;
+  await page.getByRole("button", { name: "Update", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Update the relationship" })).toBeVisible();
+  await expect(page.getByPlaceholder("Search or type retailer")).toHaveValue("ABC MEDICAL & GENERAL STORE #42");
+  await page.locator("#mapping-notes").fill("Creator completed this mapping");
+  await page.locator("#mapping-status").selectOption("Completed");
+  await page.getByRole("button", { name: "Save update" }).click();
+  let edited = await mappingSnapshot(page);
+  expect(edited.mappings).toHaveLength(1);
+  expect(edited.mappings[0]).toMatchObject({ request_id: stableRequestId, status: "Completed", notes: "Creator completed this mapping" });
+  expect(edited.mappingQueueCount).toBe(2);
+
+  await page.getByRole("button", { name: "Update", exact: true }).click();
+  await page.locator("#mapping-status").selectOption("Pending");
+  await page.getByRole("button", { name: "Save update" }).click();
+  await page.getByRole("button", { name: "Update", exact: true }).click();
+  await page.locator("#mapping-status").selectOption("Completed");
+  await page.getByRole("button", { name: "Save update" }).click();
+  edited = await mappingSnapshot(page);
+  expect(edited.mappings).toHaveLength(1);
+  expect(edited.mappings[0]).toMatchObject({ request_id: stableRequestId, status: "Completed" });
+  expect(edited.mappingQueueCount).toBe(2);
+
   await page.getByRole("button", { name: "Retailer", exact: true }).click();
   await page.getByPlaceholder("Search or type retailer").fill("Retailer 100 & Sons");
   await page.getByPlaceholder("Search or type retailer").press("Escape");
@@ -81,4 +104,26 @@ test("Mapping accepts canonical suggestions and arbitrary text with zero Lead si
   await page.reload();
   await expect(page.getByText("ABC MEDICAL & GENERAL STORE #42")).toBeVisible();
   expect((await mappingSnapshot(page)).leadCount).toBe(0);
+});
+
+test("Admin receives Update only for the Mapping Admin created", async ({ page, context }) => {
+  await page.route("https://e2e.supabase.co/**", (route) => route.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
+  await page.route("https://e2e.supabase.co/auth/v1/user", (route) => route.fulfill({ json: { id: employeeId, aud: "authenticated", role: "authenticated", email: "support@example.test", app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() } }));
+  await seedSupportEmployee(page);
+  await page.evaluate(async ({ id }) => {
+    const request = indexedDB.open("CRMDatabase");
+    const database = await new Promise<IDBDatabase>((resolve, reject) => { request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });
+    const tx = database.transaction(["users", "user_capabilities", "mapping_requests"], "readwrite");
+    tx.objectStore("users").put({ user_id: "20000000-0000-4000-a000-000000000011", name: "Other Employee", email: "other@example.test", is_active: 1, created_at: new Date().toISOString() });
+    tx.objectStore("user_capabilities").put({ id: `${id}-admin`, user_id: id, capability_code: "admin", assigned_at: new Date().toISOString() });
+    tx.objectStore("mapping_requests").put({ request_id: "21000000-0000-4000-a000-000000000001", distributor_lead_id: null, retailer_lead_id: null, distributor_name_unregistered: "Admin Distributor", retailer_name_unregistered: "Admin Retailer", requested_by: id, status: "Pending", created_at: "2026-09-01T01:00:00.000Z" });
+    tx.objectStore("mapping_requests").put({ request_id: "21000000-0000-4000-a000-000000000002", distributor_lead_id: null, retailer_lead_id: null, distributor_name_unregistered: "Other Distributor", retailer_name_unregistered: "Other Retailer", requested_by: "20000000-0000-4000-a000-000000000011", status: "Pending", created_at: "2026-09-01T00:00:00.000Z" });
+    await new Promise<void>((resolve, reject) => { tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); });
+    database.close();
+  }, { id: employeeId });
+  await page.goto("/mappings");
+  await context.setOffline(true);
+  await expect(page.getByText("Admin Distributor")).toBeVisible();
+  await expect(page.getByText("Other Distributor")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Update", exact: true })).toHaveCount(1);
 });

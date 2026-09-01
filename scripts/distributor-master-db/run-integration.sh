@@ -30,7 +30,17 @@ psql -X -v ON_ERROR_STOP=1 -f supabase/migrations/047_distributor_erp_partner_vi
 psql -X -v ON_ERROR_STOP=1 -f supabase/migrations/050_distributor_erp_footprint.sql
 psql -X -v ON_ERROR_STOP=1 -f supabase/migrations/052_billed_renewals_erp_payment_status.sql
 psql -X -v ON_ERROR_STOP=1 -f supabase/migrations/053_erp_partner_distributor_status_filters.sql
+# Reuse the existing disposable proof bootstraps for production-shaped Mapping
+# and Call tables without resetting the already-built Distributor fixture.
+awk '/^create function public.has_capability/,/^grant select on public.users/' scripts/mappings-db/bootstrap.sql | psql -X -v ON_ERROR_STOP=1
+awk '/^-- 10. Call Logs Table/,/^-- 11. Task Upload Batches Table/' supabase/schema.sql | psql -X -v ON_ERROR_STOP=1
+sed -n '11,28p' supabase/migrations/029_team_kpi_source_sync_repair.sql | psql -X -v ON_ERROR_STOP=1
+sed -n '132,190p' supabase/migrations/029_team_kpi_source_sync_repair.sql | psql -X -v ON_ERROR_STOP=1
+psql -X -v ON_ERROR_STOP=1 -c 'grant select,insert,update,delete on public.call_logs to authenticated'
+psql -X -v ON_ERROR_STOP=1 -f supabase/migrations/051_mapping_attribution_visibility.sql
+psql -X -v ON_ERROR_STOP=1 -f supabase/migrations/054_creator_updates_billed_erp_payment.sql
 psql -X -v ON_ERROR_STOP=1 -f scripts/engineering/fixtures/distributor-fixture-validity.sql
 psql -X -v ON_ERROR_STOP=1 -f scripts/erp-visibility-db/integration.sql
+psql -X -v ON_ERROR_STOP=1 -f scripts/product-054-db/integration.sql
 
-echo "Distributor master and ERP visibility PostgreSQL integration passed."
+echo "Distributor master, creator-update, and billed ERP PostgreSQL integration passed."

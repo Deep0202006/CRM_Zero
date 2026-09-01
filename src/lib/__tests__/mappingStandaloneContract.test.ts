@@ -52,12 +52,18 @@ describe("standalone Mapping contract", () => {
     }).success).toBe(true);
   });
 
-  it("keeps requester and completer as separate facts", () => {
+  it("keeps requester authority immutable and completion attribution server generated", () => {
     const page = read("src/app/mappings/page.tsx");
+    const database = read("src/lib/db.ts");
+    const migration = read("supabase/migrations/054_creator_updates_billed_erp_payment.sql");
     expect(page).toContain("mapped_by: null");
-    expect(page).toContain("updates.mapped_by = currentUser?.user_id || null");
+    expect(page).toContain("mapping.requested_by === currentUser?.user_id");
+    expect(database).toContain("queueMappingOwnerUpdate");
+    expect(database).toContain("mapping-update:${mapping.request_id}");
     expect(page).toContain("Logged by:");
     expect(page).toContain("Completed by:");
+    expect(migration).toContain("timezone('utc', clock_timestamp())");
+    expect(migration).not.toContain("timezone('utc', now())");
   });
 
   it("uses immutable actor IDs only as deleted-user audit fallbacks", () => {
@@ -74,6 +80,7 @@ describe("standalone Mapping contract", () => {
     const page = read("src/app/mappings/page.tsx");
     expect(page).not.toMatch(/transactionalMutation\(["']leads|db\.leads|resolveLeadId|Mapping Form|pipeline/i);
     expect(page).toContain('transactionalMutation("mapping_requests", "INSERT"');
+    expect(page).not.toContain('transactionalMutation("mapping_requests", "UPDATE"');
     expect(page).toContain("distributor_name_unregistered");
     expect(page).toContain("retailer_name_unregistered");
   });
@@ -91,5 +98,13 @@ describe("standalone Mapping contract", () => {
     const queue = read("src/lib/db.ts");
     expect(queue).toContain('item.table_name === "mapping_requests"');
     expect(queue).toContain("!isTerminalMappingSyncError(error)");
+  });
+
+  it("uses a bounded explicit Mapping read and never exposes non-owner Update", () => {
+    const page = read("src/app/mappings/page.tsx");
+    expect(page).toContain('.order("created_at", { ascending: false }).limit(50)');
+    expect(page).toContain('orderBy("created_at").reverse().limit(50)');
+    expect(page).not.toContain('.select("*")');
+    expect(page).toContain('mapping.requested_by === currentUser?.user_id ? (');
   });
 });

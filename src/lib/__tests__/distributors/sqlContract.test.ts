@@ -6,6 +6,10 @@ const sql = fs.readFileSync(path.join(process.cwd(), "supabase/migrations/041_di
 const renewalSql = fs.readFileSync(path.join(process.cwd(), "supabase/migrations/042_payment_collection_renewals.sql"), "utf8");
 const billedRenewalSql = fs.readFileSync(path.join(process.cwd(), "supabase/migrations/052_billed_renewals_erp_payment_status.sql"), "utf8");
 const partnerStatusSql = fs.readFileSync(path.join(process.cwd(), "supabase/migrations/053_erp_partner_distributor_status_filters.sql"), "utf8");
+const creatorUpdateSql = fs.readFileSync(path.join(process.cwd(), "supabase/migrations/054_creator_updates_billed_erp_payment.sql"), "utf8");
+const erpVisibilityFixture = fs.readFileSync(path.join(process.cwd(), "scripts/erp-visibility-db/integration.sql"), "utf8");
+const product054Fixture = fs.readFileSync(path.join(process.cwd(), "scripts/product-054-db/integration.sql"), "utf8");
+const distributorMasterRunner = fs.readFileSync(path.join(process.cwd(), "scripts/distributor-master-db/run-integration.sh"), "utf8");
 const routes = ["src/app/api/distributors/route.ts", "src/app/api/distributors/metrics/route.ts", "src/app/api/distributors/commands/route.ts", "src/app/api/distributors/import/route.ts", "src/lib/distributors/validation.ts"].map((file) => fs.readFileSync(path.join(process.cwd(), file), "utf8")).join("\n");
 
 describe("Distributor Status SQL/authority contract", () => {
@@ -72,27 +76,42 @@ describe("Distributor Status SQL/authority contract", () => {
       expect(billedRenewalSql).toContain(predicate);
     expect(billedRenewalSql.indexOf("), filtered as (")).toBeLessThan(billedRenewalSql.indexOf("), page_rows as ("));
   });
-  test("ERP payment status is nullable, constrained, versioned, and gated by canonical financial PAID", () => {
+  test("ERP payment status remains a nullable operational fact while historical financial helpers remain intact", () => {
     expect(billedRenewalSql).toContain("add column erp_payment_status text");
     expect(billedRenewalSql).not.toMatch(/update\s+public\.distributor_accounts\s+set\s+erp_payment_status\s*=\s*'(?:paid|not_paid)'/i);
     expect(billedRenewalSql).toContain("distributor_is_financially_paid_v1");
     expect(billedRenewalSql).toContain("from public.receivables r");
     expect(billedRenewalSql).toContain("p.verification_status='confirmed' and p.reversed_at is null");
-    expect(billedRenewalSql).toContain("ERP_PAYMENT_STATUS_REQUIRES_PAID");
+    expect(creatorUpdateSql).toContain("ERP_PAYMENT_STATUS_REQUIRES_BILLED");
+    expect(creatorUpdateSql).toContain("v_row.billing_status is distinct from 'billed'");
     expect(billedRenewalSql).toContain("'erp_payment_status_updated'");
     expect(billedRenewalSql).toContain("version=version+1");
   });
+  test("Migration 054 gates ERP payment on billed state and clears unbilling without touching finance", () => {
+    expect(creatorUpdateSql).toContain("distributor_erp_payment_requires_billed_check");
+    expect(creatorUpdateSql).toContain("distributor_erp_payment_billing_guard_v1");
+    expect(creatorUpdateSql).toContain("new.erp_payment_status := null");
+    expect(creatorUpdateSql).not.toMatch(/(?:insert\s+into|update|delete\s+from)\s+public\.(?:receivables|receivable_payments)\b/i);
+    expect(creatorUpdateSql).not.toContain("ERP_PAYMENT_STATUS_REQUIRES_PAID");
+  });
+  test("stages Mapping capability after the ERP partner exclusivity matrix", () => {
+    expect(erpVisibilityFixture.indexOf("(v_employee,'ret_support')")).toBeGreaterThan(erpVisibilityFixture.indexOf("ASSIGNED_EMPLOYEE_CONVERSION_ALLOWED"));
+    expect(distributorMasterRunner.indexOf("scripts/erp-visibility-db/integration.sql")).toBeLessThan(distributorMasterRunner.indexOf("scripts/product-054-db/integration.sql"));
+  });
+  test("stages canonical Mapping and Call leads before the owner-update matrix", () => {
+    const identityInsert = product054Fixture.indexOf("insert into public.leads(lead_id)");
+    for (const suffix of ["001", "002", "003"]) expect(product054Fixture).toContain(`9d000000-0000-4000-a000-000000000${suffix}`);
+    expect(identityInsert).toBeLessThan(product054Fixture.indexOf("update public.mapping_requests set distributor_lead_id="));
+    expect(identityInsert).toBeLessThan(product054Fixture.indexOf("update public.call_logs set lead_id="));
+  });
   test("ERP payment command is service-only, idempotent, Admin-authorized, and never writes finance", () => {
-    const command = billedRenewalSql.slice(
-      billedRenewalSql.indexOf("create or replace function public.distributor_erp_payment_status_command_v1"),
-      billedRenewalSql.indexOf("drop function public.distributor_financial_projection_v2"),
-    );
+    const command = creatorUpdateSql.slice(creatorUpdateSql.indexOf("create or replace function public.distributor_erp_payment_status_command_v1"));
     for (const token of ["pg_advisory_xact_lock", "DISTRIBUTOR_OPERATION_MISMATCH", "receivables_is_admin", "DISTRIBUTOR_CONFLICT", "distributor_status_events", "distributor_operation_receipts"])
       expect(command).toContain(token);
     expect(command).not.toMatch(/(?:insert\s+into|update|delete\s+from)\s+public\.(?:receivables|receivable_payments)\b/i);
-    expect(billedRenewalSql).toMatch(/revoke all on function[\s\S]+distributor_erp_payment_status_command_v1[\s\S]+from public,anon,authenticated/i);
+    expect(creatorUpdateSql).toMatch(/revoke all on function[\s\S]+distributor_erp_payment_status_command_v1[\s\S]+from public,anon,authenticated/i);
     const privilegedRole = ["service", "role"].join("_");
-    expect(billedRenewalSql).toMatch(new RegExp(`grant execute on function[\\s\\S]+distributor_erp_payment_status_command_v1[\\s\\S]+to ${privilegedRole}`, "i"));
+    expect(creatorUpdateSql).toMatch(new RegExp(`grant execute on function[\\s\\S]+distributor_erp_payment_status_command_v1[\\s\\S]+to ${privilegedRole}`, "i"));
   });
   test("replacement projections keep legacy callers compatible through trailing defaults", () => {
     expect(billedRenewalSql).toMatch(/p_erp_unset boolean default false,p_installation_filter text default null/);

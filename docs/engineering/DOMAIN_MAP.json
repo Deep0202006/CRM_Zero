@@ -165,10 +165,19 @@
       ],
       "codeRoots": [
         "src/lib/callLogs",
-        "src/app/call-logs"
+        "src/app/call-logs",
+        "src/lib/db.ts"
+      ],
+      "pathPatterns": [
+        "src/lib/__tests__/callHistoryAuthority.test.ts",
+        "supabase/migrations/054_creator_updates_billed_erp_payment.sql",
+        "supabase/manual/precheck_054_creator_updates_billed_erp_payment.sql",
+        "supabase/manual/verify_054_creator_updates_billed_erp_payment.sql",
+        "scripts/product-054-db"
       ],
       "serverBoundaries": [
-        "src/app/api/call-logs/confirm/route.ts"
+        "src/app/api/call-logs/confirm/route.ts",
+        "src/app/api/call-logs/[log_id]/route.ts"
       ],
       "contractPaths": [
         "docs/contracts/calls.md"
@@ -185,7 +194,10 @@
         "OPTIONAL_FAILURE_ISOLATION"
       ],
       "criticalTests": [
-        "src/lib/__tests__/callLogContract.test.ts"
+        "src/lib/__tests__/callLogContract.test.ts",
+        "src/lib/__tests__/callOwnerUpdate.test.ts",
+        "e2e/call-logs",
+        "scripts/product-054-db/integration.sql"
       ],
       "mustNotWriteAuthorityRefs": []
     },
@@ -251,7 +263,14 @@
       ],
       "codeRoots": [
         "src/app/mappings/page.tsx",
-        "src/lib/clientOptions.ts"
+        "src/lib/clientOptions.ts",
+        "src/lib/db.ts"
+      ],
+      "pathPatterns": [
+        "supabase/migrations/054_creator_updates_billed_erp_payment.sql",
+        "supabase/manual/precheck_054_creator_updates_billed_erp_payment.sql",
+        "supabase/manual/verify_054_creator_updates_billed_erp_payment.sql",
+        "scripts/product-054-db"
       ],
       "serverBoundaries": [],
       "contractPaths": [
@@ -360,7 +379,8 @@
         "WRITE_READ_CLOSURE"
       ],
       "criticalTests": [
-        "src/lib/__tests__/teamKpiContract.test.ts"
+        "src/lib/__tests__/teamKpiContract.test.ts",
+        "src/lib/__tests__/teamKpiWorkflowAttribution.test.ts"
       ],
       "mustNotWriteAuthorityRefs": [
         "attendance"
@@ -420,6 +440,10 @@
       "pathPatterns": [
         "supabase/migrations/052_billed_renewals_erp_payment_status.sql",
         "supabase/migrations/053_erp_partner_distributor_status_filters.sql",
+        "supabase/migrations/054_creator_updates_billed_erp_payment.sql",
+        "supabase/manual/precheck_054_creator_updates_billed_erp_payment.sql",
+        "supabase/manual/verify_054_creator_updates_billed_erp_payment.sql",
+        "scripts/product-054-db",
         "src/lib/__tests__/erpCanonicalGuidValidation.test.ts"
       ],
       "serverBoundaries": [

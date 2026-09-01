@@ -643,45 +643,44 @@ test("Distributor Status metric cards filter the bounded server list", async ({ 
   await expect.poll(() => requests.some((url) => url.searchParams.get("installation") === "done" && url.searchParams.get("training") === "pending")).toBe(true);
 });
 
-test("Admin edit exposes assignment, mapping and independent status controls", async ({
-  page,
-}) => {
+for (const collectionState of ["UNPAID", "PARTIALLY_PAID", "PAID", "COLLECTION_SETUP_REQUIRED"])
+  test(`billed ${collectionState} exposes operational ERP Payment`, async ({ page }) => {
+    await mock(page);
+    await page.route("**/api/distributors?**", (route) => route.fulfill({ json: { rows: [{ ...numericProjectionRow, collection_state: collectionState }], total: 1 } }));
+    await seed(page, admin, true);
+    await page.goto("/admin/payments/distributors");
+    await page.getByRole("button", { name: "Edit Alpha Distributor" }).click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.locator('select[name="erp_payment_status"]')).toBeVisible();
+    await expect(dialog.getByRole("button", { name: "Save ERP Payment" })).toBeVisible();
+    await expect(dialog).toContainText("does not create or modify a Receivable");
+  });
+
+test("not-billed Distributor hides ERP Payment", async ({ page }) => {
   await mock(page);
-  await page.route("**/api/distributors/commands", (route) =>
-    route.fulfill({ json: { success: true, record: { ...row, version: 3 } } }),
-  );
+  await page.route("**/api/distributors?**", (route) => route.fulfill({ json: { rows: [{ ...numericProjectionRow, billing_status: "not_billed", collection_state: "PAID" }], total: 1 } }));
   await seed(page, admin, true);
   await page.goto("/admin/payments/distributors");
   await page.getByRole("button", { name: "Edit Alpha Distributor" }).click();
   const dialog = page.getByRole("dialog");
-  await expect(dialog.locator('select[name="assigned_to"] option')).toHaveCount(
-    2,
-  );
-  await expect(dialog.locator('select[name="mapping_status"]')).toHaveValue(
-    "done",
-  );
-  await expect(dialog.locator('input[name="mapped_at"]')).toHaveValue(
-    "2026-08-03",
-  );
   await expect(dialog.locator('select[name="erp_payment_status"]')).toHaveCount(0);
   await expect(dialog.getByRole("button", { name: "Save ERP Payment" })).toHaveCount(0);
-  await expect(dialog).toContainText("does not create or modify a Receivable");
 });
 
-test("Admin records ERP payment status only from a financially paid Distributor", async ({ page }) => {
+test("Admin records ERP payment status for a billed unpaid Distributor", async ({ page }) => {
   await mock(page);
   let commandBody = "";
   let commandCount = 0;
   let releaseCommand!: () => void;
   const commandGate = new Promise<void>((resolve) => { releaseCommand = resolve; });
   await page.route("**/api/distributors?**", (route) =>
-    route.fulfill({ json: { rows: [{ ...numericProjectionRow, collection_state: "PAID", outstanding_amount: 0 }], total: 1 } }),
+    route.fulfill({ json: { rows: [{ ...numericProjectionRow, collection_state: "UNPAID", confirmed_collected_amount: 0, outstanding_amount: 1000 }], total: 1 } }),
   );
   await page.route("**/api/distributors/commands", async (route) => {
     commandCount += 1;
     commandBody = route.request().postData() ?? "{}";
     await commandGate;
-    await route.fulfill({ json: { success: true, record: { ...row, collection_state: "PAID", erp_payment_status: "paid", version: 3 } } });
+    await route.fulfill({ json: { success: true, record: { ...row, collection_state: "UNPAID", erp_payment_status: "paid", version: 3 } } });
   });
   await seed(page, admin, true);
   await page.goto("/admin/payments/distributors");

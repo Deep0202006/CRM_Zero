@@ -9,6 +9,7 @@ import {
   stripInternalFollowUpMarkers,
   isFollowUpLikeTemplate,
   isValidSelfScheduledFollowUp,
+  reconcileCallFollowUpTasks,
 } from "@/lib/followUps";
 
 const baseTask: LocalTask = {
@@ -99,6 +100,22 @@ describe("self-scheduled follow-up contract", () => {
     };
     const result = deduplicateSelfScheduledFollowUps([first, stale, completed, separate], "employee-1");
     expect(result.map((task) => task.task_id)).toEqual(["task-c", "task-d"]);
+  });
+
+  it("reconciles one active source-linked intent without rewriting completed history", () => {
+    const sourceCallId = "11111111-1111-4111-8111-111111111111";
+    const description = `${baseTask.description}\n${createFollowUpSourceCallMarker(sourceCallId)}`;
+    const pending = { ...baseTask, task_id: "pending", description };
+    const duplicate = { ...pending, task_id: "duplicate", created_at: "2026-07-31T00:01:00.000Z" };
+    const completed = { ...pending, task_id: "completed", status: "Completed" as const, completed_at: "2026-08-01T00:00:00.000Z" };
+    const updated = reconcileCallFollowUpTasks({ existingTasks: [pending, duplicate, completed], outcome: "Requested more info", dueDate: "2026-08-03", authenticatedUserId: "employee-1", newTaskId: "new", clientDisplay: "Changed Client", relatedLeadId: "lead-2", notes: "changed", changedAt: "2026-08-02T00:00:00.000Z", sourceCallId });
+    expect(updated).toHaveLength(2);
+    expect(updated[0]).toMatchObject({ task_id: "pending", due_date: "2026-08-03", related_lead_id: "lead-2", is_active: true });
+    expect(updated[1]).toMatchObject({ task_id: "duplicate", is_active: false });
+    expect(updated.some((task) => task.task_id === "completed")).toBe(false);
+
+    const cancelled = reconcileCallFollowUpTasks({ existingTasks: [updated[0], completed], outcome: "Happy call", dueDate: null, authenticatedUserId: "employee-1", newTaskId: "unused", clientDisplay: "Changed Client", relatedLeadId: "lead-2", notes: "", changedAt: "2026-08-02T01:00:00.000Z", sourceCallId });
+    expect(cancelled).toEqual([expect.objectContaining({ task_id: "pending", is_active: false, status: "Pending" })]);
   });
 
   it("removes fabricated weekly digest companies", () => {

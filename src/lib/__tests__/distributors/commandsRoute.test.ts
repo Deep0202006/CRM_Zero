@@ -79,7 +79,7 @@ describe("Distributor command route role boundary", () => {
   });
 
   test.each([
-    ["ERP_PAYMENT_STATUS_REQUIRES_PAID", 409, "canonically paid"],
+    ["ERP_PAYMENT_STATUS_REQUIRES_BILLED", 409, "only while the Distributor is billed"],
     ["DISTRIBUTOR_CONFLICT", 409, "Refresh and try again"],
     ["ADMIN_REQUIRED", 403, "System Administrator"],
   ])("maps %s to its typed HTTP status and message", async (code, status, message) => {

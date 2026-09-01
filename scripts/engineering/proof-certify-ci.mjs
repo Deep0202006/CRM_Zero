@@ -56,13 +56,20 @@ export const validateEvidenceFile = ({ path, proofId, plan, environment = proces
   return { proofId, evidenceHash: sha256(readFileSync(path)) };
 };
 
-const expectedEvidencePaths = (plan) => {
+export const ciProofIds = (plan) => {
   const proofs = readJson("docs/engineering/PROOFS.json").proofs;
-  return new Map(plan.requiredProofs.map((proofId) => {
+  return plan.requiredProofs.filter((proofId) => {
     const proof = proofs.find((candidate) => candidate.id === proofId);
     if (!proof) throw new Error(`PROOF_UNMAPPED:${proofId}`);
+    return expectedCiJob(proof) !== "HUMAN_OWNER";
+  });
+};
+const expectedEvidencePaths = (plan) => {
+  const proofs = readJson("docs/engineering/PROOFS.json").proofs;
+  return new Map(ciProofIds(plan).map((proofId) => {
+    const proof = proofs.find((candidate) => candidate.id === proofId);
     const job = expectedCiJob(proof);
-    if (!job || job === "HUMAN_OWNER") throw new Error(`PROOF_SOURCE_JOB_UNMAPPED:${proofId}`);
+    if (!job) throw new Error(`PROOF_SOURCE_JOB_UNMAPPED:${proofId}`);
     return [proofId, resolve(evidenceDirectory, job, `${proofId}.json`)];
   }));
 };
@@ -104,8 +111,9 @@ const certifyRepositoryProof = ({ base, head, expectedJobs }) => {
   const plan = compileProofPlan({ base, head });
   requireCiEnvironment(process.env, plan);
   const paths = requireCanonicalEvidenceFiles(plan), bundlePath = requireBundlePath();
-  const attestations = plan.requiredProofs.map((proofId) => verifyEvidenceAttestation(paths.get(proofId), bundlePath));
-  const evidence = plan.requiredProofs.map((proofId) => validateEvidenceFile({ path: paths.get(proofId), proofId, plan }));
+  const proofIds = ciProofIds(plan);
+  const attestations = proofIds.map((proofId) => verifyEvidenceAttestation(paths.get(proofId), bundlePath));
+  const evidence = proofIds.map((proofId) => validateEvidenceFile({ path: paths.get(proofId), proofId, plan }));
   return { schemaVersion: 1, status: "REPOSITORY_PROOF_READY", headSha: head, treeSha: plan.treeSha, baseSha: base, impactHash: plan.impactHash, planHash: plan.planHash, evidence, attestations, certificateHash: sha256(JSON.stringify({ evidence, attestations })) };
 };
 

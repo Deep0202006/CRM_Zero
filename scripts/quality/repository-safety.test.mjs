@@ -95,6 +95,9 @@ const matrix = [
   expectFailure("service-role-outside-allowlist", "SERVICE_ROLE_NOT_ALLOWLISTED", {
     "tools/privileged.mjs": join("const key = process.env.SUPABASE_SERVICE_", "ROLE_KEY;\n"),
   }),
+  expectPass("call-owner-update-server-boundary", {
+    "src/app/api/call-logs/[log_id]/route.ts": join("const key = process.env.SUPABASE_SERVICE_", "ROLE_KEY;\n"),
+  }),
   expectFailure("env-local-privileged-client", "ENV_LOCAL_PRIVILEGED_CLIENT", {
     "tools/scratch-client.mjs": join('readFileSync(".env.', 'local"); createClient(url, process.env.SUPABASE_SERVICE_', 'ROLE_KEY);\n'),
   }),

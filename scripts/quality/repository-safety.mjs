@@ -28,6 +28,7 @@ const reviewedServiceRolePaths = new Set([
   "src/app/api/attendance/clock-out/route.ts",
   "src/app/api/attendance/confirm/route.ts",
   "src/app/api/attendance/mine/route.ts",
+  "src/app/api/call-logs/[log_id]/route.ts",
   "src/app/api/call-logs/confirm/route.ts",
   "src/app/api/call-logs/history/route.ts",
   "src/app/api/field-visits/confirm/route.ts",
