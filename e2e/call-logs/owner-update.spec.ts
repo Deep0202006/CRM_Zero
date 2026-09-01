@@ -55,6 +55,7 @@ test("pending offline Call edits the same insert, log ID, and follow-up intent",
   await page.locator("#call-notes").fill("Use the edited pending state");
   await page.getByLabel("Next follow-up date").fill("2026-09-05");
   await page.getByRole("button", { name: "Save update" }).click();
+  await expect(page.getByRole("heading", { name: "Record a call outcome" })).toBeVisible();
   const edited = await snapshot(page);
   expect(edited.calls).toHaveLength(1);
   expect(edited.calls[0]).toMatchObject({ log_id: logId, outcome: "Requested more info", notes: "Use the edited pending state" });
@@ -67,6 +68,7 @@ test("pending offline Call edits the same insert, log ID, and follow-up intent",
   await expect(page.locator("#call-outcome")).toHaveValue("Happy call");
   await expect(page.getByLabel("Next follow-up date")).toHaveCount(0);
   await page.getByRole("button", { name: "Save update" }).click();
+  await expect(page.getByRole("heading", { name: "Record a call outcome" })).toBeVisible();
   const cancelled = await snapshot(page);
   expect(cancelled.calls).toHaveLength(1);
   expect(cancelled.tasks).toEqual([expect.objectContaining({ is_active: false, status: "Pending" })]);

@@ -19,6 +19,12 @@ begin
   reset role;
   if not exists(select 1 from public.mapping_requests where request_id=mapping_a and requested_by=a and requested_by_id_snapshot=a and mapped_by is null) then raise exception 'MAPPING_CREATOR_SPOOF_NOT_REBOUND'; end if;
 
+  insert into public.leads(lead_id) values
+    ('9d000000-0000-4000-a000-000000000001'),
+    ('9d000000-0000-4000-a000-000000000002'),
+    ('9d000000-0000-4000-a000-000000000003')
+  on conflict do nothing;
+
   perform set_config('request.jwt.claim.sub',a::text,true); set local role authenticated;
   update public.mapping_requests set distributor_lead_id='9d000000-0000-4000-a000-000000000001',distributor_name_unregistered='Distributor 2' where request_id=mapping_a;
   update public.mapping_requests set retailer_lead_id='9d000000-0000-4000-a000-000000000002',retailer_name_unregistered='Retailer 2' where request_id=mapping_a;

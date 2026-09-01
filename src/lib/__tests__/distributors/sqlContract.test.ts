@@ -8,6 +8,7 @@ const billedRenewalSql = fs.readFileSync(path.join(process.cwd(), "supabase/migr
 const partnerStatusSql = fs.readFileSync(path.join(process.cwd(), "supabase/migrations/053_erp_partner_distributor_status_filters.sql"), "utf8");
 const creatorUpdateSql = fs.readFileSync(path.join(process.cwd(), "supabase/migrations/054_creator_updates_billed_erp_payment.sql"), "utf8");
 const erpVisibilityFixture = fs.readFileSync(path.join(process.cwd(), "scripts/erp-visibility-db/integration.sql"), "utf8");
+const product054Fixture = fs.readFileSync(path.join(process.cwd(), "scripts/product-054-db/integration.sql"), "utf8");
 const distributorMasterRunner = fs.readFileSync(path.join(process.cwd(), "scripts/distributor-master-db/run-integration.sh"), "utf8");
 const routes = ["src/app/api/distributors/route.ts", "src/app/api/distributors/metrics/route.ts", "src/app/api/distributors/commands/route.ts", "src/app/api/distributors/import/route.ts", "src/lib/distributors/validation.ts"].map((file) => fs.readFileSync(path.join(process.cwd(), file), "utf8")).join("\n");
 
@@ -96,6 +97,12 @@ describe("Distributor Status SQL/authority contract", () => {
   test("stages Mapping capability after the ERP partner exclusivity matrix", () => {
     expect(erpVisibilityFixture.indexOf("(v_employee,'ret_support')")).toBeGreaterThan(erpVisibilityFixture.indexOf("ASSIGNED_EMPLOYEE_CONVERSION_ALLOWED"));
     expect(distributorMasterRunner.indexOf("scripts/erp-visibility-db/integration.sql")).toBeLessThan(distributorMasterRunner.indexOf("scripts/product-054-db/integration.sql"));
+  });
+  test("stages canonical Mapping and Call leads before the owner-update matrix", () => {
+    const identityInsert = product054Fixture.indexOf("insert into public.leads(lead_id)");
+    for (const suffix of ["001", "002", "003"]) expect(product054Fixture).toContain(`9d000000-0000-4000-a000-000000000${suffix}`);
+    expect(identityInsert).toBeLessThan(product054Fixture.indexOf("update public.mapping_requests set distributor_lead_id="));
+    expect(identityInsert).toBeLessThan(product054Fixture.indexOf("update public.call_logs set lead_id="));
   });
   test("ERP payment command is service-only, idempotent, Admin-authorized, and never writes finance", () => {
     const command = creatorUpdateSql.slice(creatorUpdateSql.indexOf("create or replace function public.distributor_erp_payment_status_command_v1"));
