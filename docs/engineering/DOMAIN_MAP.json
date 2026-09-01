@@ -918,6 +918,7 @@
         "docs/engineering/**",
         "docs/contracts/engineering-os.md",
         "docs/contracts/release-automation.md",
+        "playwright.config.ts",
         ".github/**",
         ".codex/**"
       ],

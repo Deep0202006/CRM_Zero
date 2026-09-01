@@ -34,6 +34,22 @@ const jobByKind = Object.freeze({
 
 export const expectedCiJob = (proof) => proof.expectedCiJob ?? jobByKind[proof.kind];
 export const proofDefinitionHash = (proof) => sha256(JSON.stringify(proof));
+export const validateProofCiParity = ({ proofs, workflow }) => {
+  const jobs = new Set([...String(workflow).matchAll(/^  ([a-z][a-z0-9-]+):\s*$/gm)].map((match) => match[1])), failures = [];
+  for (const proof of proofs) {
+    const job = expectedCiJob(proof);
+    if (!job) failures.push(`PROOF_SOURCE_JOB_UNMAPPED:${proof.id}`);
+    else if (job !== "HUMAN_OWNER" && !jobs.has(job)) failures.push(`PROOF_CI_JOB_MISSING:${proof.id}:${job}`);
+  }
+  const kinds = [...new Set(proofs.filter((proof) => expectedCiJob(proof) !== "HUMAN_OWNER").map((proof) => proof.kind))];
+  for (const kind of kinds) {
+    const coverageProof = proofs.find((proof) => proof.kind === kind && proof.effects?.includes("ALL_CHANGES"));
+    if (!String(workflow).includes(`--kind ${kind}`) && !(coverageProof && String(workflow).includes(`--proof ${coverageProof.id}`))) failures.push(`PROOF_CI_KIND_MISSING:${kind}`);
+  }
+  const result = { status: failures.length ? "FAIL" : "PASS", failures, jobs: [...jobs].sort(), kinds: kinds.sort() };
+  result.parityHash = sha256(JSON.stringify(result));
+  return result;
+};
 export const proofRunnerIdentity = () => sha256([
   "scripts/engineering/proof-runner.mjs",
   "scripts/engineering/proof-command-plan.mjs",

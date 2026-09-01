@@ -14,7 +14,7 @@ import { validateEvidenceFile } from "./proof-certify-ci.mjs";
 import { parseVerifiedAttestation } from "./proof-attestation.mjs";
 import { assertDisposablePostgresEnvironment, compileRegisteredCommandPlan, disposablePostgresEnvironment, proofDefinitionHash, proofRunnerIdentity } from "./proof-command-plan.mjs";
 import { evidencePayloadHash } from "./proof-evidence.mjs";
-import { canonicalEvidencePath, runRegisteredProof } from "./proof-runner.mjs";
+import { canonicalEvidencePath, proofFailureDiagnostics, runRegisteredProof } from "./proof-runner.mjs";
 import { executeRegressionCases, validateCaseResult } from "./regression-executors.mjs";
 import { queryGraphify, resolveContext, revalidateCandidate } from "./context.mjs";
 import { doctor } from "./kernel-doctor.mjs";
@@ -144,10 +144,10 @@ try {
       const hook = runPreTool(cmd); assert.equal(hook.status, 0); assert.match(hook.stdout, /SAFETY_CONFLICT:COMMAND_POLICY/);
     }
     assert.match(runPreTool("git worktree add .worktrees/x chore/x").stdout, /SAFETY_CONFLICT:WORKTREE_SCOPE/);
-    assert.equal(runPreTool("git status --short").stdout, ""); assert.equal(runPreTool("git push origin chore/engineering-kernel-v4").stdout, "");
+    assert.equal(runPreTool("git status --short").stdout, ""); assert.match(runPreTool("git push origin chore/engineering-kernel-v4").stdout, /SAFETY_CONFLICT:PREPUSH_CERTIFICATE_REQUIRED/);
     const scopedWorktree = command(root, process.execPath, ["scripts/engineering/hooks/pre-tool.mjs"], isolatedEnvironment, JSON.stringify({ session_id: session, tool_name: "exec_command", tool_input: { cmd: "git worktree add .worktrees/kernel-test-safe chore/kernel-test-safe" } }));
     assert.equal(scopedWorktree.stdout, "");
-    matrix.risk.push("pretool-command-matrix-denied", "pretool-read-only-allowed", "pretool-feature-push-scoped", "pretool-worktree-add-requires-resolved-scope", "pretool-worktree-add-exact-resolved-scope");
+    matrix.risk.push("pretool-command-matrix-denied", "pretool-read-only-allowed", "pretool-feature-push-requires-certificate", "pretool-worktree-add-requires-resolved-scope", "pretool-worktree-add-exact-resolved-scope");
 
     const identity = { schemaVersion: 1, baseSha, headSha: currentHead, treeSha: currentTree, dirtyFingerprint: dirtyFingerprint(), impactHash: "b".repeat(64), planHash: "a".repeat(64), requiredProofs: ["kernel-fixture-pass"], requiredByKind: { unit: ["kernel-fixture-pass"] }, notRequiredKinds: [] };
     const ciEnvironment = { CI: "true", GITHUB_ACTIONS: "true", GITHUB_REPOSITORY: "Deep0202006/CRM_Zero", GITHUB_WORKFLOW: "CRM Product Verification", GITHUB_RUN_ID: "123456", GITHUB_RUN_ATTEMPT: "1", GITHUB_SHA: currentHead, GITHUB_REF: "refs/pull/89/merge", GITHUB_JOB: "preflight", GITHUB_EVENT_NAME: "pull_request", KERNEL_BASE_SHA: baseSha, KERNEL_HEAD_SHA: currentHead };
@@ -193,7 +193,7 @@ try {
     const flakyPath = canonicalEvidencePath("kernel-fixture-flaky"); assert(!existsSync(flakyPath), "flaky fixture evidence already exists");
     const flakyPlan = { ...identity, requiredProofs: ["kernel-fixture-flaky"], requiredByKind: { unit: ["kernel-fixture-flaky"] } };
     const flaky = await withEnvironment(ciEnvironment, () => runRegisteredProof({ proofId: "kernel-fixture-flaky", plan: flakyPlan })); createdEvidence.push(flakyPath);
-    assert.equal(flaky.status, "FLAKY_DETECTED"); assert.throws(() => validateEvidenceFile({ path: flakyPath, proofId: "kernel-fixture-flaky", plan: flakyPlan, environment: ciEnvironment }), /EVIDENCE_STALE|FLAKY/); matrix.proof.push("retry-pass-rejected");
+    assert.equal(flaky.status, "FLAKY_DETECTED"); assert.match(proofFailureDiagnostics(flaky)[0], /first attempt fails/); assert.throws(() => validateEvidenceFile({ path: flakyPath, proofId: "kernel-fixture-flaky", plan: flakyPlan, environment: ciEnvironment }), /EVIDENCE_STALE|FLAKY/); matrix.proof.push("retry-pass-rejected", "first-failure-diagnostic-preserved");
 
     const subjectDigest = "d".repeat(64), verified = attestationOutput(ciEnvironment, subjectDigest);
     assert.equal(parseVerifiedAttestation({ output: verified, evidenceSha256: subjectDigest, environment: ciEnvironment }).repository, "Deep0202006/CRM_Zero");
@@ -351,6 +351,7 @@ try {
   const forwardMigration = compileImpact({ entries: [{ status: "A", path: migration(52) }], patch: "", baseImmutableThrough: 51 }); assert(!forwardMigration.unresolved.some((item) => item.code === "IMMUTABLE_MIGRATION"));
   const immutable = compileImpact({ entries: [{ status: "M", path: migration(52) }], patch: "", baseImmutableThrough: 52 }); assert(immutable.unresolved.some((item) => item.code === "IMMUTABLE_MIGRATION"));
   const ledgerImpact = compileImpact({ entries: [{ status: "M", path: "supabase/migrations/APPLIED_OWNER_MIGRATIONS.json" }], patch: "", baseImmutableThrough: 51 }); assert(ledgerImpact.domains.includes("engineering-control")); assert(!ledgerImpact.unresolved.some((item) => item.code === "UNMAPPED_PATH"));
+  const playwrightImpact = compileImpact({ entries: [{ status: "M", path: "playwright.config.ts" }], patch: "", baseImmutableThrough: 51 }); assert(playwrightImpact.domains.includes("engineering-control")); assert.equal(playwrightImpact.writable, true);
   const dynamicDoctor = doctor({ ci: true }); assert.equal(dynamicDoctor.status, "KERNEL_HEALTHY", JSON.stringify(dynamicDoctor)); assert.equal(dynamicDoctor.migrationBoundary, currentMigration.migrationBoundary); assert.equal(dynamicDoctor.immutableThrough, currentMigration.immutableThrough); assert.equal(dynamicDoctor.nextLegalMigration, currentMigration.nextLegalMigration); assert.equal(dynamicDoctor.transition, currentMigration.transition);
   const authorityFacts = JSON.parse(readFileSync(resolve(root, "docs/engineering/AUTHORITIES.json"), "utf8")).facts, domainFacts = JSON.parse(readFileSync(resolve(root, "docs/engineering/DOMAIN_MAP.json"), "utf8")).domains;
   const migrationPath = "supabase/migrations/900_fixture.sql", mapMigration = (...ids) => domainFacts.map((domain) => ids.includes(domain.id) ? { ...domain, pathPatterns: [...(domain.pathPatterns ?? []), migrationPath] } : domain);
