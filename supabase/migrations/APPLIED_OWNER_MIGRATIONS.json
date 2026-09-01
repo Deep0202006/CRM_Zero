@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "source": "Owner-verified CRM production history; do not infer remote migration history from local files.",
-  "lastAppliedOwnerMigration": 52,
-  "immutableThrough": 52,
-  "note": "Migration 052 was Owner-manually applied and production-read-only certified on 2026-08-30. Migrations through 052 are immutable; next migration is 053+."
+  "lastAppliedOwnerMigration": 53,
+  "immutableThrough": 53,
+  "note": "Migration 053 was Owner-manually applied and production-read-only certified on 2026-08-31. Migrations through 053 are immutable; next migration is 054+."
 }

@@ -1,16 +1,8 @@
-approval_policy = "on-request"
-approvals_reviewer = "user"
-sandbox_mode = "workspace-write"
 allow_login_shell = false
 project_doc_max_bytes = 16384
 
 [agents]
 max_concurrent_threads_per_session = 1
-
-[sandbox_workspace_write]
-network_access = false
-exclude_slash_tmp = true
-exclude_tmpdir_env_var = true
 
 [shell_environment_policy]
 inherit = "core"

@@ -1,14 +1,14 @@
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { classifyCommand, CommandClass } from "../engineering/command-policy.mjs";
+import { makeEngineeringTemp, removeEngineeringTemp } from "../engineering/managed-paths.mjs";
 
 const scanner = resolve(dirname(fileURLToPath(import.meta.url)), "repository-safety.mjs");
 const join = (...parts) => parts.join("");
 const runFixture = (files) => {
-  const root = mkdtempSync(resolve(tmpdir(), "repository-safety-"));
+  const root = makeEngineeringTemp("repository-safety");
   try {
     spawnSync("git", ["init", "-q"], { cwd: root });
     for (const [path, content] of Object.entries(files)) {
@@ -20,7 +20,7 @@ const runFixture = (files) => {
     if (add.status !== 0) throw Error("FIXTURE_GIT_ADD_FAILED");
     return spawnSync(process.execPath, [scanner, "--root", root], { cwd: root, encoding: "utf8" });
   } finally {
-    rmSync(root, { recursive: true, force: true });
+    removeEngineeringTemp(root);
   }
 };
 const expectFailure = (name, code, files) => {

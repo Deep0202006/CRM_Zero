@@ -418,7 +418,9 @@
         "src/components/analytics/ErpDistributionDonut.tsx"
       ],
       "pathPatterns": [
-        "supabase/migrations/052_billed_renewals_erp_payment_status.sql"
+        "supabase/migrations/052_billed_renewals_erp_payment_status.sql",
+        "supabase/migrations/053_erp_partner_distributor_status_filters.sql",
+        "src/lib/__tests__/erpCanonicalGuidValidation.test.ts"
       ],
       "serverBoundaries": [
         "src/app/api/distributors/commands/route.ts",
@@ -566,7 +568,8 @@
         "src/app/erp"
       ],
       "pathPatterns": [
-        "supabase/migrations/052_billed_renewals_erp_payment_status.sql"
+        "supabase/migrations/052_billed_renewals_erp_payment_status.sql",
+        "supabase/migrations/053_erp_partner_distributor_status_filters.sql"
       ],
       "serverBoundaries": [
         "src/app/api/erp-partner/distributors/route.ts"
@@ -659,7 +662,8 @@
         "src/app/payments/renewals"
       ],
       "pathPatterns": [
-        "supabase/migrations/052_billed_renewals_erp_payment_status.sql"
+        "supabase/migrations/052_billed_renewals_erp_payment_status.sql",
+        "supabase/migrations/053_erp_partner_distributor_status_filters.sql"
       ],
       "serverBoundaries": [
         "src/app/api/distributors/renewals/route.ts"

@@ -1,5 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { classifyCommand, CommandClass } from "./command-policy.mjs";
 import { resolveContext } from "./context.mjs";
@@ -8,6 +7,7 @@ import { compileRegisteredCommandPlan } from "./proof-command-plan.mjs";
 import { git, inspectMigrationBoundaryTransition, readJson, root, run, safeEnvironment } from "./kernel-lib.mjs";
 import { containsAssertionWeakening } from "../quality/assertion-policy.mjs";
 import { scanRepository } from "../quality/repository-safety.mjs";
+import { makeEngineeringTemp, removeEngineeringTemp } from "./managed-paths.mjs";
 import { evaluateOwnerGate, requiredCapabilities } from "../handover/lib.mjs";
 
 const rank = { R0: 0, R1: 1, R2: 2, R3: 3 };
@@ -62,7 +62,7 @@ const controlEvaluator = ({ item, counter }) => {
     assertCase(!containsAssertionWeakening("npx jest --runInBand"), "ASSERTION_POLICY_FALSE_POSITIVE", counter);
     assertCase(classifyCommand("node -e process.exit(0)").classification === CommandClass.PROHIBITED, "CONTROL_COMMAND_POLICY", counter);
   } else if (item.id === "task-lifecycle-hardening") {
-    const directory = mkdtempSync(resolve(tmpdir(), "regression-dirty-"));
+    const directory = makeEngineeringTemp("regression-dirty");
     try {
       run("git", ["init", "-q"], { cwd: directory });
       writeFileSync(resolve(directory, "fixture.txt"), "one\n");
@@ -72,7 +72,7 @@ const controlEvaluator = ({ item, counter }) => {
       assertCase(one.includes("fixture.txt") && two === "two\n", "CONTENT_SENSITIVE_WORKTREE", counter);
       assertCase(classifyCommand("git clean -fd").classification === CommandClass.PROHIBITED, "OWNER_WORK_PROTECTION", counter);
       assertCase(classifyCommand("git push origin chore/engineering-kernel-v4").classification === CommandClass.SCOPED_MUTATION_ALLOWED, "FEATURE_PUBLICATION_GATE", counter);
-    } finally { rmSync(directory, { recursive: true, force: true }); }
+    } finally { removeEngineeringTemp(directory); }
   } else throw new Error(`CASE_EXECUTOR_MISSING:${item.id}`);
 };
 const blockerEvaluator = ({ item, counter }) => {

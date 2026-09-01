@@ -17,6 +17,8 @@ returned candidate and revalidate its content hash before editing. Ambiguous or
 unknown scope permits inspection only. Current source and tests are behavior
 evidence; contracts state invariants; AUTHORITIES owns facts; CAPABILITIES marks
 required reuse; DOMAIN_MAP sets risk floors; PROOFS registers executable proof.
+When `crm:task` returns a managed worktree in its task packet, perform all subsequent
+task edits and proofs in that exact worktree.
 
 After a change run `impact:compile`, `proof:plan`, and only registered proofs.
 Unknown executable/config paths, control-plane changes, schema, RLS, auth,

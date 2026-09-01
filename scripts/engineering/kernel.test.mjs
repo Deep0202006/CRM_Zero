@@ -1,8 +1,7 @@
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmdirSync, rmSync, statSync, unlinkSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmdirSync, rmSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { classifyCommand, CommandClass } from "./command-policy.mjs";
@@ -24,9 +23,11 @@ import { beginExternalTask, compareAndSwap, loadState, requireContinuation, sess
 import { dirtyFingerprint, environmentPolicyHash, git, gitEnvironmentFor, gitNullConfig, inspectMigrationBoundaryTransition, parseMigrationNumber, repositoryIdentity, root, safeEnvironment, sha256, validateMigrationBoundaryTransition, validateMigrationLedger } from "./kernel-lib.mjs";
 import { containsAssertionWeakening } from "../quality/assertion-policy.mjs";
 import { inspectMigrationGate, runReleaseSelfTest, TARGETS, validateReleaseReceipt, waitForChecks, waitForGitDeployment } from "./release-controller.mjs";
+import { assertManagedPath, engineeringTempRoot, makeEngineeringTemp, removeEngineeringTemp } from "./managed-paths.mjs";
+import { releaseEnvironment } from "./release-entry.mjs";
 
 const matrix = { state: [], risk: [], proof: [], attestation: [], commandPolicy: [], regression: [], stopRemote: [], stall: [], postgresEnvironment: [], tokenIsolation: [] }, tempRoots = [], createdEvidence = [], preservedEvidence = new Map();
-const temp = (prefix) => { const path = mkdtempSync(resolve(tmpdir(), prefix)); tempRoots.push(path); return path; };
+const temp = (prefix) => { const path = makeEngineeringTemp(prefix); tempRoots.push(path); return path; };
 const command = (cwd, file, args, env, input) => spawnSync(file, args, { cwd, encoding: "utf8", env: { ...process.env, ...env }, input });
 const gitAt = (cwd, ...args) => spawnSync("git", ["-c", "core.hooksPath=", ...args], { cwd, encoding: "utf8", env: gitEnvironmentFor(cwd) });
 const snapshotDirectory = (directory) => {
@@ -84,6 +85,13 @@ const operationalDirectory = sessionsDirectory(), operationalBefore = snapshotDi
 const productBefore = snapshotDirectory(resolve(root, "src")), migrationsBefore = snapshotDirectory(resolve(root, "supabase/migrations"));
 let isolatedGit = "", isolatedRemoved = false;
 try {
+  const releaseEnv = releaseEnvironment({});
+  assert.equal(releaseEnv.TEMP, releaseEnv.TMP);
+  assert.equal(releaseEnv.TEMP, releaseEnv.TMPDIR);
+  assert.match(relative(root, releaseEnv.TEMP).replaceAll("\\", "/"), /^\.tmp\/engineering\/release$/);
+  assert.throws(() => engineeringTempRoot("../outside"), /CRM_MANAGED_SCOPE_INVALID/);
+  assert.throws(() => assertManagedPath(resolve(root, "outside")), /CRM_MANAGED_PATH_OUTSIDE_ROOT/);
+  matrix.regression.push("release-cli-temp-root-local", "managed-temp-traversal-rejected");
   const emptyTree = temp("kernel-empty-tree-"); mkdirSync(resolve(emptyTree, "a/b"), { recursive: true }); restoreDirectoryExistence(emptyTree, { exists: false }); assert(!existsSync(emptyTree)); matrix.state.push("empty-evidence-tree-restored");
   const baseSha = git("rev-parse", "origin/main"), currentHead = git("rev-parse", "HEAD"), currentTree = git("rev-parse", "HEAD^{tree}");
   isolatedGit = temp("kernel-state-git-");
@@ -261,6 +269,7 @@ try {
   for (const path of verifierIgnorePaths) assert.equal(ignoreContents.split(/\r?\n/).filter((line) => line === path).length, 1);
   assert(!workflowContents.includes(".git/info/exclude")); assert(!workflowContents.includes("core.excludesFile"));
   for (const artifact of ["kernel-preflight", "kernel-unit-build", "kernel-postgres", "kernel-e2e", "kernel-evidence-attestation"]) assert(workflowContents.includes(`name: ${artifact}`));
+  assert(workflowContents.includes("proof:run -- --kind handover"));
   assert(workflowContents.includes("npm run proof:certify-ci")); assert.match(workflowContents, /verify:\s*\n\s*needs: \[preflight, unit-build, receivables-postgres, e2e, attest-evidence\]/);
   statusIsClean(); assert.equal(dirtyFingerprint(ignoreRepo), ignoredBaseline);
   writeIgnoreFixture("artifacts/engineering-evidence/preflight/fixture.json", "{}\n");
@@ -338,11 +347,11 @@ try {
   assert.throws(() => transition({ headBoundary: 52, basePaths: [migration(51), migration(60)], headPaths: [migration(51), migration(52)], changes: [{ status: "R", oldPath: migration(60), path: migration(52) }] }), /CERTIFIED_MIGRATION_IDENTITY_INVALID/);
   assert.throws(() => validateMigrationBoundaryTransition({ baseLedger: ledger(51), headLedger: ledger(52, 51), baseMigrationPaths: [migration(51)], headMigrationPaths: [migration(51), migration(52)] }), /MIGRATION_LEDGER_INVALID/);
   assert.throws(() => transition({ basePaths: [migration(50)], headPaths: [migration(50), migration(51)] }), /CERTIFIED_MIGRATION_MISSING/);
-  const currentMigration = inspectMigrationBoundaryTransition(); assert.equal(currentMigration.baseImmutableThrough, 52); assert.equal(currentMigration.migrationBoundary, "52/52"); assert.equal(currentMigration.nextLegalMigration, 53); assert.equal(currentMigration.transition, "STABLE_CURRENT_BOUNDARY");
+  const currentMigration = inspectMigrationBoundaryTransition(); assert.equal(currentMigration.migrationBoundary, `${currentMigration.immutableThrough}/${currentMigration.immutableThrough}`); assert.equal(currentMigration.nextLegalMigration, currentMigration.immutableThrough + 1); assert.equal(currentMigration.transition, currentMigration.immutableThrough === currentMigration.baseImmutableThrough ? "STABLE_CURRENT_BOUNDARY" : "LEGAL_SINGLE_STEP_CERTIFICATION");
   const forwardMigration = compileImpact({ entries: [{ status: "A", path: migration(52) }], patch: "", baseImmutableThrough: 51 }); assert(!forwardMigration.unresolved.some((item) => item.code === "IMMUTABLE_MIGRATION"));
   const immutable = compileImpact({ entries: [{ status: "M", path: migration(52) }], patch: "", baseImmutableThrough: 52 }); assert(immutable.unresolved.some((item) => item.code === "IMMUTABLE_MIGRATION"));
   const ledgerImpact = compileImpact({ entries: [{ status: "M", path: "supabase/migrations/APPLIED_OWNER_MIGRATIONS.json" }], patch: "", baseImmutableThrough: 51 }); assert(ledgerImpact.domains.includes("engineering-control")); assert(!ledgerImpact.unresolved.some((item) => item.code === "UNMAPPED_PATH"));
-  const dynamicDoctor = doctor({ ci: true }); assert.equal(dynamicDoctor.status, "KERNEL_HEALTHY", JSON.stringify(dynamicDoctor)); assert.equal(dynamicDoctor.migrationBoundary, "52/52"); assert.equal(dynamicDoctor.immutableThrough, 52); assert.equal(dynamicDoctor.nextLegalMigration, 53); assert.equal(dynamicDoctor.transition, "STABLE_CURRENT_BOUNDARY");
+  const dynamicDoctor = doctor({ ci: true }); assert.equal(dynamicDoctor.status, "KERNEL_HEALTHY", JSON.stringify(dynamicDoctor)); assert.equal(dynamicDoctor.migrationBoundary, currentMigration.migrationBoundary); assert.equal(dynamicDoctor.immutableThrough, currentMigration.immutableThrough); assert.equal(dynamicDoctor.nextLegalMigration, currentMigration.nextLegalMigration); assert.equal(dynamicDoctor.transition, currentMigration.transition);
   const authorityFacts = JSON.parse(readFileSync(resolve(root, "docs/engineering/AUTHORITIES.json"), "utf8")).facts, domainFacts = JSON.parse(readFileSync(resolve(root, "docs/engineering/DOMAIN_MAP.json"), "utf8")).domains;
   const migrationPath = "supabase/migrations/900_fixture.sql", mapMigration = (...ids) => domainFacts.map((domain) => ids.includes(domain.id) ? { ...domain, pathPatterns: [...(domain.pathPatterns ?? []), migrationPath] } : domain);
   const migrationImpact = (sql, ids, options = {}) => compileImpact({ entries: [{ status: "A", path: migrationPath }], patch: sql, domainRegistry: mapMigration(...ids), selectedDomains: options.selectedDomains ?? ids, ...options });
@@ -475,5 +484,5 @@ try {
   restorePreservedEvidence();
   for (const path of createdEvidence) if (existsSync(path)) rmSync(path, { force: true });
   restoreDirectoryExistence(evidenceDirectory, evidenceBefore);
-  for (const path of tempRoots) if (existsSync(path)) rmSync(path, { recursive: true, force: true });
+  for (const path of tempRoots) if (existsSync(path)) removeEngineeringTemp(path);
 }

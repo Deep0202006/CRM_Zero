@@ -36,4 +36,12 @@ describe("canonical PostgreSQL ERP GUID validation", () => {
     expect(partnerDistributorQuerySchema.safeParse({ erp: canonicalErpId }).success).toBe(true);
     expect(partnerRenewalQuerySchema.safeParse({ erp: canonicalErpId }).success).toBe(true);
   });
+
+  it("accepts only the exact ERP Partner status-card filters", () => {
+    expect(partnerDistributorQuerySchema.safeParse({ installation: "done", training: "pending", billing: "billed", activity: "active", erpPayment: "paid", renewal: "overdue" }).success).toBe(true);
+    for (const value of [
+      { installation: "complete" }, { training: "done" }, { billing: "paid" },
+      { activity: "inactive" }, { erpPayment: "financially_paid" }, { renewal: "tomorrow" },
+    ]) expect(partnerDistributorQuerySchema.safeParse(value).success).toBe(false);
+  });
 });
