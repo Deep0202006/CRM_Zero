@@ -113,20 +113,20 @@ declare
   employee constant uuid := '92000000-0000-4000-a000-000000000001';
   states text[] := array['COLLECTION_SETUP_REQUIRED','UNPAID','PARTIALLY_PAID','PAID'];
   ids uuid[] := array['9e000000-0000-4000-a000-000000000001','9e000000-0000-4000-a000-000000000002','9e000000-0000-4000-a000-000000000003','9e000000-0000-4000-a000-000000000004'];
-  i integer; result jsonb; version_now bigint; before_receivables bigint; before_payments bigint; row_before public.distributor_accounts%rowtype;
+  loop_idx integer; result jsonb; version_now bigint; before_receivables bigint; before_payments bigint; row_before public.distributor_accounts%rowtype;
 begin
   insert into public.distributor_accounts(distributor_id,distributor_name,distributor_reference,identity_key,assigned_to,installation_status,training_status,mapping_status,activity_status,billing_status,billed_at,created_by)
-  select ids[i],'ERP Matrix '||states[i],'ERP-MATRIX-'||i,'code:erp-matrix-'||i,employee,'done','done','done','active','billed',current_date,actor from generate_subscripts(ids,1) i;
+  select ids[s.idx],'ERP Matrix '||states[s.idx],'ERP-MATRIX-'||s.idx,'code:erp-matrix-'||s.idx,employee,'done','done','done','active','billed',current_date,actor from generate_subscripts(ids,1) as s(idx);
   insert into public.receivables(receivable_id,distributor_id,bill_reference,bill_reference_key,distributor_name,distributor_identity_key,distributor_code,contact_person,bill_amount,bill_due_date,next_follow_up_date,assigned_to,source,created_by)
-  select md5('erp-matrix-receivable-'||i)::uuid,ids[i],'ERP-MATRIX-BILL-'||i,'erp-matrix-bill-'||i,'ERP Matrix '||states[i],'code:erp-matrix-'||i,'ERP-MATRIX-'||i,'Matrix',100,current_date,current_date,employee,'manual',actor from generate_series(2,4)i;
+  select md5('erp-matrix-receivable-'||g.idx)::uuid,ids[g.idx],'ERP-MATRIX-BILL-'||g.idx,'erp-matrix-bill-'||g.idx,'ERP Matrix '||states[g.idx],'code:erp-matrix-'||g.idx,'ERP-MATRIX-'||g.idx,'Matrix',100,current_date,current_date,employee,'manual',actor from generate_series(2,4) as g(idx);
   insert into public.receivable_payments(payment_id,receivable_id,amount,payment_date,reported_by,verification_status,verified_by,verified_at) values
     (md5('erp-matrix-payment-3')::uuid,md5('erp-matrix-receivable-3')::uuid,40,current_date,actor,'confirmed',actor,now()),
     (md5('erp-matrix-payment-4')::uuid,md5('erp-matrix-receivable-4')::uuid,100,current_date,actor,'confirmed',actor,now());
   select count(*) into before_receivables from public.receivables; select count(*) into before_payments from public.receivable_payments;
-  for i in 1..4 loop
-    select version into version_now from public.distributor_accounts where distributor_id=ids[i];
-    select public.distributor_erp_payment_status_command_v1(md5('erp-matrix-op-'||i)::uuid,actor,'erp_payment',repeat(i::text,64),jsonb_build_object('distributor_id',ids[i],'expected_version',version_now,'erp_payment_status','paid')) into result;
-    if not coalesce((result->>'success')::boolean,false) then raise exception 'ERP_BILLED_STATE_REJECTED %: %',states[i],result; end if;
+  for loop_idx in 1..4 loop
+    select version into version_now from public.distributor_accounts where distributor_id=ids[loop_idx];
+    select public.distributor_erp_payment_status_command_v1(md5('erp-matrix-op-'||loop_idx)::uuid,actor,'erp_payment',repeat(loop_idx::text,64),jsonb_build_object('distributor_id',ids[loop_idx],'expected_version',version_now,'erp_payment_status','paid')) into result;
+    if not coalesce((result->>'success')::boolean,false) then raise exception 'ERP_BILLED_STATE_REJECTED %: %',states[loop_idx],result; end if;
   end loop;
   if (select count(*) from public.receivables)<>before_receivables or (select count(*) from public.receivable_payments)<>before_payments then raise exception 'ERP_COMMAND_MUTATED_FINANCE'; end if;
   select version into version_now from public.distributor_accounts where distributor_id=ids[1];
