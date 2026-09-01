@@ -5,7 +5,7 @@ const mode = process.argv[2], marker = resolve(root, git("rev-parse", "--git-pat
 if (mode === "pass") process.exit(0);
 if (mode === "flaky") {
   mkdirSync(dirname(marker), { recursive: true });
-  if (!existsSync(marker)) { writeFileSync(marker, "first-attempt\n"); process.exit(1); }
+  if (!existsSync(marker)) { writeFileSync(marker, "first-attempt\n"); console.error("first attempt fails"); process.exit(1); }
   process.exit(0);
 }
 process.exit(2);

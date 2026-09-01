@@ -6,7 +6,10 @@ import { compileProofPlan } from "./proof-plan.mjs";
 import { dirtyFingerprint, environmentPolicyHash, parseArgs, readJson, root, run, safeEnvironment, sha256 } from "./kernel-lib.mjs";
 
 const executionDiagnostics = new Map();
-const boundedDiagnostic = (value) => String(value).replace(/\b(token|password|secret|authorization|api[_-]?key)\s*[:=]\s*\S+/gi, "$1=[REDACTED]").slice(0, 2048);
+const boundedDiagnostic = (value) => {
+  const redacted = String(value).replace(/\b(token|password|secret|authorization|api[_-]?key)\s*[:=]\s*\S+/gi, "$1=[REDACTED]");
+  return redacted.length <= 2048 ? redacted : `${redacted.slice(0, 512)}\n...\n${redacted.slice(-1530)}`;
+};
 export const canonicalEvidencePath = (proofId, sourceJob) => {
   sourceJob ??= expectedCiJob(readJson("docs/engineering/PROOFS.json").proofs.find((proof) => proof.id === proofId));
   if (!sourceJob) throw new Error(`PROOF_SOURCE_JOB_UNMAPPED:${proofId}`);
@@ -29,7 +32,7 @@ const executeAttempt = (commandPlan, kind) => {
       startedAt: commandStartedAt,
       endedAt: new Date().toISOString(),
     };
-    if (record.exitCode !== 0) executionDiagnostics.set(record.commandIdentity, boundedDiagnostic(stderr));
+    if (record.exitCode !== 0) executionDiagnostics.set(record.commandIdentity, boundedDiagnostic(`${stdout}\n${stderr}`));
     commands.push(record);
     if (record.exitCode !== 0) break;
   }
@@ -92,6 +95,8 @@ export const runRegisteredProof = ({ proofId, base = "origin/main", head = "WORK
   atomicCreateEvidence(canonicalEvidencePath(proofId, firstPlan.expectedCiJob), evidence);
   return evidence;
 };
+
+export const proofFailureDiagnostics = (evidence) => evidence.attempts.flatMap((attempt) => attempt.commands.filter((command) => command.exitCode !== 0).map((command) => executionDiagnostics.get(command.commandIdentity) ?? "NO_DIAGNOSTIC"));
 
 if (process.argv[1] && resolve(process.argv[1]) === resolve(import.meta.filename)) {
   const allowed = new Set(["--base", "--head", "--proof", "--kind"]);

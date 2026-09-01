@@ -51,5 +51,12 @@ assert(index.files.some((file) => file.relatedTests.length || file.testedSources
 assert(index.files.every((file) => file.gitBlobSha && file.contentHash && file.byteSize >= 0 && file.lineCount >= 0 && file.language && file.lastChangedCommit), "tracked manifest incomplete");
 assert(index.files.some((file) => file.symbols.some((symbol) => symbol.startLine > 0 && symbol.endLine >= symbol.startLine)), "line-addressable symbols missing");
 assert(index.edges.some((edge) => edge.currentPath && edge.currentHash && edge.reason && edge.evidenceType), "edge provenance missing");
+const learning = resolveContext({ task: "engineering control database fixture external CLI proof plan", index });
+assert.equal(learning.status, "RESOLVED"); assert(learning.domains.includes("engineering-control"));
+assert(learning.experiencePacket.some((item) => item.id === "FIXTURE_VALIDITY_BEFORE_ASSERTION"));
+assert(learning.experiencePacket.some((item) => item.id === "PROOF_CI_EXECUTION_PARITY"));
+assert(!learning.experiencePacket.some((item) => item.id === "MONEY_TRUTH"));
+assert(learning.experiencePacket.length <= 8 && Buffer.byteLength(JSON.stringify(learning.experiencePacket)) <= 2400);
+assert(resolveContext({ task: "engineering-control proof-plan CI parity", index }).experiencePacket.some((item) => item.id === "PROOF_CI_EXECUTION_PARITY"));
 matrix.push({ task: "cross-domain conflict", status: conflict.status }, { task: "hash drift", status: "INVALIDATED" }, { task: "graph unavailable", status: exact.status });
 console.log(JSON.stringify({ code: "CONTEXT_TEST_MATRIX_PASS", relationshipCases, matrix }));

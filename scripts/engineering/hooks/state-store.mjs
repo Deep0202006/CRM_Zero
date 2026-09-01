@@ -21,12 +21,13 @@ const State = z.object({
   failureSignatures: z.array(z.string()).default([]),
   stallCount: z.number().int().nonnegative().default(0),
   progressSignature: z.string().optional(),
+  gitRevalidationRequired: z.boolean().default(false),
 }).strict();
 
 const safeId = (value) => String(value || "unknown").replace(/[^a-zA-Z0-9._-]/g, "_");
 export const sessionsDirectory = () => resolve(root, git("rev-parse", "--git-path", "zd-kernel/sessions"));
 export const sessionPath = (sessionId) => resolve(sessionsDirectory(), `${safeId(sessionId)}.json`);
-const initial = (sessionId) => State.parse({ schemaVersion: 1, sessionId: safeId(sessionId), revision: 0, status: "SCOPE_UNRESOLVED", taskSequence: 0, evidence: [], failureSignatures: [], stallCount: 0 });
+const initial = (sessionId) => State.parse({ schemaVersion: 1, sessionId: safeId(sessionId), revision: 0, status: "SCOPE_UNRESOLVED", taskSequence: 0, evidence: [], failureSignatures: [], stallCount: 0, gitRevalidationRequired: false });
 
 const preserveCorrupt = (path, raw) => {
   const preserved = `${path}.corrupt-${Date.now()}-${sha256(raw).slice(0, 12)}`;
@@ -90,6 +91,7 @@ export const beginExternalTask = (sessionId, prompt) => {
     failureSignatures: [],
     stallCount: 0,
     progressSignature: undefined,
+    gitRevalidationRequired: false,
   });
 };
 export const requireContinuation = (sessionId, taskId) => {

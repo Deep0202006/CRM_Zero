@@ -7,6 +7,7 @@ import { resolveContext } from "./context.mjs";
 import { appendProgress, assertCompleteTaskDirectory, compareAndSwapTask, createTask, findActiveTask, loadTask, makeTaskId, taskDirectory, writeTaskArtifact } from "./task-state.mjs";
 import { git, gitEnvironmentFor, parseArgs, root, sha256 } from "./kernel-lib.mjs";
 import { makeEngineeringTemp, removeEngineeringTemp } from "./managed-paths.mjs";
+import { initializeTaskExperience } from "./experience.mjs";
 
 const identity = () => ({ branch: git("branch", "--show-current"), worktree: git("rev-parse", "--show-toplevel"), baseSha: git("rev-parse", "origin/main"), headSha: git("rev-parse", "HEAD"), treeSha: git("rev-parse", "HEAD^{tree}") });
 const gitAt = (cwd, ...args) => execFileSync("git", args, { cwd, encoding: "utf8", env: gitEnvironmentFor(cwd), maxBuffer: 64 << 20 }).trim();
@@ -57,7 +58,7 @@ export const runTaskController = () => {
     if (child.status !== 0) throw new Error(`TASK_WORKSPACE_ADOPTION_FAILED:${child.stderr.trim()}`);
     return { ...JSON.parse(child.stdout), managedWorkspace: managed };
   }
-  const index = buildSourceIndex(), context = resolveContext({ task, index }), taskId = makeTaskId(task, current.branch), record = createTask({ taskId, task, inspectOnly: args.has("--inspect-only"), identity: current, context: { schemaVersion: 1, index: { headSha: index.headSha, treeSha: index.treeSha, dirtyFingerprint: index.dirtyFingerprint }, ...context } }); appendProgress(taskId, { event: "CONTEXT_RESOLVED", status: context.status, candidateCount: context.candidatePaths.length, graphifyQueries: context.graphifyEvidence?.status === "GRAPHIFY_QUERIED" ? 1 : 0 }); return { task: record, context, directory: taskDirectory(taskId), next: context.status === "RESOLVED" ? "Inspect candidates and persist acceptance/root cause/write scope before editing." : "Read-only investigation only." };
+  const index = buildSourceIndex(), context = resolveContext({ task, index }), taskId = makeTaskId(task, current.branch), record = createTask({ taskId, task, inspectOnly: args.has("--inspect-only"), identity: current, context: { schemaVersion: 1, index: { headSha: index.headSha, treeSha: index.treeSha, dirtyFingerprint: index.dirtyFingerprint }, ...context } }); initializeTaskExperience({ taskId, task, context, identity: current }); appendProgress(taskId, { event: "CONTEXT_RESOLVED", status: context.status, candidateCount: context.candidatePaths.length, graphifyQueries: context.graphifyEvidence?.status === "GRAPHIFY_QUERIED" ? 1 : 0 }); return { task: record, context, directory: taskDirectory(taskId), next: context.status === "RESOLVED" ? "Inspect candidates and persist acceptance/root cause/write scope before editing." : "Read-only investigation only." };
 };
 
 if (process.argv[1] && resolve(process.argv[1]) === resolve(import.meta.filename)) { try { console.log(JSON.stringify(runTaskController(), null, 2)); } catch (error) { console.error(error.message); process.exitCode = 2; } }

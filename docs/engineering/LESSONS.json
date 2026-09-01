@@ -17,7 +17,7 @@
         "R2",
         "R3"
       ],
-      "rule": "Every implementation task preserves its baseline, binds proof to its current tree and plan, closes reusable learning, and cannot stop as successful while local work remains.",
+      "rule": "Every R2/R3 implementation task preserves its baseline, proves high-impact assumptions, binds local CI-parity proof to a prepush certificate for its current tree and plan, and cannot stop or repush a repeated failure class until reusable learning is regression-proven.",
       "why": "A green OS installation is not evidence that a later engineering task is complete.",
       "claims": [
         "NO_END_WITH_INCOMPLETE_ACCEPTANCE",
@@ -698,7 +698,7 @@
         "R2",
         "R3"
       ],
-      "rule": "Call a failure pre-existing only when it reproduces on clean current main. Exact-head proof expires after relevant head changes; reuse still-valid proof instead of rerunning gratuitously.",
+      "rule": "Call a failure pre-existing only when it reproduces on clean current main. Reproduce locally available CI commands before repush, ingest exact remote failures by semantic signature, and expire proof and prepush readiness after relevant identity changes.",
       "why": "Branch evidence is only valid for its exact code.",
       "evidence": [
         ".github/workflows/product-verification.yml"
@@ -909,7 +909,7 @@
         "R2",
         "R3"
       ],
-      "rule": "Preserve owner work, use a clean worktree, query Graphify before broad search, follow Ponytail minimum diff, and use one direct Codex. Diff is not progress; encode durable learning here, in a contract, or test.",
+      "rule": "Preserve owner work, keep CRM-managed state below the Git root, leave model/reasoning/permissions to the Owner, use a clean worktree and one direct Codex, and encode durable learning in existing lessons or executable checks.",
       "why": "Parallel workflow authorities waste context and obscure responsibility.",
       "evidence": [
         "AGENTS.md",
@@ -1135,7 +1135,7 @@
         "R2",
         "R3"
       ],
-      "rule": "Committed counts and checkpoints are historical evidence only; current production claims need fresh read-only evidence.",
+      "rule": "Committed counts and checkpoints are historical evidence only. Mutable current repository state, including migration boundaries, must be derived at runtime rather than compared with today's literal; historical identities and synthetic transition fixtures remain valid fixed data.",
       "why": "Repository history cannot observe deployed state.",
       "evidence": [
         "AGENTS.md"
@@ -1220,7 +1220,7 @@
         "R2",
         "R3"
       ],
-      "rule": "Inspect relevant callers and prefer one correct shared-boundary repair over sibling patches.",
+      "rule": "After a failure class is understood, inspect every equivalent location and prefer one correct shared-boundary repair plus a class-wide regression over sequential sibling patches.",
       "why": "Repeated local patches preserve the root defect.",
       "evidence": [
         "docs/engineering/WORKFLOW.md"
@@ -1520,6 +1520,62 @@
       "evalRefs": [
         "erp-filter"
       ]
+    },
+    {
+      "id": "FIXTURE_VALIDITY_BEFORE_ASSERTION",
+      "domains": ["engineering-control", "erp", "distributor-status", "receivables", "imports"],
+      "triggers": ["database fixture", "fixture setup", "constraint failure", "scenario assertion"],
+      "risk": ["R3"],
+      "rule": "Database integration proof separates schema, fixture setup, and scenario assertion phases; fixture setup must satisfy the real disposable schema before scenario assertions run.",
+      "why": "An invalid fixture tests neither the requested scenario nor production-shaped behavior.",
+      "evidence": ["scripts/engineering/experience.test.mjs", "scripts/erp-visibility-db/integration.sql"],
+      "loadByDefault": false,
+      "claims": ["R3_DATABASE_RUNTIME_PROOF"],
+      "kind": "mechanical",
+      "enforcementRefs": ["scripts/engineering/experience.mjs"],
+      "evalRefs": ["control-plane-regressions"]
+    },
+    {
+      "id": "PROOF_CI_EXECUTION_PARITY",
+      "domains": ["engineering-control"],
+      "triggers": ["proof plan", "CI workflow", "required proof kind"],
+      "risk": ["R2", "R3"],
+      "rule": "Every proof kind emitted by planning has a registered CI job and an executable workflow path, or is explicitly human-owned; job presence alone is not execution coverage.",
+      "why": "A planned proof that CI never executes creates a false exact-head certificate.",
+      "evidence": ["scripts/engineering/proof-command-plan.mjs", ".github/workflows/product-verification.yml"],
+      "loadByDefault": false,
+      "claims": ["EXACT_HEAD_PROOF"],
+      "kind": "mechanical",
+      "enforcementRefs": ["scripts/engineering/readiness.mjs"],
+      "evalRefs": ["control-plane-regressions"]
+    },
+    {
+      "id": "EXTERNAL_CLI_HOST_CONTRACT",
+      "domains": ["engineering-control", "platform-handover"],
+      "triggers": ["external CLI", "Windows", "shell false", "stdout", "stderr", "exit code"],
+      "risk": ["R2", "R3"],
+      "rule": "External delivery CLI adapters require deterministic fakes, platform-aware executable resolution, exit-code validation, stdout and stderr handling, and a real-host read-only smoke.",
+      "why": "Mock success cannot prove the installed host executable or output-channel contract.",
+      "evidence": ["scripts/engineering/experience.mjs", "scripts/engineering/experience.test.mjs"],
+      "loadByDefault": false,
+      "claims": ["EXACT_HEAD_PROOF"],
+      "kind": "mechanical",
+      "enforcementRefs": ["scripts/engineering/readiness.mjs"],
+      "evalRefs": ["control-plane-regressions"]
+    },
+    {
+      "id": "GIT_TRANSITION_REVALIDATION",
+      "domains": ["engineering-control"],
+      "triggers": ["Git command failed", "Git transition", "branch transition", "worktree transition"],
+      "risk": ["R2", "R3"],
+      "rule": "After a failed or aborted state-changing Git command, re-read branch, HEAD, and porcelain status before any further mutation.",
+      "why": "Requested Git state is not evidence that the transition occurred.",
+      "evidence": ["scripts/engineering/hooks/pre-tool.mjs", "scripts/engineering/hooks/post-tool.mjs"],
+      "loadByDefault": false,
+      "claims": ["TASK_BASE_AND_DIRTY_BASELINE_KNOWN"],
+      "kind": "mechanical",
+      "enforcementRefs": ["scripts/engineering/hooks/pre-tool.mjs"],
+      "evalRefs": ["control-plane-regressions"]
     },
     {
       "id": "CI_TOOLCHAIN_REUSE",
