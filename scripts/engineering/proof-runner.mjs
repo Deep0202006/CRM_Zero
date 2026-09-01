@@ -6,17 +6,21 @@ import { compileProofPlan } from "./proof-plan.mjs";
 import { dirtyFingerprint, environmentPolicyHash, parseArgs, readJson, root, run, safeEnvironment, sha256 } from "./kernel-lib.mjs";
 
 const executionDiagnostics = new Map();
-const boundedDiagnostic = (value) => String(value).replace(/\b(token|password|secret|authorization|api[_-]?key)\s*[:=]\s*\S+/gi, "$1=[REDACTED]").slice(0, 2048);
+const boundedDiagnostic = (value) => {
+  const redacted = String(value).replace(/\b(token|password|secret|authorization|api[_-]?key)\s*[:=]\s*\S+/gi, "$1=[REDACTED]");
+  return redacted.length <= 2048 ? redacted : `${redacted.slice(-1530)}\n...\n${redacted.slice(0, 512)}`;
+};
 export const canonicalEvidencePath = (proofId, sourceJob) => {
   sourceJob ??= expectedCiJob(readJson("docs/engineering/PROOFS.json").proofs.find((proof) => proof.id === proofId));
   if (!sourceJob) throw new Error(`PROOF_SOURCE_JOB_UNMAPPED:${proofId}`);
   return resolve(root, "artifacts/engineering-evidence", sourceJob, `${proofId}.json`);
 };
+export const proofExecutionEnvironment = (kind, command, source = process.env) => kind === "postgres" ? disposablePostgresEnvironment(command, source) : { ...safeEnvironment(source), ...(kind === "e2e" ? { PLAYWRIGHT_REUSE_EXISTING_SERVER: "false" } : {}) };
 const executeAttempt = (commandPlan, kind) => {
   const startedAt = new Date().toISOString(), commands = [];
   for (const command of commandPlan.commands) {
     const commandStartedAt = new Date().toISOString();
-    const environment = kind === "postgres" ? disposablePostgresEnvironment(command, process.env) : safeEnvironment(process.env);
+    const environment = proofExecutionEnvironment(kind, command);
     const processResult = run(command.executable, command.args, { env: environment });
     const stdout = processResult.stdout ?? "", stderr = processResult.stderr ?? String(processResult.error ?? "");
     const record = {
@@ -29,7 +33,7 @@ const executeAttempt = (commandPlan, kind) => {
       startedAt: commandStartedAt,
       endedAt: new Date().toISOString(),
     };
-    if (record.exitCode !== 0) executionDiagnostics.set(record.commandIdentity, boundedDiagnostic(stderr));
+    if (record.exitCode !== 0) executionDiagnostics.set(record.commandIdentity, boundedDiagnostic(`${stdout}\n${stderr}`));
     commands.push(record);
     if (record.exitCode !== 0) break;
   }
@@ -92,6 +96,8 @@ export const runRegisteredProof = ({ proofId, base = "origin/main", head = "WORK
   atomicCreateEvidence(canonicalEvidencePath(proofId, firstPlan.expectedCiJob), evidence);
   return evidence;
 };
+
+export const proofFailureDiagnostics = (evidence) => evidence.attempts.flatMap((attempt) => attempt.commands.filter((command) => command.exitCode !== 0).map((command) => executionDiagnostics.get(command.commandIdentity) ?? "NO_DIAGNOSTIC"));
 
 if (process.argv[1] && resolve(process.argv[1]) === resolve(import.meta.filename)) {
   const allowed = new Set(["--base", "--head", "--proof", "--kind"]);

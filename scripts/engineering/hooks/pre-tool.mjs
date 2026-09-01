@@ -5,6 +5,8 @@ import { revalidateCandidate } from "../context.mjs";
 import { loadState, readHookInput, root } from "./state-store.mjs";
 import { findActiveTask, taskDirectory } from "../task-state.mjs";
 import { sha256 } from "../kernel-lib.mjs";
+import { assertPrepushReady } from "../readiness.mjs";
+import { isGitStateRevalidationCommand } from "../experience.mjs";
 
 const input = await readHookInput(), sessionId = input.session_id ?? "unknown", state = loadState(sessionId);
 const tool = input.tool_name ?? "", payload = input.tool_input ?? {}, serialized = JSON.stringify(payload);
@@ -32,10 +34,12 @@ const outsideTaskScope = activeTask && mutating && !metadataOnly && (!requestedP
 
 let conflict = "";
 if (classification?.classification === CommandClass.PROHIBITED || classification?.classification === CommandClass.UNKNOWN_MUTATION_SHAPE) conflict = `COMMAND_POLICY_${classification.reason}`;
+else if (state.gitRevalidationRequired && mutating && !isGitStateRevalidationCommand(shellCommand)) conflict = "GIT_STATE_REVALIDATION_REQUIRED";
 else if (migration) conflict = "IMMUTABLE_MIGRATION";
 else if (credentialPath) conflict = "CREDENTIAL_PATH";
 else if (mutating && controlEdit && !controlAuthorized && !taskControlAuthorized) conflict = "CONTROL_SCOPE";
 else if (worktreeRequest && !worktreeAddAuthorized) conflict = "WORKTREE_SCOPE";
 else if (outsideTaskScope) conflict = "TASK_SCOPE_OR_HASH";
 else if (!activeTask && mutating && outsideScope) conflict = "SCOPE_OR_HASH";
+else if (classification?.reason === "GIT_FEATURE_PUSH") { try { assertPrepushReady(); } catch { conflict = "PREPUSH_CERTIFICATE_REQUIRED"; } }
 if (conflict) console.log(JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: `SAFETY_CONFLICT:${conflict}` } }));

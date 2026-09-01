@@ -18,7 +18,7 @@ export default defineConfig({
       ? "node scripts/e2e/start-server.mjs"
       : "npm run dev -- --hostname 127.0.0.1 --port 3111",
     url: "http://127.0.0.1:3111/login",
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: !process.env.CI && process.env.PLAYWRIGHT_REUSE_EXISTING_SERVER !== "false",
     timeout: 120_000,
     env: {
       ...process.env,

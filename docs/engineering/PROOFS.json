@@ -617,6 +617,18 @@
         {
           "file": "node",
           "args": [
+            "scripts/engineering/experience.test.mjs"
+          ]
+        },
+        {
+          "file": "node",
+          "args": [
+            "scripts/quality/dynamic-state-guard.mjs"
+          ]
+        },
+        {
+          "file": "node",
+          "args": [
             "scripts/engineering/context.test.mjs"
           ]
         },

@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "
 import { spawnSync } from "node:child_process";
 import { dirname, resolve } from "node:path";
 import { buildSourceIndex } from "./source-index.mjs";
+import { selectExperience } from "./experience.mjs";
 import { git, parseArgs, readJson, root, safeEnvironment, sha256 } from "./kernel-lib.mjs";
 
 const matchesRoot = (path, pattern) => pattern.endsWith("/**") ? path === pattern.slice(0, -3) || path.startsWith(pattern.slice(0, -2)) : path === pattern || path.startsWith(`${pattern}/`);
@@ -124,7 +125,7 @@ export const resolveContext = ({ task = "", exactPath, index } = {}) => {
   const capabilityIds = new Set(selected.flatMap((domain) => domain.capabilityRefs ?? []));
   const riskRank = { R0: 0, R1: 1, R2: 2, R3: 3 };
   const risk = selected.reduce((current, domain) => riskRank[domain.riskFloor] > riskRank[current] ? domain.riskFloor : current, "R0");
-  return {
+  const pack = {
     status, taskHash, domains: selected.map((domain) => domain.id), risk,
     authorities: authorities.filter((item) => authorityIds.has(item.id)).map((item) => item.id),
     mustNotWriteAuthorities: authorities.filter((item) => protectedIds.has(item.id)).map((item) => item.id),
@@ -134,6 +135,8 @@ export const resolveContext = ({ task = "", exactPath, index } = {}) => {
     graphifyEvidence,
     unresolved: [!selected.length && "NO_DOMAIN_EVIDENCE", !ordered.length && "NO_PATH_EVIDENCE", conflicting && "GENUINE_BUSINESS_AMBIGUITY", conflicting && "CONFLICTING_AUTHORITIES", lexicalOnly && "LEXICAL_ONLY", relationshipOnly && "RELATIONSHIP_ONLY", ordered[0]?.score < 0.68 && "LOW_CONFIDENCE"].filter(Boolean),
   };
+  pack.experiencePacket = selectExperience({ task, domains: pack.domains, risk: pack.risk, candidatePaths: pack.candidatePaths, requiredProofRefs: pack.requiredProofRefs, environment: { platform: process.platform } });
+  return pack;
 };
 export const revalidateCandidate = (candidate) => {
   try { return sha256(readFileSync(resolve(root, candidate.path))) === candidate.contentHash; }
