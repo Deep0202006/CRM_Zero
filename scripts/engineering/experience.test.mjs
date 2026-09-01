@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { sha256 } from "./kernel-lib.mjs";
 import { deriveAssumptions, externalCliInvocation, isGitStateChangingCommand, isGitStateRevalidationCommand, normalizeFailureSignature, repeatedFailureBlockers, runDatabaseProofPhases, runExternalCli, selectExperience, upsertIncident, validateIncident } from "./experience.mjs";
-import { validatePrepushCertificate } from "./readiness.mjs";
+import { requireWritableImpact, semanticRemoteFailure, validatePrepushCertificate } from "./readiness.mjs";
 import { validateProofCiParity } from "./proof-command-plan.mjs";
 import { proofExecutionEnvironment } from "./proof-runner.mjs";
 import { mutableCurrentStateLiteralViolations } from "../quality/dynamic-state-guard.mjs";
@@ -62,5 +62,7 @@ const certificate = { schemaVersion: 1, status: "READY", task: "task-fixture", .
 certificate.certificateHash = sha256(JSON.stringify(certificate));
 assert.equal(validatePrepushCertificate({ certificate, taskId: "task-fixture", identity, impact, plan }).status, "READY");
 assert.throws(() => validatePrepushCertificate({ certificate, taskId: "task-fixture", identity: { ...identity, headSha: "f".repeat(40) }, impact, plan }), /STALE/);
+assert.throws(() => requireWritableImpact({ writable: false, unresolved: [{ code: "UNMAPPED_PATH", path: "fixture.config.ts" }] }), /IMPACT_UNRESOLVED:UNMAPPED_PATH:fixture\.config\.ts/);
+assert.equal(semanticRemoteFailure('preflight\tstep\t  "code": "UNMAPPED_PATH",\npreflight\tstep\t  "path": "playwright.config.ts"'), "UNMAPPED_PATH:playwright.config.ts");
 
 console.log(JSON.stringify({ code: "EXPERIENCE_LEARNING_MATRIX_PASS", packetBytes: Buffer.byteLength(JSON.stringify(packet)), lessonCount: packet.length, host: process.platform }));

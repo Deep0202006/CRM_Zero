@@ -10,6 +10,10 @@ import { invalidatePrepushCertificate, normalizeFailureSignature, readIncidentRe
 
 const emptyFingerprint = sha256("");
 const certificateBody = (certificate) => Object.fromEntries(Object.entries(certificate).filter(([key]) => key !== "certificateHash"));
+export const requireWritableImpact = (impact) => {
+  if (!impact.writable) throw new Error(`IMPACT_UNRESOLVED:${impact.unresolved.map((item) => `${item.code}:${item.path ?? item.target ?? ""}`).join(",")}`);
+  return impact;
+};
 export const validatePrepushCertificate = ({ certificate, taskId, identity, impact, plan }) => {
   if (!certificate || certificate.status !== "READY" || certificate.task !== taskId) throw new Error("PREPUSH_CERTIFICATE_REQUIRED");
   if (certificate.certificateHash !== sha256(JSON.stringify(certificateBody(certificate)))) throw new Error("PREPUSH_CERTIFICATE_INVALID");
@@ -67,7 +71,7 @@ export const certifyPrepush = ({ execute = true } = {}) => {
   if (!task) throw new Error("ACTIVE_TASK_REQUIRED");
   const identity = repositoryIdentity(root, "origin/main");
   if (identity.dirtyFingerprint !== emptyFingerprint) throw new Error("CLEAN_COMMITTED_HEAD_REQUIRED");
-  const impact = compileImpact({ base: "origin/main", head: "HEAD" }), plan = compileProofPlan({ impact });
+  const impact = requireWritableImpact(compileImpact({ base: "origin/main", head: "HEAD" })), plan = compileProofPlan({ impact });
   const proofs = readJson("docs/engineering/PROOFS.json").proofs, workflow = readFileSync(resolve(root, ".github/workflows/product-verification.yml"), "utf8"), parity = validateProofCiParity({ proofs, workflow });
   if (parity.status !== "PASS") throw new Error(`PROOF_CI_PARITY_FAILED:${parity.failures.join(",")}`);
   const related = relatedTestSelection(plan.baseSha, plan.headSha);
@@ -113,11 +117,17 @@ export const certifyPrepush = ({ execute = true } = {}) => {
 
 export const assertPrepushReady = () => {
   const task = findActiveTask(); if (!task) throw new Error("ACTIVE_TASK_REQUIRED");
-  const identity = repositoryIdentity(root, "origin/main"), impact = compileImpact({ base: "origin/main", head: "HEAD" }), plan = compileProofPlan({ impact });
+  const identity = repositoryIdentity(root, "origin/main"), impact = requireWritableImpact(compileImpact({ base: "origin/main", head: "HEAD" })), plan = compileProofPlan({ impact });
   return validatePrepushCertificate({ certificate: readPrepushCertificate(task.taskId), taskId: task.taskId, identity, impact, plan });
 };
 
 const parseJson = (result, code) => { if (result.status !== 0) throw new Error(code); try { return JSON.parse(result.stdout); } catch { throw new Error(code); } };
+export const semanticRemoteFailure = (text, job = "unknown", step = "unknown") => {
+  const unresolved = /"code":\s*"([A-Z0-9_]+)"[\s\S]{0,600}?"path":\s*"([^"]+)"/.exec(text);
+  if (unresolved) return normalizeFailureSignature(`${unresolved[1]}:${unresolved[2]}`);
+  const lines = String(text).split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  return normalizeFailureSignature(lines.find((line) => /(?:EVIDENCE_[A-Z_]+|AssertionError|ERROR:\s.*constraint|FAIL\s+[^\s]|ENOENT)/.test(line)) ?? lines.find((line) => /PROOF_COMMAND_FAILED/.test(line)) ?? lines.find((line) => /(?:error|fail|assert|exception|constraint|not found)/i.test(line)) ?? `${job}:${step}`);
+};
 export const intakeCurrentRemoteFailure = ({ runner = run } = {}) => {
   const task = findActiveTask(); if (!task) return null;
   const branch = git("branch", "--show-current"), head = git("rev-parse", "HEAD");
@@ -127,8 +137,7 @@ export const intakeCurrentRemoteFailure = ({ runner = run } = {}) => {
   const workflowRun = runs.find((item) => item.headSha === head && item.conclusion === "failure"); if (!workflowRun) return null;
   const view = parseJson(runner("gh", ["run", "view", String(workflowRun.databaseId), "--repo", "Deep0202006/CRM_Zero", "--json", "jobs"]), "REMOTE_FAILURE_JOB_UNAVAILABLE"), job = view.jobs.find((item) => item.conclusion === "failure"), step = job?.steps?.find((item) => item.conclusion === "failure");
   const log = job ? runner("gh", ["run", "view", String(workflowRun.databaseId), "--repo", "Deep0202006/CRM_Zero", "--job", String(job.databaseId), "--log-failed"]) : { status: 1, stdout: "", stderr: "" };
-  const logLines = String(log.stdout || log.stderr).split(/\r?\n/).map((line) => line.trim()).filter(Boolean), firstFailure = logLines.find((line) => /(?:EVIDENCE_[A-Z_]+|AssertionError|ERROR:\s.*constraint|FAIL\s+[^\s]|ENOENT)/.test(line)) ?? logLines.find((line) => /PROOF_COMMAND_FAILED/.test(line)) ?? logLines.find((line) => /(?:error|fail|assert|exception|constraint|not found)/i.test(line)) ?? `${job?.name ?? "unknown"}:${step?.name ?? "unknown"}`;
-  const evidence = { pr: pr.number, head, workflowRun: workflowRun.databaseId, failedJob: job?.name ?? null, failedStep: step?.name ?? null, firstFailingExecutable: step?.name ?? null, firstFailure: normalizeFailureSignature(firstFailure) };
+  const evidence = { pr: pr.number, head, workflowRun: workflowRun.databaseId, failedJob: job?.name ?? null, failedStep: step?.name ?? null, firstFailingExecutable: step?.name ?? null, firstFailure: semanticRemoteFailure(log.stdout || log.stderr, job?.name, step?.name) };
   const incident = recordFailure({ taskId: task.taskId, signature: evidence.firstFailure, evidenceRefs: [`pr:${pr.number}`, `run:${workflowRun.databaseId}`, `job:${job?.databaseId ?? "unknown"}`], environment: { platform: "github-actions", workflow: workflowRun.workflowName } });
   invalidatePrepushCertificate(task.taskId, `REMOTE_FAILURE:${incident.fingerprint}`);
   const experience = readTaskExperience(task.taskId); writeTaskExperience(task.taskId, { ...experience, metrics: { ...experience.metrics, ciAttemptCount: (experience.metrics?.ciAttemptCount ?? 0) + 1, locallyReproducibleFailuresFirstDiscoveredRemotely: (experience.metrics?.locallyReproducibleFailuresFirstDiscoveredRemotely ?? 0) + 1 } });
