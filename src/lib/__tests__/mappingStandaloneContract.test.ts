@@ -55,12 +55,15 @@ describe("standalone Mapping contract", () => {
   it("keeps requester authority immutable and completion attribution server generated", () => {
     const page = read("src/app/mappings/page.tsx");
     const database = read("src/lib/db.ts");
+    const migration = read("supabase/migrations/054_creator_updates_billed_erp_payment.sql");
     expect(page).toContain("mapped_by: null");
     expect(page).toContain("mapping.requested_by === currentUser?.user_id");
     expect(database).toContain("queueMappingOwnerUpdate");
     expect(database).toContain("mapping-update:${mapping.request_id}");
     expect(page).toContain("Logged by:");
     expect(page).toContain("Completed by:");
+    expect(migration).toContain("timezone('utc', clock_timestamp())");
+    expect(migration).not.toContain("timezone('utc', now())");
   });
 
   it("uses immutable actor IDs only as deleted-user audit fallbacks", () => {

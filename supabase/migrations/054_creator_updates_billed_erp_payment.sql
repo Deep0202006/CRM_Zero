@@ -60,7 +60,7 @@ begin
     new.mapped_by := null; new.mapped_by_id_snapshot := null; new.mapped_by_name_snapshot := null; new.completed_at := null;
   elsif old.status <> 'Completed' then
     new.mapped_by := actor; new.mapped_by_id_snapshot := actor; new.mapped_by_name_snapshot := actor_name;
-    new.completed_at := timezone('utc', now());
+    new.completed_at := timezone('utc', clock_timestamp());
   else
     new.mapped_by := old.mapped_by; new.mapped_by_id_snapshot := old.mapped_by_id_snapshot;
     new.mapped_by_name_snapshot := old.mapped_by_name_snapshot; new.completed_at := old.completed_at;

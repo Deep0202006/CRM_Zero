@@ -64,6 +64,8 @@ test("pending offline Call edits the same insert, log ID, and follow-up intent",
 
   await page.getByRole("button", { name: "Update" }).click();
   await page.locator("#call-outcome").selectOption({ label: "Happy call" });
+  await expect(page.locator("#call-outcome")).toHaveValue("Happy call");
+  await expect(page.getByLabel("Next follow-up date")).toHaveCount(0);
   await page.getByRole("button", { name: "Save update" }).click();
   const cancelled = await snapshot(page);
   expect(cancelled.calls).toHaveLength(1);
