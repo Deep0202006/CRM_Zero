@@ -137,7 +137,7 @@ begin
   select version into version_now from public.distributor_accounts where distributor_id=ids[2];
   select public.distributor_erp_payment_status_command_v1(gen_random_uuid(),actor,'erp_payment',repeat('b',64),jsonb_build_object('distributor_id',ids[2],'expected_version',version_now-1,'erp_payment_status','paid')) into result;
   if result->>'code'<>'DISTRIBUTOR_CONFLICT' then raise exception 'ERP_STALE_VERSION_ACCEPTED'; end if;
-  update public.distributor_accounts set billing_status='not_billed' where distributor_id=ids[2];
+  update public.distributor_accounts set billing_status='not_billed',billed_at=null where distributor_id=ids[2];
   if (select erp_payment_status from public.distributor_accounts where distributor_id=ids[2]) is not null then raise exception 'ERP_UNBILLING_DID_NOT_CLEAR'; end if;
   select version into version_now from public.distributor_accounts where distributor_id=ids[2];
   select public.distributor_erp_payment_status_command_v1(gen_random_uuid(),actor,'erp_payment',repeat('c',64),jsonb_build_object('distributor_id',ids[2],'expected_version',version_now,'erp_payment_status','paid')) into result;
