@@ -6,9 +6,10 @@ import { compileProofPlan } from "./proof-plan.mjs";
 import { dirtyFingerprint, environmentPolicyHash, parseArgs, readJson, root, run, safeEnvironment, sha256 } from "./kernel-lib.mjs";
 
 const executionDiagnostics = new Map();
-const boundedDiagnostic = (value) => {
-  const redacted = String(value).replace(/\b(token|password|secret|authorization|api[_-]?key)\s*[:=]\s*\S+/gi, "$1=[REDACTED]");
-  return redacted.length <= 2048 ? redacted : `${redacted.slice(-1530)}\n...\n${redacted.slice(0, 512)}`;
+const boundedDiagnostic = (stdout, stderr) => {
+  const combined = `${stdout}\n${stderr}`, semantic = combined.split(/\r?\n/).filter((line) => !/\bwarning\b/i.test(line) && /(?:error|fail|assert|timeout|timed out|expected|received|constraint|enoent)/i.test(line)).slice(-8).join("\n");
+  const redacted = `${semantic}${semantic ? "\n" : ""}${combined}`.replace(/\b(token|password|secret|authorization|api[_-]?key)\s*[:=]\s*\S+/gi, "$1=[REDACTED]");
+  return redacted.length <= 2048 ? redacted : `${redacted.slice(0, 1024)}\n...\n${redacted.slice(-1018)}`;
 };
 export const canonicalEvidencePath = (proofId, sourceJob) => {
   sourceJob ??= expectedCiJob(readJson("docs/engineering/PROOFS.json").proofs.find((proof) => proof.id === proofId));
@@ -33,7 +34,7 @@ const executeAttempt = (commandPlan, kind) => {
       startedAt: commandStartedAt,
       endedAt: new Date().toISOString(),
     };
-    if (record.exitCode !== 0) executionDiagnostics.set(record.commandIdentity, boundedDiagnostic(`${stdout}\n${stderr}`));
+    if (record.exitCode !== 0) executionDiagnostics.set(record.commandIdentity, boundedDiagnostic(stdout, stderr));
     commands.push(record);
     if (record.exitCode !== 0) break;
   }

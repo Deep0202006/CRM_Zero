@@ -36,7 +36,7 @@ async function becomeAdmin(page: Page) {
     localStorage.setItem("sb-e2e-auth-token", JSON.stringify({ access_token: adminToken, refresh_token: "e2e", expires_at: 1999999999, expires_in: 999999999, token_type: "bearer", user: { id: adminId, aud: "authenticated", role: "authenticated", email: "admin@example.test", app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() } }));
   }, { adminId, adminToken: token(adminId) });
   await page.goto("/login");
-  await page.waitForTimeout(300);
+  await page.waitForURL("**/attendance");
 }
 
 async function mockClosure(page: Page, capabilities: string[]) {
