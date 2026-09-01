@@ -38,7 +38,7 @@ function sortNewestFirst(logs: LocalCallLog[]): LocalCallLog[] {
 
 export function mergeConfirmedAndPendingCalls(confirmedLogs: LocalCallLog[], pendingLogs: LocalCallLog[]): LocalCallLog[] {
   const merged = new Map(confirmedLogs.map((log) => [log.log_id, log]));
-  for (const pending of pendingLogs) if (!merged.has(pending.log_id)) merged.set(pending.log_id, pending);
+  for (const pending of pendingLogs) merged.set(pending.log_id, pending);
   return sortNewestFirst([...merged.values()]);
 }
 
@@ -47,14 +47,13 @@ async function localSnapshot(userId: string, isAdmin: boolean, notice: string | 
     ? await db.call_logs.toArray()
     : await db.call_logs.where("user_id").equals(userId).toArray();
   const pendingRows = await db.sync_queue
-    .filter((item) => item.table_name === "call_logs" && item.action === "INSERT")
+    .filter((item) => item.table_name === "call_logs" && (item.action === "INSERT" || item.action === "UPDATE"))
     .toArray();
-  const pendingIds = new Set(
-    pendingRows
-      .map((item) => item.data as LocalCallLog)
-      .filter((log) => belongsToUser(log, userId, isAdmin))
-      .map((log) => log.log_id),
-  );
+  const localById = new Map(localLogs.map((log) => [log.log_id, log]));
+  const pendingIds = new Set(pendingRows
+    .map((item) => (item.data as Partial<LocalCallLog>).log_id)
+    .filter((id): id is string => Boolean(id && localById.has(id)))
+    .filter((id) => belongsToUser(localById.get(id)!, userId, isAdmin)));
 
   return {
     logs: sortNewestFirst(localLogs),
@@ -78,10 +77,11 @@ export async function fetchCallLogSnapshot(userId: string, isAdmin: boolean, pag
   }
 
   const pendingRows = await db.sync_queue
-    .filter((item) => item.table_name === "call_logs" && item.action === "INSERT")
+    .filter((item) => item.table_name === "call_logs" && (item.action === "INSERT" || item.action === "UPDATE"))
     .toArray();
-  const pendingLogs = pendingRows
-    .map((item) => item.data as LocalCallLog)
+  const pendingIds = [...new Set(pendingRows.map((item) => (item.data as Partial<LocalCallLog>).log_id).filter((id): id is string => Boolean(id)))];
+  const pendingLogs = (await db.call_logs.bulkGet(pendingIds))
+    .filter((log): log is LocalCallLog => Boolean(log))
     .filter((log) => belongsToUser(log, userId, isAdmin));
 
   try {
@@ -95,8 +95,7 @@ export async function fetchCallLogSnapshot(userId: string, isAdmin: boolean, pag
 
     if (confirmedLogs.length > 0) await db.call_logs.bulkPut(confirmedLogs);
 
-    const confirmedIds = new Set(confirmedLogs.map((log) => log.log_id));
-    const unsyncedLogs = pendingLogs.filter((log) => !confirmedIds.has(log.log_id));
+    const unsyncedLogs = pendingLogs;
 
     return {
       logs: mergeConfirmedAndPendingCalls(confirmedLogs, unsyncedLogs),

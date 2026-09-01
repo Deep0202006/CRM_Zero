@@ -130,3 +130,57 @@ export function buildSelfScheduledFollowUpTask(input: {
     created_at: input.createdAt,
   };
 }
+
+export function reconcileCallFollowUpTasks(input: {
+  existingTasks: LocalTask[];
+  outcome: string;
+  dueDate: string | null;
+  authenticatedUserId: string;
+  newTaskId: string;
+  clientDisplay: string;
+  relatedLeadId: string | null;
+  notes: string;
+  changedAt: string;
+  sourceCallId: string;
+}): LocalTask[] {
+  const active = input.existingTasks
+    .filter((task) => parseFollowUpSourceCallId(task.description) === input.sourceCallId)
+    .filter((task) => task.is_active !== false && task.status !== "Completed" && task.status !== "Missed")
+    .sort((a, b) => a.created_at.localeCompare(b.created_at) || a.task_id.localeCompare(b.task_id));
+  const cancel = (task: LocalTask): LocalTask => ({
+    ...task,
+    is_active: false,
+    cancelled_at: input.changedAt,
+    cancellation_reason: "Source Call no longer requires this active follow-up.",
+  });
+
+  if (!needsCallFollowUp(input.outcome) || !input.dueDate) return active.map(cancel);
+
+  const refreshed = buildSelfScheduledFollowUpTask({
+    outcome: input.outcome,
+    dueDate: input.dueDate,
+    authenticatedUserId: input.authenticatedUserId,
+    taskId: active[0]?.task_id ?? input.newTaskId,
+    clientDisplay: input.clientDisplay,
+    related_lead_id: input.relatedLeadId,
+    notes: input.notes,
+    createdAt: active[0]?.created_at ?? input.changedAt,
+    sourceCallId: input.sourceCallId,
+  });
+  if (!refreshed) return active.map(cancel);
+  const current = active[0];
+  return [
+    current ? {
+      ...current,
+      title: refreshed.title,
+      description: refreshed.description,
+      priority: refreshed.priority,
+      related_lead_id: refreshed.related_lead_id,
+      due_date: refreshed.due_date,
+      is_active: true,
+      cancelled_at: null,
+      cancellation_reason: null,
+    } : refreshed,
+    ...active.slice(1).map(cancel),
+  ];
+}

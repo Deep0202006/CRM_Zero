@@ -128,7 +128,19 @@
     {
       "id": "call_history",
       "authority": "public.call_logs",
-      "identity": ["log_id"]
+      "writeSelectors": [
+        { "schema": "public", "resource": "call_logs" }
+      ],
+      "identity": ["log_id"],
+      "owns": ["user-entered Call business facts", "immutable creator and audit time"],
+      "rules": [
+        "user_id is immutable creator identity",
+        "only the creator may update mutable business facts",
+        "Admin read authority does not grant update authority",
+        "outcome is the single Call response/status fact"
+      ],
+      "writer": "owner-authenticated confirmation and owner-update server boundaries",
+      "readers": ["Call Logs owner history", "authorized Admin team history"]
     },
     {
       "id": "field_visit",
@@ -223,6 +235,9 @@
     {
       "id": "mapping_request",
       "authority": "public.mapping_requests",
+      "writeSelectors": [
+        { "schema": "public", "resource": "mapping_requests" }
+      ],
       "identity": ["request_id"],
       "owns": [
         "standalone mapping request",
@@ -231,13 +246,15 @@
         "completion timestamp"
       ],
       "rules": [
-        "requested_by is creation actor",
-        "mapped_by is completion actor",
+        "requested_by is immutable creator and mutation authority",
+        "read authority does not grant update authority",
+        "the creator may edit Pending or Completed requests and reopen or recomplete them",
+        "mapped_by is server-generated completion actor",
         "labels are display metadata",
         "completed attribution is not fabricated",
         "Mapping never creates Leads/Pipeline facts"
       ],
-      "writer": "offline-first Mapping persistence synchronized to public.mapping_requests, with database attribution/RLS guard after Migration 051",
+      "writer": "offline-first creator persistence synchronized by stable request_id, with database attribution/RLS guards",
       "readers": ["Mapping screen", "Team KPI projection"],
       "mustNotOwn": ["pipeline lead", "client master identity"]
     },

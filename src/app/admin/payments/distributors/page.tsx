@@ -908,7 +908,7 @@ function DistributorEditor({
           label="Renewal Date"
           defaultValue={value.renewal_date}
         />
-        {row?.collection_state === "PAID" && (
+        {row?.billing_status === "billed" && (
           <label className="text-xs font-semibold">
             ERP Payment
             <select
@@ -961,7 +961,7 @@ function DistributorEditor({
               Set Renewal
             </Button>
           )}
-          {row?.collection_state === "PAID" && (
+          {row?.billing_status === "billed" && (
             <Button type="submit" variant="outline" name="action" value="erp_payment" isLoading={pendingAction === "erp_payment"} disabled={Boolean(pendingAction)}>
               {pendingAction === "erp_payment" ? "Saving ERP Payment" : "Save ERP Payment"}
             </Button>

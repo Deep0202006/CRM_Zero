@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { db, transactionalMutation, LocalMappingRequest, LocalUser, pullDownSync } from "@/lib/db";
+import { db, transactionalMutation, queueMappingOwnerUpdate, processSyncQueue, LocalMappingRequest, LocalUser } from "@/lib/db";
+import { isSupabaseConfigured, supabase } from "@/lib/supabaseClient";
 import { AlertCircle, CheckCircle2, Link2, Download, ArrowRightLeft } from "lucide-react";
 import { SearchableSelect, SearchableOption } from "@/components/SearchableSelect";
 import { QueueList } from "@/components/QueueList";
@@ -28,6 +29,9 @@ export default function MappingsPage() {
   const [cardinality, setCardinality] = useState<"1:1" | "1:N">("1:1");
   const [primaryName, setPrimaryName] = useState("");
   const [secondaryNames, setSecondaryNames] = useState("");
+  const [mappingNotes, setMappingNotes] = useState("");
+  const [mappingStatus, setMappingStatus] = useState<"Pending" | "Completed">("Pending");
+  const [editingMapping, setEditingMapping] = useState<LocalMappingRequest | null>(null);
   
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -39,10 +43,20 @@ export default function MappingsPage() {
 
   const loadData = async () => {
     try {
-      if (typeof navigator !== "undefined" && navigator.onLine) await pullDownSync();
-      const allMaps = await db.mapping_requests.toArray();
+      if (typeof navigator !== "undefined" && navigator.onLine) {
+        await processSyncQueue();
+        if (isSupabaseConfigured) {
+          const pendingIds = new Set((await db.sync_queue.filter((item) => item.table_name === "mapping_requests").toArray()).map((item) => (item.data as Partial<LocalMappingRequest>).request_id));
+          const { data, error } = await supabase.from("mapping_requests")
+            .select("request_id,distributor_lead_id,retailer_lead_id,distributor_name_unregistered,retailer_name_unregistered,requested_by,mapped_by,requested_by_id_snapshot,mapped_by_id_snapshot,requested_by_name_snapshot,mapped_by_name_snapshot,status,notes,created_at,completed_at")
+            .order("created_at", { ascending: false }).limit(50);
+          if (error) throw error;
+          const safeRows = (data ?? []).filter((row) => !pendingIds.has(row.request_id)) as LocalMappingRequest[];
+          if (safeRows.length) await db.mapping_requests.bulkPut(safeRows);
+        }
+      }
+      const allMaps = await db.mapping_requests.orderBy("created_at").reverse().limit(50).toArray();
       setMappingUsers(await db.users.toArray());
-      allMaps.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
       setMappings(allMaps);
     } catch (err) {
       console.error(err);
@@ -58,6 +72,8 @@ export default function MappingsPage() {
 
   const handleLogMapping = async (e: React.FormEvent) => {
     e.preventDefault();
+    const actor = currentUser;
+    if (!actor) return;
     if (!primaryName.trim() || !secondaryNames.trim()) {
       setErrorMsg("Please provide both primary and secondary names.");
       return;
@@ -65,6 +81,33 @@ export default function MappingsPage() {
     
     try {
       const primary = resolveClientOptionInput(primaryName, clientOptions);
+
+      if (editingMapping) {
+        if (editingMapping.requested_by !== actor.user_id) throw new Error("Only the employee who logged this Mapping may update it.");
+        const secondary = resolveClientOptionInput(secondaryNames.trim(), clientOptions);
+        const isDistPrimary = activeSegment === "Distributor";
+        const enteringCompleted = editingMapping.status !== "Completed" && mappingStatus === "Completed";
+        const optimistic: LocalMappingRequest = mappingRequestSchema.parse({
+          ...editingMapping,
+          distributor_lead_id: isDistPrimary ? primary.leadId : secondary.leadId,
+          retailer_lead_id: isDistPrimary ? secondary.leadId : primary.leadId,
+          distributor_name_unregistered: isDistPrimary ? primary.displayValue : secondary.displayValue,
+          retailer_name_unregistered: isDistPrimary ? secondary.displayValue : primary.displayValue,
+          notes: mappingNotes.trim() || null,
+          status: mappingStatus,
+          mapped_by: mappingStatus === "Pending" ? null : enteringCompleted ? actor.user_id : editingMapping.mapped_by,
+          mapped_by_id_snapshot: mappingStatus === "Pending" ? null : enteringCompleted ? actor.user_id : editingMapping.mapped_by_id_snapshot,
+          mapped_by_name_snapshot: mappingStatus === "Pending" ? null : enteringCompleted ? actor.name : editingMapping.mapped_by_name_snapshot,
+          completed_at: mappingStatus === "Pending" ? null : enteringCompleted ? new Date().toISOString() : editingMapping.completed_at,
+        }) as LocalMappingRequest;
+        await queueMappingOwnerUpdate(optimistic);
+        if (navigator.onLine) await processSyncQueue();
+        setEditingMapping(null); setPrimaryName(""); setSecondaryNames(""); setMappingNotes(""); setMappingStatus("Pending");
+        setSuccessMsg("Mapping update saved safely.");
+        await loadData();
+        setTimeout(() => setSuccessMsg(null), 2500);
+        return;
+      }
       
       let sNames = [secondaryNames.trim()];
       if (cardinality === "1:N") {
@@ -91,7 +134,8 @@ export default function MappingsPage() {
           distributor_name_unregistered: isDistPrimary ? primary.displayValue : secondary.displayValue,
           retailer_name_unregistered: isDistPrimary ? secondary.displayValue : primary.displayValue,
           status: "Pending",
-          requested_by: currentUser?.user_id || null,
+          notes: mappingNotes.trim() || null,
+          requested_by: actor.user_id,
           mapped_by: null,
           created_at: timestamp,
         };
@@ -106,6 +150,7 @@ export default function MappingsPage() {
       setTimeout(() => setSuccessMsg(null), 2500);
       setPrimaryName("");
       setSecondaryNames("");
+      setMappingNotes("");
       await loadData();
     } catch (err) {
       console.error(err);
@@ -113,18 +158,18 @@ export default function MappingsPage() {
     }
   };
 
-  const handleUpdateMappingStatus = async (request_id: string, newStatus: string) => {
-    try {
-      const updates: { status: string; completed_at?: string; mapped_by?: string | null } = { status: newStatus };
-      if (newStatus === "Completed") {
-        updates.completed_at = new Date().toISOString();
-        updates.mapped_by = currentUser?.user_id || null;
-      }
-      await transactionalMutation("mapping_requests", "UPDATE", { request_id, ...updates });
-      await loadData();
-    } catch (err) {
-      setErrorMsg("Failed to update mapping status.");
-    }
+  const editMapping = (mapping: LocalMappingRequest) => {
+    if (mapping.requested_by !== currentUser?.user_id) return;
+    setEditingMapping(mapping);
+    setActiveSegment("Distributor"); setCardinality("1:1");
+    setPrimaryName(mapping.distributor_lead_id ?? mapping.distributor_name_unregistered ?? "");
+    setSecondaryNames(mapping.retailer_lead_id ?? mapping.retailer_name_unregistered ?? "");
+    setMappingNotes(mapping.notes ?? ""); setMappingStatus(mapping.status);
+    setErrorMsg(null); setSuccessMsg(null);
+  };
+
+  const cancelEdit = () => {
+    setEditingMapping(null); setPrimaryName(""); setSecondaryNames(""); setMappingNotes(""); setMappingStatus("Pending"); setErrorMsg(null);
   };
 
   // Identity vector standard: Format "{Name} (@{Username}) - {Phone}"
@@ -190,8 +235,8 @@ export default function MappingsPage() {
       <div className="workspace-split">
         <section className="surface-panel overflow-hidden" aria-labelledby="mapping-builder-title">
           <div className="border-b border-[var(--border-subtle)] bg-[var(--surface-secondary)] p-5">
-            <p className="section-kicker">Mapping builder</p>
-            <h2 id="mapping-builder-title" className="mt-1 section-title">Define the relationship</h2>
+            <p className="section-kicker">{editingMapping ? "Creator update" : "Mapping builder"}</p>
+            <h2 id="mapping-builder-title" className="mt-1 section-title">{editingMapping ? "Update the relationship" : "Define the relationship"}</h2>
             <p className="mt-1 text-[12px] leading-5 text-[var(--text-muted)]">Choose the direction and cardinality first; the labels and available records update automatically.</p>
           </div>
 
@@ -204,13 +249,13 @@ export default function MappingsPage() {
                   <button type="button" aria-pressed={activeSegment === "Retailer"} onClick={() => setActiveSegment("Retailer")}>Retailer</button>
                 </div>
               </fieldset>
-              <fieldset>
+              {!editingMapping && <fieldset>
                 <legend className="field-label">Relationship type</legend>
                 <div className="segmented-control grid w-full grid-cols-2">
                   <button type="button" aria-pressed={cardinality === "1:1"} onClick={() => setCardinality("1:1")}>One to one</button>
                   <button type="button" aria-pressed={cardinality === "1:N"} onClick={() => setCardinality("1:N")}>One to many</button>
                 </div>
-              </fieldset>
+              </fieldset>}
             </div>
 
             <div>
@@ -234,8 +279,16 @@ export default function MappingsPage() {
               {cardinality === "1:N" && <p className="mt-1.5 text-[11px] text-[var(--text-muted)]">Each valid name becomes a separate pending mapping request.</p>}
             </div>
 
-            <div className="flex justify-end border-t border-[var(--border-subtle)] pt-5">
-              <Button type="submit" icon={<Link2 size={15} />} disabled={!primaryName.trim() || !secondaryNames.trim()}>Create mapping {cardinality === "1:N" ? "requests" : "request"}</Button>
+            <div>
+              <label htmlFor="mapping-notes" className="field-label">Notes</label>
+              <textarea id="mapping-notes" value={mappingNotes} onChange={(event) => setMappingNotes(event.target.value)} rows={3} className="field-control resize-y" placeholder="Mapping context or instructions" />
+            </div>
+
+            {editingMapping && <div><label htmlFor="mapping-status" className="field-label">Mapping status</label><select id="mapping-status" value={mappingStatus} onChange={(event) => setMappingStatus(event.target.value as "Pending" | "Completed")} className="field-control"><option value="Pending">Pending</option><option value="Completed">Completed</option></select></div>}
+
+            <div className="flex justify-end gap-2 border-t border-[var(--border-subtle)] pt-5">
+              {editingMapping && <Button type="button" variant="outline" onClick={cancelEdit}>Cancel</Button>}
+              <Button type="submit" icon={<Link2 size={15} />} disabled={!primaryName.trim() || !secondaryNames.trim()}>{editingMapping ? "Save update" : `Create mapping ${cardinality === "1:N" ? "requests" : "request"}`}</Button>
             </div>
           </form>
         </section>
@@ -256,11 +309,11 @@ export default function MappingsPage() {
             statusText: mapping.status,
             statusVariant: mapping.status === "Completed" ? "success" : "warning",
             timestamp: new Date(mapping.created_at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }),
-            actions: mapping.status !== "Completed" ? (
-              <Button size="sm" variant="success" onClick={() => handleUpdateMappingStatus(mapping.request_id, "Completed")} icon={<CheckCircle2 size={13} />}>Complete</Button>
-            ) : (
+            actions: mapping.requested_by === currentUser?.user_id ? (
+              <Button size="sm" variant="outline" onClick={() => editMapping(mapping)}>Update</Button>
+            ) : mapping.status === "Completed" ? (
               <Chip variant="success" size="sm"><CheckCircle2 size={10} /> Verified</Chip>
-            ),
+            ) : undefined,
           }))}
           emptyMessage="No mapping requests have been created."
           onRefresh={loadData}

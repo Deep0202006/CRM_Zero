@@ -50,13 +50,13 @@ describe("call-history authority incident", () => {
     expect(mergeConfirmedAndPendingCalls([call(remoteId, "2026-08-10T06:00:00.000Z")], []).map((item) => item.log_id)).toEqual([remoteId]);
   });
 
-  it("unions confirmed and pending calls exactly once with remote precedence", () => {
+  it("unions confirmed and pending calls exactly once with pending-edit precedence", () => {
     const staleLocal = call(remoteId, "2026-08-10T05:59:00.000Z", "Stale local outcome");
     const authoritative = call(remoteId, "2026-08-10T06:00:00.000Z", "Authoritative outcome");
     const pending = call(pendingId, "2026-08-10T06:01:00.000Z");
     const merged = mergeConfirmedAndPendingCalls([authoritative], [staleLocal, pending]);
     expect(merged.map((item) => item.log_id)).toEqual([pendingId, remoteId]);
-    expect(merged.find((item) => item.log_id === remoteId)?.outcome).toBe("Authoritative outcome");
+    expect(merged.find((item) => item.log_id === remoteId)?.outcome).toBe("Stale local outcome");
   });
 
   it("keeps ownership server-derived and admin scope capability-controlled", () => {
@@ -77,7 +77,7 @@ describe("call-history authority incident", () => {
     expect(repository).toContain("Offline: showing durable calls saved on this device");
     expect(repository).toContain("Confirmed call history could not be refreshed");
     expect(page).toContain("historyNotice");
-    expect(page.indexOf("setLogs(fetchedLogs)")).toBeLessThan(page.indexOf("await db.tasks.bulkGet"));
+    expect(page.indexOf("setLogs(fetchedLogs)")).toBeLessThan(page.indexOf('await db.tasks.where("assigned_to")'));
     expect(page).toContain("optional local display enrichment is unavailable");
     expect(page).toContain("void processSyncQueue().catch");
     expect(page).toContain('window.addEventListener(CALL_LOGS_CHANGED_EVENT, refreshAuthority)');

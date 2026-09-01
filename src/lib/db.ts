@@ -836,6 +836,94 @@ export async function transactionalMutation(
   }
 }
 
+const resetQueuedMutation = {
+  retry_count: 0,
+  last_error: undefined,
+  next_retry_at: undefined,
+  recovery_state: undefined,
+  recovery_reason: undefined,
+  recovery_marked_at: undefined,
+} as const;
+
+async function upsertStableUpdate(idempotencyKey: string, tableName: string, data: object, timestamp: string) {
+  const existing = await db.sync_queue.where("idempotency_key").equals(idempotencyKey).first();
+  if (existing?.id) {
+    await db.sync_queue.update(existing.id, { data, timestamp, ...resetQueuedMutation });
+    return;
+  }
+  await db.sync_queue.add({
+    idempotency_key: idempotencyKey,
+    owner_user_id: claimSyncQueueOwnership(),
+    table_name: tableName,
+    action: "UPDATE",
+    data,
+    timestamp,
+    retry_count: 0,
+  });
+}
+
+export async function queueMappingOwnerUpdate(mapping: LocalMappingRequest): Promise<void> {
+  const data = {
+    request_id: mapping.request_id,
+    distributor_lead_id: mapping.distributor_lead_id,
+    retailer_lead_id: mapping.retailer_lead_id,
+    distributor_name_unregistered: mapping.distributor_name_unregistered ?? null,
+    retailer_name_unregistered: mapping.retailer_name_unregistered ?? null,
+    notes: mapping.notes ?? null,
+    status: mapping.status,
+  };
+  await db.transaction("rw", [db.mapping_requests, db.sync_queue], async () => {
+    await db.mapping_requests.put(mapping);
+    await upsertStableUpdate(`mapping-update:${mapping.request_id}`, "mapping_requests", data, new Date().toISOString());
+  });
+  if (typeof navigator !== "undefined" && navigator.onLine) processSyncQueue().catch(console.error);
+}
+
+export async function queueCallOwnerUpdate(log: LocalCallLog, followUpTasks: LocalTask[]): Promise<void> {
+  const timestamp = new Date().toISOString();
+  await db.transaction("rw", [db.call_logs, db.tasks, db.sync_queue], async () => {
+    await db.call_logs.put(log);
+    const pendingInsert = await db.sync_queue.where("idempotency_key").equals(`call-log:${log.log_id}`).first();
+    if (pendingInsert?.id && pendingInsert.table_name === "call_logs" && pendingInsert.action === "INSERT") {
+      await db.sync_queue.update(pendingInsert.id, { data: log, timestamp, ...resetQueuedMutation });
+    } else {
+      await upsertStableUpdate(`call-update:${log.log_id}`, "call_logs", {
+        log_id: log.log_id,
+        lead_id: log.lead_id,
+        client_username: log.client_username ?? null,
+        client_name: log.client_name ?? null,
+        outcome: log.outcome,
+        notes: log.notes ?? null,
+        next_followup_date: log.next_followup_date ?? null,
+      }, timestamp);
+    }
+
+    for (const task of followUpTasks) {
+      const existedLocally = Boolean(await db.tasks.get(task.task_id));
+      const queuedInsert = await db.sync_queue
+        .filter((item) => item.table_name === "tasks" && item.action === "INSERT" && getDynamicField(item.data, "task_id") === task.task_id)
+        .first();
+      await db.tasks.put(task);
+      if (queuedInsert?.id) {
+        await db.sync_queue.update(queuedInsert.id, { data: task, timestamp, ...resetQueuedMutation });
+      } else if (existedLocally) {
+        await upsertStableUpdate(`call-followup-update:${task.task_id}`, "tasks", task, timestamp);
+      } else {
+        await db.sync_queue.add({
+          idempotency_key: `call-followup-task:${log.log_id}:${task.task_id}`,
+          owner_user_id: claimSyncQueueOwnership(),
+          table_name: "tasks",
+          action: "INSERT",
+          data: task,
+          timestamp,
+          retry_count: 0,
+        });
+      }
+    }
+  });
+  if (typeof navigator !== "undefined" && navigator.onLine) processSyncQueue().catch(console.error);
+}
+
 export async function queueOfflineMutation(
   tableName: string,
   action: "INSERT" | "UPDATE" | "DELETE",
@@ -931,6 +1019,24 @@ async function confirmCallLog(payload: Record<string, unknown>, accessToken: str
     const retryable = response.status === 408 || response.status === 429 || response.status >= 500;
     throw new SyncAttemptError(`Call confirmation failed (${result.code ?? response.status}).`, retryable);
   }
+}
+
+async function updateCallLog(payload: Record<string, unknown>, accessToken: string): Promise<LocalCallLog> {
+  const logId = String(payload.log_id ?? "");
+  const body = omitPrimaryKeyFromUpdate(payload, "log_id");
+  const response = await fetch(`/api/call-logs/${encodeURIComponent(logId)}`, {
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+  let result: { ok?: boolean; code?: string; call?: LocalCallLog };
+  try { result = await response.json() as typeof result; }
+  catch { throw new SyncAttemptError("Call update returned an unreadable response.", true); }
+  if (!response.ok || !result.ok || result.code !== "CALL_UPDATED" || result.call?.log_id !== logId) {
+    throw new SyncAttemptError(`Call update failed (${result.code ?? response.status}).`, response.status === 408 || response.status === 429 || response.status >= 500);
+  }
+  return result.call;
 }
 
 async function legacyDataUrlToBlob(value: unknown): Promise<Blob | null> {
@@ -1328,10 +1434,18 @@ async function processSyncQueueInternal(): Promise<void> {
             throw new Error(`No update fields provided for ${item.table_name}.`);
           }
 
+          if (item.table_name === "call_logs") {
+            await db.call_logs.put(await updateCallLog(prepared.data, accessToken));
+            await db.sync_queue.delete(item.id);
+            if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("zerodata:call-logs-changed"));
+            continue;
+          }
+
+          const mappingSelect = "request_id,distributor_lead_id,retailer_lead_id,distributor_name_unregistered,retailer_name_unregistered,requested_by,mapped_by,requested_by_id_snapshot,mapped_by_id_snapshot,requested_by_name_snapshot,mapped_by_name_snapshot,status,notes,created_at,completed_at";
           const { data, error } = await client
             .update(updateData)
             .eq(primaryKey, primaryKeyValue)
-            .select(primaryKey)
+            .select(item.table_name === "mapping_requests" ? mappingSelect : primaryKey)
             .maybeSingle();
           if (error) {
             if (item.table_name === "mapping_requests") {
@@ -1341,16 +1455,11 @@ async function processSyncQueueInternal(): Promise<void> {
           }
           if (!data) {
             if (item.table_name === "mapping_requests") {
-              const { data: canonical, error: readError } = await client.select("*").eq(primaryKey, primaryKeyValue).maybeSingle();
-              if (!readError && canonical?.status === "Completed") {
-                await db.mapping_requests.put(canonical as LocalMappingRequest);
-                await db.sync_queue.delete(item.id);
-                if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("zerodata:mapping-requests-changed"));
-                continue;
-              }
+              throw new SyncAttemptError(`No authorized ${remoteTableName} row was updated.`, false);
             }
             throw new Error(`No ${remoteTableName} row was updated.`);
           }
+          if (item.table_name === "mapping_requests") await db.mapping_requests.put(data as unknown as LocalMappingRequest);
         } else if (item.action === "DELETE") {
           if (primaryKeyValue === undefined || primaryKeyValue === null || primaryKeyValue === "") {
             throw new Error(`Missing ${primaryKey} for ${item.table_name} delete.`);

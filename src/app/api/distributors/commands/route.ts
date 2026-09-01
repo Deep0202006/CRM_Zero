@@ -50,12 +50,12 @@ export async function POST(request: Request) {
     const status = code === "DISTRIBUTOR_NOT_FOUND" ? 404
       : ["DISTRIBUTOR_CONFLICT", "DISTRIBUTOR_DUPLICATE", "DISTRIBUTOR_OPERATION_MISMATCH"].includes(code) ? 409
       : ["ADMIN_REQUIRED", "DISTRIBUTOR_NOT_ASSIGNED"].includes(code) ? 403
-      : code === "ERP_PAYMENT_STATUS_REQUIRES_PAID" ? 409
+      : code === "ERP_PAYMENT_STATUS_REQUIRES_BILLED" ? 409
       : 400;
     const message = code === "DISTRIBUTOR_CONFLICT"
       ? "Distributor status changed. Refresh and try again."
-      : code === "ERP_PAYMENT_STATUS_REQUIRES_PAID"
-        ? "ERP payment status requires a canonically paid Distributor."
+      : code === "ERP_PAYMENT_STATUS_REQUIRES_BILLED"
+        ? "ERP payment status is available only while the Distributor is billed."
         : code === "ADMIN_REQUIRED"
           ? "System Administrator access required."
           : "Distributor update was rejected.";

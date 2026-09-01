@@ -2,6 +2,55 @@
   "schemaVersion": 1,
   "cases": [
     {
+      "id": "creator-updates-billed-erp",
+      "kind": "resolve",
+      "inputTask": "Mapping and call logs creators alone can edit their own stable offline-first records, while operational ERP Payment is available for every billed distributor without changing Receivables",
+      "expectedDomains": [
+        "calls",
+        "mappings",
+        "distributor-status",
+        "receivables"
+      ],
+      "minimumRisk": "R3",
+      "requiredClaims": [
+        "ONE_FACT_ONE_AUTHORITY",
+        "AUTHZ_SERVER_ENFORCED",
+        "OFFLINE_CONTRACT_COMPATIBILITY",
+        "OFFLINE_RECOVERY_PRESERVES_INTENT",
+        "STABLE_RETRY_IDENTITY",
+        "MONEY_TRUTH"
+      ],
+      "requiredAuthorities": [
+        "call_history",
+        "mapping_request",
+        "distributor_account",
+        "receivable",
+        "payment"
+      ],
+      "forbiddenAuthorities": [],
+      "requiredProofKinds": [
+        "unit",
+        "e2e",
+        "postgres"
+      ],
+      "candidatePathsAnyOf": [
+        "src/app/api/call-logs/[log_id]/route.ts",
+        "src/app/call-logs/page.tsx",
+        "src/app/mappings/page.tsx",
+        "src/app/admin/payments/distributors/page.tsx"
+      ],
+      "proofRefs": [
+        "calls-unit",
+        "call-owner-e2e",
+        "mapping-unit",
+        "mapping-e2e",
+        "distributor-unit",
+        "distributor-e2e",
+        "product-054-postgres"
+      ],
+      "expectedStatus": "RESOLVED"
+    },
+    {
       "id": "mapping-attribution",
       "kind": "resolve",
       "inputTask": "Mapping should show who logged and who completed each mapping and all Mapping users should see team history",

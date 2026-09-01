@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { claimSyncQueueOwnership, confirmQueuedCallLog, db, processSyncQueue, processSyncQueueExcept, LocalCallLog, LocalUser, LocalLead } from "@/lib/db";
+import { claimSyncQueueOwnership, confirmQueuedCallLog, db, processSyncQueue, processSyncQueueExcept, queueCallOwnerUpdate, LocalCallLog, LocalUser, LocalLead } from "@/lib/db";
 import { SearchableSelect, SearchableOption } from "@/components/SearchableSelect";
 import { PhoneCall, CheckCircle2, AlertCircle, Download } from "lucide-react";
 import excelUsers from "@/lib/excel_users.json";
@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/Input";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { getCurrentISTDate, getISTDateKey } from "@/lib/dateTime";
-import { buildSelfScheduledFollowUpTask, needsCallFollowUp } from "@/lib/followUps";
+import { buildSelfScheduledFollowUpTask, needsCallFollowUp, parseFollowUpSourceCallId, reconcileCallFollowUpTasks } from "@/lib/followUps";
 import { CALL_LOGS_CHANGED_EVENT, fetchCallLogSnapshot, formatCallHistoryCount } from "@/lib/callLogs/repository";
 import { getCanonicalDailyUserMetrics, isGenuineCallLog, isSyntheticAuditCall } from "@/lib/workMetrics/canonical";
 
@@ -40,6 +40,7 @@ export default function CallLogsPage() {
   const [outcome, setOutcome] = useState("");
   const [notes, setNotes] = useState("");
   const [nextFollowup, setNextFollowup] = useState("");
+  const [editingLog, setEditingLog] = useState<LocalCallLog | null>(null);
 
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -84,8 +85,9 @@ export default function CallLogsPage() {
         const allLeads = leadIds.length ? await db.leads.where("lead_id").anyOf(leadIds).toArray() : [];
         const lMap = new Map<string, LocalLead>();
         allLeads.forEach(l => lMap.set(l.lead_id, l));
-        const matchingTasks = await db.tasks.bulkGet(fetchedLogs.map((log) => log.log_id));
-        setFollowUpTaskIds(new Set(matchingTasks.filter((task): task is NonNullable<typeof task> => Boolean(task)).filter((task) => task.source === "manual" && task.template_id === null).map((task) => task.task_id)));
+        const visibleCallIds = new Set(fetchedLogs.map((log) => log.log_id));
+        const matchingTasks = await db.tasks.where("assigned_to").equals(currentUser.user_id).filter((task) => task.is_active !== false && task.status !== "Completed" && task.status !== "Missed" && visibleCallIds.has(parseFollowUpSourceCallId(task.description) ?? "")).toArray();
+        setFollowUpTaskIds(new Set(matchingTasks.map((task) => parseFollowUpSourceCallId(task.description)).filter((id): id is string => Boolean(id))));
         const today = getCurrentISTDate();
         const ownLocalCalls = await db.call_logs.where("user_id").equals(currentUser.user_id).filter((log) => getISTDateKey(log.timestamp) === today).toArray();
         const localTasks = (await db.tasks.bulkGet(ownLocalCalls.map((log) => log.log_id))).filter((task): task is NonNullable<typeof task> => Boolean(task));
@@ -151,6 +153,40 @@ export default function CallLogsPage() {
     try {
       const nextFollowupDate = needsCallFollowUp(outcome) ? nextFollowup : null;
       const clientReference = parseCallClientReference(selectedLeadId);
+      if (editingLog) {
+        if (editingLog.user_id !== currentUser.user_id || isSyntheticAuditCall(editingLog)) throw new Error("Only the employee who logged this Call may update it.");
+        const updated: LocalCallLog = {
+          ...editingLog,
+          lead_id: clientReference.leadId,
+          client_username: clientReference.clientUsername,
+          client_name: clientReference.clientName,
+          outcome,
+          notes: notes.trim() || null,
+          next_followup_date: nextFollowupDate,
+        };
+        const changedAt = new Date().toISOString();
+        const existingTasks = await db.tasks.filter((task) => parseFollowUpSourceCallId(task.description) === editingLog.log_id).toArray();
+        const followUpTasks = reconcileCallFollowUpTasks({
+          existingTasks,
+          outcome,
+          dueDate: nextFollowupDate,
+          authenticatedUserId: currentUser.user_id,
+          newTaskId: crypto.randomUUID(),
+          clientDisplay: clientReference.displayName,
+          relatedLeadId: clientReference.leadId,
+          notes: notes.trim(),
+          changedAt,
+          sourceCallId: editingLog.log_id,
+        });
+        await queueCallOwnerUpdate(updated, followUpTasks);
+        if (navigator.onLine) await processSyncQueue();
+        setEditingLog(null);
+        setSelectedLeadId(""); setOutcome(""); setNotes(""); setNextFollowup("");
+        setSuccess(true);
+        await loadData(false);
+        setTimeout(() => setSuccess(false), 3000);
+        return;
+      }
       const logId = crypto.randomUUID();
       const taskId = nextFollowupDate ? crypto.randomUUID() : null;
       const createdAt = new Date().toISOString();
@@ -243,6 +279,21 @@ export default function CallLogsPage() {
     }
   };
 
+  const editCall = (log: LocalCallLog) => {
+    if (log.user_id !== currentUser?.user_id || isSyntheticAuditCall(log)) return;
+    setEditingLog(log);
+    setSelectedLeadId(log.lead_id ?? (log.client_username ? `EXCEL::${log.client_username}::${log.client_name ?? log.client_username}` : log.client_name ?? ""));
+    setOutcome(log.outcome);
+    setNotes(log.notes ?? "");
+    setNextFollowup(log.next_followup_date ?? "");
+    setError(""); setSuccess(false);
+  };
+
+  const cancelEdit = () => {
+    setEditingLog(null);
+    setSelectedLeadId(""); setOutcome(""); setNotes(""); setNextFollowup(""); setError("");
+  };
+
   const showFollowup = needsCallFollowUp(outcome);
 
   // Format identity standard: "{Name} (@{Username}) - {Phone}"
@@ -301,8 +352,8 @@ export default function CallLogsPage() {
       <div className="workspace-split">
         <section className="surface-panel overflow-hidden" aria-labelledby="log-call-title">
           <div className="border-b border-[var(--border-subtle)] bg-[var(--surface-secondary)] p-5">
-            <p className="section-kicker">New activity</p>
-            <h2 id="log-call-title" className="mt-1 section-title">Record a call outcome</h2>
+            <p className="section-kicker">{editingLog ? "Creator update" : "New activity"}</p>
+            <h2 id="log-call-title" className="mt-1 section-title">{editingLog ? "Update call outcome" : "Record a call outcome"}</h2>
             <p className="mt-1 text-[12px] leading-5 text-[var(--text-muted)]">A follow-up task is created automatically when the selected outcome needs another contact.</p>
           </div>
 
@@ -332,8 +383,9 @@ export default function CallLogsPage() {
             {error && <div className="alert-panel alert-panel--danger" role="alert"><AlertCircle size={16} className="mt-0.5 shrink-0" /><span>{error}</span></div>}
             {success && <div className="alert-panel alert-panel--success" role="status"><CheckCircle2 size={16} className="mt-0.5 shrink-0" /><span>Call saved safely and added to recent history.</span></div>}
 
-            <div className="flex justify-end border-t border-[var(--border-subtle)] pt-5">
-              <Button type="submit" isLoading={submitting} icon={<PhoneCall size={15} />} disabled={!selectedLeadId || !outcome}>Record call</Button>
+            <div className="flex justify-end gap-2 border-t border-[var(--border-subtle)] pt-5">
+              {editingLog && <Button type="button" variant="outline" onClick={cancelEdit}>Cancel</Button>}
+              <Button type="submit" isLoading={submitting} icon={<PhoneCall size={15} />} disabled={!selectedLeadId || !outcome}>{editingLog ? "Save update" : "Record call"}</Button>
             </div>
           </form>
         </section>
@@ -353,6 +405,7 @@ export default function CallLogsPage() {
             statusText: isSyntheticAuditCall(log) ? "Pipeline audit" : followUpTaskIds.has(log.log_id) ? "Follow-up call" : log.outcome,
             statusVariant: isSyntheticAuditCall(log) ? "neutral" : "brand",
             timestamp: new Date(log.timestamp).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }),
+            actions: log.user_id === currentUser?.user_id && !isSyntheticAuditCall(log) ? <Button size="sm" variant="outline" onClick={() => editCall(log)}>Update</Button> : undefined,
           }))}
           emptyMessage={loading ? "Loading call activity…" : "No calls have been recorded yet."}
           onRefresh={loadData}

@@ -6,7 +6,7 @@ Follow-ups are derived from scheduled call/visit work and their confirmed source
 
 ## INVARIANT
 
-Do not fabricate completion. Attribution uses explicit owner and stable source IDs. Unknown/legacy records are preserved rather than guessed.
+Do not fabricate completion. Attribution uses explicit owner and stable source IDs. Editing a source Call keeps exactly one active current follow-up intent when required, deactivates obsolete active intent through Task lifecycle fields without deletion, and never rewrites completed history. Unknown/legacy records are preserved rather than guessed.
 
 ## KNOWN DEBT
 
