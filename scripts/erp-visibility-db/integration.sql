@@ -31,7 +31,7 @@ begin
     (v_partner,'MARG Partner','marg-partner@example.com',true),
     (v_partner_two,'Tally Partner','tally-partner@example.com',true);
   insert into public.user_capabilities(user_id,capability_code) values
-    (v_partner,'erp_partner_viewer'),(v_partner_two,'erp_partner_viewer'),(v_employee,'ret_support');
+    (v_partner,'erp_partner_viewer'),(v_partner_two,'erp_partner_viewer');
 
   select public.resolve_or_create_erp_system_v1(v_actor,'  MARG  ') into v_result;
   if not coalesce((v_result->>'success')::boolean,false) or (v_result->>'erp_id')::uuid<>v_marg then
@@ -283,7 +283,7 @@ declare
   v_version bigint;
 begin
   insert into public.users(user_id,name,email,is_active) values(v_employee_two,'Second Employee','second-employee@example.com',true);
-  insert into public.user_capabilities(user_id,capability_code) values(v_employee_two,'tech_support'),(v_employee_two,'ret_support');
+  insert into public.user_capabilities(user_id,capability_code) values(v_employee_two,'tech_support'),(v_employee_two,'ret_support'),(v_employee,'ret_support');
   select (public.resolve_or_create_erp_system_v1(v_actor,'Zoho')->>'erp_id')::uuid into v_zoho;
 
   insert into public.distributor_accounts(

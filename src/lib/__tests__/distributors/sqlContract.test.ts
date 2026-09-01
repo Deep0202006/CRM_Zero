@@ -7,6 +7,8 @@ const renewalSql = fs.readFileSync(path.join(process.cwd(), "supabase/migrations
 const billedRenewalSql = fs.readFileSync(path.join(process.cwd(), "supabase/migrations/052_billed_renewals_erp_payment_status.sql"), "utf8");
 const partnerStatusSql = fs.readFileSync(path.join(process.cwd(), "supabase/migrations/053_erp_partner_distributor_status_filters.sql"), "utf8");
 const creatorUpdateSql = fs.readFileSync(path.join(process.cwd(), "supabase/migrations/054_creator_updates_billed_erp_payment.sql"), "utf8");
+const erpVisibilityFixture = fs.readFileSync(path.join(process.cwd(), "scripts/erp-visibility-db/integration.sql"), "utf8");
+const distributorMasterRunner = fs.readFileSync(path.join(process.cwd(), "scripts/distributor-master-db/run-integration.sh"), "utf8");
 const routes = ["src/app/api/distributors/route.ts", "src/app/api/distributors/metrics/route.ts", "src/app/api/distributors/commands/route.ts", "src/app/api/distributors/import/route.ts", "src/lib/distributors/validation.ts"].map((file) => fs.readFileSync(path.join(process.cwd(), file), "utf8")).join("\n");
 
 describe("Distributor Status SQL/authority contract", () => {
@@ -90,6 +92,10 @@ describe("Distributor Status SQL/authority contract", () => {
     expect(creatorUpdateSql).toContain("new.erp_payment_status := null");
     expect(creatorUpdateSql).not.toMatch(/(?:insert\s+into|update|delete\s+from)\s+public\.(?:receivables|receivable_payments)\b/i);
     expect(creatorUpdateSql).not.toContain("ERP_PAYMENT_STATUS_REQUIRES_PAID");
+  });
+  test("stages Mapping capability after the ERP partner exclusivity matrix", () => {
+    expect(erpVisibilityFixture.indexOf("(v_employee,'ret_support')")).toBeGreaterThan(erpVisibilityFixture.indexOf("ASSIGNED_EMPLOYEE_CONVERSION_ALLOWED"));
+    expect(distributorMasterRunner.indexOf("scripts/erp-visibility-db/integration.sql")).toBeLessThan(distributorMasterRunner.indexOf("scripts/product-054-db/integration.sql"));
   });
   test("ERP payment command is service-only, idempotent, Admin-authorized, and never writes finance", () => {
     const command = creatorUpdateSql.slice(creatorUpdateSql.indexOf("create or replace function public.distributor_erp_payment_status_command_v1"));
