@@ -270,7 +270,7 @@ try {
   const ignoreContents = readFileSync(resolve(root, ".gitignore"), "utf8"), workflowContents = readFileSync(resolve(root, ".github/workflows/product-verification.yml"), "utf8"), ignoredBaseline = dirtyFingerprint(ignoreRepo);
   const statusIsClean = () => assert.equal(gitAt(ignoreRepo, "status", "--porcelain").stdout, "");
   const writeIgnoreFixture = (path, contents) => { const absolute = resolve(ignoreRepo, path); mkdirSync(dirname(absolute), { recursive: true }); writeFileSync(absolute, contents); return absolute; };
-  const verifierIgnorePaths = ["artifacts/engineering-evidence/", "artifacts/engineering-attestation/"].map((path) => String.fromCharCode(47) + path);
+  const verifierIgnorePaths = ["artifacts/engineering-evidence/", "artifacts/engineering-attestation/", "artifacts/job-accounting/"].map((path) => String.fromCharCode(47) + path);
   for (const path of verifierIgnorePaths) assert.equal(ignoreContents.split(/\r?\n/).filter((line) => line === path).length, 1);
   assert(!workflowContents.includes(".git/info/exclude")); assert(!workflowContents.includes("core.excludesFile"));
   for (const artifact of ["kernel-preflight", "kernel-unit-build", "kernel-postgres", "kernel-e2e", "kernel-evidence-attestation"]) assert(workflowContents.includes(`name: ${artifact}`));
@@ -281,14 +281,16 @@ try {
   assert.equal(gitAt(ignoreRepo, "check-ignore", "-q", "artifacts/engineering-evidence/preflight/fixture.json").status, 0); statusIsClean(); assert.equal(dirtyFingerprint(ignoreRepo), ignoredBaseline);
   writeIgnoreFixture("artifacts/engineering-attestation/fixture.jsonl", "{}\n");
   assert.equal(gitAt(ignoreRepo, "check-ignore", "-q", "artifacts/engineering-attestation/fixture.jsonl").status, 0); statusIsClean(); assert.equal(dirtyFingerprint(ignoreRepo), ignoredBaseline);
-  writeIgnoreFixture("artifacts/engineering-evidence/preflight/both.json", "{}\n"); writeIgnoreFixture("artifacts/engineering-attestation/both.jsonl", "{}\n");
+  writeIgnoreFixture("artifacts/job-accounting/build.json", "{}\n");
+  assert.equal(gitAt(ignoreRepo, "check-ignore", "-q", "artifacts/job-accounting/build.json").status, 0); statusIsClean(); assert.equal(dirtyFingerprint(ignoreRepo), ignoredBaseline);
+  writeIgnoreFixture("artifacts/engineering-evidence/preflight/both.json", "{}\n"); writeIgnoreFixture("artifacts/engineering-attestation/both.jsonl", "{}\n"); writeIgnoreFixture("artifacts/job-accounting/both.json", "{}\n");
   statusIsClean(); assert.equal(dirtyFingerprint(ignoreRepo), ignoredBaseline);
   for (const path of ["scripts/unexpected-kernel-source.mjs", "artifacts/unexpected-source.mjs", "unexpected-kernel-source.mjs"]) assert.equal(gitAt(ignoreRepo, "check-ignore", "-q", path).status, 1, `OVERBROAD_IGNORE:${path}`);
   writeIgnoreFixture("unexpected-kernel-source.mjs", "export const unexpected = true;\n");
   assert.match(gitAt(ignoreRepo, "status", "--porcelain").stdout, /\?\? unexpected-kernel-source\.mjs/); assert.notEqual(dirtyFingerprint(ignoreRepo), ignoredBaseline);
   unlinkSync(resolve(ignoreRepo, "unexpected-kernel-source.mjs")); statusIsClean();
   writeFileSync(resolve(ignoreRepo, "baseline.txt"), "modified\n"); assert.notEqual(dirtyFingerprint(ignoreRepo), ignoredBaseline);
-  matrix.state.push("verifier-input-ignore-contract", "ignored-evidence-clean", "ignored-attestation-clean", "ignored-inputs-combined-clean", "ordinary-untracked-fingerprint-sensitive", "tracked-modification-fingerprint-sensitive", "no-overbroad-artifacts-ignore", "workflow-no-local-ignore-mutation");
+  matrix.state.push("verifier-input-ignore-contract", "ignored-evidence-clean", "ignored-attestation-clean", "ignored-job-accounting-clean", "ignored-inputs-combined-clean", "ordinary-untracked-fingerprint-sensitive", "tracked-modification-fingerprint-sensitive", "no-overbroad-artifacts-ignore", "workflow-no-local-ignore-mutation");
 
   const repo = temp("kernel-git-");
   assert.equal(gitAt(repo, "init", "-q", "-b", "main").status, 0); gitAt(repo, "config", "user.email", "fixture@example.invalid"); gitAt(repo, "config", "user.name", "Kernel Fixture");
