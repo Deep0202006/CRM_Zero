@@ -28,7 +28,7 @@ const executeProofOnce = (proofId, cache, counter) => {
 };
 
 const resolveEvaluator = ({ item, index, counter }) => {
-  const pack = resolveContext({ task: item.inputTask, index }), expectedStatus = item.expectedStatus ?? "RESOLVED";
+  const pack = resolveContext({ task: item.inputTask, index, graphify: false }), expectedStatus = item.expectedStatus ?? "RESOLVED";
   assertCase(pack.status === expectedStatus, `STATUS:${pack.status}`, counter);
   assertCase(expectedStatus === "RESOLVED" || pack.requiredOpenPaths.length === 0, "AMBIGUOUS_WRITE_SCOPE", counter);
   for (const domain of item.expectedDomains ?? []) assertCase(pack.domains.includes(domain), `DOMAIN:${domain}`, counter);

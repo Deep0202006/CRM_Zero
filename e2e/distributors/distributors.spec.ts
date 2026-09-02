@@ -16,7 +16,7 @@ async function seed(
   capability?: string,
 ) {
   await page.goto("/login");
-  await page.waitForTimeout(300);
+  await expect(page.getByText("Sign in to your account")).toBeVisible();
   await page.evaluate(
     async ({ id, accessToken, isAdmin, capability }) => {
       const request = indexedDB.open("CRMDatabase");

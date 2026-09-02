@@ -12,9 +12,9 @@ import { compileProofPlan } from "./proof-plan.mjs";
 import * as certifierModule from "./proof-certify-ci.mjs";
 import { validateEvidenceFile } from "./proof-certify-ci.mjs";
 import { parseVerifiedAttestation } from "./proof-attestation.mjs";
-import { assertDisposablePostgresEnvironment, compileRegisteredCommandPlan, disposablePostgresEnvironment, proofDefinitionHash, proofRunnerIdentity } from "./proof-command-plan.mjs";
+import { assertDisposablePostgresEnvironment, compileRegisteredCommandPlan, disposablePostgresEnvironment, proofDefinitionHash, proofInputIdentity, proofRunnerIdentity } from "./proof-command-plan.mjs";
 import { evidencePayloadHash } from "./proof-evidence.mjs";
-import { canonicalEvidencePath, proofFailureDiagnostics, runRegisteredProof } from "./proof-runner.mjs";
+import { canonicalEvidencePath, diagnoseProof, proofFailureDiagnostics, runRegisteredProof } from "./proof-runner.mjs";
 import { executeRegressionCases, validateCaseResult } from "./regression-executors.mjs";
 import { queryGraphify, resolveContext, revalidateCandidate } from "./context.mjs";
 import { doctor } from "./kernel-doctor.mjs";
@@ -155,6 +155,7 @@ try {
     const pass = await withEnvironment(ciEnvironment, () => runRegisteredProof({ proofId: "kernel-fixture-pass", plan: identity })); createdEvidence.push(passPath);
     assert.equal(pass.status, "PASS");
     validateEvidenceFile({ path: passPath, proofId: "kernel-fixture-pass", plan: identity, environment: ciEnvironment });
+    validateEvidenceFile({ path: passPath, proofId: "kernel-fixture-pass", plan: identity, environment: { ...ciEnvironment, GITHUB_RUN_ATTEMPT: "2" } });
     const forgedRoot = temp("kernel-forged-evidence-");
     const rejectMutation = (name, mutate, pattern = /EVIDENCE|COMMAND|FLAKY|PROOF/) => {
       const forged = structuredClone(pass); mutate(forged); forged.evidencePayloadHash = evidencePayloadHash(forged);
@@ -172,6 +173,7 @@ try {
     rejectMutation("wrong-runner", (item) => item.runnerIdentity = "0".repeat(64));
     rejectMutation("wrong-repository", (item) => item.githubRepository = "Other/Repo");
     rejectMutation("wrong-run", (item) => item.githubRunId = "999");
+    rejectMutation("future-run-attempt", (item) => item.githubRunAttempt = "2");
     rejectMutation("wrong-job", (item) => item.githubJob = "unit-build");
     rejectMutation("wrong-head", (item) => item.headSha = "0".repeat(40));
     rejectMutation("wrong-base", (item) => item.baseSha = "0".repeat(40));
@@ -187,13 +189,13 @@ try {
     assert.equal(certifierModule.validateEvidenceItem, undefined, "in-memory evidence validator exposed");
     assert.equal(certifierModule.certifyRepositoryProof, undefined, "repository certificate API exposed");
     const selectedOutput = command(root, process.execPath, ["scripts/engineering/proof-runner.mjs", "--proof", "kernel-fixture-pass", "--output", resolve(forgedRoot, "caller.json")], isolatedEnvironment);
-    assert.equal(selectedOutput.status, 2); assert.match(selectedOutput.stderr, /UNKNOWN_ARGUMENT:--output/); matrix.proof.push("caller-output-rejected", "direct-object-api-absent", "real-runner-evidence-accepted");
+    assert.equal(selectedOutput.status, 2); assert.match(selectedOutput.stderr, /UNKNOWN_ARGUMENT:--output/); matrix.proof.push("caller-output-rejected", "direct-object-api-absent", "real-runner-evidence-accepted", "prior-run-attempt-evidence-accepted");
 
     const marker = resolve(root, git("rev-parse", "--git-path", "zd-kernel/fixtures/flaky-marker")); if (existsSync(marker)) unlinkSync(marker);
     const flakyPath = canonicalEvidencePath("kernel-fixture-flaky"); assert(!existsSync(flakyPath), "flaky fixture evidence already exists");
     const flakyPlan = { ...identity, requiredProofs: ["kernel-fixture-flaky"], requiredByKind: { unit: ["kernel-fixture-flaky"] } };
     const flaky = await withEnvironment(ciEnvironment, () => runRegisteredProof({ proofId: "kernel-fixture-flaky", plan: flakyPlan })); createdEvidence.push(flakyPath);
-    assert.equal(flaky.status, "FLAKY_DETECTED"); assert.match(proofFailureDiagnostics(flaky)[0], /first attempt fails/); assert.throws(() => validateEvidenceFile({ path: flakyPath, proofId: "kernel-fixture-flaky", plan: flakyPlan, environment: ciEnvironment }), /EVIDENCE_STALE|FLAKY/); matrix.proof.push("retry-pass-rejected", "first-failure-diagnostic-preserved");
+    assert.equal(flaky.status, "FAIL"); assert.match(proofFailureDiagnostics(flaky)[0], /first attempt fails/); const diagnosis = diagnoseProof({ proofId: "kernel-fixture-flaky" }); assert.equal(diagnosis.status, "FLAKY_DETECTED"); assert.throws(() => validateEvidenceFile({ path: flakyPath, proofId: "kernel-fixture-flaky", plan: flakyPlan, environment: ciEnvironment }), /EVIDENCE_STALE|FLAKY/); matrix.proof.push("automatic-retry-absent", "explicit-diagnosis-flaky", "first-failure-diagnostic-preserved");
 
     const subjectDigest = "d".repeat(64), verified = attestationOutput(ciEnvironment, subjectDigest);
     assert.equal(parseVerifiedAttestation({ output: verified, evidenceSha256: subjectDigest, environment: ciEnvironment }).repository, "Deep0202006/CRM_Zero");
@@ -220,7 +222,7 @@ try {
   for (const proofId of attackProofIds) {
     const proof = proofRegistry.find((item) => item.id === proofId), commandPlan = compileRegisteredCommandPlan({ proof, proofId, baseSha: attackPlan.baseSha, headSha: attackPlan.headSha }), now = new Date().toISOString();
     const commands = commandPlan.commands.map((commandItem) => ({ ...commandItem, exitCode: 0, stdoutHash: sha256(""), stdoutBytes: 0, stderrHash: sha256(""), stderrBytes: 0, startedAt: now, endedAt: now }));
-    const evidence = { schemaVersion: 2, proofId, kind: proof.kind, status: "PASS", baseSha: attackPlan.baseSha, headSha: attackPlan.headSha, treeSha: attackPlan.treeSha, dirtyFingerprint: attackPlan.dirtyFingerprint, impactHash: attackPlan.impactHash, planHash: attackPlan.planHash, proofDefinitionHash: proofDefinitionHash(proof), runnerIdentity: proofRunnerIdentity(), commandPlanHash: commandPlan.commandPlanHash, environmentPolicyHash: environmentPolicyHash(), startedAt: now, endedAt: now, attempts: [{ attemptIndex: 1, commandPlanHash: commandPlan.commandPlanHash, startedAt: now, endedAt: now, commands }], provenanceMode: "GITHUB_ACTIONS", githubRepository: attackEnvironment.GITHUB_REPOSITORY, githubWorkflow: attackEnvironment.GITHUB_WORKFLOW, githubRunId: attackEnvironment.GITHUB_RUN_ID, githubRunAttempt: attackEnvironment.GITHUB_RUN_ATTEMPT, githubJob: commandPlan.expectedCiJob, githubEvent: attackEnvironment.GITHUB_EVENT_NAME, expectedSourceJob: commandPlan.expectedCiJob };
+    const evidence = { schemaVersion: 3, proofId, kind: proof.kind, status: "PASS", baseSha: attackPlan.baseSha, headSha: attackPlan.headSha, treeSha: attackPlan.treeSha, dirtyFingerprint: attackPlan.dirtyFingerprint, impactHash: attackPlan.impactHash, planHash: attackPlan.planHash, proofDefinitionHash: proofDefinitionHash(proof), proofInputHash: proofInputIdentity(proof).proofInputHash, runnerIdentity: proofRunnerIdentity(), commandPlanHash: commandPlan.commandPlanHash, environmentPolicyHash: environmentPolicyHash(), startedAt: now, endedAt: now, attempts: [{ attemptIndex: 1, commandPlanHash: commandPlan.commandPlanHash, startedAt: now, endedAt: now, commands }], provenanceMode: "GITHUB_ACTIONS", githubRepository: attackEnvironment.GITHUB_REPOSITORY, githubWorkflow: attackEnvironment.GITHUB_WORKFLOW, githubRunId: attackEnvironment.GITHUB_RUN_ID, githubRunAttempt: attackEnvironment.GITHUB_RUN_ATTEMPT, githubJob: commandPlan.expectedCiJob, githubEvent: attackEnvironment.GITHUB_EVENT_NAME, expectedSourceJob: commandPlan.expectedCiJob };
     evidence.evidencePayloadHash = evidencePayloadHash(evidence);
     const path = canonicalEvidencePath(proofId, commandPlan.expectedCiJob); mkdirSync(dirname(path), { recursive: true }); preservedEvidence.set(path, existsSync(path) ? readFileSync(path) : null); writeFileSync(path, JSON.stringify(evidence));
     validateEvidenceFile({ path, proofId, plan: attackPlan, environment: { ...attackEnvironment, GITHUB_JOB: commandPlan.expectedCiJob } });
@@ -404,16 +406,16 @@ try {
   const unknownRpc = compileImpact({ entries: [{ status: "M", path: "src/lib/distributors/reader.ts" }], fileVersions: { "src/lib/distributors/reader.ts": { base: "", head: "await supabase.rpc('external_missing', {});" } } }); assert(unknownRpc.unresolved.some((item) => item.code === "RPC_EFFECT_UNKNOWN"));
   matrix.risk.push("nul-rename-delete", "sensitive-unmapped-r3", "multiline-fact-write-detected", "unknown-authority", "prohibited-authority", "immutable-migration-001-051", "generic-migration-boundary-transition-matrix", "base-boundary-immutability", "dynamic-doctor-boundary", "pr90-reproduction", "new-column-selector-required", "domain-local-prohibition", "renewal-owned-migration", "financial-write-isolation", "financial-read-only", "sql-function-enclosure", "authority-ambiguity", "full-file-partial-hunk", "structured-supabase-payloads", "dynamic-write-fail-closed", "sql-ddl-dml-matrix", "recursive-rpc-effects", "stable-rpc-read-only", "selected-domain-no-authority", "shared-delete-blocked", "rpc-derived-single-reconciliation", "rpc-declaration-match", "rpc-declaration-mismatch", "rpc-omitted-write-mismatch", "rpc-valid-orchestration", "rpc-missing-orchestration-blocked");
 
-  const graphRoot = temp("kernel-graphify-"), graphPath = resolve(graphRoot, "graphify-out/graph.json"), stampPath = resolve(graphRoot, "graphify-out/.crm-head"), cachePath = resolve(graphRoot, "cache/result.json"), graphHead = "1".repeat(40), graphIndex = { files: [{ path: "src/lib/distributors/contract.ts", contentHash: "c".repeat(64) }] };
+  const graphRoot = temp("kernel-graphify-"), graphPath = resolve(graphRoot, "graphify-out/graph.json"), stampPath = resolve(graphRoot, "graphify-out/.crm-tree"), cachePath = resolve(graphRoot, "cache/result.json"), graphHead = "1".repeat(40), graphIndex = { files: [{ path: "src/lib/distributors/contract.ts", contentHash: "c".repeat(64) }] };
   mkdirSync(dirname(graphPath), { recursive: true }); writeFileSync(graphPath, "{}\n"); writeFileSync(stampPath, `${graphHead}\n`);
   let graphQueries = 0;
   const graphSpawn = (_file, args) => args[0] === "--version" ? { status: 0, stdout: "graphify 0.9.48\n", stderr: "" } : (graphQueries += 1, { status: 0, stdout: "src\\lib\\distributors\\contract.ts\nuntracked\\escape.ts\n", stderr: "" });
-  const graphOptions = { root: graphRoot, graphPath, stampPath, cachePath, headSha: graphHead, executable: "fixture-graphify", spawn: graphSpawn };
+  const graphOptions = { root: graphRoot, graphPath, stampPath, cachePath, headSha: graphHead, treeSha: graphHead, executable: "fixture-graphify", spawn: graphSpawn };
   const graphFresh = queryGraphify("exact distributor task", graphIndex, graphOptions); assert.equal(graphFresh.status, "GRAPHIFY_QUERIED"); assert.deepEqual(graphFresh.paths, graphIndex.files); assert.equal(graphQueries, 1);
   const graphHit = queryGraphify("exact distributor task", graphIndex, graphOptions); assert.equal(graphHit.status, "GRAPHIFY_CACHE_HIT"); assert.equal(graphQueries, 1);
   const changedIndex = { files: [{ ...graphIndex.files[0], contentHash: "d".repeat(64) }] }; queryGraphify("exact distributor task", changedIndex, graphOptions); assert.equal(graphQueries, 2, "stale content hash must invalidate cache");
-  writeFileSync(stampPath, `${"2".repeat(40)}\n`); queryGraphify("exact distributor task", changedIndex, { ...graphOptions, headSha: "2".repeat(40) }); assert.equal(graphQueries, 3, "head change must invalidate cache identity");
-  assert.equal(queryGraphify("stale graph task", graphIndex, { ...graphOptions, headSha: "3".repeat(40) }).status, "STALE_GRAPH");
+  writeFileSync(stampPath, `${"2".repeat(40)}\n`); queryGraphify("exact distributor task", changedIndex, { ...graphOptions, headSha: "2".repeat(40), treeSha: "2".repeat(40) }); assert.equal(graphQueries, 3, "tree change must invalidate cache identity");
+  assert.equal(queryGraphify("stale graph task", graphIndex, { ...graphOptions, headSha: "3".repeat(40), treeSha: "3".repeat(40) }).status, "STALE_GRAPH");
   writeFileSync(stampPath, `${graphHead}\n`);
   assert.equal(queryGraphify("missing binary task", graphIndex, { ...graphOptions, cachePath: resolve(graphRoot, "cache/missing.json"), spawn: () => ({ status: null, stdout: "", stderr: "", error: { code: "ENOENT" } }) }).status, "GRAPHIFY_BINARY_UNAVAILABLE");
   let timeoutCalls = 0; const timeoutSpawn = () => ++timeoutCalls === 1 ? { status: 0, stdout: "graphify 0.9.48", stderr: "" } : { status: null, stdout: "", stderr: "", error: { code: "ETIMEDOUT" } };
@@ -430,14 +432,14 @@ try {
   matrix.risk.push("pr90-without-selector-unresolved", "pr90-no-false-renewal-write", "pr90-overlay-writable-r3", "pr90-command-body-selector-equality", "pr90-financial-read-only");
 
   const impact = { ...compileImpact({ entries: [{ status: "M", path: "scripts/engineering/kernel.test.mjs" }], patch: "" }), domains: ["engineering-control"], effects: ["ENGINEERING_CONTROL"], risk: "R3", unresolved: [], writable: true };
-  const plan = compileProofPlan({ impact }); for (const kind of ["unit", "build", "postgres", "e2e"]) assert(plan.requiredByKind[kind].length, `domain proof missing ${kind}`);
+  const plan = compileProofPlan({ impact }); assert(plan.requiredByKind.unit.length); for (const kind of ["build", "postgres", "e2e"]) assert.equal(plan.requiredByKind[kind].length, 0, `unrelated control proof selected ${kind}`);
   assert(compileProofPlan({ impact: { ...impact, domains: [], risk: "R3" } }).requiredProofs.length > 0);
   assert.throws(() => certifierModule.requireCanonicalEvidenceFiles({ requiredProofs: ["missing-required-proof"] }), /EVIDENCE_FILE_SET_MISMATCH|EVIDENCE_DIRECTORY_MISSING|PROOF_UNMAPPED/);
   matrix.proof.push("missing-required-proof-rejected");
   assert.equal(containsAssertionWeakening(`npx jest --update${"Snapshot"}`), true); assert.equal(containsAssertionWeakening("npx jest --runInBand"), false);
   const hostileEnvironment = { PGHOST: "production.example.invalid", PGPORT: "6543", PGDATABASE: "customer_prod", PGUSER: "prod_admin", PGPASSWORD: "secret", PGSERVICE: "production", PGPASSFILE: ["", "tmp", "prod.pgpass"].join("/"), GITHUB_TOKEN: "github-secret", GH_TOKEN: "gh-secret", ACTIONS_ID_TOKEN_REQUEST_TOKEN: "oidc-secret", ACTIONS_ID_TOKEN_REQUEST_URL: "https://oidc.invalid", ACTIONS_RUNTIME_TOKEN: "runtime-secret", KEEP: "yes" };
   const isolated = safeEnvironment({ ...hostileEnvironment, NEXT_PUBLIC_SUPABASE_URL: "https://production.example.invalid", NEXT_PUBLIC_SUPABASE_ANON_KEY: "synthetic-invalid", [["SUPABASE", "SERVICE_ROLE_KEY"].join("_")]: "synthetic-invalid" }); assert.deepEqual(isolated, { KEEP: "yes" });
-  const postgresProof = JSON.parse(readFileSync(resolve(root, "docs/engineering/PROOFS.json"), "utf8")).proofs.find((proof) => proof.id === "control-postgres-matrix");
+  const postgresProof = JSON.parse(readFileSync(resolve(root, "docs/engineering/PROOFS.json"), "utf8")).proofs.find((proof) => proof.id === "control-postgres-smoke");
   const postgresPlan = compileRegisteredCommandPlan({ proof: postgresProof, baseSha, headSha: currentHead }), registeredPostgresCommand = postgresPlan.commands.find((item) => item.database);
   const postgresEnvironment = disposablePostgresEnvironment(registeredPostgresCommand, hostileEnvironment);
   const captured = command(root, process.execPath, ["-p", "JSON.stringify(Object.fromEntries(Object.entries(process.env).filter(([key])=>/^PG|^CRM_(?:MASTER_DB|POSTGRES_SERVICE)_DISPOSABLE$/.test(key))))"], postgresEnvironment);
@@ -470,7 +472,7 @@ try {
   matrix.state.push("release-controller-fixtures", "release-receipt-forgery-rejected", "release-fake-gh-exact-head", "release-fake-vercel-git-preview", "release-migration-owner-gate");
 
   const index = buildSourceIndex({ writeCache: false }), criticalClaim = [{ id: "FIXTURE_CRITICAL", severity: "CRITICAL" }];
-  const multiDomainContext = resolveContext({ task: "Distributor renewal external ERP partner projection", index }); assert.equal(multiDomainContext.status, "RESOLVED"); for (const id of ["distributor-status", "renewals", "erp-partner"]) assert(multiDomainContext.domains.includes(id)); assert(multiDomainContext.candidatePaths.length <= 7); assert(multiDomainContext.candidatePaths.some((item) => item.domainRoles.includes("WRITER_CANDIDATE"))); assert(multiDomainContext.candidatePaths.some((item) => item.domainRoles.some((role) => ["READER", "PROJECTION", "CALLER", "TEST", "CONTRACT"].includes(role))));
+  const multiDomainContext = resolveContext({ task: "Distributor renewal external ERP partner projection", index, graphify: false }); assert.equal(multiDomainContext.status, "RESOLVED"); for (const id of ["distributor-status", "renewals", "erp-partner"]) assert(multiDomainContext.domains.includes(id)); assert(multiDomainContext.candidatePaths.length <= 7); assert(multiDomainContext.candidatePaths.some((item) => item.domainRoles.includes("WRITER_CANDIDATE"))); assert(multiDomainContext.candidatePaths.some((item) => item.domainRoles.some((role) => ["READER", "PROJECTION", "CALLER", "TEST", "CONTRACT"].includes(role))));
   const missingSemantic = executeRegressionCases({ cases: [{ id: "fixture-semantic", kind: "semantic", executorId: "missing", requiredClaims: ["FIXTURE_CRITICAL"], proofRefs: ["kernel-fixture-pass"] }], claims: criticalClaim, index });
   assert.match(missingSemantic.results[0].failureReason, /CASE_EXECUTOR_MISSING/); assert.equal(missingSemantic.coverageFailures.length, 1);
   const wrongBlocker = executeRegressionCases({ cases: [{ id: "platform-snapshot-blocker", kind: "blocker", expectedBlocker: "FALSE_BLOCKER", requiredClaims: ["FIXTURE_CRITICAL"] }], claims: criticalClaim, index });

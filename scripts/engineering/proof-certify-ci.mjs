@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { relative, resolve } from "node:path";
 import { parseVerifiedAttestation } from "./proof-attestation.mjs";
-import { compileRegisteredCommandPlan, expectedCiJob, proofDefinitionHash, proofRunnerIdentity } from "./proof-command-plan.mjs";
+import { compileRegisteredCommandPlan, expectedCiJob, proofDefinitionHash, proofInputIdentity, proofRunnerIdentity } from "./proof-command-plan.mjs";
 import { evidencePayloadHash, readEvidenceFile } from "./proof-evidence.mjs";
 import { compileProofPlan } from "./proof-plan.mjs";
 import { environmentPolicyHash, git, parseArgs, readJson, root, sha256 } from "./kernel-lib.mjs";
@@ -27,12 +27,15 @@ const requireOutputRecord = (proofId, index, stream, bytes, digest) => {
   if (digest === "0".repeat(64)) throw new Error(`COMMAND_OUTPUT_DIGEST_INVALID:${proofId}:${index}:${stream}`);
   if (bytes === 0 && digest !== emptySha256 || bytes > 0 && digest === emptySha256) throw new Error(`COMMAND_OUTPUT_SIZE_HASH_MISMATCH:${proofId}:${index}:${stream}`);
 };
+const requireCompatibleRunAttempt = (proofId, producer, current) => {
+  if (!/^\d+$/.test(producer) || !/^\d+$/.test(current) || Number(producer) < 1 || Number(producer) > Number(current)) throw new Error(`EVIDENCE_PROVENANCE_MISMATCH:${proofId}:githubRunAttempt`);
+};
 
 export const validateEvidenceFile = ({ path, proofId, plan, environment = process.env, now = Date.now() }) => {
   const item = readEvidenceFile(path), proof = readJson("docs/engineering/PROOFS.json").proofs.find((candidate) => candidate.id === proofId);
   if (!proof) throw new Error(`PROOF_UNMAPPED:${proofId}`);
   requireCiEnvironment(environment, plan);
-  for (const [key, expected] of [["proofId", proofId], ["kind", proof.kind], ["status", "PASS"], ["headSha", plan.headSha], ["treeSha", plan.treeSha], ["baseSha", plan.baseSha], ["dirtyFingerprint", plan.dirtyFingerprint], ["impactHash", plan.impactHash], ["planHash", plan.planHash], ["proofDefinitionHash", proofDefinitionHash(proof)], ["runnerIdentity", proofRunnerIdentity()], ["environmentPolicyHash", environmentPolicyHash()]])
+  for (const [key, expected] of [["proofId", proofId], ["kind", proof.kind], ["status", "PASS"], ["headSha", plan.headSha], ["treeSha", plan.treeSha], ["baseSha", plan.baseSha], ["dirtyFingerprint", plan.dirtyFingerprint], ["impactHash", plan.impactHash], ["planHash", plan.planHash], ["proofDefinitionHash", proofDefinitionHash(proof)], ["proofInputHash", proofInputIdentity(proof).proofInputHash], ["runnerIdentity", proofRunnerIdentity()], ["environmentPolicyHash", environmentPolicyHash()]])
     if (item[key] !== expected) throw new Error(`EVIDENCE_STALE:${proofId}:${key}`);
   if (item.evidencePayloadHash !== evidencePayloadHash(item)) throw new Error(`EVIDENCE_PAYLOAD_HASH_MISMATCH:${proofId}`);
   if (!validTimeRange(item.startedAt, item.endedAt, now)) throw new Error(`EVIDENCE_TIMESTAMP_INVALID:${proofId}`);
@@ -51,8 +54,9 @@ export const validateEvidenceFile = ({ path, proofId, plan, environment = proces
     requireOutputRecord(proofId, index, "stdout", actual.stdoutBytes, actual.stdoutHash);
     requireOutputRecord(proofId, index, "stderr", actual.stderrBytes, actual.stderrHash);
   }
-  for (const [key, expected] of [["provenanceMode", "GITHUB_ACTIONS"], ["githubRepository", repository], ["githubWorkflow", environment.GITHUB_WORKFLOW], ["githubRunId", environment.GITHUB_RUN_ID], ["githubRunAttempt", environment.GITHUB_RUN_ATTEMPT], ["githubJob", expectedPlan.expectedCiJob], ["githubEvent", environment.GITHUB_EVENT_NAME], ["expectedSourceJob", expectedPlan.expectedCiJob]])
+  for (const [key, expected] of [["provenanceMode", "GITHUB_ACTIONS"], ["githubRepository", repository], ["githubWorkflow", environment.GITHUB_WORKFLOW], ["githubRunId", environment.GITHUB_RUN_ID], ["githubJob", expectedPlan.expectedCiJob], ["githubEvent", environment.GITHUB_EVENT_NAME], ["expectedSourceJob", expectedPlan.expectedCiJob]])
     if (item[key] !== expected) throw new Error(`EVIDENCE_PROVENANCE_MISMATCH:${proofId}:${key}`);
+  requireCompatibleRunAttempt(proofId, item.githubRunAttempt, environment.GITHUB_RUN_ATTEMPT);
   return { proofId, evidenceHash: sha256(readFileSync(path)) };
 };
 

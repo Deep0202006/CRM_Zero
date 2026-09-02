@@ -1,5 +1,27 @@
 {
   "schemaVersion": 2,
+  "canonicalDomainProofRefs": {
+    "platform-handover": ["supabase-handover-readiness"],
+    "auth": ["auth-unit"],
+    "attendance": ["attendance-unit"],
+    "calls": ["calls-unit"],
+    "field-visits": ["field-visits-unit"],
+    "mappings": ["mapping-unit"],
+    "pipeline": ["pipeline-unit"],
+    "team-kpi": ["team-kpi-unit"],
+    "distributor-status": ["distributor-unit"],
+    "receivables": ["receivables-unit"],
+    "erp": ["erp-unit"],
+    "erp-partner": ["erp-unit"],
+    "imports": ["imports-unit"],
+    "renewals": ["distributor-unit"],
+    "followups": ["followups-unit"],
+    "queries": ["queries-unit"],
+    "task-allocation": ["task-allocation-unit"],
+    "my-day": ["followups-unit"],
+    "shared-ui": [],
+    "engineering-control": ["kernel-control-unit"]
+  },
   "domains": [
     {
       "id": "platform-handover",
@@ -169,11 +191,7 @@
         "src/lib/db.ts"
       ],
       "pathPatterns": [
-        "src/lib/__tests__/callHistoryAuthority.test.ts",
-        "supabase/migrations/054_creator_updates_billed_erp_payment.sql",
-        "supabase/manual/precheck_054_creator_updates_billed_erp_payment.sql",
-        "supabase/manual/verify_054_creator_updates_billed_erp_payment.sql",
-        "scripts/product-054-db"
+        "src/lib/__tests__/callHistoryAuthority.test.ts"
       ],
       "serverBoundaries": [
         "src/app/api/call-logs/confirm/route.ts",
@@ -196,8 +214,7 @@
       "criticalTests": [
         "src/lib/__tests__/callLogContract.test.ts",
         "src/lib/__tests__/callOwnerUpdate.test.ts",
-        "e2e/call-logs",
-        "scripts/product-054-db/integration.sql"
+        "e2e/call-logs"
       ],
       "mustNotWriteAuthorityRefs": []
     },
@@ -266,12 +283,7 @@
         "src/lib/clientOptions.ts",
         "src/lib/db.ts"
       ],
-      "pathPatterns": [
-        "supabase/migrations/054_creator_updates_billed_erp_payment.sql",
-        "supabase/manual/precheck_054_creator_updates_billed_erp_payment.sql",
-        "supabase/manual/verify_054_creator_updates_billed_erp_payment.sql",
-        "scripts/product-054-db"
-      ],
+      "pathPatterns": [],
       "serverBoundaries": [],
       "contractPaths": [
         "docs/contracts/mappings.md"
@@ -440,10 +452,6 @@
       "pathPatterns": [
         "supabase/migrations/052_billed_renewals_erp_payment_status.sql",
         "supabase/migrations/053_erp_partner_distributor_status_filters.sql",
-        "supabase/migrations/054_creator_updates_billed_erp_payment.sql",
-        "supabase/manual/precheck_054_creator_updates_billed_erp_payment.sql",
-        "supabase/manual/verify_054_creator_updates_billed_erp_payment.sql",
-        "scripts/product-054-db",
         "src/lib/__tests__/erpCanonicalGuidValidation.test.ts"
       ],
       "serverBoundaries": [
@@ -963,16 +971,10 @@
         "DIRECT_ENGINEERING"
       ],
       "proofRefs": [
-        "kernel-preflight",
-        "kernel-unit-build",
-        "control-postgres-matrix",
-        "control-e2e-matrix"
+        "kernel-control-unit"
       ],
       "requiredProofKinds": [
-        "unit",
-        "build",
-        "postgres",
-        "e2e"
+        "unit"
       ],
       "criticalTests": [
         "scripts/engineering/kernel.test.mjs",

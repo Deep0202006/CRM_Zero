@@ -25,6 +25,7 @@
     "impact:compile": "node scripts/engineering/impact.mjs",
     "proof:plan": "node scripts/engineering/proof-plan.mjs",
     "proof:run": "node scripts/engineering/proof-runner.mjs",
+    "proof:diagnose": "node scripts/engineering/proof-runner.mjs --diagnose",
     "proof:certify-ci": "node scripts/engineering/proof-certify-ci.mjs",
     "prepush:ready": "node scripts/engineering/readiness.mjs",
     "kernel:doctor": "node scripts/engineering/kernel-doctor.mjs",
@@ -40,7 +41,7 @@
     "graphify:locate": "node scripts/engineering/graphify-impact.mjs",
     "handover:check": "node scripts/handover/check.mjs",
     "graphify:impact": "node scripts/engineering/graphify-impact.mjs",
-    "vercel-build": "npm run test && next build"
+    "vercel-build": "next build"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.0",

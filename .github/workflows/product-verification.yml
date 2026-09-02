@@ -13,8 +13,11 @@ env:
 
 jobs:
   preflight:
-    permissions:
-      contents: read
+    permissions: { contents: read }
+    outputs:
+      build-required: "${{ steps.plan.outputs.build }}"
+      postgres-required: "${{ steps.plan.outputs.postgres }}"
+      e2e-required: "${{ steps.plan.outputs.e2e }}"
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -25,28 +28,25 @@ jobs:
       - run: npm ci
       - run: npm run kernel:doctor -- --ci
       - name: Compile canonical impact and proof plan
-        env: { BASE_SHA: "${{ github.event.pull_request.base.sha }}", HEAD_SHA: "${{ github.event.pull_request.head.sha }}" }
+        id: plan
         run: |
-          npm run impact:compile -- --base "$BASE_SHA" --head "$HEAD_SHA"
-          npm run proof:plan -- --base "$BASE_SHA" --head "$HEAD_SHA"
+          npm run impact:compile -- --base "$KERNEL_BASE_SHA" --head "$KERNEL_HEAD_SHA"
+          node scripts/engineering/proof-plan.mjs --base "$KERNEL_BASE_SHA" --head "$KERNEL_HEAD_SHA" > "$RUNNER_TEMP/proof-plan.json"
+          echo "build=$(jq -r '.requiredByKind.build | length > 0' "$RUNNER_TEMP/proof-plan.json")" >> "$GITHUB_OUTPUT"
+          echo "postgres=$(jq -r '.requiredByKind.postgres | length > 0' "$RUNNER_TEMP/proof-plan.json")" >> "$GITHUB_OUTPUT"
+          echo "e2e=$(jq -r '.requiredByKind.e2e | length > 0' "$RUNNER_TEMP/proof-plan.json")" >> "$GITHUB_OUTPUT"
       - name: Execute exact planned unit proofs
         run: npm run proof:run -- --kind unit --base "$KERNEL_BASE_SHA" --head "$KERNEL_HEAD_SHA"
       - name: Execute exact planned handover proofs
         run: npm run proof:run -- --kind handover --base "$KERNEL_BASE_SHA" --head "$KERNEL_HEAD_SHA"
-      - name: Diff integrity and related tests
-        env: { BASE_SHA: "${{ github.event.pull_request.base.sha }}", HEAD_SHA: "${{ github.event.pull_request.head.sha }}" }
-        run: |
-          git diff --check "$BASE_SHA" "$HEAD_SHA"
-          mapfile -d '' changed_source < <(git diff --name-only -z "$BASE_SHA" "$HEAD_SHA" -- src)
-          affected=()
-          for candidate in "${changed_source[@]}"; do case "$candidate" in *.ts|*.tsx|*.js|*.jsx) affected+=("$candidate");; esac; done
-          if [ "${#affected[@]}" -gt 0 ]; then npm test -- --runInBand --findRelatedTests "${affected[@]}"; fi
+      - name: Discover and execute only uncovered related tests
+        run: node scripts/engineering/readiness.mjs --related --base "$KERNEL_BASE_SHA" --head "$KERNEL_HEAD_SHA"
+      - run: git diff --check "$KERNEL_BASE_SHA" "$KERNEL_HEAD_SHA"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with: { name: kernel-preflight, path: artifacts/engineering-evidence/preflight/*.json, if-no-files-found: error }
 
   unit-build:
-    permissions:
-      contents: read
+    permissions: { contents: read }
     needs: preflight
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -55,90 +55,89 @@ jobs:
         with: { ref: "${{ github.event.pull_request.head.sha }}", fetch-depth: 0 }
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with: { node-version: 24.13.0, cache: npm }
-      - run: npm ci
-      - name: Execute exact planned build proofs
+      - if: needs.preflight.outputs.build-required == 'true'
+        run: npm ci
+      - if: needs.preflight.outputs.build-required == 'true'
+        name: Execute exact planned build proofs
         run: npm run proof:run -- --kind build --base "$KERNEL_BASE_SHA" --head "$KERNEL_HEAD_SHA"
+      - if: needs.preflight.outputs.build-required != 'true'
+        run: mkdir -p artifacts/job-accounting && printf '{"kind":"build","status":"NOT_REQUIRED"}\n' > artifacts/job-accounting/build.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with: { name: kernel-unit-build, path: artifacts/engineering-evidence/unit-build/*.json, if-no-files-found: error }
+        with:
+          name: kernel-unit-build
+          path: |
+            artifacts/engineering-evidence/unit-build/*.json
+            artifacts/job-accounting/build.json
+          if-no-files-found: error
 
   receivables-postgres:
-    permissions:
-      contents: read
+    permissions: { contents: read }
     needs: preflight
-    if: always() && needs.preflight.result != 'cancelled'
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    services:
-      postgres:
-        image: postgres:17.6-alpine
-        env: { POSTGRES_USER: postgres, POSTGRES_PASSWORD: postgres, POSTGRES_DB: postgres }
-        ports: ["5432:5432"]
-        options: >-
-          --health-cmd "pg_isready -U postgres -d postgres"
-          --health-interval 5s --health-timeout 5s --health-retries 10
-    env: { PGHOST: 127.0.0.1, PGPORT: 5432, PGDATABASE: postgres, PGUSER: postgres, PGPASSWORD: postgres, PGSSLMODE: disable, CRM_MASTER_DB_DISPOSABLE: 1, CRM_POSTGRES_SERVICE_DISPOSABLE: 1, CI: "true" }
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { ref: "${{ github.event.pull_request.head.sha }}", fetch-depth: 0 }
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with: { node-version: 24.13.0, cache: npm }
-      - run: npm ci
-      - name: Activate preinstalled PostgreSQL client
-        run: |
-          pg_bin="$(pg_config --bindir)"
-          test -x "$pg_bin/psql"
-          test -x "$pg_bin/createdb"
-          echo "$pg_bin" >> "$GITHUB_PATH"
-      - name: Execute exact planned PostgreSQL proofs
-        run: node scripts/engineering/proof-runner.mjs --proof control-postgres-matrix --kind postgres --base "$KERNEL_BASE_SHA" --head "$KERNEL_HEAD_SHA"
+      - if: needs.preflight.outputs.postgres-required == 'true'
+        run: npm ci
+      - if: needs.preflight.outputs.postgres-required == 'true'
+        name: Execute exact planned PostgreSQL proofs
+        run: npm run proof:run -- --kind postgres --base "$KERNEL_BASE_SHA" --head "$KERNEL_HEAD_SHA"
+      - if: needs.preflight.outputs.postgres-required != 'true'
+        run: mkdir -p artifacts/job-accounting && printf '{"kind":"postgres","status":"NOT_REQUIRED"}\n' > artifacts/job-accounting/postgres.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with: { name: kernel-postgres, path: artifacts/engineering-evidence/receivables-postgres/*.json, if-no-files-found: error }
+        with:
+          name: kernel-postgres
+          path: |
+            artifacts/engineering-evidence/receivables-postgres/*.json
+            artifacts/job-accounting/postgres.json
+          if-no-files-found: error
 
   e2e:
-    permissions:
-      contents: read
+    permissions: { contents: read }
     needs: [preflight, unit-build]
-    if: always() && needs.preflight.result != 'cancelled' && needs.unit-build.result != 'cancelled'
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    container: { image: "mcr.microsoft.com/playwright:v1.54.2-noble", options: --ipc=host }
-    env: { PLAYWRIGHT_BROWSERS_PATH: /ms-playwright, CI: "true", PLAYWRIGHT_E2E_WEBPACK: "true" }
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { ref: "${{ github.event.pull_request.head.sha }}", fetch-depth: 0 }
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with: { node-version: 24.13.0, cache: npm }
-      - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-      - run: npm ci
-      - run: npm run build
-      - name: Execute exact planned E2E proofs
+      - if: needs.preflight.outputs.e2e-required == 'true'
+        run: npm ci && npx playwright install --with-deps chromium
+      - if: needs.preflight.outputs.e2e-required == 'true'
+        name: Execute exact planned E2E proofs
         run: npm run proof:run -- --kind e2e --base "$KERNEL_BASE_SHA" --head "$KERNEL_HEAD_SHA"
+      - if: needs.preflight.outputs.e2e-required != 'true'
+        run: mkdir -p artifacts/job-accounting && printf '{"kind":"e2e","status":"NOT_REQUIRED"}\n' > artifacts/job-accounting/e2e.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with: { name: kernel-e2e, path: artifacts/engineering-evidence/e2e/*.json, if-no-files-found: error }
+        with:
+          name: kernel-e2e
+          path: |
+            artifacts/engineering-evidence/e2e/*.json
+            artifacts/job-accounting/e2e.json
+          if-no-files-found: error
 
   attest-evidence:
     needs: [preflight, unit-build, receivables-postgres, e2e]
     if: ${{ always() && needs.preflight.result == 'success' && needs.unit-build.result == 'success' && needs.receivables-postgres.result == 'success' && needs.e2e.result == 'success' }}
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-      attestations: write
-      artifact-metadata: write
+    permissions: { contents: read, id-token: write, attestations: write, artifact-metadata: write }
     steps:
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with: { name: kernel-preflight, path: artifacts/engineering-evidence/preflight }
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with: { name: kernel-unit-build, path: artifacts/engineering-evidence/unit-build }
+        with: { name: kernel-unit-build, path: artifacts }
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with: { name: kernel-postgres, path: artifacts/engineering-evidence/receivables-postgres }
+        with: { name: kernel-postgres, path: artifacts }
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with: { name: kernel-e2e, path: artifacts/engineering-evidence/e2e }
+        with: { name: kernel-e2e, path: artifacts }
       - name: Attest exact evidence files
         id: attest
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6
-        with:
-          subject-path: artifacts/engineering-evidence/**/*.json
+        with: { subject-path: artifacts/engineering-evidence/**/*.json }
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with: { name: kernel-evidence-attestation, path: "${{ steps.attest.outputs.bundle-path }}", if-no-files-found: error }
 
@@ -146,8 +145,7 @@ jobs:
     needs: [preflight, unit-build, receivables-postgres, e2e, attest-evidence]
     if: ${{ always() && needs.preflight.result == 'success' && needs.unit-build.result == 'success' && needs.receivables-postgres.result == 'success' && needs.e2e.result == 'success' && needs.attest-evidence.result == 'success' }}
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
+    permissions: { contents: read }
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { ref: "${{ github.event.pull_request.head.sha }}", fetch-depth: 0 }
@@ -157,15 +155,15 @@ jobs:
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with: { name: kernel-preflight, path: artifacts/engineering-evidence/preflight }
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with: { name: kernel-unit-build, path: artifacts/engineering-evidence/unit-build }
+        with: { name: kernel-unit-build, path: artifacts }
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with: { name: kernel-postgres, path: artifacts/engineering-evidence/receivables-postgres }
+        with: { name: kernel-postgres, path: artifacts }
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with: { name: kernel-e2e, path: artifacts/engineering-evidence/e2e }
+        with: { name: kernel-e2e, path: artifacts }
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with: { name: kernel-evidence-attestation, path: artifacts/engineering-attestation }
       - name: Validate complete exact-head evidence
-        env: { BASE_SHA: "${{ github.event.pull_request.base.sha }}", HEAD_SHA: "${{ github.event.pull_request.head.sha }}", GH_TOKEN: "${{ github.token }}" }
+        env: { GH_TOKEN: "${{ github.token }}" }
         run: >-
-          npm run proof:certify-ci -- --base "$BASE_SHA" --head "$HEAD_SHA"
+          npm run proof:certify-ci -- --base "$KERNEL_BASE_SHA" --head "$KERNEL_HEAD_SHA"
           --jobs "${{ needs.preflight.result }}:${{ needs.unit-build.result }}:${{ needs.receivables-postgres.result }}:${{ needs.e2e.result }}:${{ needs.attest-evidence.result }}"

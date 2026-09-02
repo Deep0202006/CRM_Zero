@@ -50,7 +50,18 @@ export const validateIncident = (incident) => {
 export const upsertIncident = (incident, { registry = readIncidentRegistry(), persist = true } = {}) => {
   validateIncident(incident);
   const incidents = [...(registry.incidents ?? [])], index = incidents.findIndex((item) => item.fingerprint === incident.fingerprint);
-  if (index < 0) incidents.push(incident); else incidents[index] = { ...incidents[index], ...incident };
+  if (index < 0) incidents.push(incident);
+  else {
+    const current = validateIncident(incidents[index]);
+    if (incident.status === "SUPERSEDED" && !incident.supersession?.evidenceRefs?.length) throw new Error("INCIDENT_SUPERSESSION_EVIDENCE_REQUIRED");
+    if (["VERIFIED", "SUPERSEDED"].includes(current.status) && incident.status === "OBSERVED") incidents[index] = {
+      ...current,
+      occurrences: current.occurrences + 1,
+      lastSeen: incident.lastSeen ?? new Date().toISOString(),
+      evidenceRefs: [...new Set([...(current.evidenceRefs ?? []), ...(incident.evidenceRefs ?? [])])].slice(-20),
+    };
+    else incidents[index] = { ...current, ...incident, occurrences: Math.max(current.occurrences, incident.occurrences), evidenceRefs: [...new Set([...(current.evidenceRefs ?? []), ...(incident.evidenceRefs ?? [])])].slice(-20) };
+  }
   incidents.sort((a, b) => a.fingerprint.localeCompare(b.fingerprint));
   const next = { schemaVersion: 1, incidents };
   if (persist) atomicWrite(incidentRegistryPath(), next);
@@ -58,7 +69,7 @@ export const upsertIncident = (incident, { registry = readIncidentRegistry(), pe
 };
 
 export const recordFailure = ({ taskId, signature, evidenceRefs = [], domains = [], pathHints = [], proofKinds = [], environment = {} }) => {
-  const normalized = normalizeFailureSignature(signature), fingerprint = sha256(normalized || "unknown-failure"), task = readTaskExperience(taskId), existing = (task.incidents ?? []).find((item) => item.fingerprint === fingerprint);
+  const normalized = normalizeFailureSignature(signature), fingerprint = sha256(normalized || "unknown-failure"), task = readTaskExperience(taskId), existing = (task.incidents ?? []).find((item) => item.fingerprint === fingerprint), canonical = (readIncidentRegistry().incidents ?? []).find((item) => item.fingerprint === fingerprint);
   const incident = validateIncident({
     fingerprint,
     status: "OBSERVED",
@@ -79,6 +90,8 @@ export const recordFailure = ({ taskId, signature, evidenceRefs = [], domains = 
     regressionPassed: existing?.regressionPassed ?? false,
     confidence: existing?.confidence ?? "CANDIDATE",
     supersession: existing?.supersession ?? null,
+    canonicalStatus: canonical?.status ?? null,
+    lastSeen: new Date().toISOString(),
   });
   const incidents = [...(task.incidents ?? []).filter((item) => item.fingerprint !== fingerprint), incident].sort((a, b) => a.fingerprint.localeCompare(b.fingerprint));
   writeTaskExperience(taskId, { ...task, incidents });
@@ -100,8 +113,27 @@ const boundedPacket = (items, budget) => {
   return selected;
 };
 
-export const selectExperience = ({ task = "", domains = [], risk = "R0", candidatePaths = [], requiredProofRefs = [], environment = {}, failureSignatures = [] } = {}, { lessons = readJson("docs/engineering/LESSONS.json").lessons, incidents = readIncidentRegistry().incidents, budget = EXPERIENCE_PACKET_MAX_BYTES } = {}) => {
-  const taskWords = words(task), domainSet = new Set(domains), pathSet = new Set(candidatePaths.map((item) => item.path ?? item)), proofSet = new Set(requiredProofRefs), environmentWords = words(JSON.stringify(environment)), failureWords = words(failureSignatures.join(" "));
+export const serializeSessionContext = ({ safetyConflict = null, kernel, sessionStatus, repository, task, experiencePacket = [], nextAction, handoff = "" } = {}, budget = 800) => {
+  const payload = {
+    ...(safetyConflict ? { safetyConflict } : {}),
+    kernel,
+    sessionStatus,
+    repository,
+    task,
+    experience: experiencePacket.slice(0, 3).map((item) => ({ id: item.id, action: String(item.requiredPreventionAction ?? item.rule ?? "").slice(0, 80) })),
+    nextAction,
+    handoff: String(handoff).replace(/\s+/g, " ").trim().slice(0, 120),
+  };
+  while (Buffer.byteLength(JSON.stringify(payload)) > budget && payload.experience.length > 1) payload.experience.pop();
+  if (Buffer.byteLength(JSON.stringify(payload)) > budget) payload.handoff = payload.handoff.slice(0, 40);
+  if (Buffer.byteLength(JSON.stringify(payload)) > budget) delete payload.handoff;
+  const serialized = JSON.stringify(payload);
+  if (Buffer.byteLength(serialized) > budget) throw new Error("SESSION_CONTEXT_BUDGET_EXCEEDED");
+  return serialized;
+};
+
+export const selectExperience = ({ task = "", domains = [], risk = "R0", candidatePaths = [], requiredProofIds = [], requiredProofKinds = [], environment = {}, failureSignatures = [] } = {}, { lessons = readJson("docs/engineering/LESSONS.json").lessons, incidents = readIncidentRegistry().incidents, budget = EXPERIENCE_PACKET_MAX_BYTES } = {}) => {
+  const taskWords = words(task), domainSet = new Set(domains), pathSet = new Set(candidatePaths.map((item) => item.path ?? item)), proofIdSet = new Set(requiredProofIds), proofKindSet = new Set(requiredProofKinds), environmentWords = words(JSON.stringify(environment)), failureWords = words(failureSignatures.join(" "));
   const lessonRows = lessons.map((lesson) => {
     const lessonWords = words([lesson.id, lesson.rule, ...(lesson.triggers ?? [])].join(" "));
     const domainHit = lesson.domains?.includes("all") || lesson.domains?.some((domain) => domainSet.has(domain));
@@ -110,32 +142,55 @@ export const selectExperience = ({ task = "", domains = [], risk = "R0", candida
     return { score, id: lesson.id, rule: lesson.rule, whyRelevantNow: domainHit ? `domain:${domains.join(",") || "all"}` : "task trigger", failureClass: lesson.triggers?.[0] ?? lesson.id.toLowerCase(), requiredPreventionAction: lesson.enforcementRefs?.length ? `Run ${lesson.enforcementRefs[0]}` : lesson.rule };
   });
   const incidentRows = (incidents ?? []).filter((incident) => incident.status === "VERIFIED").map((incident) => {
-    const domainHit = incident.domains?.some((domain) => domainSet.has(domain)), pathHit = incident.pathHints?.some((path) => pathSet.has(path)), proofHit = incident.proofKinds?.some((kind) => proofSet.has(kind)), environmentHit = overlaps(environmentWords, words(JSON.stringify(incident.environment))), failureHit = overlaps(failureWords, words(incident.failureSignature));
+    const domainHit = incident.domains?.some((domain) => domainSet.has(domain)), pathHit = incident.pathHints?.some((path) => pathSet.has(path)), proofKindHit = incident.proofKinds?.some((kind) => proofKindSet.has(kind)), proofIdHit = incident.proofIds?.some((id) => proofIdSet.has(id)), proofHit = proofKindHit || proofIdHit, environmentHit = overlaps(environmentWords, words(JSON.stringify(incident.environment))), failureHit = overlaps(failureWords, words(incident.failureSignature));
     return { score: (domainHit ? 5 : 0) + (pathHit ? 4 : 0) + (proofHit ? 3 : 0) + (environmentHit ? 2 : 0) + (failureHit ? 6 : 0) + Math.min(incident.occurrences ?? 1, 3), id: `INCIDENT:${incident.fingerprint.slice(0, 12)}`, rule: incident.correctionPrinciple, whyRelevantNow: [domainHit && "domain", pathHit && "path", proofHit && "proof", environmentHit && "environment", failureHit && "failure"].filter(Boolean).join(","), failureClass: incident.failureSignature, requiredPreventionAction: incident.correctionPrinciple };
   });
   return boundedPacket([...lessonRows, ...incidentRows].filter((item) => item.score >= 4).sort((a, b) => b.score - a.score || a.id.localeCompare(b.id)).slice(0, 8).map(({ score: _score, ...item }) => ({ ...item, rule: String(item.rule).slice(0, 150), whyRelevantNow: String(item.whyRelevantNow).slice(0, 80), failureClass: String(item.failureClass).slice(0, 80), requiredPreventionAction: String(item.requiredPreventionAction).slice(0, 70) })), budget);
 };
 
-export const deriveAssumptions = ({ task = "", risk = "R0", identity, effects = [] } = {}) => {
+export const deriveAssumptions = ({ risk = "R0", identity, effects = [], domains = [], changedPaths = [], changedAuthorities = [], operations = [], requiredProofs = [] } = {}) => {
   if (!["R2", "R3"].includes(risk)) return [];
-  const text = `${task} ${effects.join(" ")}`.toLowerCase(), rows = [
-    { class: "current_git_identity", claim: "Branch, HEAD, base, and dirty state are current.", evidence: identity, status: identity ? "PROVEN" : "UNPROVEN" },
-    { class: "filesystem_root", claim: "CRM-managed state resolves below the current Git root.", evidence: root, status: "PROVEN" },
-    { class: "proof_ci_coverage", claim: "Every required proof kind has a valid local and CI execution path.", evidence: null, status: "UNPROVEN" },
-    { class: "production_authority", claim: "Production SQL remains Owner-only.", evidence: "PRODUCTION_DISCIPLINE", status: "PROVEN" },
+  const normalized = requiredProofs.map((item) => typeof item === "string" ? { id: item } : item), ids = normalized.map((item) => item.id), kinds = [...new Set(normalized.map((item) => item.kind).filter(Boolean))], scope = { domains, paths: changedPaths, authorities: changedAuthorities }, make = (className, claim, allowedEvidenceKinds = [], allowedEvidenceProofIds = ids) => ({ id: sha256(JSON.stringify([className, scope])).slice(0, 16), class: className, claim, ...scope, allowedEvidenceProofIds, allowedEvidenceKinds, evidenceHash: null, status: "UNPROVEN" });
+  const rows = [
+    { ...make("current_git_identity", "Branch, HEAD, base, and dirty state are current.", [], []), evidence: identity, evidenceHash: identity ? sha256(JSON.stringify(identity)) : null, status: identity ? "PROVEN" : "UNPROVEN" },
+    { ...make("filesystem_root", "CRM-managed state resolves below the current Git root.", [], []), evidence: root, evidenceHash: sha256(root), status: "PROVEN" },
+    make("proof_ci_coverage", "Every required proof has one declared execution authority.", kinds, ids),
+    { ...make("production_authority", "Production SQL remains Owner-only.", [], []), evidence: "PRODUCTION_DISCIPLINE", evidenceHash: sha256("PRODUCTION_DISCIPLINE"), status: "PROVEN" },
   ];
-  if (/migration|schema|database|postgres|fixture/.test(text)) rows.push({ class: "database_constraints", claim: "Disposable database fixtures satisfy canonical constraints before scenario assertions.", evidence: null, status: "UNPROVEN" }, { class: "current_migration_boundary", claim: "The migration boundary is derived from the current ledger.", evidence: null, status: "UNPROVEN" });
-  if (/\b(?:api|rpc|signature)\b/.test(text)) rows.push({ class: "rpc_api_signatures", claim: "Current API/RPC signatures are source-proven.", evidence: null, status: "UNPROVEN" });
-  if (/cli|release|deploy|platform|windows|vercel/.test(text)) rows.push({ class: "external_cli_contract", claim: "External CLI resolution, exit code, stdout, and stderr behavior are host-proven.", evidence: null, status: "UNPROVEN" });
+  if (effects.some((effect) => ["DATABASE", "SCHEMA", "RLS"].includes(effect))) rows.push(make("database_constraints", "Relevant disposable database constraints and fixtures pass before assertions.", ["postgres"], normalized.filter((item) => item.kind === "postgres" && (!(item.domains ?? []).length || item.domains.some((domain) => domains.includes(domain)))).map((item) => item.id)), make("current_migration_boundary", "The migration boundary is derived from the current ledger.", [], []));
+  if (effects.some((effect) => ["API", "AUTHORIZATION"].includes(effect)) || operations.some((item) => item.operationKind === "rpc")) rows.push(make("rpc_api_signatures", "Relevant API/RPC signatures and authorization are source-proven.", ["unit", "postgres"], normalized.filter((item) => ["unit", "postgres"].includes(item.kind) && ((item.domains ?? []).some((domain) => domains.includes(domain)) || item.id === "auth-unit")).map((item) => item.id)));
+  if (effects.some((effect) => ["WORKFLOW", "PRODUCTION", "PLATFORM", "EXTERNAL_PROCESS"].includes(effect))) rows.push(make("external_cli_contract", "Relevant external process exit, stdout, and stderr behavior is host-proven.", ["unit"], normalized.filter((item) => item.kind === "unit" && item.id !== "kernel-preflight" && ((item.effects ?? []).some((effect) => ["WORKFLOW", "PRODUCTION", "PLATFORM", "ENGINEERING_CONTROL"].includes(effect)) || (item.paths ?? []).some((path) => changedPaths.includes(path)))).map((item) => item.id)));
   return rows;
 };
 
 export const initializeTaskExperience = ({ taskId, task, context, identity }) => writeTaskExperience(taskId, {
   schemaVersion: 1,
   task: taskId,
-  assumptions: deriveAssumptions({ task, risk: context.risk, identity }),
+  assumptions: deriveAssumptions({ risk: context.risk, identity, effects: context.effects ?? [], domains: context.domains, changedPaths: context.candidatePaths?.map((item) => item.path) ?? [], requiredProofs: (context.requiredProofRefs ?? []).map((id) => ({ id })) }),
   incidents: [],
-  metrics: { taskStartedAt: new Date().toISOString(), pushCount: 0, ciAttemptCount: 0, firstPassCiSuccess: null, repeatedFailureSignatures: 0, locallyReproducibleFailuresFirstDiscoveredRemotely: 0, proofExecutions: 0, proofReuse: 0, experienceContextBytes: Buffer.byteLength(JSON.stringify(context.experiencePacket ?? [])), ownerInterventions: 0 },
+  metrics: { taskStartedAt: new Date().toISOString(), events: {}, pushCount: 0, ciAttemptCount: 0, firstPassCiSuccess: null, repeatedFailureSignatures: 0, locallyReproducibleFailuresFirstDiscoveredRemotely: 0, proofExecutions: 0, proofReuse: 0, graphify: { queried: context.graphifyEvidence?.status === "GRAPHIFY_QUERIED" ? 1 : 0, cacheHit: context.graphifyEvidence?.status === "GRAPHIFY_CACHE_HIT" ? 1 : 0, fallback: !["GRAPHIFY_QUERIED", "GRAPHIFY_CACHE_HIT"].includes(context.graphifyEvidence?.status) ? 1 : 0 }, experienceContextBytes: Buffer.byteLength(JSON.stringify(context.experiencePacket ?? [])), ownerInterventions: 0 },
+});
+
+export const recordMetricEvent = (taskId, { type, key, concluded = false, success = false } = {}) => updateTaskMetrics(taskId, (metrics) => {
+  if (!type || !key) throw new Error("METRIC_EVENT_ID_REQUIRED");
+  const eventId = `${type}:${key}`, events = { ...(metrics.events ?? {}) };
+  if (events[eventId]) {
+    if (type !== "ci" || events[eventId].concluded || !concluded) return metrics;
+    events[eventId] = { ...events[eventId], concluded: true, success, concludedAt: new Date().toISOString() };
+    return { ...metrics, events, firstPassCiSuccess: metrics.firstPassCiSuccess === null ? success : metrics.firstPassCiSuccess };
+  }
+  events[eventId] = { type, key, concluded, success, recordedAt: new Date().toISOString() };
+  const next = { ...metrics, events };
+  if (type === "push") next.pushCount = (next.pushCount ?? 0) + 1;
+  if (type === "ci") {
+    next.ciAttemptCount = (next.ciAttemptCount ?? 0) + 1;
+    if (next.firstPassCiSuccess === null && concluded) next.firstPassCiSuccess = success;
+  }
+  if (type === "proof-execution") next.proofExecutions = (next.proofExecutions ?? 0) + 1;
+  if (type === "proof-reuse") next.proofReuse = (next.proofReuse ?? 0) + 1;
+  if (type === "owner-gate") next.ownerInterventions = (next.ownerInterventions ?? 0) + 1;
+  if (type === "remote-local-failure") next.locallyReproducibleFailuresFirstDiscoveredRemotely = (next.locallyReproducibleFailuresFirstDiscoveredRemotely ?? 0) + 1;
+  return next;
 });
 
 export const writePrepushCertificate = (taskId, value) => (atomicWrite(prepushCertificatePath(taskId), value), value);
@@ -193,7 +248,7 @@ if (process.argv[1] && resolve(process.argv[1]) === resolve(import.meta.filename
     } else if (args.has("--refresh-active-context")) {
       const task = findActiveTask(); if (!task) throw new Error("ACTIVE_TASK_REQUIRED");
       const path = resolve(taskDirectory(task.taskId), "context.json"), context = JSON.parse(readFileSync(path, "utf8"));
-      context.experiencePacket = selectExperience({ task: task.task, domains: context.domains, risk: context.risk, candidatePaths: context.candidatePaths, requiredProofRefs: context.requiredProofRefs, environment: { platform: process.platform } }); atomicWrite(path, context);
+      context.experiencePacket = selectExperience({ task: task.task, domains: context.domains, risk: context.risk, candidatePaths: context.candidatePaths, requiredProofIds: context.requiredProofRefs, requiredProofKinds: context.requiredProofKinds, environment: { platform: process.platform } }); atomicWrite(path, context);
       const experience = readTaskExperience(task.taskId); writeTaskExperience(task.taskId, { ...experience, metrics: { ...experience.metrics, experienceContextBytes: Buffer.byteLength(JSON.stringify(context.experiencePacket)) } });
       console.log(JSON.stringify({ task: task.taskId, experiencePacket: context.experiencePacket }, null, 2));
     } else throw new Error("EXPERIENCE_COMMAND_REQUIRED");

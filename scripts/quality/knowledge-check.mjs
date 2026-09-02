@@ -3,6 +3,8 @@ import { resolve } from "node:path";
 import { execFileSync } from "node:child_process";
 import { isTrackedPathOrDescendant } from "./tracked-paths.mjs";
 import { inspectMigrationBoundaryTransition } from "../engineering/kernel-lib.mjs";
+import { validateProofCiParity } from "../engineering/proof-command-plan.mjs";
+import { validateSelectionRegistry } from "../engineering/proof-plan.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
 const read = (file) => readFileSync(resolve(root, file), "utf8");
@@ -38,7 +40,7 @@ const regressionCases = json("docs/engineering/REGRESSION_CASES.json").cases ?? 
 if (mapFile.schemaVersion !== 2) fail("DOMAIN_MAP schemaVersion must be 2");
 if (json("docs/engineering/LESSONS.json").schemaVersion !== 2)
   fail("LESSONS schemaVersion must be 2");
-if (proofFile.schemaVersion !== 3) fail("PROOFS schemaVersion must be 3");
+if (proofFile.schemaVersion !== 4) fail("PROOFS schemaVersion must be 4");
 if (claimFile.schemaVersion !== 1) fail("CLAIMS schemaVersion must be 1");
 unique(domains, "domain");
 unique(authorities, "authority");
@@ -233,6 +235,7 @@ const runners = new Set([
     "node",
     "owner-sql",
     "fixed-commands",
+    "postgres-phased",
   ]),
   proofIds = new Set(proofs.map((item) => item.id));
 for (const item of regressionCases)
@@ -264,7 +267,30 @@ for (const proof of proofs) {
       if (/^(?:scripts|src|e2e|docs)\//.test(argument) && !pathExists(argument))
         fail(`${proof.id} missing command path: ${argument}`);
   }
+  for (const phase of ["schema", "fixture", "assertion"])
+    for (const command of proof.databasePhases?.[phase] ?? [])
+      if (!command.file || !Array.isArray(command.args)) fail(`${proof.id} invalid ${phase} database command`);
 }
+const selectionMembership = new Map();
+for (const [selection, ids] of Object.entries(proofFile.selectionPolicy ?? {}))
+  for (const id of ids) { const prior = selectionMembership.get(id); if (prior) fail(`${id} has multiple selection modes: ${prior},${selection}`); else selectionMembership.set(id, selection); }
+for (const proof of proofs) if (!selectionMembership.has(proof.id)) fail(`${proof.id} missing selection mode`);
+for (const proof of proofs.filter((item) => ["build", "postgres", "e2e"].includes(item.kind))) {
+  if ((proof.effects ?? []).includes("ALL_CHANGES") || selectionMembership.get(proof.id) === "always-cheap") fail(`EXPENSIVE_GLOBAL_SELECTOR_FORBIDDEN:${proof.id}`);
+  if (proof.id.match(/product-\d+/) && selectionMembership.get(proof.id) === "domain") fail(`HISTORICAL_PRODUCT_PROOF_GLOBAL:${proof.id}`);
+  if (proof.kind === "build" && JSON.stringify(proof).match(/(?:npm run test|jest)/)) fail(`FULL_JEST_EMBEDDED_IN_BUILD:${proof.id}`);
+}
+const routes = json("docs/engineering/CI_PROOF_JOBS.json").routes ?? [];
+for (const kind of new Set(proofs.map((proof) => proof.kind))) if (routes.filter((route) => route.kind === kind).length !== 1) fail(`PROOF_KIND_EXECUTION_AUTHORITY_INVALID:${kind}`);
+for (const path of tracked("e2e").filter((item) => item.endsWith(".ts"))) if (/\.waitForTimeout\s*\(/.test(read(path))) fail(`RAW_E2E_TIMEOUT_FORBIDDEN:${path}`);
+const playwright = read("playwright.config.ts");
+if (!/retries:\s*0\b/.test(playwright) || /on-first-retry/.test(playwright)) fail("ZERO_RETRY_TRACE_POLICY_INVALID");
+if (/"vercel-build"\s*:\s*"[^"]*(?:npm run test|jest)/.test(read("package.json"))) fail("VERCEL_FULL_JEST_DUPLICATION");
+const benchmark = read("scripts/engineering/benchmark.mjs");
+for (const pattern of [/broadReruns:\s*0\b/, /graphifyQueries:\s*0\b/, /deliveryCompleteness:\s*100\b/, /broadSuitesBeforeStableDiff:\s*true\b/]) if (pattern.test(benchmark)) fail("BENCHMARK_HARDCODED_SUCCESS_METRIC");
+try { validateSelectionRegistry(proofFile); } catch (error) { fail(error.message); }
+const parity = validateProofCiParity({ proofs, workflow: read(".github/workflows/product-verification.yml") });
+for (const error of parity.failures) fail(error);
 for (const domain of domains.filter((item) =>
   ["R2", "R3"].includes(item.riskFloor),
 ))

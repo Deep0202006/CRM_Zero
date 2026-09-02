@@ -16,7 +16,7 @@ const lessons = [
   { id: "MONEY", domains: ["receivables"], risk: ["R3"], triggers: ["money"], rule: "Money rule." },
 ];
 const verifiedIncident = validateIncident({ fingerprint: "a".repeat(64), status: "VERIFIED", occurrences: 2, domains: ["engineering-control"], pathHints: ["scripts/engineering/experience.mjs"], proofKinds: ["unit"], environment: { platform: process.platform }, evidenceRefs: ["run:1"], failureSignature: "fixture failed", rootCause: "invalid fixture", incompleteCorrection: "the first correction missed an equivalent fixture", correctionPrinciple: "Validate real schema first.", sweepEvidence: ["all equivalent fixtures searched"], regressionRefs: ["experience.test"], regressionPassed: true });
-const packet = selectExperience({ task: "fix fixture readiness", domains: ["engineering-control"], risk: "R3", candidatePaths: ["scripts/engineering/experience.mjs"], requiredProofRefs: ["unit"], environment: { platform: process.platform } }, { lessons, incidents: [verifiedIncident], budget: 900 });
+const packet = selectExperience({ task: "fix fixture readiness", domains: ["engineering-control"], risk: "R3", candidatePaths: ["scripts/engineering/experience.mjs"], requiredProofKinds: ["unit"], environment: { platform: process.platform } }, { lessons, incidents: [verifiedIncident], budget: 900 });
 assert(packet.some((item) => item.id === "FIXTURE"));
 assert(packet.some((item) => item.id.startsWith("INCIDENT:")));
 assert(!packet.some((item) => item.id === "MONEY"));
@@ -24,10 +24,12 @@ assert(Buffer.byteLength(JSON.stringify(packet)) <= 900);
 
 assert.throws(() => validateIncident({ fingerprint: "bad", status: "VERIFIED", occurrences: 1 }), /INCOMPLETE/);
 assert.equal(upsertIncident(verifiedIncident, { registry: { schemaVersion: 1, incidents: [] }, persist: false }).incidents.length, 1);
+const recurrence = upsertIncident({ ...verifiedIncident, status: "OBSERVED", occurrences: 1, rootCause: null, correctionPrinciple: null, regressionRefs: [], regressionPassed: false }, { registry: { schemaVersion: 1, incidents: [verifiedIncident] }, persist: false }).incidents[0];
+assert.equal(recurrence.status, "VERIFIED"); assert.equal(recurrence.rootCause, verifiedIncident.rootCause); assert.equal(recurrence.occurrences, 3);
 assert.equal(repeatedFailureBlockers([{ ...verifiedIncident, status: "OBSERVED", rootCause: null }]).length, 1);
 assert.equal(repeatedFailureBlockers([verifiedIncident]).length, 0);
 
-const assumptions = deriveAssumptions({ task: "R3 database fixture external CLI release", risk: "R3", identity: { headSha: "a" } });
+const assumptions = deriveAssumptions({ risk: "R3", identity: { headSha: "a" }, effects: ["DATABASE", "WORKFLOW"], domains: ["engineering-control"], changedPaths: ["scripts/engineering/release-entry.mjs"], requiredProofs: [{ id: "control-postgres-smoke", kind: "postgres", domains: ["engineering-control"] }, { id: "kernel-control-unit", kind: "unit", domains: ["engineering-control"], effects: ["ENGINEERING_CONTROL"] }] });
 for (const expected of ["current_git_identity", "filesystem_root", "proof_ci_coverage", "production_authority", "database_constraints", "current_migration_boundary", "external_cli_contract"]) assert(assumptions.some((item) => item.class === expected));
 
 const parityProofs = [{ id: "unit", kind: "unit" }, { id: "handover", kind: "handover" }, { id: "owner", kind: "owner-pre" }];

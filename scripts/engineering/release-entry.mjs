@@ -1,10 +1,10 @@
 import { spawnSync } from "node:child_process";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { engineeringTempRoot } from "./managed-paths.mjs";
 import { assertPrepushReady, intakeCurrentRemoteFailure } from "./readiness.mjs";
-import { invalidatePrepushCertificate, recordFailure, updateTaskMetrics } from "./experience.mjs";
-import { findActiveTask } from "./task-state.mjs";
+import { invalidatePrepushCertificate, recordFailure, recordMetricEvent } from "./experience.mjs";
+import { findActiveTask, taskDirectory } from "./task-state.mjs";
 
 export const releaseEnvironment = (source = process.env) => {
   const temporary = engineeringTempRoot("release");
@@ -23,7 +23,16 @@ export const runRelease = (args = process.argv.slice(2)) => {
     if (task) { invalidatePrepushCertificate(task.taskId, "PUBLISH_FAILED"); recordFailure({ taskId: task.taskId, signature: result.stderr || result.stdout || `PUBLISH_FAILED:${status}`, evidenceRefs: ["release:publish"], environment: { platform: process.platform } }); }
     try { intakeCurrentRemoteFailure(); } catch { /* the release failure remains primary */ }
   }
-  if (publish && status === 0) { const task = findActiveTask(); if (task) updateTaskMetrics(task.taskId, (metrics) => ({ ...metrics, pushCount: (metrics.pushCount ?? 0) + 1, ciAttemptCount: (metrics.ciAttemptCount ?? 0) + 1, firstPassCiSuccess: (metrics.ciAttemptCount ?? 0) === 0 })); }
+  if (publish && status === 0) {
+    const task = findActiveTask();
+    if (task) {
+      try {
+        const delivery = JSON.parse(readFileSync(resolve(taskDirectory(task.taskId), "delivery.json"), "utf8")), runIds = [...new Set((delivery.checks ?? []).flatMap((check) => /\/actions\/runs\/(\d+)/.exec(check.link ?? "")?.[1] ?? []))];
+        if (delivery.head) recordMetricEvent(task.taskId, { type: "push", key: delivery.head });
+        for (const runId of runIds) recordMetricEvent(task.taskId, { type: "ci", key: `${runId}:${delivery.head}`, concluded: true, success: true });
+      } catch { /* release success remains authoritative; missing metrics are never fabricated */ }
+    }
+  }
   return status;
 };
 
