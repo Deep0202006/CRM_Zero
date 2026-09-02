@@ -2,23 +2,35 @@ import { buildTeamKpiReport } from "../teamKpi/aggregate";
 import { getIstDayBounds } from "../teamKpi/serverReport";
 
 describe("Team KPI live server aggregation", () => {
-  it("keeps every active user, attributes confirmed work, and deduplicates records", () => {
+  it("keeps unique internal participants, excludes external and technical identities, and attributes confirmed work", () => {
     const report = buildTeamKpiReport({
       targetDate: "2026-07-27",
       generatedAt: "2026-07-27T12:00:00.000Z",
       users: [
         { user_id: "00000000-0000-4000-8000-000000000001", name: "User A", is_active: true },
+        { user_id: "00000000-0000-4000-8000-000000000001", name: "User A", is_active: true },
         { user_id: "00000000-0000-4000-8000-000000000002", name: "User B", is_active: 1 },
         { user_id: "00000000-0000-4000-8000-000000000003", name: "Inactive", is_active: false },
+        { user_id: "00000000-0000-4000-8000-000000000004", name: "External Partner", is_active: true },
+        { user_id: "00000000-0000-4000-8000-000000000005", name: " ZeroDataAdmin ", is_active: true },
       ],
       userCapabilities: [
         { user_id: "00000000-0000-4000-8000-000000000001", capability_code: "ret_support" },
+        { user_id: "00000000-0000-4000-8000-000000000002", capability_code: "admin" },
+        { user_id: "00000000-0000-4000-8000-000000000004", capability_code: "erp_partner_viewer" },
+        { user_id: "00000000-0000-4000-8000-000000000005", capability_code: "admin" },
       ],
-      capabilities: [{ code: "ret_support", label: "Retail Support" }],
+      capabilities: [
+        { code: "ret_support", label: "Retail Support" },
+        { code: "admin", label: "Administrator" },
+        { code: "erp_partner_viewer", label: "ERP Partner Viewer" },
+      ],
       calls: [
         { log_id: "call-1", user_id: "00000000-0000-4000-8000-000000000001", timestamp: "2026-07-27T04:00:00.000Z", outcome: "Happy call" },
         { log_id: "call-1", user_id: "00000000-0000-4000-8000-000000000001", timestamp: "2026-07-27T04:00:00.000Z", outcome: "Happy call" },
         { log_id: "call-2", user_id: "00000000-0000-4000-8000-000000000001", timestamp: "2026-07-27T05:00:00.000Z", outcome: "[Call outcome] → Contacted" },
+        { log_id: "call-3", user_id: "00000000-0000-4000-8000-000000000004", timestamp: "2026-07-27T05:00:00.000Z", outcome: "Partner call" },
+        { log_id: "call-4", user_id: "00000000-0000-4000-8000-000000000005", timestamp: "2026-07-27T05:00:00.000Z", outcome: "Technical call" },
       ],
       clientQueries: [
         { query_id: "query-1", assigned_to: "00000000-0000-4000-8000-000000000002", resolved_by: "00000000-0000-4000-8000-000000000001", resolved_at: "2026-07-27T06:00:00.000Z", problem_status: "Resolved" },
@@ -56,6 +68,7 @@ describe("Team KPI live server aggregation", () => {
     });
     expect(report.rows[1]).toMatchObject({
       name: "User B",
+      capabilities: ["admin"],
       calls_made: 0,
       followup_calls: 0,
       queries_handled: 0,
@@ -64,6 +77,7 @@ describe("Team KPI live server aggregation", () => {
       total_completed_work: 2,
       attendance_status: "Absent",
     });
+    expect(report.rows.map((row) => row.name)).toEqual(["User A", "User B"]);
     expect(report.totals).toEqual({
       team_members: 2,
       calls_made: 1,

@@ -110,7 +110,13 @@
         "src/app/login",
         "src/app/onboarding",
         "src/app/api/admin",
-        "src/app/api/push"
+        "src/app/api/push",
+        "src/components/admin/CreateUserPanel.tsx"
+      ],
+      "pathPatterns": [
+        "docs/operations/ravi-prince-retirement.md",
+        "src/lib/__tests__/userRetirementArtifacts.test.ts",
+        "supabase/manual/precheck_ravi_prince_retirement.sql"
       ],
       "codeRoots": [
         "src/context/AuthContext.tsx",
@@ -392,7 +398,8 @@
       ],
       "criticalTests": [
         "src/lib/__tests__/teamKpiContract.test.ts",
-        "src/lib/__tests__/teamKpiWorkflowAttribution.test.ts"
+        "src/lib/__tests__/teamKpiWorkflowAttribution.test.ts",
+        "src/lib/__tests__/teamKpiLiveAggregation.test.ts"
       ],
       "mustNotWriteAuthorityRefs": [
         "attendance"
@@ -913,7 +920,8 @@
         "LABEL_NOT_AUTHORITY"
       ],
       "criticalTests": [
-        "src/lib/__tests__/adminVisitAndLayoutContract.test.ts"
+        "src/lib/__tests__/adminVisitAndLayoutContract.test.ts",
+        "src/lib/__tests__/visualIntelligence.test.ts"
       ],
       "mustNotWriteAuthorityRefs": []
     },
