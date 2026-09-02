@@ -57,7 +57,15 @@
       "identity": ["user_id"],
       "notes": [
         "Auth login identity and public profile fields are independent authorities.",
-        "Imports resolve employee login identity through canonical resolver."
+        "Imports resolve employee login identity through canonical resolver.",
+        "Ordinary application and Admin features cannot delete employee identity or protected history.",
+        "A retired identity may be erased only by the exact-UUID, dry-run-first, production-Owner operation governed by docs/contracts/IDENTITY_ERASURE.md."
+      ],
+      "mustNotOwn": [
+        "customer or company facts",
+        "Lead or Client Query business history",
+        "another employee's Task",
+        "financial, Distributor, ERP, Field Visit, Mapping, or chat-message authority"
       ]
     },
     {

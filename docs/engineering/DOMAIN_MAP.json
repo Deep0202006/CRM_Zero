@@ -102,15 +102,27 @@
       "aliases": [
         "employee authentication",
         "login authentication",
-        "login"
+        "login",
+        "retired employee identity",
+        "identity erasure",
+        "employee offboarding erasure"
       ],
-      "riskFloor": "R2",
-      "riskEscalators": [],
+      "riskFloor": "R3",
+      "riskEscalators": [
+        "AUTHORIZATION",
+        "SECURITY",
+        "PRODUCTION"
+      ],
       "surfacePaths": [
         "src/app/login",
         "src/app/onboarding",
         "src/app/api/admin",
-        "src/app/api/push"
+        "src/app/api/push",
+        "src/components/admin"
+      ],
+      "pathPatterns": [
+        "src/components/admin/**",
+        "src/lib/__tests__/retiredEmployeeIdentityErasurePolicy.test.ts"
       ],
       "codeRoots": [
         "src/context/AuthContext.tsx",
@@ -119,7 +131,8 @@
       "serverBoundaries": [],
       "contractPaths": [
         "docs/contracts/auth-session.md",
-        "docs/contracts/ROLE_MATRIX.md"
+        "docs/contracts/ROLE_MATRIX.md",
+        "docs/contracts/IDENTITY_ERASURE.md"
       ],
       "authorityRefs": [
         "employee_identity"
@@ -131,7 +144,9 @@
         "AUTH_PROFILE_IDENTITY",
         "SERVER_AUTHORIZATION"
       ],
-      "criticalTests": [],
+      "criticalTests": [
+        "src/lib/__tests__/retiredEmployeeIdentityErasurePolicy.test.ts"
+      ],
       "mustNotWriteAuthorityRefs": []
     },
     {
@@ -913,7 +928,11 @@
         "LABEL_NOT_AUTHORITY"
       ],
       "criticalTests": [
-        "src/lib/__tests__/adminVisitAndLayoutContract.test.ts"
+        "src/lib/__tests__/adminVisitAndLayoutContract.test.ts",
+        "src/lib/__tests__/visualIntelligence.test.ts"
+      ],
+      "pathPatterns": [
+        "src/lib/__tests__/visualIntelligence.test.ts"
       ],
       "mustNotWriteAuthorityRefs": []
     },
@@ -948,6 +967,7 @@
         "scripts/engineering/**",
         "scripts/quality/**",
         "docs/engineering/**",
+        "docs/exec-plans/**",
         "docs/contracts/engineering-os.md",
         "docs/contracts/release-automation.md",
         "playwright.config.ts",
