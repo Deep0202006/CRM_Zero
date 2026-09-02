@@ -328,7 +328,8 @@
       ],
       "codeRoots": [
         "src/lib/pipeline",
-        "src/app/onboarding"
+        "src/app/onboarding",
+        "src/components/RecordInspector.tsx"
       ],
       "serverBoundaries": [
         "src/app/api/pipeline/create/route.ts",
@@ -371,7 +372,8 @@
       ],
       "codeRoots": [
         "src/lib/teamKpi",
-        "src/app/manager/kpi"
+        "src/app/manager/kpi",
+        "src/lib/analytics/viewModels.ts"
       ],
       "serverBoundaries": [
         "src/app/api/team-kpi/route.ts"
@@ -902,9 +904,7 @@
       ],
       "codeRoots": [
         "src/app/globals.css",
-        "src/app/layout.tsx",
-        "src/components/RecordInspector.tsx",
-        "src/lib/analytics"
+        "src/app/layout.tsx"
       ],
       "serverBoundaries": [],
       "contractPaths": [
