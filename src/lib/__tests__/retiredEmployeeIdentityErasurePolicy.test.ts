@@ -7,6 +7,8 @@ const read = (relativePath: string) => fs.readFileSync(path.join(root, relativeP
 describe("retired employee identity-erasure policy", () => {
   const lifecycle = read("docs/contracts/DATA_LIFECYCLE.md");
   const contract = read("docs/contracts/IDENTITY_ERASURE.md");
+  const authorities = read("docs/engineering/AUTHORITIES.json");
+  const domains = read("docs/engineering/DOMAIN_MAP.json");
 
   it("keeps Class-A permanence as the default and narrows the exception", () => {
     expect(lifecycle).toContain("ordinary product or Admin features cannot delete it");
@@ -22,6 +24,10 @@ describe("retired employee identity-erasure policy", () => {
     expect(contract).toContain("aborts on an unknown table/column");
     expect(contract).toContain("Auth drift");
     expect(contract).toContain("Codex and CI");
+    expect(authorities).toContain('"id": "retired_employee_identity_erasure_operation"');
+    expect(authorities).toContain('"wholeResource": true');
+    expect(domains).toContain("supabase/manual/execute_ravi_prince_identity_erasure.sql");
+    expect(domains).toContain('"retired_employee_identity_erasure_operation"');
   });
 
   it("preserves independent authorities and deletes only target-exclusive rows", () => {
