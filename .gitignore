@@ -52,6 +52,7 @@ graphify-out/
 .repository-safety-fixtures/
 /artifacts/engineering-evidence/
 /artifacts/engineering-attestation/
+/artifacts/job-accounting/
 /artifacts/visual-review/
 playwright-report/
 test-results/
