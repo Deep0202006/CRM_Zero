@@ -353,6 +353,7 @@
       ],
       "criticalTests": [
         "src/lib/__tests__/pipeline/pipelineAuthority.test.ts",
+        "src/lib/__tests__/salesOperatingLayer.test.ts",
         "e2e/pipeline"
       ],
       "mustNotWriteAuthorityRefs": []
@@ -901,7 +902,9 @@
       ],
       "codeRoots": [
         "src/app/globals.css",
-        "src/app/layout.tsx"
+        "src/app/layout.tsx",
+        "src/components/RecordInspector.tsx",
+        "src/lib/analytics"
       ],
       "serverBoundaries": [],
       "contractPaths": [
@@ -913,7 +916,9 @@
         "LABEL_NOT_AUTHORITY"
       ],
       "criticalTests": [
-        "src/lib/__tests__/adminVisitAndLayoutContract.test.ts"
+        "src/lib/__tests__/adminVisitAndLayoutContract.test.ts",
+        "src/lib/__tests__/visualIntelligence.test.ts",
+        "src/lib/__tests__/visualIntelligenceV2.test.ts"
       ],
       "mustNotWriteAuthorityRefs": []
     },

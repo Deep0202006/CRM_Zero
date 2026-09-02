@@ -37,6 +37,7 @@ export default function CallLogsPage() {
   const [historyAuthoritative, setHistoryAuthoritative] = useState(false);
 
   const [selectedLeadId, setSelectedLeadId] = useState("");
+  const [pipelineLeadOption, setPipelineLeadOption] = useState<SearchableOption | null>(null);
   const [outcome, setOutcome] = useState("");
   const [notes, setNotes] = useState("");
   const [nextFollowup, setNextFollowup] = useState("");
@@ -56,7 +57,20 @@ export default function CallLogsPage() {
   ];
 
   const leadOptions: SearchableOption[] = React.useMemo(() => {
-    return buildCanonicalClientOptions(excelUsers as Array<{ username: string; name?: string }>);
+    const options = buildCanonicalClientOptions(excelUsers as Array<{ username: string; name?: string }>);
+    return pipelineLeadOption && !options.some((option) => option.value === pipelineLeadOption.value) ? [pipelineLeadOption, ...options] : options;
+  }, [pipelineLeadOption]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const leadId = params.get("lead_id")?.trim() ?? "";
+    if (!leadId || !parseCallClientReference(leadId).leadId) return;
+    const label = params.get("lead_name")?.trim() || `Pipeline lead ${leadId}`;
+    const timer = window.setTimeout(() => {
+      setPipelineLeadOption({ value: leadId, label, searchText: leadId });
+      setSelectedLeadId(leadId);
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   const loadData = React.useCallback(async (drainQueue = true) => {

@@ -30,6 +30,9 @@
 - Admin normal actions require assignment exactly like every other active user. Reassignment, if introduced, is a separate administrative operation.
 - Hot reads use explicit columns, stable ordering, one owner-name projection, and server pagination capped at 50.
 - Initial Pipeline navigation performs one bounded Lead API request for the selected segment, does not poll, performs no per-stage/per-owner read, and never uses the full-workspace hydration loop. An online API failure is an explicit error, not a successful empty/local-only result.
+- Opening one exact Lead may make one on-demand authorized context request. It returns at most 20 transitions, 20 exact linked Tasks and 10 exact linked Calls; absent stable relations are reported as no exact linked data.
+- Manager inspection is an Admin-authorized server projection. Its lead list is capped at 50, batches owner/Task/Call/transition context, and never exposes analytics views as the browser authority.
+- Log Call and Create Task are explicit user actions from an exact Lead. They retain the Lead UUID, reuse Call/Task stable-ID recovery, and never occur as transition side effects.
 - A valid owner record has no per-card warning. Read-only cards are quiet. Pending transitions may show pending state; conflicts and preserved recovery evidence surface once as actionable state and genuine server failures are never hidden.
 - Creation writes only `leads` and `pipeline_create_operations`. Stage transitions write only Lead stage metadata and `pipeline_transition_operations`; cross-domain deltas remain zero.
 - Production verification is read-only by default; migrations require explicit approval.

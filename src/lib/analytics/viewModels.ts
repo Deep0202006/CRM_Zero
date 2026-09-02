@@ -38,15 +38,19 @@ export interface TeamKpiAnalyticsRow {
   user_id: string;
   name: string;
   calls_made: number;
+  followup_calls?: number;
   queries_handled: number;
   mappings_completed: number;
   tasks_completed: number;
+  total_completed_work?: number;
 }
 
-export type TeamKpiMetricKey = "calls_made" | "queries_handled" | "mappings_completed" | "tasks_completed";
+export type TeamKpiMetricKey = "total_completed_work" | "calls_made" | "followup_calls" | "queries_handled" | "mappings_completed" | "tasks_completed";
 
 export const TEAM_KPI_METRICS: ReadonlyArray<{ key: TeamKpiMetricKey; label: string; color: string }> = [
+  { key: "total_completed_work", label: "Unique completed work", color: "var(--viz-primary)" },
   { key: "calls_made", label: "Calls", color: "var(--viz-info)" },
+  { key: "followup_calls", label: "Follow-up calls", color: "var(--viz-pending)" },
   { key: "queries_handled", label: "Client queries", color: "var(--viz-success)" },
   { key: "mappings_completed", label: "Mappings", color: "var(--viz-warning)" },
   { key: "tasks_completed", label: "Tasks done", color: "var(--viz-primary)" },
@@ -62,8 +66,8 @@ const VISIT_OUTCOMES: ReadonlyArray<{ key: string; label: string; color: string 
   { key: "not_interested", label: "Not interested", color: "var(--viz-danger)" },
 ];
 
-function safeCount(value: number): number {
-  return Number.isFinite(value) && value > 0 ? Math.floor(value) : 0;
+function safeCount(value: number | undefined): number {
+  return value != null && Number.isFinite(value) && value > 0 ? Math.floor(value) : 0;
 }
 
 export function buildVisitAnalytics(visits: VisitAnalyticsSource[], maxPoints = 31): VisitAnalyticsModel {

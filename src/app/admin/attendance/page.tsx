@@ -12,6 +12,8 @@ import { Input } from "@/components/ui/Input";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ChartContainer, ChartTooltipContent } from "@/components/analytics/Chart";
+import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 type Period = "daily" | "weekly" | "monthly";
 type Staff = { user_id: string; name: string; capabilities: string[] };
@@ -111,6 +113,10 @@ export default function AdminAttendancePage() {
   }) ?? [], [days, report]);
   const presentCount = dailyRows.filter(({ resolved }) => resolved.present).length;
   const attendanceRecords = report?.attendance.length ?? 0;
+  const attendanceSeries = useMemo(() => days.map((day) => ({
+    day: day.slice(5),
+    present: report?.users.filter((user) => resolveAttendanceDay(report.attendance, user.user_id, day).present).length ?? 0,
+  })), [days, report]);
 
   const exportCSV = () => {
     if (!report) return;
@@ -143,6 +149,11 @@ export default function AdminAttendancePage() {
       <MetricCard label={period === "daily" ? "Absent" : "Highest attendance"} value={report ? (period === "daily" ? Math.max(0, report.users.length - presentCount) : Math.max(0, ...summaries.map((row) => row.daysPresent))) : "—"} icon={<AlertCircle size={17} />} tone={period === "daily" ? "danger" : "brand"} note={period === "daily" ? "No confirmed attendance row" : `Days present out of ${days.length}`} />
       <MetricCard label="Evidence expired" value={report ? report.attendance.filter((row) => row.selfie_purged_at || row.selfie_purge_state === "purged").length : "—"} icon={<CalendarDays size={17} />} tone="info" note="Presence remains unchanged" />
     </div>
+    {report && report.users.length > 0 && <section className="surface-panel p-5" aria-labelledby="attendance-chart-title"><p className="section-kicker">Authoritative attendance</p><h2 id="attendance-chart-title" className="mt-1 section-title">{period === "daily" ? "Present / absent composition" : "Present count by date"}</h2><p className="mt-1 text-[11px] text-[var(--text-muted)]">Uses the already-loaded server report for {range.dateFrom} to {range.dateTo}; no additional request.</p>
+      <ChartContainer config={{ present: { label: "Present", color: "var(--status-success)" }, absent: { label: "Absent", color: "var(--status-danger)" } }} className="mt-4 h-[260px]"><ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 720, height: 260 }}>{period === "daily" ?
+        <BarChart data={[{ status: "Attendance", present: presentCount, absent: Math.max(0, report.users.length - presentCount) }]} layout="vertical" margin={{ top: 12, right: 24, bottom: 12, left: 12 }}><CartesianGrid horizontal={false} stroke="var(--border-subtle)" /><XAxis type="number" allowDecimals={false} axisLine={false} tickLine={false} /><YAxis type="category" dataKey="status" width={80} axisLine={false} tickLine={false} /><Tooltip content={<ChartTooltipContent />} /><Bar dataKey="present" stackId="attendance" fill="var(--status-success)" isAnimationActive={false} /><Bar dataKey="absent" stackId="attendance" fill="var(--status-danger)" radius={[0, 5, 5, 0]} isAnimationActive={false} /></BarChart> :
+        <LineChart data={attendanceSeries} margin={{ top: 12, right: 20, bottom: 8, left: -8 }}><CartesianGrid vertical={false} stroke="var(--border-subtle)" strokeDasharray="4 5" /><XAxis dataKey="day" axisLine={false} tickLine={false} minTickGap={18} tick={{ fontSize: 10, fill: "var(--text-muted)" }} /><YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "var(--text-muted)" }} /><Tooltip content={<ChartTooltipContent />} /><Line type="linear" dataKey="present" stroke="var(--status-success)" strokeWidth={2} dot={{ r: 2 }} isAnimationActive={false} /></LineChart>}
+      </ResponsiveContainer></ChartContainer></section>}
     {error && <p role="alert" className="mb-4 text-sm text-[var(--status-danger)]">{error}</p>}
     <section className="data-table-shell" aria-labelledby="attendance-table-title">
       <div className="flex items-center justify-between gap-4 border-b border-[var(--border-subtle)] px-5 py-4"><div><p className="section-kicker">Attendance register</p><h2 id="attendance-table-title" className="mt-1 section-title">{period === "daily" ? "Daily status" : `${period[0].toUpperCase()}${period.slice(1)} attendance`}</h2></div><Chip variant="neutral" size="sm">{range.dateFrom === range.dateTo ? range.dateFrom : `${range.dateFrom} – ${range.dateTo}`}</Chip></div>

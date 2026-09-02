@@ -11,8 +11,8 @@ export default function TeamKpiIntelligence({ rows, pulse }: { rows: TeamKpiAnal
       <section className="analytics-shell" aria-label="Team intelligence visualizations">
         <AnalyticsPanel
           eyebrow="Team pulse · Today"
-          title="Confirmed work pulse"
-          description="A same-day snapshot of real calls, resolved queries, completed mappings, and completed tasks. No historical trend is implied."
+          title="Work by type"
+          description="Independent same-day confirmed work counts. Unlike work types are not combined into a score."
           labelledBy="team-kpi-pulse"
           className="xl:col-span-2"
         >
@@ -20,8 +20,8 @@ export default function TeamKpiIntelligence({ rows, pulse }: { rows: TeamKpiAnal
         </AnalyticsPanel>
         <AnalyticsPanel
           eyebrow="Contribution"
-          title="Contribution ring"
-          description="Select a real KPI dimension to see every employee’s exact contribution to that team total."
+          title="Employee contribution"
+          description="Select a real KPI dimension to compare exact same-unit employee values. This is not a productivity rank."
           labelledBy="team-kpi-contribution"
         >
           <ContributionRing rows={rows} />

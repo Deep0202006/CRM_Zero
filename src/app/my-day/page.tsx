@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import Link from "next/link";
 import dynamic from "next/dynamic";
 import { liveQuery } from "dexie";
 import { useAuth } from "@/context/AuthContext";
@@ -15,7 +14,7 @@ import {
 import { CONVERTED_STAGES } from "@/lib/pipelineStages";
 import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
 import { claimSyncQueueOwnership, db, processSyncQueue, transactionalMutation, type LocalAllocatedTarget, type LocalUser } from "@/lib/db";
-import { CheckCircle2, Clock, AlertCircle, ListTodo, PhoneCall, Trophy, CheckSquare, Target, Download, Trash2, MapPin, RefreshCw, Bell } from "lucide-react";
+import { CheckCircle2, Clock, AlertCircle, ListTodo, PhoneCall, Trophy, CheckSquare, Target, Download, Trash2, MapPin, RefreshCw } from "lucide-react";
 import { exportPipelineToExcel } from "@/lib/pipelineExport";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -463,6 +462,15 @@ export default function MyDayPage() {
     { key: "today", label: "Due today", value: pending.length + inProgress.length, color: "var(--viz-warning)" },
     { key: "later", label: "Scheduled later", value: stats.scheduledLater, color: "var(--viz-info)" },
   ];
+  const todayKey = getCurrentISTDate();
+  const focusQueue = [...missed, ...inProgress, ...pending]
+    .map((task) => {
+      const level = task.status === "Missed" || task.due_date < todayKey ? "P0" : task.due_date === todayKey || task.priority === "High" ? "P1" : "P2";
+      const reason = task.status === "Missed" ? "Missed task" : task.due_date < todayKey ? "Overdue next action" : task.due_date === todayKey ? "Due today" : task.priority === "High" ? "High-priority next action" : "Scheduled next action";
+      return { task, level, reason };
+    })
+    .sort((left, right) => left.level.localeCompare(right.level) || left.task.due_date.localeCompare(right.task.due_date) || left.task.task_id.localeCompare(right.task.task_id))
+    .slice(0, 8);
 
   return (
     <div className="app-page">
@@ -504,6 +512,19 @@ export default function MyDayPage() {
       <PaymentCollectionsPriorityPanel />
 
       {dailySummaryError && <div className="alert-panel alert-panel--danger" role="alert"><AlertCircle size={16} className="mt-0.5 shrink-0" /><span>{dailySummaryError}</span></div>}
+
+      {!loading && focusQueue.length > 0 && (
+        <section className="surface-panel overflow-hidden" aria-labelledby="focus-queue-title">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-subtle)] px-5 py-4"><div><p className="section-kicker">Deterministic priority</p><h2 id="focus-queue-title" className="mt-1 section-title">Focus queue</h2></div><Chip variant="neutral" size="sm">Top {focusQueue.length}</Chip></div>
+          <div className="divide-y divide-[var(--border-subtle)]">{focusQueue.map(({ task, level, reason }) => (
+            <article key={task.task_id} className="flex flex-wrap items-center gap-3 px-5 py-3">
+              <Chip variant={level === "P0" ? "danger" : level === "P1" ? "warning" : "neutral"} size="sm">{level}</Chip>
+              <div className="min-w-0 flex-1"><p className="truncate text-[13px] font-semibold text-[var(--text-primary)]">{task.title}</p><p className="text-[11px] text-[var(--text-muted)]">{reason} · due {task.due_date}{task.related_lead_id ? " · linked to exact pipeline lead" : ""}</p></div>
+              <Chip variant="neutral" size="sm">{task.priority}</Chip>
+            </article>
+          ))}</div>
+        </section>
+      )}
 
       {!loading && <MyDayIntelligence focus={focusMetrics} urgency={urgencyMetrics} />}
       {paymentFollowUps.length > 0 && (
