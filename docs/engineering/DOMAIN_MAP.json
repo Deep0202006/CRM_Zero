@@ -151,8 +151,7 @@
         "SERVER_AUTHORIZATION"
       ],
       "criticalTests": [
-        "src/lib/__tests__/retiredEmployeeIdentityErasurePolicy.test.ts",
-        "src/lib/__tests__/userRetirementArtifacts.test.ts"
+        "src/lib/__tests__/retiredEmployeeIdentityErasurePolicy.test.ts"
       ],
       "mustNotWriteAuthorityRefs": []
     },
