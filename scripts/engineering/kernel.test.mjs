@@ -155,6 +155,7 @@ try {
     const pass = await withEnvironment(ciEnvironment, () => runRegisteredProof({ proofId: "kernel-fixture-pass", plan: identity })); createdEvidence.push(passPath);
     assert.equal(pass.status, "PASS");
     validateEvidenceFile({ path: passPath, proofId: "kernel-fixture-pass", plan: identity, environment: ciEnvironment });
+    validateEvidenceFile({ path: passPath, proofId: "kernel-fixture-pass", plan: identity, environment: { ...ciEnvironment, GITHUB_RUN_ATTEMPT: "2" } });
     const forgedRoot = temp("kernel-forged-evidence-");
     const rejectMutation = (name, mutate, pattern = /EVIDENCE|COMMAND|FLAKY|PROOF/) => {
       const forged = structuredClone(pass); mutate(forged); forged.evidencePayloadHash = evidencePayloadHash(forged);
@@ -172,6 +173,7 @@ try {
     rejectMutation("wrong-runner", (item) => item.runnerIdentity = "0".repeat(64));
     rejectMutation("wrong-repository", (item) => item.githubRepository = "Other/Repo");
     rejectMutation("wrong-run", (item) => item.githubRunId = "999");
+    rejectMutation("future-run-attempt", (item) => item.githubRunAttempt = "2");
     rejectMutation("wrong-job", (item) => item.githubJob = "unit-build");
     rejectMutation("wrong-head", (item) => item.headSha = "0".repeat(40));
     rejectMutation("wrong-base", (item) => item.baseSha = "0".repeat(40));
@@ -187,7 +189,7 @@ try {
     assert.equal(certifierModule.validateEvidenceItem, undefined, "in-memory evidence validator exposed");
     assert.equal(certifierModule.certifyRepositoryProof, undefined, "repository certificate API exposed");
     const selectedOutput = command(root, process.execPath, ["scripts/engineering/proof-runner.mjs", "--proof", "kernel-fixture-pass", "--output", resolve(forgedRoot, "caller.json")], isolatedEnvironment);
-    assert.equal(selectedOutput.status, 2); assert.match(selectedOutput.stderr, /UNKNOWN_ARGUMENT:--output/); matrix.proof.push("caller-output-rejected", "direct-object-api-absent", "real-runner-evidence-accepted");
+    assert.equal(selectedOutput.status, 2); assert.match(selectedOutput.stderr, /UNKNOWN_ARGUMENT:--output/); matrix.proof.push("caller-output-rejected", "direct-object-api-absent", "real-runner-evidence-accepted", "prior-run-attempt-evidence-accepted");
 
     const marker = resolve(root, git("rev-parse", "--git-path", "zd-kernel/fixtures/flaky-marker")); if (existsSync(marker)) unlinkSync(marker);
     const flakyPath = canonicalEvidencePath("kernel-fixture-flaky"); assert(!existsSync(flakyPath), "flaky fixture evidence already exists");
