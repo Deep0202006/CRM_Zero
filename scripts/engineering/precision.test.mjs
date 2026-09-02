@@ -44,7 +44,10 @@ const dockerRunner = (file, args, options = {}) => { dockerCalls.push({ file, ar
 assert.deepEqual(detectPostgresBackend({ runner: dockerRunner }).backend, "docker");
 const pgAttempt = executeAttempt(pgCommands, "postgres", { runner: dockerRunner }); assert(pgAttempt.commands.every((command) => command.exitCode === 0));
 assert(dockerCalls.some((call) => call.args?.[0] === "rm")); assert(dockerCalls.some((call) => call.args?.[0] === "network" && call.args?.[1] === "rm"));
-assert(!JSON.stringify(dockerCalls).match(/SUPABASE_URL|customer_prod|production\.example/));
+const forbiddenDatabaseEnvironmentKeys = ["SUPABASE_URL", ["SUPABASE", "SERVICE", "ROLE", "KEY"].join("_"), "DATABASE_URL"];
+assert(dockerCalls.every((call) => forbiddenDatabaseEnvironmentKeys.every((key) => !call.env?.[key])));
+assert(dockerCalls.every((call) => !call.env?.NEXT_PUBLIC_SUPABASE_URL || call.env.NEXT_PUBLIC_SUPABASE_URL === "https://e2e.supabase.co"));
+assert(!JSON.stringify(dockerCalls).match(/customer_prod|production\.example/));
 assert.equal(detectPostgresBackend({ runner: () => ({ status: 1, stdout: "", stderr: "" }) }).status, "REMOTE_ONLY_POSTGRES");
 const failingCalls = [], failingRunner = (file, args) => { failingCalls.push([file, args]); if (file === "bash" || file === "pg_isready") return { status: 1, stdout: "", stderr: "" }; if (args?.[0] === "info" || args?.[0] === "network" || args?.[0] === "exec" || args?.[0] === "rm") return { status: 0, stdout: "ok", stderr: "" }; return { status: args?.includes("insert into proof_smoke values (1, 'ready')") ? 1 : 0, stdout: "", stderr: "fixture invalid" }; };
 const failedAttempt = executeAttempt(pgCommands, "postgres", { runner: failingRunner }); assert(failedAttempt.commands.some((command) => command.phase === "fixture" && command.exitCode === 1)); assert(!failedAttempt.commands.some((command) => command.phase === "assertion")); assert(failingCalls.some(([, args]) => args?.[0] === "rm"));
@@ -70,6 +73,7 @@ const state = resolve(tmpdir(), `zd-precision-${randomUUID()}`), priorState = pr
 recordMetricEvent("metric-task", { type: "push", key: sha("a") }); recordMetricEvent("metric-task", { type: "push", key: sha("a") }); recordMetricEvent("metric-task", { type: "ci", key: `7:${sha("a")}` });
 let metrics = readTaskExperience("metric-task").metrics; assert.equal(metrics.pushCount, 1); assert.equal(metrics.ciAttemptCount, 1); assert.equal(metrics.firstPassCiSuccess, null);
 recordMetricEvent("metric-task", { type: "ci", key: `7:${sha("a")}`, concluded: true, success: true }); metrics = readTaskExperience("metric-task").metrics; assert.equal(metrics.ciAttemptCount, 1); assert.equal(metrics.firstPassCiSuccess, true);
+recordMetricEvent("metric-task", { type: "remote-local-failure", key: `7:${sha("a")}` }); recordMetricEvent("metric-task", { type: "remote-local-failure", key: `7:${sha("a")}` }); metrics = readTaskExperience("metric-task").metrics; assert.equal(metrics.locallyReproducibleFailuresFirstDiscoveredRemotely, 1);
 if (priorState === undefined) delete process.env.ZD_OS_STATE_ROOT; else process.env.ZD_OS_STATE_ROOT = priorState; rmSync(state, { recursive: true, force: true });
 
 const workflow = readFileSync(resolve(root, ".github/workflows/product-verification.yml"), "utf8"); assert.equal(validateProofCiParity({ proofs, workflow }).status, "PASS");

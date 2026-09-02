@@ -189,6 +189,7 @@ export const recordMetricEvent = (taskId, { type, key, concluded = false, succes
   if (type === "proof-execution") next.proofExecutions = (next.proofExecutions ?? 0) + 1;
   if (type === "proof-reuse") next.proofReuse = (next.proofReuse ?? 0) + 1;
   if (type === "owner-gate") next.ownerInterventions = (next.ownerInterventions ?? 0) + 1;
+  if (type === "remote-local-failure") next.locallyReproducibleFailuresFirstDiscoveredRemotely = (next.locallyReproducibleFailuresFirstDiscoveredRemotely ?? 0) + 1;
   return next;
 });
 
