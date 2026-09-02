@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { relative, resolve } from "node:path";
 import { parseVerifiedAttestation } from "./proof-attestation.mjs";
-import { compileRegisteredCommandPlan, expectedCiJob, proofDefinitionHash, proofRunnerIdentity } from "./proof-command-plan.mjs";
+import { compileRegisteredCommandPlan, expectedCiJob, proofDefinitionHash, proofInputIdentity, proofRunnerIdentity } from "./proof-command-plan.mjs";
 import { evidencePayloadHash, readEvidenceFile } from "./proof-evidence.mjs";
 import { compileProofPlan } from "./proof-plan.mjs";
 import { environmentPolicyHash, git, parseArgs, readJson, root, sha256 } from "./kernel-lib.mjs";
@@ -32,7 +32,7 @@ export const validateEvidenceFile = ({ path, proofId, plan, environment = proces
   const item = readEvidenceFile(path), proof = readJson("docs/engineering/PROOFS.json").proofs.find((candidate) => candidate.id === proofId);
   if (!proof) throw new Error(`PROOF_UNMAPPED:${proofId}`);
   requireCiEnvironment(environment, plan);
-  for (const [key, expected] of [["proofId", proofId], ["kind", proof.kind], ["status", "PASS"], ["headSha", plan.headSha], ["treeSha", plan.treeSha], ["baseSha", plan.baseSha], ["dirtyFingerprint", plan.dirtyFingerprint], ["impactHash", plan.impactHash], ["planHash", plan.planHash], ["proofDefinitionHash", proofDefinitionHash(proof)], ["runnerIdentity", proofRunnerIdentity()], ["environmentPolicyHash", environmentPolicyHash()]])
+  for (const [key, expected] of [["proofId", proofId], ["kind", proof.kind], ["status", "PASS"], ["headSha", plan.headSha], ["treeSha", plan.treeSha], ["baseSha", plan.baseSha], ["dirtyFingerprint", plan.dirtyFingerprint], ["impactHash", plan.impactHash], ["planHash", plan.planHash], ["proofDefinitionHash", proofDefinitionHash(proof)], ["proofInputHash", proofInputIdentity(proof).proofInputHash], ["runnerIdentity", proofRunnerIdentity()], ["environmentPolicyHash", environmentPolicyHash()]])
     if (item[key] !== expected) throw new Error(`EVIDENCE_STALE:${proofId}:${key}`);
   if (item.evidencePayloadHash !== evidencePayloadHash(item)) throw new Error(`EVIDENCE_PAYLOAD_HASH_MISMATCH:${proofId}`);
   if (!validTimeRange(item.startedAt, item.endedAt, now)) throw new Error(`EVIDENCE_TIMESTAMP_INVALID:${proofId}`);

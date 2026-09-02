@@ -1,5 +1,27 @@
 {
-  "schemaVersion": 3,
+  "schemaVersion": 4,
+  "selectionPolicy": {
+    "always-cheap": ["kernel-preflight"],
+    "control": ["kernel-control-unit", "owner-ledger-invariant", "control-postgres-smoke", "control-e2e-smoke"],
+    "explicit": ["product-054-postgres", "kernel-fixture-pass", "kernel-fixture-flaky"],
+    "owner": ["mapping-owner-pre", "mapping-owner-post"],
+    "full-regression": ["control-postgres-matrix", "control-e2e-matrix"],
+    "domain": [
+      "auth-unit", "attendance-unit", "attendance-e2e", "attendance-postgres", "calls-unit", "call-owner-e2e",
+      "field-visits-unit", "field-visits-e2e", "field-visits-postgres", "mapping-unit", "mapping-e2e", "mapping-postgres",
+      "pipeline-unit", "pipeline-e2e", "pipeline-postgres", "team-kpi-unit", "distributor-unit", "distributor-e2e",
+      "distributor-postgres", "receivables-unit", "receivables-e2e", "receivables-postgres", "erp-unit", "erp-postgres",
+      "imports-unit", "imports-postgres", "followups-unit", "queries-unit", "task-allocation-unit", "kernel-typecheck",
+      "kernel-lint", "kernel-unit-build", "supabase-handover-readiness"
+    ]
+  },
+  "globalInvalidators": {
+    "unit": ["package.json", "package-lock.json", "jest.config.ts", "tsconfig.json"],
+    "build": ["package.json", "package-lock.json", "next.config.ts", "tsconfig.json"],
+    "postgres": [],
+    "e2e": ["package.json", "package-lock.json", "playwright.config.ts", "scripts/e2e/**"],
+    "handover": ["package.json", "package-lock.json"]
+  },
   "proofs": [
     {
       "id": "auth-unit",
@@ -13,6 +35,7 @@
         "API"
       ],
       "runner": "jest",
+      "selectors": { "effects": ["AUTHORIZATION", "SECURITY"], "global": true },
       "paths": [
         "src/lib/__tests__/productionConsistencyGuards.test.ts"
       ]
@@ -117,10 +140,25 @@
         "SECURITY",
         "MONEY"
       ],
-      "runner": "bash-postgres",
-      "paths": [
-        "scripts/distributor-master-db/run-integration.sh"
-      ]
+      "runner": "postgres-phased",
+      "paths": ["scripts/product-054-db/run-integration.sh"],
+      "databasePhases": {
+        "schema": [{ "file": "bash", "args": ["scripts/product-054-db/run-integration.sh", "schema"] }],
+        "fixture": [{ "file": "bash", "args": ["scripts/product-054-db/run-integration.sh", "fixture"] }],
+        "assertion": [{ "file": "bash", "args": ["scripts/product-054-db/run-integration.sh", "assertion"] }]
+      },
+      "inputs": [
+        "scripts/product-054-db/integration.sql",
+        "supabase/migrations/054_creator_updates_billed_erp_payment.sql"
+      ],
+      "selectors": {
+        "paths": [
+          "supabase/migrations/054_creator_updates_billed_erp_payment.sql",
+          "supabase/manual/precheck_054_creator_updates_billed_erp_payment.sql",
+          "supabase/manual/verify_054_creator_updates_billed_erp_payment.sql",
+          "scripts/product-054-db/**"
+        ]
+      }
     },
     {
       "id": "field-visits-unit",
@@ -443,8 +481,7 @@
       "runner": "bash-postgres",
       "paths": [
         "scripts/field-visit-erp-db/run-integration.sh",
-        "scripts/field-business-erp-db/run-integration.sh",
-        "scripts/distributor-master-db/run-integration.sh"
+        "scripts/field-business-erp-db/run-integration.sh"
       ]
     },
     {
@@ -535,8 +572,7 @@
         "engineering-control"
       ],
       "effects": [
-        "ENGINEERING_CONTROL",
-        "ALL_CHANGES"
+        "ENGINEERING_CONTROL"
       ],
       "runner": "bash-postgres",
       "paths": [
@@ -550,7 +586,8 @@
         "scripts/pipeline-db/run-integration.sh",
         "scripts/receivables-db/run-integration.sh"
       ],
-      "controlPlaneCoverage": true
+      "controlPlaneCoverage": false,
+      "fullRegression": true
     },
     {
       "id": "control-e2e-matrix",
@@ -559,8 +596,7 @@
         "engineering-control"
       ],
       "effects": [
-        "ENGINEERING_CONTROL",
-        "ALL_CHANGES"
+        "ENGINEERING_CONTROL"
       ],
       "runner": "playwright",
       "paths": [
@@ -571,7 +607,8 @@
         "e2e/pipeline",
         "e2e/receivables"
       ],
-      "controlPlaneCoverage": true
+      "controlPlaneCoverage": false,
+      "fullRegression": true
     },
     {
       "id": "supabase-handover-readiness",
@@ -600,8 +637,7 @@
         "engineering-control"
       ],
       "effects": [
-        "ENGINEERING_CONTROL",
-        "ALL_CHANGES"
+        "ENGINEERING_CONTROL"
       ],
       "runner": "fixed-commands",
       "commands": [
@@ -615,13 +651,6 @@
           "file": "node",
           "args": [
             "scripts/quality/codex-runtime-authority.mjs"
-          ]
-        },
-        {
-          "file": "node",
-          "args": [
-            "scripts/engineering/task-controller.mjs",
-            "--self-test"
           ]
         },
         {
@@ -651,48 +680,82 @@
         {
           "file": "node",
           "args": [
-            "scripts/engineering/kernel.test.mjs"
-          ]
-        },
-        {
-          "file": "node",
-          "args": [
-            "scripts/engineering/experience.test.mjs"
-          ]
-        },
-        {
-          "file": "node",
-          "args": [
             "scripts/quality/dynamic-state-guard.mjs"
-          ]
-        },
-        {
-          "file": "node",
-          "args": [
-            "scripts/engineering/context.test.mjs"
-          ]
-        },
-        {
-          "file": "node",
-          "args": [
-            "scripts/engineering/regression-test.mjs"
-          ]
-        },
-        {
-          "file": "node",
-          "args": [
-            "scripts/engineering/registry-index.mjs"
-          ]
-        },
-        {
-          "file": "npm",
-          "args": [
-            "run",
-            "typecheck"
           ]
         }
       ],
       "controlPlaneCoverage": true
+    },
+    {
+      "id": "kernel-control-unit",
+      "kind": "unit",
+      "domains": ["engineering-control"],
+      "effects": ["ENGINEERING_CONTROL"],
+      "runner": "fixed-commands",
+      "commands": [
+        { "file": "node", "args": ["scripts/engineering/task-controller.mjs", "--self-test"] },
+        { "file": "node", "args": ["scripts/engineering/context.test.mjs"] },
+        { "file": "node", "args": ["scripts/engineering/experience.test.mjs"] },
+        { "file": "node", "args": ["scripts/engineering/precision.test.mjs"] },
+        { "file": "node", "args": ["scripts/engineering/benchmark.mjs", "--mode", "candidate"] },
+        { "file": "node", "args": ["scripts/engineering/kernel.test.mjs"] },
+        { "file": "node", "args": ["scripts/engineering/regression-test.mjs"] },
+        { "file": "node", "args": ["scripts/engineering/registry-index.mjs"] }
+      ],
+      "controlPlaneCoverage": true
+    },
+    {
+      "id": "kernel-typecheck",
+      "kind": "unit",
+      "domains": ["engineering-control"],
+      "effects": ["TYPESCRIPT"],
+      "selectors": { "effects": ["TYPESCRIPT"], "global": true },
+      "runner": "fixed-commands",
+      "commands": [{ "file": "npm", "args": ["run", "typecheck"] }]
+    },
+    {
+      "id": "kernel-lint",
+      "kind": "unit",
+      "domains": ["engineering-control"],
+      "effects": ["TYPESCRIPT", "JAVASCRIPT"],
+      "selectors": { "effects": ["TYPESCRIPT", "JAVASCRIPT"], "global": true },
+      "runner": "fixed-commands",
+      "commands": [{ "file": "npm", "args": ["run", "lint"] }]
+    },
+    {
+      "id": "owner-ledger-invariant",
+      "kind": "unit",
+      "domains": ["engineering-control"],
+      "effects": ["OWNER_LEDGER_TRANSITION"],
+      "selectors": { "effects": ["OWNER_LEDGER_TRANSITION"] },
+      "runner": "fixed-commands",
+      "commands": [{ "file": "node", "args": ["scripts/engineering/kernel-doctor.mjs"] }]
+    },
+    {
+      "id": "control-postgres-smoke",
+      "kind": "postgres",
+      "domains": ["engineering-control"],
+      "effects": ["ENGINEERING_CONTROL"],
+      "selectors": { "paths": ["scripts/engineering/proof-runner.mjs", "scripts/engineering/proof-command-plan.mjs", "scripts/engineering/readiness.mjs", "docs/engineering/PROOFS.json", ".github/workflows/product-verification.yml"] },
+      "runner": "postgres-phased",
+      "databasePhases": {
+        "schema": [{ "file": "psql", "args": ["-X", "-v", "ON_ERROR_STOP=1", "-c", "create table proof_smoke(id integer primary key, value text not null)"] }],
+        "fixture": [{ "file": "psql", "args": ["-X", "-v", "ON_ERROR_STOP=1", "-c", "insert into proof_smoke values (1, 'ready')"] }],
+        "assertion": [{ "file": "psql", "args": ["-X", "-v", "ON_ERROR_STOP=1", "-c", "do $$ begin if not exists(select 1 from proof_smoke where id=1 and value='ready') then raise exception 'CONTROL_POSTGRES_SMOKE_FAILED'; end if; end $$"] }]
+      },
+      "controlPlaneCoverage": true,
+      "representativeBackend": true
+    },
+    {
+      "id": "control-e2e-smoke",
+      "kind": "e2e",
+      "domains": ["engineering-control"],
+      "effects": ["ENGINEERING_CONTROL"],
+      "selectors": { "paths": ["scripts/engineering/proof-runner.mjs", "scripts/engineering/proof-command-plan.mjs", "playwright.config.ts", "docs/engineering/PROOFS.json", ".github/workflows/product-verification.yml"] },
+      "runner": "playwright",
+      "paths": ["e2e/engineering/control-smoke.spec.ts"],
+      "controlPlaneCoverage": true,
+      "representativeBackend": true
     },
     {
       "id": "kernel-unit-build",
@@ -701,26 +764,11 @@
         "engineering-control"
       ],
       "effects": [
-        "ENGINEERING_CONTROL",
-        "ALL_CHANGES"
+        "RUNTIME_BUILD"
       ],
+      "selectors": { "effects": ["RUNTIME_BUILD"], "global": true },
       "runner": "fixed-commands",
       "commands": [
-        {
-          "file": "npm",
-          "args": [
-            "test",
-            "--",
-            "--runInBand"
-          ]
-        },
-        {
-          "file": "npm",
-          "args": [
-            "run",
-            "lint"
-          ]
-        },
         {
           "file": "npm",
           "args": [

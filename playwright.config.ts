@@ -4,19 +4,19 @@ export default defineConfig({
   testDir: "./e2e",
   fullyParallel: false,
   workers: process.env.PLAYWRIGHT_E2E_WEBPACK === "true" ? 1 : undefined,
-  retries: process.env.CI ? 1 : 0,
+  retries: 0,
   failOnFlakyTests: Boolean(process.env.CI),
   reporter: process.env.CI ? "github" : "list",
   use: {
     baseURL: "http://127.0.0.1:3111",
-    trace: process.env.CI ? "on-first-retry" : "retain-on-failure",
+    trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {
     command: process.env.PLAYWRIGHT_E2E_WEBPACK === "true"
       ? "node scripts/e2e/start-server.mjs"
-      : "npm run dev -- --hostname 127.0.0.1 --port 3111",
+      : "npm run dev -- --webpack --hostname 127.0.0.1 --port 3111",
     url: "http://127.0.0.1:3111/login",
     reuseExistingServer: !process.env.CI && process.env.PLAYWRIGHT_REUSE_EXISTING_SERVER !== "false",
     timeout: 120_000,

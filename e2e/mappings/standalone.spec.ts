@@ -8,7 +8,7 @@ function token(id: string) {
 
 async function seedSupportEmployee(page: Page) {
   await page.goto("/login");
-  await page.waitForTimeout(500);
+  await expect(page.getByText("Sign in to your account")).toBeVisible();
   await page.evaluate(async ({ id, accessToken }) => {
     const request = indexedDB.open("CRMDatabase");
     const database = await new Promise<IDBDatabase>((resolve, reject) => {

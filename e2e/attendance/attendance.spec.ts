@@ -15,7 +15,7 @@ function token(id: string) {
 
 async function seedAdmin(page: Page) {
   await page.goto("/login");
-  await page.waitForTimeout(400);
+  await expect(page.getByText("Sign in to your account")).toBeVisible();
   await page.evaluate(async ({ id, accessToken }) => {
     const request = indexedDB.open("CRMDatabase");
     const database = await new Promise<IDBDatabase>((resolve, reject) => {
@@ -63,6 +63,7 @@ for (const viewport of [{ name: "desktop", width: 1280, height: 900 }, { name: "
 }
 
 test("date changes never resolve stale attendance as absent", async ({ page }) => {
+  let staleResponseFinished = false;
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.route("https://e2e.supabase.co/**", (route) => route.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
   await page.route("**/api/admin/attendance**", async (route) => {
@@ -76,6 +77,7 @@ test("date changes never resolve stale attendance as absent", async ({ page }) =
       users: staff,
       attendance: [{ attendance_id: `attendance-${date}`, user_id: staff[0].user_id, date, clock_in: `${date}T04:00:00Z`, selfie_captured: true }],
     } });
+    if (date === "2026-08-11") staleResponseFinished = true;
   });
   await seedAdmin(page);
   await page.goto("/admin/attendance");
@@ -86,7 +88,7 @@ test("date changes never resolve stale attendance as absent", async ({ page }) =
   await expect(page.getByText("Loading authoritative attendance…")).toBeVisible();
   await expect(page.getByRole("cell", { name: "Present", exact: true })).toHaveCount(1);
   await expect(page.getByRole("cell", { name: "Absent", exact: true })).toHaveCount(3);
-  await page.waitForTimeout(600);
+  await expect.poll(() => staleResponseFinished).toBe(true);
   await expect(page.getByRole("cell", { name: "Present", exact: true })).toHaveCount(1);
 });
 

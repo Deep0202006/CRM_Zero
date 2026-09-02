@@ -19,7 +19,7 @@ const golden = [
 ];
 let relationshipCases = 0;
 for (const [task, domains, risk, authorities, path] of golden) {
-  const pack = resolveContext({ task, index });
+  const pack = resolveContext({ task, index, graphify: false });
   assert.equal(pack.status, "RESOLVED", task);
   for (const domain of domains) assert(pack.domains.includes(domain), `${task}:domain:${domain}`);
   assert.equal(pack.risk, risk, `${task}:risk`);
@@ -32,18 +32,18 @@ for (const [task, domains, risk, authorities, path] of golden) {
   matrix.push({ task, status: pack.status, domains: pack.domains, candidates: pack.candidatePaths.length });
 }
 assert(relationshipCases >= 3, "fewer than three golden tasks used source relationships");
-const sameDomainTie = resolveContext({ task: "mapping attribution logged completed", index });
+const sameDomainTie = resolveContext({ task: "mapping attribution logged completed", index, graphify: false });
 assert.equal(sameDomainTie.status, "RESOLVED");
 assert(sameDomainTie.candidatePaths.filter((candidate) => candidate.score === sameDomainTie.candidatePaths[0].score).length >= 1);
-const conflict = resolveContext({ task: "receivable renewal payment authority conflict", index });
+const conflict = resolveContext({ task: "receivable renewal payment authority conflict", index, graphify: false });
 assert.equal(conflict.status, "SCOPE_AMBIGUOUS"); assert(conflict.unresolved.includes("CONFLICTING_AUTHORITIES")); assert.deepEqual(conflict.requiredOpenPaths, []);
-const crossDomain = resolveContext({ task: "Receivables and distributor status payment import writer readers", index });
+const crossDomain = resolveContext({ task: "Receivables and distributor status payment import writer readers", index, graphify: false });
 assert.equal(crossDomain.status, "RESOLVED"); assert(crossDomain.domains.includes("receivables")); assert(crossDomain.domains.includes("distributor-status"));
 for (const task of ["unmapped imaginary subsystem", "attendnce offlne confirmiton"]) {
-  const unknown = resolveContext({ task, index });
+  const unknown = resolveContext({ task, index, graphify: false });
   assert.equal(unknown.status, "UNKNOWN"); assert.deepEqual(unknown.requiredOpenPaths, []);
 }
-const exact = resolveContext({ task: "inspect exact route", exactPath: "src/app/api/call-logs/confirm/route.ts", index });
+const exact = resolveContext({ task: "inspect exact route", exactPath: "src/app/api/call-logs/confirm/route.ts", index, graphify: false });
 assert.equal(exact.status, "RESOLVED"); assert(exact.candidatePaths[0].matchedBy.some((reason) => reason.kind === "EXACT_PATH"));
 assert.equal(revalidateCandidate({ ...exact.candidatePaths[0], contentHash: "f".repeat(64) }), false);
 assert(index.files.some((file) => file.imports.length && file.reverseImports.length), "import graph missing");
@@ -51,12 +51,12 @@ assert(index.files.some((file) => file.relatedTests.length || file.testedSources
 assert(index.files.every((file) => file.gitBlobSha && file.contentHash && file.byteSize >= 0 && file.lineCount >= 0 && file.language && file.lastChangedCommit), "tracked manifest incomplete");
 assert(index.files.some((file) => file.symbols.some((symbol) => symbol.startLine > 0 && symbol.endLine >= symbol.startLine)), "line-addressable symbols missing");
 assert(index.edges.some((edge) => edge.currentPath && edge.currentHash && edge.reason && edge.evidenceType), "edge provenance missing");
-const learning = resolveContext({ task: "engineering control database fixture external CLI proof plan", index });
+const learning = resolveContext({ task: "engineering control database fixture external CLI proof plan", index, graphify: false });
 assert.equal(learning.status, "RESOLVED"); assert(learning.domains.includes("engineering-control"));
 assert(learning.experiencePacket.some((item) => item.id === "FIXTURE_VALIDITY_BEFORE_ASSERTION"));
 assert(learning.experiencePacket.some((item) => item.id === "PROOF_CI_EXECUTION_PARITY"));
 assert(!learning.experiencePacket.some((item) => item.id === "MONEY_TRUTH"));
 assert(learning.experiencePacket.length <= 8 && Buffer.byteLength(JSON.stringify(learning.experiencePacket)) <= 2400);
-assert(resolveContext({ task: "engineering-control proof-plan CI parity", index }).experiencePacket.some((item) => item.id === "PROOF_CI_EXECUTION_PARITY"));
+assert(resolveContext({ task: "engineering-control proof-plan CI parity", index, graphify: false }).experiencePacket.some((item) => item.id === "PROOF_CI_EXECUTION_PARITY"));
 matrix.push({ task: "cross-domain conflict", status: conflict.status }, { task: "hash drift", status: "INVALIDATED" }, { task: "graph unavailable", status: exact.status });
 console.log(JSON.stringify({ code: "CONTEXT_TEST_MATRIX_PASS", relationshipCases, matrix }));

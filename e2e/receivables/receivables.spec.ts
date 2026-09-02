@@ -16,7 +16,7 @@ function token(userId: string) {
 async function seedUser(page: Page, role: "admin" | "employee") {
   const userId = role === "admin" ? adminId : employeeId;
   await page.goto("/login");
-  await page.waitForTimeout(300);
+  await expect(page.getByText("Sign in to your account")).toBeVisible();
   await page.evaluate(async ({ userId, role, accessToken }) => {
     const request = indexedDB.open("CRMDatabase");
     const database = await new Promise<IDBDatabase>((resolve, reject) => {

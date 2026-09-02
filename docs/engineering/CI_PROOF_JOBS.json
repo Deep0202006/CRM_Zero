@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "routes": [
+    { "kind": "unit", "job": "preflight", "mode": "selected-kind" },
+    { "kind": "handover", "job": "preflight", "mode": "selected-kind" },
+    { "kind": "build", "job": "unit-build", "mode": "selected-kind" },
+    { "kind": "postgres", "job": "receivables-postgres", "mode": "selected-kind" },
+    { "kind": "e2e", "job": "e2e", "mode": "selected-kind" },
+    { "kind": "owner-pre", "job": "HUMAN_OWNER", "mode": "human" },
+    { "kind": "owner-post", "job": "HUMAN_OWNER", "mode": "human" }
+  ]
+}

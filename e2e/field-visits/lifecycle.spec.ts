@@ -11,7 +11,7 @@ function token(id: string) { const e = (v: unknown) => Buffer.from(JSON.stringif
 async function seed(page: Page, role: "admin" | "employee", withAttendance = true) {
   const id = role === "admin" ? adminId : employeeId;
   await page.goto("/login");
-  await page.waitForTimeout(500);
+  await expect(page.getByText("Sign in to your account")).toBeVisible();
   await page.evaluate(async ({ id, role, accessToken, leadId, attendanceId, today, withAttendance }) => {
     const request = indexedDB.open("CRMDatabase");
     const database = await new Promise<IDBDatabase>((resolve, reject) => { request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });
@@ -227,7 +227,9 @@ test("offline attendance stores a Blob outbox with no embedded row payload and l
   });
   expect(offline.row.selfie_url).toBeNull(); expect(offline.row.selfie_captured).toBe(true); expect(offline.row.latitude).toBe(18.5204); expect(offline.row.longitude).toBe(73.8567); expect(offline.hasBlob).toBe(true); expect(offline.queuedId).toBe(offline.row.attendance_id); expect(offline.queueVersion).toBe(2);
   await page.route("**/api/attendance/confirm", async route => { const id = offline.row.attendance_id; await route.fulfill({ json: { ok: true, code: "ATTENDANCE_CONFIRMED", attendance_id: id, attendance: { attendance_id: id, user_id: employeeId, date: today, clock_in: offline.row.clock_in, clock_out: null, selfie_captured: true, selfie_storage_path: `attendance/${employeeId}/${today}/${id}.jpg`, selfie_uploaded_at: new Date().toISOString(), selfie_purged_at: null } } }); });
-  await context.setOffline(false); await page.evaluate(() => window.dispatchEvent(new Event("online"))); await page.waitForURL("**/my-day"); await page.reload(); await page.waitForTimeout(1000);
+  const confirmed = page.waitForResponse("**/api/attendance/confirm");
+  await context.setOffline(false); await page.evaluate(() => window.dispatchEvent(new Event("online"))); await confirmed; await page.waitForURL("**/my-day"); await page.reload();
+  await expect.poll(() => page.evaluate(async () => { const request = indexedDB.open("CRMDatabase"); const db = await new Promise<IDBDatabase>((resolve, reject) => { request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); }); const tx = db.transaction("sync_queue", "readonly"); const rows = await new Promise<Array<{ table_name?: string }>>((resolve) => { const q = tx.objectStore("sync_queue").getAll(); q.onsuccess = () => resolve(q.result); }); db.close(); return rows.filter((item) => item.table_name === "attendance").length; })).toBe(0);
   const after = await page.evaluate(async () => { const request = indexedDB.open("CRMDatabase"); const db = await new Promise<IDBDatabase>((resolve, reject) => { request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); }); const tx = db.transaction(["attendance", "sync_queue"], "readonly"); const rows = await new Promise<Array<Record<string, unknown>>>((resolve) => { const q = tx.objectStore("attendance").getAll(); q.onsuccess = () => resolve(q.result as Array<Record<string, unknown>>); }); const queue = await new Promise<Array<{ table_name?: string }>>((resolve) => { const q = tx.objectStore("sync_queue").getAll(); q.onsuccess = () => resolve(q.result as Array<{ table_name?: string }>); }); return { row: rows[0], attendanceQueue: queue.filter(item => item.table_name === "attendance").length, queue }; });
   expect(after.attendanceQueue, JSON.stringify(after)).toBe(0); expect(after.row.attendance_id).toBe(offline.row.attendance_id); expect(after.row.selfie_storage_path).toContain(offline.row.attendance_id);
 });

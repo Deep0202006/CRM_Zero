@@ -9,7 +9,7 @@ const distributorLead = "20000000-0000-4000-a000-000000000002";
 function token(id: string) { const e = (value: unknown) => Buffer.from(JSON.stringify(value)).toString("base64url"); return `${e({ alg: "none" })}.${e({ sub: id, exp: 1999999999 })}.e2e`; }
 
 async function seed(page: Page, id: string, role: "employee" | "admin") {
-  await page.goto("/login"); await page.waitForTimeout(400);
+  await page.goto("/login"); await expect(page.getByText("Sign in to your account")).toBeVisible();
   await page.evaluate(async ({ id, role, accessToken }) => {
     const request = indexedDB.open("CRMDatabase");
     const database = await new Promise<IDBDatabase>((resolve, reject) => { request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });
@@ -93,7 +93,8 @@ test("initial Pipeline screen makes one bounded Lead request and does not poll",
   await expect(page.getByText("Retail Shop")).toBeVisible();
   expect(reads).toBe(1);
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
-  await page.waitForTimeout(1200);
+  // Intentional business-clock observation: a second request during this window is polling.
+  await new Promise((resolve) => setTimeout(resolve, 1200));
   expect(reads).toBe(1);
 });
 

@@ -12,7 +12,7 @@ async function mockAuth(page: Page, id: string) {
 }
 
 async function seed(page: Page, id: string, admin = false) {
-  await page.goto("/login"); await page.waitForTimeout(400);
+  await page.goto("/login"); await expect(page.getByText("Sign in to your account")).toBeVisible();
   await page.evaluate(async ({ id, admin, accessToken }) => {
     const request = indexedDB.open("CRMDatabase");
     const database = await new Promise<IDBDatabase>((resolve, reject) => { request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });
