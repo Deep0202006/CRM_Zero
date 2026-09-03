@@ -13,7 +13,7 @@ const read = (relativePath: string) => fs.readFileSync(path.join(process.cwd(), 
 const teamRows: TeamKpiAnalyticsRow[] = [
   { user_id: "10000000-0000-4000-a000-000000000001", name: "Asha", calls_made: 8, queries_handled: 2, mappings_completed: 1, tasks_completed: 4 },
   { user_id: "20000000-0000-4000-a000-000000000001", name: "Mira", calls_made: 2, queries_handled: 4, mappings_completed: 3, tasks_completed: 0 },
-  { user_id: "30000000-0000-4000-a000-000000000001", name: "Ravi", calls_made: 0, queries_handled: 0, mappings_completed: 0, tasks_completed: 0 },
+  { user_id: "30000000-0000-4000-a000-000000000001", name: "Neel", calls_made: 0, queries_handled: 0, mappings_completed: 0, tasks_completed: 0 },
 ];
 
 describe("visual intelligence truth models", () => {

@@ -72,4 +72,7 @@ later change invalidated it.
 Production SQL and credential use are Owner-only. Never contact production,
 create production dummy data, expose privileged secrets to client code, mutate
 applied migrations, delete protected history, clear durable offline recovery,
-or bypass approved server confirmation for Calls and Field Visits.
+or bypass approved server confirmation for Calls and Field Visits. The sole
+history-deletion exception is the separately reviewed, exact-UUID, Owner-run
+retired-employee operation in `docs/contracts/IDENTITY_ERASURE.md`; it is never
+an application endpoint or ordinary Admin capability.

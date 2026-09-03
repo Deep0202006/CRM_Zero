@@ -19,7 +19,6 @@ import {
   Key,
   UploadCloud,
   CheckCircle2,
-  Trash2,
 } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { exportPipelineToExcel } from "@/lib/pipelineExport";
@@ -227,36 +226,6 @@ export default function AdminPage() {
       );
     } finally {
       setIsResetting(false);
-    }
-  };
-
-  const handleDeleteUser = async (userId: string, userName: string) => {
-    if (
-      !window.confirm(
-        `Are you absolutely sure you want to permanently delete the user ${userName}? This action cannot be undone and may fail if the user has associated historical records (visits, leads, etc.).`,
-      )
-    ) {
-      return;
-    }
-
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) throw new Error("No active session");
-
-      const res = await fetch(`/api/admin/delete-user?user_id=${userId}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
-
-      const body = await res.json();
-      if (!res.ok) throw new Error(body.error || "Failed to delete user");
-
-      setSuccessMsg(`User ${userName} deleted successfully.`);
-      await loadAdminData();
-    } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : "Failed to delete user");
     }
   };
 
@@ -642,16 +611,6 @@ export default function AdminPage() {
                               icon={<Key size={13} />}
                             >
                               Password
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="danger"
-                              onClick={() =>
-                                handleDeleteUser(user.user_id, user.name)
-                              }
-                              icon={<Trash2 size={13} />}
-                            >
-                              Delete
                             </Button>
                           </div>
                         </div>
