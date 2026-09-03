@@ -836,6 +836,33 @@ export async function transactionalMutation(
   }
 }
 
+export async function queueTaskInsertOnce(task: LocalTask, idempotencyKey: string): Promise<"created" | "existing"> {
+  const created = await db.transaction("rw", [db.tasks, db.sync_queue], async () => {
+    const [local, queued] = await Promise.all([
+      db.tasks.get(task.task_id),
+      db.sync_queue.where("idempotency_key").equals(idempotencyKey).first(),
+    ]);
+    if (local) return false;
+    await db.tasks.add(task);
+    if (queued?.id) {
+      await db.sync_queue.update(queued.id, { data: task, timestamp: task.created_at, ...resetQueuedMutation });
+      return false;
+    }
+    await db.sync_queue.add({
+      idempotency_key: idempotencyKey,
+      owner_user_id: claimSyncQueueOwnership(),
+      table_name: "tasks",
+      action: "INSERT",
+      data: task,
+      timestamp: task.created_at,
+      retry_count: 0,
+    });
+    return true;
+  });
+  if (typeof navigator !== "undefined" && navigator.onLine) processSyncQueue().catch(console.error);
+  return created ? "created" : "existing";
+}
+
 const resetQueuedMutation = {
   retry_count: 0,
   last_error: undefined,

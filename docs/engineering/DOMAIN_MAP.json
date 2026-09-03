@@ -349,7 +349,8 @@
       ],
       "codeRoots": [
         "src/lib/pipeline",
-        "src/app/onboarding"
+        "src/app/onboarding",
+        "src/components/RecordInspector.tsx"
       ],
       "serverBoundaries": [
         "src/app/api/pipeline/create/route.ts",
@@ -374,6 +375,7 @@
       ],
       "criticalTests": [
         "src/lib/__tests__/pipeline/pipelineAuthority.test.ts",
+        "src/lib/__tests__/salesOperatingLayer.test.ts",
         "e2e/pipeline"
       ],
       "mustNotWriteAuthorityRefs": []
@@ -391,7 +393,8 @@
       ],
       "codeRoots": [
         "src/lib/teamKpi",
-        "src/app/manager/kpi"
+        "src/app/manager/kpi",
+        "src/lib/analytics/viewModels.ts"
       ],
       "serverBoundaries": [
         "src/app/api/team-kpi/route.ts"
@@ -936,7 +939,8 @@
       ],
       "criticalTests": [
         "src/lib/__tests__/adminVisitAndLayoutContract.test.ts",
-        "src/lib/__tests__/visualIntelligence.test.ts"
+        "src/lib/__tests__/visualIntelligence.test.ts",
+        "src/lib/__tests__/visualIntelligenceV2.test.ts"
       ],
       "pathPatterns": [
         "src/lib/__tests__/visualIntelligence.test.ts"

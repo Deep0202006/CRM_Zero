@@ -35,10 +35,11 @@ interface RecordInspectorProps {
   record: RecordInspectorData | null;
   onClose: () => void;
   primaryAction?: { label: string; onClick: (record: RecordInspectorData) => void; icon?: React.ReactNode };
+  secondaryActions?: Array<{ label: string; onClick: (record: RecordInspectorData) => void; icon?: React.ReactNode }>;
   onAction?: (actionName: string, record: RecordInspectorData) => void; // legacy
 }
 
-export function RecordInspector({ record, onClose, primaryAction, onAction }: RecordInspectorProps) {
+export function RecordInspector({ record, onClose, primaryAction, secondaryActions = [], onAction }: RecordInspectorProps) {
   const [tab, setTab] = useState<"overview" | "properties">("overview");
   const recordId = record?.id;
   const panelRef = useRef<HTMLElement>(null);
@@ -260,8 +261,9 @@ export function RecordInspector({ record, onClose, primaryAction, onAction }: Re
         </div>
 
         <footer className="border-t border-[var(--border-subtle)] bg-[var(--surface-secondary)] p-4">
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={onClose} className="flex-1">Close</Button>
+            {secondaryActions.map((action) => <Button key={action.label} variant="outline" onClick={() => action.onClick(record)} className="flex-1" icon={action.icon}>{action.label}</Button>)}
             {primaryAction ? (
               <Button onClick={() => primaryAction.onClick(record)} className="flex-1" icon={primaryAction.icon}>
                 {primaryAction.label}

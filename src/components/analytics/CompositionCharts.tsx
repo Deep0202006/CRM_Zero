@@ -1,26 +1,23 @@
 "use client";
 
-import { useId, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
-  Area,
-  AreaChart,
+  Bar,
+  BarChart,
   CartesianGrid,
   Cell,
   Legend,
   Pie,
   PieChart,
-  PolarAngleAxis,
-  PolarGrid,
-  Radar,
-  RadarChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
 import {
-  buildRelativeKpiProfile,
+  buildEmployeeTeamComparison,
   getContributionRows,
+  partitionReconciles,
   TEAM_KPI_METRICS,
   type AnalyticsMetric,
   type TeamKpiAnalyticsRow,
@@ -29,6 +26,7 @@ import {
   type VisitOutcomeSlice,
 } from "@/lib/analytics/viewModels";
 import { AnalyticsEmptyState } from "./AnalyticsPanel";
+import { ChartContainer, ChartLegendContent, ChartTooltipContent } from "./Chart";
 import { NumberTicker } from "./NumberTicker";
 
 const tooltipStyle = {
@@ -59,6 +57,20 @@ export function OutcomeDonut({ outcomes, total }: { outcomes: VisitOutcomeSlice[
     return <AnalyticsEmptyState title="Outcome composition unavailable" description={`The outcome segments represent ${represented} visits but the loaded page contains ${total}. The chart is hidden instead of showing a misleading composition.`} />;
   }
   if (!total) return <AnalyticsEmptyState title="No visits in this page" description="Outcome composition will appear when the current bounded page contains confirmed visits." />;
+
+  if (chartOutcomes.length > 6) {
+    return <ChartContainer config={{ value: { label: "Visits", color: "var(--viz-primary)" } }} className="h-[320px] w-full">
+      <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 520, height: 320 }}>
+        <BarChart data={chartOutcomes} layout="vertical" margin={{ top: 4, right: 28, bottom: 4, left: 18 }} accessibilityLayer>
+          <CartesianGrid horizontal={false} stroke="var(--viz-grid)" strokeDasharray="4 5" />
+          <XAxis type="number" allowDecimals={false} tickLine={false} axisLine={false} tick={{ fill: "var(--text-muted)", fontSize: 10 }} />
+          <YAxis type="category" dataKey="label" width={118} tickLine={false} axisLine={false} tick={{ fill: "var(--text-secondary)", fontSize: 10 }} />
+          <Tooltip cursor={{ fill: "var(--surface-hover)" }} content={<ChartTooltipContent />} />
+          <Bar dataKey="value" radius={[0, 6, 6, 0]} maxBarSize={24} isAnimationActive={false} />
+        </BarChart>
+      </ResponsiveContainer>
+    </ChartContainer>;
+  }
 
   return (
     <div className="outcome-donut-layout grid gap-4">
@@ -101,7 +113,6 @@ export function OutcomeDonut({ outcomes, total }: { outcomes: VisitOutcomeSlice[
 }
 
 export function ActivityFlow({ points }: { points: VisitActivityPoint[] }) {
-  const gradientId = useId().replace(/:/g, "");
   const hasOther = points.some((point) => point.other > 0);
   if (!points.length) return <AnalyticsEmptyState title="No activity points" description="The current bounded page has no confirmed visit dates to plot." />;
 
@@ -109,21 +120,16 @@ export function ActivityFlow({ points }: { points: VisitActivityPoint[] }) {
     <div>
       <div className="h-[260px] w-full sm:h-[300px]" data-chart-height="stable">
         <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 520, height: 280 }}>
-          <AreaChart data={points} margin={{ top: 12, right: 8, left: -18, bottom: 0 }} accessibilityLayer>
-            <defs>
-              <linearGradient id={`${gradientId}-retailer`} x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="var(--viz-primary)" stopOpacity={0.3} /><stop offset="95%" stopColor="var(--viz-primary)" stopOpacity={0.02} /></linearGradient>
-                  <linearGradient id={`${gradientId}-distributor`} x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="var(--viz-info)" stopOpacity={0.26} /><stop offset="95%" stopColor="var(--viz-info)" stopOpacity={0.02} /></linearGradient>
-                  <linearGradient id={`${gradientId}-other`} x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="var(--viz-muted)" stopOpacity={0.2} /><stop offset="95%" stopColor="var(--viz-muted)" stopOpacity={0.01} /></linearGradient>
-            </defs>
+          <BarChart data={points} margin={{ top: 12, right: 8, left: -18, bottom: 0 }} accessibilityLayer>
             <CartesianGrid vertical={false} stroke="var(--viz-grid)" strokeDasharray="4 5" />
             <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: "var(--text-muted)", fontSize: 10 }} minTickGap={18} />
             <YAxis allowDecimals={false} tickLine={false} axisLine={false} tick={{ fill: "var(--text-muted)", fontSize: 10 }} width={34} />
             <Tooltip contentStyle={tooltipStyle} labelStyle={{ color: "var(--text-primary)", fontWeight: 600 }} />
             <Legend iconType="circle" wrapperStyle={{ fontSize: 11, color: "var(--text-secondary)" }} />
-            <Area type="monotone" dataKey="retailer" name="Retailer visits" stroke="var(--viz-primary)" fill={`url(#${gradientId}-retailer)`} strokeWidth={2.25} isAnimationActive={false} />
-                <Area type="monotone" dataKey="distributor" name="Distributor visits" stroke="var(--viz-info)" fill={`url(#${gradientId}-distributor)`} strokeWidth={2.25} isAnimationActive={false} />
-                {hasOther && <Area type="monotone" dataKey="other" name="Other / historical" stroke="var(--viz-muted)" fill={`url(#${gradientId}-other)`} strokeWidth={1.75} isAnimationActive={false} />}
-          </AreaChart>
+            <Bar dataKey="retailer" name="Retailer visits" stackId="visits" fill="var(--viz-primary)" radius={[3, 3, 0, 0]} isAnimationActive={false} />
+            <Bar dataKey="distributor" name="Distributor visits" stackId="visits" fill="var(--viz-info)" isAnimationActive={false} />
+            {hasOther && <Bar dataKey="other" name="Other / historical" stackId="visits" fill="var(--viz-muted)" isAnimationActive={false} />}
+          </BarChart>
         </ResponsiveContainer>
       </div>
       <p className="mt-2 text-[10px] leading-4 text-[var(--text-muted)]">Real IST check-in dates from the current bounded page; at most 31 daily points. No trend is inferred beyond loaded records.</p>
@@ -131,11 +137,10 @@ export function ActivityFlow({ points }: { points: VisitActivityPoint[] }) {
   );
 }
 
-export function ContributionRing({ rows }: { rows: TeamKpiAnalyticsRow[] }) {
-  const [metricKey, setMetricKey] = useState<TeamKpiMetricKey>("calls_made");
+export function EmployeeContributionBars({ rows }: { rows: TeamKpiAnalyticsRow[] }) {
+  const [metricKey, setMetricKey] = useState<TeamKpiMetricKey>("total_completed_work");
   const selectedMetric = TEAM_KPI_METRICS.find((metric) => metric.key === metricKey) ?? TEAM_KPI_METRICS[0];
   const contribution = getContributionRows(rows, metricKey);
-  const chartContribution = contribution.rows.filter((item) => item.value > 0);
 
   return (
     <div>
@@ -143,32 +148,27 @@ export function ContributionRing({ rows }: { rows: TeamKpiAnalyticsRow[] }) {
         {TEAM_KPI_METRICS.map((metric) => <button type="button" key={metric.key} aria-pressed={metric.key === metricKey} onClick={() => setMetricKey(metric.key)}>{metric.label}</button>)}
       </div>
       {contribution.total ? (
-        <div className="contribution-ring-layout grid gap-4">
-          <div className="relative mx-auto h-[220px] w-full max-w-[240px]" data-chart-height="stable">
-            <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 220, height: 220 }}>
-              <PieChart accessibilityLayer>
-                <Pie data={chartContribution} dataKey="value" nameKey="label" innerRadius="64%" outerRadius="90%" paddingAngle={1.5} cornerRadius={5} stroke="var(--surface-primary)" strokeWidth={2} rootTabIndex={0} isAnimationActive={false}>
-                  {chartContribution.map((item) => <Cell key={item.key} fill={item.color} />)}
-                </Pie>
-                <Tooltip formatter={(value, _name, item) => [`${Number(value).toLocaleString("en-IN")} (${Math.round((item.payload.share ?? 0) * 100)}%)`, item.payload.label]} contentStyle={tooltipStyle} />
-              </PieChart>
-            </ResponsiveContainer>
-            <DonutCenter value={contribution.total} label={selectedMetric.label} />
-          </div>
-          <div className="max-h-[240px] space-y-1.5 overflow-y-auto pr-1">
-            {contribution.rows.map((item) => <div key={item.key} className="analytics-legend-row"><span className="flex min-w-0 items-center gap-2"><span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: item.color }} /><span className="truncate text-[12px] text-[var(--text-secondary)]">{item.label}</span></span><span className="text-[11px] tabular-nums text-[var(--text-muted)]"><strong className="text-[var(--text-primary)]">{item.value}</strong> · {Math.round(item.share * 100)}%</span></div>)}
-          </div>
-        </div>
+        <ChartContainer config={{ value: { label: selectedMetric.label, color: selectedMetric.color } }} className="h-[300px] w-full">
+          <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 520, height: 300 }}>
+            <BarChart data={contribution.rows.sort((a, b) => b.value - a.value || a.label.localeCompare(b.label))} layout="vertical" margin={{ top: 4, right: 28, bottom: 4, left: 18 }} accessibilityLayer>
+              <CartesianGrid horizontal={false} stroke="var(--viz-grid)" strokeDasharray="4 5" />
+              <XAxis type="number" allowDecimals={false} tickLine={false} axisLine={false} tick={{ fill: "var(--text-muted)", fontSize: 10 }} />
+              <YAxis type="category" dataKey="label" width={108} tickLine={false} axisLine={false} tick={{ fill: "var(--text-secondary)", fontSize: 10 }} />
+              <Tooltip cursor={{ fill: "var(--surface-hover)" }} content={<ChartTooltipContent />} />
+              <Bar dataKey="value" fill={selectedMetric.color} radius={[0, 6, 6, 0]} maxBarSize={24} isAnimationActive={false} />
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartContainer>
       ) : <AnalyticsEmptyState title={`No ${selectedMetric.label.toLowerCase()} recorded`} description="Every active employee remains represented with an exact zero value." />}
     </div>
   );
 }
 
-export function KpiRadarProfile({ rows }: { rows: TeamKpiAnalyticsRow[] }) {
+export function EmployeeTeamComparison({ rows }: { rows: TeamKpiAnalyticsRow[] }) {
   const [selectedUserId, setSelectedUserId] = useState(rows[0]?.user_id ?? "");
   const selected = rows.find((row) => row.user_id === selectedUserId) ?? rows[0];
-  const profile = useMemo(() => buildRelativeKpiProfile(rows, selected?.user_id ?? ""), [rows, selected?.user_id]);
-  if (!selected) return <AnalyticsEmptyState title="No employee profile" description="An active team member is required for the relative KPI profile." />;
+  const profile = useMemo(() => buildEmployeeTeamComparison(rows, selected?.user_id ?? ""), [rows, selected?.user_id]);
+  if (!selected) return <AnalyticsEmptyState title="No employee comparison" description="An active team member is required for an employee-to-team comparison." />;
 
   return (
     <div>
@@ -177,35 +177,28 @@ export function KpiRadarProfile({ rows }: { rows: TeamKpiAnalyticsRow[] }) {
           {rows.map((row) => <option key={row.user_id} value={row.user_id}>{row.name}</option>)}
         </select>
       </label>
-      <div className="h-[270px] w-full sm:h-[300px]" data-chart-height="stable">
-        <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 360, height: 280 }}>
-          <RadarChart data={profile} outerRadius="72%" accessibilityLayer>
-            <PolarGrid stroke="var(--viz-grid)" />
-            <PolarAngleAxis dataKey="metric" tick={{ fill: "var(--text-muted)", fontSize: 10 }} />
-            <Radar name={selected.name} dataKey="employee" stroke="var(--viz-primary)" fill="var(--viz-primary)" fillOpacity={0.24} strokeWidth={2} isAnimationActive={false} />
-            <Radar name="Team average" dataKey="team" stroke="var(--viz-info)" fill="var(--viz-info)" fillOpacity={0.08} strokeWidth={1.5} isAnimationActive={false} />
-            <Tooltip formatter={(_value, name, item) => {
-              const raw = name === "Team average" ? item.payload.teamRaw : item.payload.employeeRaw;
-              return [Number(raw).toLocaleString("en-IN", { maximumFractionDigits: 1 }), name];
-            }} contentStyle={tooltipStyle} />
-            <Legend iconType="circle" wrapperStyle={{ fontSize: 11 }} />
-          </RadarChart>
+      <ChartContainer config={{ employeeRaw: { label: selected.name, color: "var(--viz-primary)" }, teamRaw: { label: "Team average", color: "var(--viz-info)" } }} className="h-[300px] w-full">
+        <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 520, height: 300 }}>
+          <BarChart data={profile} layout="vertical" margin={{ top: 4, right: 20, bottom: 4, left: 18 }} accessibilityLayer>
+            <CartesianGrid horizontal={false} stroke="var(--viz-grid)" strokeDasharray="4 5" />
+            <XAxis type="number" tickLine={false} axisLine={false} tick={{ fill: "var(--text-muted)", fontSize: 10 }} />
+            <YAxis type="category" dataKey="metric" width={104} tickLine={false} axisLine={false} tick={{ fill: "var(--text-secondary)", fontSize: 10 }} />
+            <Tooltip cursor={{ fill: "var(--surface-hover)" }} content={<ChartTooltipContent valueFormatter={(value) => Number(value).toLocaleString("en-IN", { maximumFractionDigits: 1 })} />} />
+            <Legend content={<ChartLegendContent />} />
+            <Bar dataKey="employeeRaw" fill="var(--viz-primary)" radius={[0, 5, 5, 0]} maxBarSize={18} isAnimationActive={false} />
+            <Bar dataKey="teamRaw" fill="var(--viz-info)" radius={[0, 5, 5, 0]} maxBarSize={18} isAnimationActive={false} />
+          </BarChart>
         </ResponsiveContainer>
-      </div>
-      <p className="text-[10px] leading-4 text-[var(--text-muted)]">Display-only normalization: each dimension is scaled against the highest employee value for that same metric. Tooltips show raw authoritative values. This is not a score or rank.</p>
+      </ChartContainer>
+      <p className="text-[10px] leading-4 text-[var(--text-muted)]">Grouped same-unit comparisons show exact employee and team-average values. This is not a score or rank.</p>
     </div>
   );
 }
 
-export function FieldMix({ metrics }: { metrics: AnalyticsMetric[] }) {
-  const total = metrics.reduce((sum, metric) => sum + metric.value, 0);
-  return (
-    <div className="space-y-3">
-      {metrics.map((metric) => {
-        const share = total ? metric.value / total : 0;
-        return <div key={metric.key}><div className="mb-1.5 flex items-center justify-between gap-3 text-[12px]"><span className="flex items-center gap-2 text-[var(--text-secondary)]"><span className="h-2.5 w-2.5 rounded-full" style={{ background: metric.color }} />{metric.label}</span><span className="font-semibold tabular-nums text-[var(--text-primary)]">{metric.value} <span className="font-normal text-[var(--text-muted)]">· {Math.round(share * 100)}%</span></span></div><div className="h-2 overflow-hidden rounded-full bg-[var(--viz-track)]"><div className="h-full rounded-full transition-[width] duration-[var(--motion-emphasis)]" style={{ width: `${share * 100}%`, background: metric.color }} /></div></div>;
-      })}
-      {!total && <AnalyticsEmptyState title="No field mix" description="The current bounded page has no confirmed visits to classify." />}
-    </div>
-  );
+export function FieldMix({ metrics, total }: { metrics: AnalyticsMetric[]; total: number }) {
+  if (!partitionReconciles(metrics, total)) return <AnalyticsEmptyState title="Field mix unavailable" description="The loaded segment buckets do not reconcile to the represented visit total, so the composition is hidden." />;
+  if (!total) return <AnalyticsEmptyState title="No field mix" description="The current bounded page has no confirmed visits to classify." />;
+  return <div className="space-y-4"><div className="flex h-5 w-full overflow-hidden rounded-full bg-[var(--viz-track)]" role="img" aria-label={`Field mix: ${metrics.map((metric) => `${metric.label} ${metric.value}`).join(", ")}`}>
+    {metrics.filter((metric) => metric.value > 0).map((metric) => <span key={metric.key} style={{ width: `${metric.value / total * 100}%`, background: metric.color }} />)}
+  </div><div className="grid gap-2 sm:grid-cols-3">{metrics.map((metric) => <div key={metric.key} className="flex items-center justify-between gap-3 text-[12px]"><span className="flex items-center gap-2 text-[var(--text-secondary)]"><span className="h-2.5 w-2.5 rounded-full" style={{ background: metric.color }} />{metric.label}</span><span className="font-semibold tabular-nums text-[var(--text-primary)]">{metric.value} <span className="font-normal text-[var(--text-muted)]">· {Math.round(metric.value / total * 100)}%</span></span></div>)}</div></div>;
 }

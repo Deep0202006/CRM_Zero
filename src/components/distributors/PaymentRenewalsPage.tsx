@@ -14,6 +14,9 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
 import { RenewalEditorModal } from "@/components/distributors/RenewalEditorModal";
+import { AnalyticsBoundary, AnalyticsEmptyState, AnalyticsPanel } from "@/components/analytics/AnalyticsPanel";
+import { IndependentMetricBars } from "@/components/analytics/MetricOrbit";
+import { buildRenewalUrgency, metricTotal } from "@/lib/analytics/viewModels";
 
 const cards: ReadonlyArray<{
   label: string;
@@ -193,6 +196,7 @@ export function PaymentRenewalsPage({ admin }: { admin: boolean }) {
           </button>
         ))}
       </div>
+      {metrics && <AnalyticsBoundary><AnalyticsPanel eyebrow="Renewal urgency" title="Renewal due horizon" description="Canonical renewal-date counts ordered from overdue through the next two days." labelledBy="renewal-due-horizon">{metricTotal(buildRenewalUrgency(metrics)) > 0 ? <IndependentMetricBars metrics={buildRenewalUrgency(metrics)} valueLabel="Renewals" /> : <AnalyticsEmptyState title="No renewals due" description="Healthy state: there are no overdue, due-today, tomorrow, or two-days-away renewals." />}</AnalyticsPanel></AnalyticsBoundary>}
       <section className="surface-panel overflow-hidden">
         <div className="flex flex-wrap items-center gap-3 p-4">
           <label className="text-xs font-semibold">

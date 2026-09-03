@@ -2,7 +2,7 @@
 
 import type { AnalyticsMetric } from "@/lib/analytics/viewModels";
 import { AnalyticsBoundary, AnalyticsPanel } from "./AnalyticsPanel";
-import { MetricOrbit, UrgencyTracker } from "./MetricOrbit";
+import { IndependentMetricBars, UrgencyTracker } from "./MetricOrbit";
 
 export default function MyDayIntelligence({ focus, urgency }: { focus: AnalyticsMetric[]; urgency: AnalyticsMetric[] }) {
   return (
@@ -10,15 +10,15 @@ export default function MyDayIntelligence({ focus, urgency }: { focus: Analytics
       <section className="analytics-shell" aria-label="Daily command center visual intelligence">
         <AnalyticsPanel
           eyebrow="Daily command center"
-          title="Today’s focus orbit"
-          description="One visual read of the work and confirmed activity already loaded on this page. Exact values remain visible beside every ring."
-          labelledBy="my-day-focus-orbit"
+          title="Independent work signals"
+          description="Already-loaded work signals stay separate; unlike counts are never summed into a fabricated focus total."
+          labelledBy="my-day-work-signals"
         >
-          <MetricOrbit metrics={focus} centerLabel="Focus signals" />
+          <IndependentMetricBars metrics={focus} valueLabel="Focus signals" />
         </AnalyticsPanel>
         <AnalyticsPanel
           eyebrow="Task urgency"
-          title="Urgency ribbon"
+          title="Task urgency"
           description="Missed, due-today, and scheduled-later task buckets from the existing My Day task model."
           labelledBy="my-day-urgency-ribbon"
         >

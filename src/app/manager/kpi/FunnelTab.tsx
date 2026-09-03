@@ -1,265 +1,123 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
-import { db } from "@/lib/db";
-import { PIPELINE_STAGES, stagesForSegment } from "@/lib/pipelineStages";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  CartesianGrid,
-  Cell,
-  FunnelChart,
-  Funnel,
-  LabelList,
-} from "recharts";
-import { Filter, Layers, Clock, Activity, Route, TrendingUp } from "lucide-react";
-import { EmptyState } from "@/components/ui/EmptyState";
+import { useEffect, useMemo, useState } from "react";
+import { Activity, AlertTriangle, Clock, Filter, Layers, Route } from "lucide-react";
+import { Bar, BarChart, CartesianGrid, Cell, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { ChartContainer, ChartLegendContent, ChartTooltipContent } from "@/components/analytics/Chart";
 import { Chip } from "@/components/ui/Chip";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Input } from "@/components/ui/Input";
+import { supabase } from "@/lib/supabaseClient";
 
-interface FunnelSummary {
-  segment_type: string;
-  status: string;
-  lead_count: number;
-}
+type Segment = "All" | "Retailer" | "Distributor";
+type HistoryPoint = { period: string; new_leads: number; successes: number; movements: number; advanced: number; regressed: number };
+type InspectionLead = { lead_id: string; business_name: string; segment_type: string; status: string; owner_name: string; stage_age_days: number; attention_reasons: Array<{ code: string; text: string }>; next_task: { title?: string; due_date?: string } | null; recent_call: { outcome?: string; timestamp?: string } | null };
+type Inspection = {
+  scope: { page_size: number; matched_total: number; generated_at: string };
+  stages: Array<{ stage: string; count: number }>;
+  sources: Array<{ source: string; total: number; converted: number; rate: number; reconciled: boolean }>;
+  current_stage_age: Array<{ stage: string; average_days: number }>;
+  historical_velocity: { rows: Array<{ stage: string; p50_days: number; average_days: number; sample_n: number }>; sample_n: number; coverage_n: number; coverage_pct: number };
+  history: { weeks: HistoryPoint[]; months: HistoryPoint[]; lead_sample_n: number; transition_sample_n: number; coverage: string; lead_sample_limited: boolean; transition_sample_limited: boolean };
+  owner_options: Array<{ user_id: string; name: string }>;
+  leads: InspectionLead[];
+};
 
-interface SourcePerformance {
-  lead_source: string;
-  segment_type: string;
-  total_leads: number;
-  converted: number;
-  conversion_rate_pct: number;
-}
-
-interface AvgTimeInStage {
-  status: string;
-  segment_type: string;
-  avg_days_in_current_stage: number;
-}
+const STAGE_COLORS: Record<string, string> = { New: "var(--viz-muted)", Contacted: "var(--viz-info)", Interested: "var(--viz-primary)", "Not Interested": "var(--viz-danger)", Registration: "var(--viz-pending)", Installation: "var(--viz-success)", Payment: "var(--viz-warning)", Converted: "var(--viz-success-strong)", "Renewal Due": "var(--viz-pending)" };
 
 export default function FunnelTab() {
-  const [funnelData, setFunnelData] = useState<FunnelSummary[]>([]);
-  const [sourceData, setSourceData] = useState<SourcePerformance[]>([]);
-  const [timeData, setTimeData] = useState<AvgTimeInStage[]>([]);
+  const [segment, setSegment] = useState<Segment>("All");
+  const [stage, setStage] = useState("");
+  const [owner, setOwner] = useState("");
+  const [source, setSource] = useState("");
+  const [searchDraft, setSearchDraft] = useState("");
+  const [search, setSearch] = useState("");
+  const [stale, setStale] = useState(false);
+  const [overdue, setOverdue] = useState(false);
+  const [recentChange, setRecentChange] = useState(false);
+  const [historyWindow, setHistoryWindow] = useState<"weeks" | "months">("weeks");
+  const [historyMetric, setHistoryMetric] = useState<"activity" | "direction">("activity");
+  const [sourceMetric, setSourceMetric] = useState<"rate" | "converted">("rate");
+  const [inspection, setInspection] = useState<Inspection | null>(null);
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
-  const [activeSegment, setActiveSegment] = useState<"All" | "Retailer" | "Distributor">("All");
 
   useEffect(() => {
-    (async () => {
-      setLoading(true);
-      if (isSupabaseConfigured) {
-        // Fetch from Supabase views
-        const [funnelRes, sourceRes, timeRes] = await Promise.all([
-          supabase.from("pipeline_funnel_summary").select("segment_type,status,lead_count").limit(100),
-          supabase.from("lead_source_performance").select("lead_source,segment_type,total_leads,converted,conversion_rate_pct").limit(100),
-          supabase.from("avg_time_in_stage").select("status,segment_type,avg_days_in_current_stage").limit(100),
-        ]);
-        setFunnelData(funnelRes.data || []);
-        setSourceData(sourceRes.data || []);
-        setTimeData(timeRes.data || []);
-      } else {
-        // Build offline from Dexie
-        const leads = await db.leads.toArray();
-        
-        // 1. Funnel Summary
-        const funnelMap: Record<string, number> = {};
-        leads.forEach(l => {
-          const key = `${l.segment_type}|${l.status}`;
-          funnelMap[key] = (funnelMap[key] || 0) + 1;
-        });
-        const localFunnel: FunnelSummary[] = Object.keys(funnelMap).map(k => {
-          const [seg, status] = k.split("|");
-          return { segment_type: seg, status, lead_count: funnelMap[k] };
-        });
-
-        // 2. Source Performance
-        const sourceMap: Record<string, { total: number; converted: number }> = {};
-        leads.forEach(l => {
-          if (!l.lead_source) return;
-          const key = `${l.lead_source}|${l.segment_type}`;
-          if (!sourceMap[key]) sourceMap[key] = { total: 0, converted: 0 };
-          sourceMap[key].total += 1;
-          if ((l.segment_type === "Retailer" && l.status === "Converted") || (l.segment_type === "Distributor" && l.status === "Payment")) sourceMap[key].converted += 1;
-        });
-        const localSource: SourcePerformance[] = Object.keys(sourceMap).map(k => {
-          const [src, seg] = k.split("|");
-          const { total, converted } = sourceMap[k];
-          return {
-            lead_source: src,
-            segment_type: seg,
-            total_leads: total,
-            converted,
-            conversion_rate_pct: total > 0 ? Math.round((converted / total) * 1000) / 10 : 0
-          };
-        });
-
-        // 3. Avg Time in Stage
-        const timeMap: Record<string, { sum: number; count: number }> = {};
-        const now = Date.now();
-        leads.forEach(l => {
-          if (l.status === "Not Interested" || (l.segment_type === "Retailer" && l.status === "Converted") || (l.segment_type === "Distributor" && l.status === "Payment")) return;
-          const key = `${l.status}|${l.segment_type}`;
-          if (!timeMap[key]) timeMap[key] = { sum: 0, count: 0 };
-          const start = new Date(l.stage_entered_at || l.created_at).getTime();
-          const days = (now - start) / 86400000;
-          timeMap[key].sum += days;
-          timeMap[key].count += 1;
-        });
-        const localTime: AvgTimeInStage[] = Object.keys(timeMap).map(k => {
-          const [status, seg] = k.split("|");
-          return {
-            status,
-            segment_type: seg,
-            avg_days_in_current_stage: Math.round((timeMap[k].sum / timeMap[k].count) * 10) / 10
-          };
-        });
-
-        setFunnelData(localFunnel);
-        setSourceData(localSource);
-        setTimeData(localTime);
-      }
-      setLoading(false);
+    const controller = new AbortController();
+    void (async () => {
+      setLoading(true); setError("");
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (!data.session?.access_token) throw new Error("Sign in again.");
+        const query = new URLSearchParams();
+        if (segment !== "All") query.set("segment", segment);
+        if (stage) query.set("stage", stage);
+        if (owner) query.set("owner", owner);
+        if (source) query.set("source", source);
+        if (search) query.set("search", search);
+        if (stale) query.set("stale", "true");
+        if (overdue) query.set("overdue", "true");
+        if (recentChange) query.set("recentChange", "true");
+        const response = await fetch(`/api/pipeline/inspection?${query}`, { headers: { Authorization: `Bearer ${data.session.access_token}` }, cache: "no-store", signal: controller.signal });
+        if (!response.ok) throw new Error("Pipeline inspection is unavailable.");
+        setInspection(await response.json() as Inspection);
+      } catch (reason) { if ((reason as Error).name !== "AbortError") setError(reason instanceof Error ? reason.message : "Pipeline inspection is unavailable."); }
+      finally { if (!controller.signal.aborted) setLoading(false); }
     })();
-  }, []);
+    return () => controller.abort();
+  }, [segment, stage, owner, source, search, stale, overdue, recentChange]);
 
-  // Stage colours are semantic CSS variables so light and dark themes remain consistent.
-  const COLORS: Record<string, string> = {
-    "New": "var(--chart-2)",
-    "Contacted": "var(--chart-3)",
-    "Interested": "var(--brand-500)",
-    "Not Interested": "var(--status-neutral)",
-    "Registration": "var(--chart-4)",
-    "Installation": "var(--status-success)",
-    "Payment": "var(--brand-700)",
-    "Converted": "var(--status-success)",
-    "Renewal Due": "var(--status-danger)",
-  };
+  const stages = inspection?.stages ?? [];
+  const sources = useMemo(() => (inspection?.sources ?? []).filter((row) => row.reconciled), [inspection]);
+  const currentAge = inspection?.current_stage_age ?? [];
+  const velocity = inspection?.historical_velocity.rows ?? [];
+  const history = inspection?.history[historyWindow] ?? [];
+  const needsAttention = inspection?.leads.filter((lead) => lead.attention_reasons.length).length ?? 0;
 
-  const visibleStages = activeSegment === "All" ? PIPELINE_STAGES : stagesForSegment(activeSegment);
-  const currentFunnel = visibleStages.map(stage => {
-    const leadsInStage = funnelData
-      .filter(f => (activeSegment === "All" || f.segment_type === activeSegment) && f.status === stage)
-      .reduce((sum, f) => sum + f.lead_count, 0);
-    return { name: stage, value: leadsInStage, fill: COLORS[stage] || "var(--chart-5)" };
-  }).filter(s => s.value > 0);
+  if (loading && !inspection) return <section className="surface-panel grid min-h-[360px] place-items-center"><p className="text-[13px] font-medium text-[var(--text-muted)]">Loading pipeline inspection…</p></section>;
+  if (error || !inspection) return <section className="surface-panel p-5"><EmptyState icon={<AlertTriangle size={20} />} title="Pipeline inspection unavailable" description={error || "Try again."} /></section>;
 
-  const currentSource = sourceData
-    .filter(s => activeSegment === "All" || s.segment_type === activeSegment)
-    .reduce((acc, curr) => {
-      const existing = acc.find(a => a.lead_source === curr.lead_source);
-      if (existing) {
-        existing.total_leads += curr.total_leads;
-        existing.converted += curr.converted;
-        existing.conversion_rate_pct = existing.total_leads > 0 
-          ? Math.round((existing.converted / existing.total_leads) * 1000) / 10 
-          : 0;
-      } else {
-        acc.push({ ...curr });
-      }
-      return acc;
-    }, [] as SourcePerformance[])
-    .sort((a, b) => b.total_leads - a.total_leads); // Rank by total leads
+  return <div className="page-stack" aria-busy={loading}>
+    <form className="surface-toolbar flex-wrap" onSubmit={(event) => { event.preventDefault(); setSearch(searchDraft.trim()); }}>
+      <div className="flex items-center gap-2 text-[12px] font-semibold text-[var(--text-secondary)]"><Filter size={15} /> Server filters</div>
+      <div className="segmented-control" aria-label="Pipeline segment filter">{(["All", "Retailer", "Distributor"] as const).map((value) => <button key={value} type="button" aria-pressed={segment === value} onClick={() => setSegment(value)}>{value}</button>)}</div>
+      <select className="field-control min-w-40" aria-label="Owner" value={owner} onChange={(event) => setOwner(event.target.value)}><option value="">All owners</option>{inspection.owner_options.map((item) => <option key={item.user_id} value={item.user_id}>{item.name}</option>)}</select>
+      <select className="field-control min-w-40" aria-label="Lead source" value={source} onChange={(event) => setSource(event.target.value)}><option value="">All sources</option>{sources.map((item) => <option key={item.source} value={item.source}>{item.source}</option>)}</select>
+      <Input aria-label="Search pipeline" value={searchDraft} onChange={(event) => setSearchDraft(event.target.value)} placeholder="Lead, person, phone or area" />
+      <button className="btn-secondary" type="submit">Search</button>
+      {[{ label: "Stale", value: stale, set: setStale }, { label: "Overdue task", value: overdue, set: setOverdue }, { label: "Recent change", value: recentChange, set: setRecentChange }].map((item) => <label key={item.label} className="flex items-center gap-1.5 text-xs"><input type="checkbox" checked={item.value} onChange={(event) => item.set(event.target.checked)} />{item.label}</label>)}
+      <Chip variant="neutral" size="sm">{inspection.scope.matched_total} matching leads</Chip>
+    </form>
 
-  const currentTime = visibleStages.filter((stage) => stage !== "Payment" && stage !== "Converted" && stage !== "Not Interested").map((stage) => {
-    const stageData = timeData
-      .filter((t) => (activeSegment === "All" || t.segment_type === activeSegment) && t.status === stage);
-    
-    let avg = 0;
-    if (stageData.length > 0) {
-      avg = stageData.reduce((sum, t) => sum + t.avg_days_in_current_stage, 0) / stageData.length;
-    }
-    return { status: stage, avg_days: Math.round(avg * 10) / 10 };
-  }).filter(t => t.avg_days > 0);
-
-  const totalVisibleLeads = currentFunnel.reduce((sum, stage) => sum + stage.value, 0);
-  const convertedVisibleLeads = currentSource.reduce((sum, source) => sum + source.converted, 0);
-  const averageVisibleStageTime = currentTime.length ? Math.round((currentTime.reduce((sum, stage) => sum + stage.avg_days, 0) / currentTime.length) * 10) / 10 : 0;
-
-  if (loading) {
-    return <section className="surface-panel grid min-h-[360px] place-items-center"><p className="text-[13px] font-medium text-[var(--text-muted)]">Loading pipeline intelligence…</p></section>;
-  }
-
-  return (
-    <div className="page-stack">
-      <div className="surface-toolbar">
-        <div className="flex items-center gap-2 text-[12px] font-semibold text-[var(--text-secondary)]"><Filter size={15} /> Segment</div>
-        <div className="segmented-control" aria-label="Pipeline segment filter">
-          {(["All", "Retailer", "Distributor"] as const).map((segment) => (
-            <button key={segment} type="button" aria-pressed={activeSegment === segment} onClick={() => setActiveSegment(segment)}>{segment}</button>
-          ))}
-        </div>
-        <div className="flex-1" />
-        <Chip variant="neutral" size="sm">{totalVisibleLeads} active leads</Chip>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-3">
-        <div className="surface-panel p-5"><div className="flex items-start justify-between gap-4"><div><p className="section-kicker">Visible pipeline</p><p className="mt-2 text-3xl font-semibold tracking-[-0.04em] tabular-nums">{totalVisibleLeads}</p><p className="mt-1 text-[12px] text-[var(--text-muted)]">Leads across active funnel stages</p></div><span className="grid h-10 w-10 place-items-center rounded-[var(--radius-md)] bg-[var(--brand-50)] text-[var(--brand-700)]"><Route size={18} /></span></div></div>
-        <div className="surface-panel p-5"><div className="flex items-start justify-between gap-4"><div><p className="section-kicker">Converted</p><p className="mt-2 text-3xl font-semibold tracking-[-0.04em] tabular-nums">{convertedVisibleLeads}</p><p className="mt-1 text-[12px] text-[var(--text-muted)]">Retailers converted or distributors at payment</p></div><span className="grid h-10 w-10 place-items-center rounded-[var(--radius-md)] bg-[var(--status-success-soft)] text-[var(--status-success)]"><TrendingUp size={18} /></span></div></div>
-        <div className="surface-panel p-5"><div className="flex items-start justify-between gap-4"><div><p className="section-kicker">Average stage time</p><p className="mt-2 text-3xl font-semibold tracking-[-0.04em] tabular-nums">{averageVisibleStageTime}<span className="ml-1 text-sm font-medium text-[var(--text-muted)]">days</span></p><p className="mt-1 text-[12px] text-[var(--text-muted)]">Across active non-terminal stages</p></div><span className="grid h-10 w-10 place-items-center rounded-[var(--radius-md)] bg-[var(--status-warning-soft)] text-[var(--status-warning)]"><Clock size={18} /></span></div></div>
-      </div>
-
-      <div className="grid gap-5 xl:grid-cols-2">
-        <section className="surface-panel overflow-hidden" aria-labelledby="pipeline-funnel-title">
-          <div className="border-b border-[var(--border-subtle)] p-5"><p className="section-kicker">Stage distribution</p><h2 id="pipeline-funnel-title" className="mt-1 section-title">Pipeline funnel</h2></div>
-          <div className="h-[340px] p-4">
-            {currentFunnel.length ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <FunnelChart margin={{ top: 18, right: 70, bottom: 18, left: 20 }}>
-                  <Tooltip formatter={(value: unknown) => [`${value} leads`, "Count"]} contentStyle={{ backgroundColor: "var(--surface-elevated)", borderColor: "var(--border-default)", borderRadius: "10px", color: "var(--text-primary)", fontSize: "12px", boxShadow: "var(--shadow-popover)" }} />
-                  <Funnel dataKey="value" data={currentFunnel} isAnimationActive={false}>
-                    <LabelList position="center" fill="var(--brand-contrast)" stroke="none" dataKey="name" fontSize={11} fontWeight={700} />
-                    <LabelList position="right" fill="var(--text-muted)" stroke="none" dataKey="value" formatter={(value: unknown) => `${value} leads`} fontSize={11} fontWeight={600} />
-                  </Funnel>
-                </FunnelChart>
-              </ResponsiveContainer>
-            ) : <EmptyState compact icon={<Layers size={20} />} title="No active funnel data" description="No leads match the selected segment." />}
-          </div>
-        </section>
-
-        <section className="surface-panel overflow-hidden" aria-labelledby="stage-time-title">
-          <div className="border-b border-[var(--border-subtle)] p-5"><p className="section-kicker">Pipeline velocity</p><h2 id="stage-time-title" className="mt-1 section-title">Average days in stage</h2></div>
-          <div className="h-[340px] p-4">
-            {currentTime.length ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={currentTime} margin={{ top: 18, right: 12, left: -18, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
-                  <XAxis dataKey="status" tick={{ fontSize: 10, fontWeight: 600, fill: "var(--text-muted)" }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 10, fontWeight: 600, fill: "var(--text-muted)" }} axisLine={false} tickLine={false} />
-                  <Tooltip formatter={(value: unknown) => [`${value} days`, "Average"]} cursor={{ fill: "var(--surface-hover)" }} contentStyle={{ backgroundColor: "var(--surface-elevated)", borderColor: "var(--border-default)", borderRadius: "10px", color: "var(--text-primary)", fontSize: "12px", boxShadow: "var(--shadow-popover)" }} />
-                  <Bar dataKey="avg_days" radius={[5, 5, 0, 0]} maxBarSize={52} isAnimationActive={false}>
-                    {currentTime.map((entry, index) => <Cell key={`${entry.status}-${index}`} fill={COLORS[entry.status] || "var(--chart-4)"} />)}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            ) : <EmptyState compact icon={<Clock size={20} />} title="No stage-time data" description="Stage velocity appears after leads spend time in active stages." />}
-          </div>
-        </section>
-      </div>
-
-      <section className="data-table-shell" aria-labelledby="source-performance-title">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-subtle)] px-5 py-4"><div><p className="section-kicker">Acquisition quality</p><h2 id="source-performance-title" className="mt-1 section-title">Lead-source performance</h2></div><span className="grid h-9 w-9 place-items-center rounded-[var(--radius-md)] bg-[var(--status-success-soft)] text-[var(--status-success)]"><Activity size={17} /></span></div>
-        {currentSource.length ? (
-          <div className="overflow-x-auto">
-            <table className="min-w-[680px]">
-              <thead><tr><th>Lead source</th><th>Total leads</th><th>Converted</th><th>Conversion rate</th></tr></thead>
-              <tbody>
-                {currentSource.map((source) => (
-                  <tr key={source.lead_source}>
-                    <td><p className="font-semibold text-[var(--text-primary)]">{source.lead_source}</p></td>
-                    <td className="font-semibold tabular-nums">{source.total_leads}</td>
-                    <td className="font-semibold tabular-nums text-[var(--status-success)]">{source.converted}</td>
-                    <td><div className="flex min-w-[170px] items-center gap-3"><span className="w-12 text-right font-semibold tabular-nums text-[var(--text-primary)]">{source.conversion_rate_pct}%</span><div className="h-2 flex-1 overflow-hidden rounded-full bg-[var(--surface-tertiary)]"><div className="h-full rounded-full bg-[var(--status-success)]" style={{ width: `${Math.min(source.conversion_rate_pct, 100)}%` }} /></div></div></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : <div className="p-5"><EmptyState compact icon={<Activity size={20} />} title="No lead-source data" description="Source performance appears after lead records include acquisition sources." /></div>}
-      </section>
+    <div className="grid gap-4 md:grid-cols-3">
+      <Metric label="Visible pipeline" value={stages.reduce((sum, row) => sum + row.count, 0)} detail="Server-authoritative stage counts" icon={<Route size={18} />} />
+      <Metric label="Needs attention" value={needsAttention} detail={`Within this ${inspection.scope.page_size}-row inspection page`} icon={<AlertTriangle size={18} />} />
+      <Metric label="Velocity sample" value={`n=${inspection.historical_velocity.sample_n}`} detail={`${inspection.historical_velocity.coverage_pct}% of eligible completed intervals`} icon={<Clock size={18} />} />
     </div>
-  );
+
+    <div className="grid gap-5 xl:grid-cols-2">
+      <ChartPanel kicker="Stage distribution" title="Canonical stage order" empty={!stages.length} emptyIcon={<Layers size={20} />}>
+        <ChartContainer config={{ count: { label: "Leads", color: "var(--viz-primary)" } }} className="h-[340px]"><ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 620, height: 340 }}><BarChart data={stages} layout="vertical" margin={{ top: 8, right: 18, bottom: 8, left: 30 }} accessibilityLayer><CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--viz-grid)" /><XAxis type="number" allowDecimals={false} axisLine={false} tickLine={false} /><YAxis type="category" dataKey="stage" width={104} axisLine={false} tickLine={false} /><Tooltip content={<ChartTooltipContent />} /><Bar dataKey="count" radius={[0, 5, 5, 0]} isAnimationActive={false}>{stages.map((row) => <Cell key={row.stage} fill={STAGE_COLORS[row.stage]} className="cursor-pointer" onClick={() => setStage((current) => current === row.stage ? "" : row.stage)} />)}</Bar></BarChart></ResponsiveContainer></ChartContainer>
+      </ChartPanel>
+      <ChartPanel kicker="Current stage age" title="Average current age by stage" empty={!currentAge.length} emptyIcon={<Clock size={20} />}>
+        <ChartContainer config={{ average_days: { label: "Current age", color: "var(--viz-warning)" } }} className="h-[340px]"><ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 620, height: 340 }}><BarChart data={currentAge} layout="vertical" accessibilityLayer><CartesianGrid horizontal={false} stroke="var(--viz-grid)" /><XAxis type="number" /><YAxis type="category" dataKey="stage" width={104} /><Tooltip content={<ChartTooltipContent valueFormatter={(value) => `${value} days`} />} /><Bar dataKey="average_days" fill="var(--viz-warning)" radius={[0, 5, 5, 0]} isAnimationActive={false} /></BarChart></ResponsiveContainer></ChartContainer>
+      </ChartPanel>
+      <ChartPanel kicker="Completed intervals" title="Historical stage velocity" empty={!velocity.length} emptyIcon={<Clock size={20} />}>
+        <ChartContainer config={{ p50_days: { label: "P50 days", color: "var(--viz-primary)" }, average_days: { label: "Average days", color: "var(--viz-info)" } }} className="h-[340px]"><ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 620, height: 340 }}><BarChart data={velocity} layout="vertical" accessibilityLayer><CartesianGrid horizontal={false} stroke="var(--viz-grid)" /><XAxis type="number" /><YAxis type="category" dataKey="stage" width={104} /><Tooltip content={<ChartTooltipContent valueFormatter={(value) => `${value} days`} />} /><Legend content={<ChartLegendContent />} /><Bar dataKey="p50_days" fill="var(--viz-primary)" isAnimationActive={false} /><Bar dataKey="average_days" fill="var(--viz-info)" isAnimationActive={false} /></BarChart></ResponsiveContainer></ChartContainer>
+        <p className="mt-2 text-[10px] text-[var(--text-muted)]">Actual completed intervals · n={inspection.historical_velocity.sample_n} · coverage {inspection.historical_velocity.coverage_pct}%.</p>
+      </ChartPanel>
+      <ChartPanel kicker="Acquisition quality" title="Source conversion" empty={!sources.length} emptyIcon={<Activity size={20} />}>
+        <div className="segmented-control mb-3" aria-label="Source conversion metric"><button type="button" aria-pressed={sourceMetric === "rate"} onClick={() => setSourceMetric("rate")}>Rate %</button><button type="button" aria-pressed={sourceMetric === "converted"} onClick={() => setSourceMetric("converted")}>Converted</button></div>
+        <ChartContainer config={{ rate: { label: "Conversion rate", color: "var(--viz-success)" }, converted: { label: "Converted", color: "var(--viz-success)" } }} className="h-[340px]"><ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 620, height: 340 }}><BarChart data={sources} layout="vertical" accessibilityLayer><CartesianGrid horizontal={false} stroke="var(--viz-grid)" /><XAxis type="number" domain={sourceMetric === "rate" ? [0, 100] : undefined} /><YAxis type="category" dataKey="source" width={112} /><Tooltip content={<ChartTooltipContent valueFormatter={(value) => sourceMetric === "rate" ? `${value}%` : Number(value).toLocaleString("en-IN")} />} /><Bar dataKey={sourceMetric} fill="var(--viz-success)" radius={[0, 5, 5, 0]} isAnimationActive={false} /></BarChart></ResponsiveContainer></ChartContainer>
+        <p className="mt-2 text-[10px] text-[var(--text-muted)]">{sources.map((row) => `${row.source}: ${row.converted}/${row.total}`).join(" · ")}</p>
+      </ChartPanel>
+    </div>
+
+    <section className="surface-panel overflow-hidden" aria-labelledby="sales-history-title"><div className="flex flex-wrap items-center justify-between gap-3 border-b p-5"><div><p className="section-kicker">Real dated authority</p><h2 id="sales-history-title" className="mt-1 section-title">Sales review history</h2><p className="mt-1 text-[11px] text-[var(--text-muted)]">{inspection.history.coverage} Leads n={inspection.history.lead_sample_n}; transitions n={inspection.history.transition_sample_n}.</p></div><div className="flex flex-wrap gap-2"><div className="segmented-control" aria-label="History metric"><button type="button" aria-pressed={historyMetric === "activity"} onClick={() => setHistoryMetric("activity")}>Activity</button><button type="button" aria-pressed={historyMetric === "direction"} onClick={() => setHistoryMetric("direction")}>Direction</button></div><div className="segmented-control" aria-label="History window"><button type="button" aria-pressed={historyWindow === "weeks"} onClick={() => setHistoryWindow("weeks")}>12 weeks</button><button type="button" aria-pressed={historyWindow === "months"} onClick={() => setHistoryWindow("months")}>12 months</button></div></div></div><div className="p-4"><ChartContainer config={{ new_leads: { label: "New leads", color: "var(--viz-primary)" }, successes: { label: "Terminal successes", color: "var(--viz-success)" }, movements: { label: "Confirmed movements", color: "var(--viz-info)" }, advanced: { label: "Advanced", color: "var(--viz-success)" }, regressed: { label: "Regressed", color: "var(--viz-danger)" } }} className="h-[300px]"><ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 820, height: 300 }}><BarChart data={history} accessibilityLayer><CartesianGrid vertical={false} stroke="var(--viz-grid)" /><XAxis dataKey="period" /><YAxis allowDecimals={false} /><Tooltip content={<ChartTooltipContent />} /><Legend content={<ChartLegendContent />} />{historyMetric === "activity" ? <><Bar dataKey="new_leads" fill="var(--viz-primary)" isAnimationActive={false} /><Bar dataKey="successes" fill="var(--viz-success)" isAnimationActive={false} /><Bar dataKey="movements" fill="var(--viz-info)" isAnimationActive={false} /></> : <><Bar dataKey="advanced" fill="var(--viz-success)" isAnimationActive={false} /><Bar dataKey="regressed" fill="var(--viz-danger)" isAnimationActive={false} /></>}</BarChart></ResponsiveContainer></ChartContainer></div></section>
+
+    <section className="data-table-shell" aria-labelledby="pipeline-inspection-title"><div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4"><div><p className="section-kicker">Exact operational context</p><h2 id="pipeline-inspection-title" className="mt-1 section-title">Pipeline inspection {stage ? `· ${stage}` : ""}</h2></div>{stage && <button type="button" className="btn-secondary" onClick={() => setStage("")}>Clear stage</button>}</div>{inspection.leads.length ? <div className="overflow-x-auto"><table className="min-w-[980px]"><thead><tr><th>Lead</th><th>Owner</th><th>Stage</th><th>Stage age</th><th>Reasons</th><th>Next task</th><th>Recent call</th></tr></thead><tbody>{inspection.leads.map((lead) => <tr key={lead.lead_id}><td><p className="font-semibold">{lead.business_name}</p><p className="text-[11px] text-[var(--text-muted)]">{lead.segment_type}</p></td><td>{lead.owner_name}</td><td><Chip variant={lead.attention_reasons.length ? "warning" : "neutral"} size="sm">{lead.status}</Chip></td><td>{lead.stage_age_days} days</td><td><div className="flex max-w-64 flex-wrap gap-1">{lead.attention_reasons.map((reason) => <Chip key={reason.code} variant={reason.code.includes("OVERDUE") || reason.code === "REGRESSED" ? "danger" : "neutral"} size="sm">{reason.text}</Chip>)}</div></td><td>{lead.next_task?.title ?? "—"}<small className="block">{lead.next_task?.due_date}</small></td><td>{lead.recent_call?.outcome ?? "—"}<small className="block">{lead.recent_call?.timestamp ? new Date(lead.recent_call.timestamp).toLocaleDateString("en-IN") : ""}</small></td></tr>)}</tbody></table></div> : <div className="p-5"><EmptyState compact icon={<Layers size={20} />} title="No matching leads" description="No leads match the authoritative server filters." /></div>}</section>
+  </div>;
 }
+
+function Metric({ label, value, detail, icon }: { label: string; value: string | number; detail: string; icon: React.ReactNode }) { return <div className="surface-panel p-5"><div className="flex items-start justify-between gap-4"><div><p className="section-kicker">{label}</p><p className="mt-2 text-3xl font-semibold tabular-nums">{value}</p><p className="mt-1 text-[12px] text-[var(--text-muted)]">{detail}</p></div><span className="grid h-10 w-10 place-items-center rounded-md bg-[var(--brand-50)] text-[var(--brand-700)]">{icon}</span></div></div>; }
+function ChartPanel({ kicker, title, empty, emptyIcon, children }: { kicker: string; title: string; empty: boolean; emptyIcon: React.ReactNode; children: React.ReactNode }) { return <section className="surface-panel overflow-hidden"><div className="border-b p-5"><p className="section-kicker">{kicker}</p><h2 className="mt-1 section-title">{title}</h2></div><div className="p-4">{empty ? <EmptyState compact icon={emptyIcon} title="No data" description="No authoritative records match this selection." /> : children}</div></section>; }

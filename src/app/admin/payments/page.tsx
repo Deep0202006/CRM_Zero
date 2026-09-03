@@ -23,6 +23,8 @@ import {
 } from "@/components/receivables/AdminReceivableActionModal";
 import { ReceivablesCreateModal } from "@/components/receivables/ReceivablesCreateModal";
 import { ReceivablesImportModal } from "@/components/receivables/ReceivablesImportModal";
+import { ChartContainer, ChartTooltipContent } from "@/components/analytics/Chart";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 interface AdminSummary {
   total_outstanding: string;
   followups_due_today: number;
@@ -295,6 +297,10 @@ export default function AdminPaymentsPage() {
     setActionPayment(payment ?? null);
     setAction(next);
   }
+  const agingChart = ["Current", "1-7 days", "8-15 days", "16-30 days", "31+ days"].map((bucket) => ({ bucket, amount: Number(summary?.aging[bucket] ?? 0) }));
+  const renewalChart = [
+    ["Overdue", "renewal_overdue"], ["Today", "renewal_due_today"], ["Tomorrow", "renewal_due_tomorrow"], ["In two days", "renewal_due_in_2_days"],
+  ].map(([label, state]) => ({ label, count: renewals.rows.filter((row) => row.renewal_state === state).length }));
   if (!isAdmin)
     return (
       <div className="app-page">
@@ -370,14 +376,8 @@ export default function AdminPaymentsPage() {
           </div>
           <section className="surface-panel p-4">
             <h2 className="section-title">Collectible aging</h2>
-            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5">
-              {Object.entries(summary.aging).map(([bucket, amount]) => (
-                <div key={bucket}>
-                  <p className="text-xs text-[var(--text-muted)]">{bucket}</p>
-                  <p className="font-semibold">{formatInr(amount)}</p>
-                </div>
-              ))}
-            </div>
+            <p className="mt-1 text-xs text-[var(--text-muted)]">Ordered authoritative outstanding balances. Disputed is reported separately because it can overlap aging.</p>
+            <ChartContainer config={{ amount: { label: "Outstanding", color: "var(--brand-500)" } }} className="mt-3 h-[280px]"><ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 720, height: 280 }}><BarChart data={agingChart} layout="vertical" margin={{ top: 8, right: 24, bottom: 8, left: 18 }}><CartesianGrid horizontal={false} stroke="var(--border-subtle)" /><XAxis type="number" axisLine={false} tickLine={false} tickFormatter={(value) => formatInr(String(value))} /><YAxis type="category" dataKey="bucket" width={86} axisLine={false} tickLine={false} /><Tooltip content={<ChartTooltipContent valueFormatter={(value) => formatInr(String(value))} />} /><Bar dataKey="amount" fill="var(--brand-500)" radius={[0, 5, 5, 0]} isAnimationActive={false} /></BarChart></ResponsiveContainer></ChartContainer>
             {summary.disputed_outstanding && (
               <p className="mt-3 text-xs">
                 Disputed balances are included and separately identifiable:{" "}
@@ -441,6 +441,8 @@ export default function AdminPaymentsPage() {
               </div>
             ))}
           </div>
+          <p className="mt-4 text-[11px] text-[var(--text-muted)]">Urgency distribution for the {renewals.rows.length} reminders already loaded on this bounded card.</p>
+          <ChartContainer config={{ count: { label: "Loaded renewals", color: "var(--status-warning)" } }} className="mt-2 h-[220px]"><ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 720, height: 220 }}><BarChart data={renewalChart} layout="vertical" margin={{ top: 8, right: 24, bottom: 8, left: 18 }}><CartesianGrid horizontal={false} stroke="var(--border-subtle)" /><XAxis type="number" allowDecimals={false} axisLine={false} tickLine={false} /><YAxis type="category" dataKey="label" width={84} axisLine={false} tickLine={false} /><Tooltip content={<ChartTooltipContent />} /><Bar dataKey="count" fill="var(--status-warning)" radius={[0, 5, 5, 0]} isAnimationActive={false} /></BarChart></ResponsiveContainer></ChartContainer>
         </section>
       )}
       <section className="surface-panel p-5">

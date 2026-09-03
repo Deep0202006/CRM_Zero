@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertCircle, CheckCircle2, ChevronRight, Layers, Plus, RefreshCw, Search } from "lucide-react";
+import { AlertCircle, CheckCircle2, ChevronRight, Layers, ListPlus, PhoneCall, Plus, RefreshCw, Search } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { db, type LocalCallLog } from "@/lib/db";
+import { createExplicitPipelineTask } from "@/lib/pipeline/taskAction";
 import { transitionLead, retryPendingPipelineTransitions } from "@/lib/leadStageService";
 import { stagesForSegment, type PipelineStage } from "@/lib/pipelineStages";
 import { getEmployeeTransitionActions, type PipelineLeadView, type PipelineSegment } from "@/lib/pipeline/contract";
@@ -23,6 +24,16 @@ const STAGE_VARIANTS: Record<PipelineStage, "neutral" | "info" | "warning" | "da
   Registration: "pending", Installation: "success", Payment: "brand", Converted: "success", "Renewal Due": "warning",
 };
 
+type LeadContextBrief = {
+  stage_age_days: number;
+  transitions: Array<{ expected_stage: string; target_stage: string; confirmed_at: string }>;
+  next_task: { title: string; due_date: string } | null;
+  overdue_tasks: Array<{ task_id: string }>;
+  recent_tasks: Array<{ task_id: string }>;
+  latest_call: { outcome: string; timestamp: string } | null;
+  recent_calls: Array<{ log_id: string }>;
+};
+
 export default function OnboardingPage() {
   const { currentUser, isAdmin } = useAuth();
   const segments = useMemo<PipelineSegment[]>(() => ["Retailer", "Distributor"], []);
@@ -32,9 +43,12 @@ export default function OnboardingPage() {
   const [authorityState, setAuthorityState] = useState<"server" | "offline" | "error">("server");
   const [selectedLead, setSelectedLead] = useState<PipelineLeadView | null>(null);
   const [callLogs, setCallLogs] = useState<LocalCallLog[]>([]);
+  const [leadContext, setLeadContext] = useState<LeadContextBrief | null>(null);
+  const [leadContextError, setLeadContextError] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [message, setMessage] = useState<{ tone: "success" | "danger"; text: string; existing?: PipelineLeadView } | null>(null);
   const [transitioning, setTransitioning] = useState<string | null>(null);
+  const [creatingTask, setCreatingTask] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -79,8 +93,27 @@ export default function OnboardingPage() {
 
   const openLead = async (lead: PipelineLeadView) => {
     setSelectedLead(lead);
+    setLeadContext(null); setLeadContextError(false);
     const logs = await db.call_logs.where("lead_id").equals(lead.lead_id).and((log) => isAdmin || log.user_id === currentUser?.user_id).toArray();
     setCallLogs(logs.sort((a, b) => b.timestamp.localeCompare(a.timestamp)));
+    if (!navigator.onLine) return;
+    try {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) throw new Error("AUTH_REQUIRED");
+      const response = await fetch(`/api/pipeline/leads/${lead.lead_id}/context`, { headers: { Authorization: `Bearer ${data.session.access_token}` }, cache: "no-store" });
+      if (!response.ok) throw new Error("CONTEXT_FAILED");
+      setLeadContext(await response.json() as LeadContextBrief);
+    } catch { setLeadContextError(true); }
+  };
+
+  const createLeadTask = async (lead: PipelineLeadView) => {
+    if (!currentUser || creatingTask || lead.assigned_to !== currentUser.user_id) return;
+    setCreatingTask(lead.lead_id);
+    try {
+      const { result } = await createExplicitPipelineTask({ userId: currentUser.user_id, leadId: lead.lead_id, businessName: lead.business_name });
+      setMessage({ tone: "success", text: result === "created" ? "Exact Lead task saved for sync." : "This exact Pipeline task is already saved." });
+    } catch { setMessage({ tone: "danger", text: "Task could not be saved. Try again; retries keep the same exact Task identity." }); }
+    finally { setCreatingTask(null); }
   };
 
   const moveLead = async (lead: PipelineLeadView, target: PipelineStage) => {
@@ -129,7 +162,7 @@ export default function OnboardingPage() {
   const inspectorData: RecordInspectorData | null = selectedLead ? {
     id: selectedLead.lead_id, title: selectedLead.business_name, subtitle: `${selectedLead.contact_person} · ${selectedLead.phone}`, type: "lead",
     status: selectedLead.status, statusVariant: STAGE_VARIANTS[selectedLead.status], phone: selectedLead.phone, address: selectedLead.area ?? undefined,
-    owner: selectedLead.owner_name, createdAt: selectedLead.created_at, details: { Segment: selectedLead.segment_type, Source: selectedLead.lead_source || "N/A", Call_Logs_Count: callLogs.length },
+    owner: selectedLead.owner_name, createdAt: selectedLead.created_at, details: { Segment: selectedLead.segment_type, Source: selectedLead.lead_source || "N/A", Stage_age_days: leadContext?.stage_age_days ?? "Loading", Last_transition: leadContext?.transitions[0] ? `${leadContext.transitions[0].expected_stage} → ${leadContext.transitions[0].target_stage}` : "No confirmed transition", Next_task: leadContext?.next_task ? `${leadContext.next_task.title} · ${leadContext.next_task.due_date}` : "No exact linked task", Overdue_tasks: leadContext?.overdue_tasks.length ?? 0, Latest_call: leadContext?.latest_call ? `${leadContext.latest_call.outcome} · ${new Date(leadContext.latest_call.timestamp).toLocaleDateString()}` : "No exact linked call", Recent_tasks: leadContext?.recent_tasks.length ?? 0, Recent_calls: leadContext?.recent_calls.length ?? callLogs.length, Context_status: leadContextError ? "Authoritative context unavailable" : leadContext ? "Server-authoritative" : "Loading or offline" },
   } : null;
   const selectedPrimary = selectedLead ? getEmployeeTransitionActions(selectedLead.status, selectedLead.segment_type)[0] : undefined;
 
@@ -158,7 +191,7 @@ export default function OnboardingPage() {
       </article>; })}
     </div></section>
     <div className="flex items-center justify-between gap-3"><p className="text-xs text-[var(--text-muted)]">Page {page} · showing {leads.length} of {total}</p><div className="flex gap-2"><Button size="sm" variant="outline" disabled={page === 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>Previous</Button><Button size="sm" variant="outline" disabled={!hasMore} onClick={() => setPage((value) => value + 1)}>Next</Button></div></div>
-    <RecordInspector record={inspectorData} onClose={() => { setSelectedLead(null); setCallLogs([]); }} primaryAction={selectedLead && selectedPrimary && selectedLead.assigned_to === currentUser?.user_id ? { label: `Move to ${selectedPrimary.to}`, icon: <ChevronRight size={15} />, onClick: () => moveLead(selectedLead, selectedPrimary.to) } : undefined} />
+    <RecordInspector record={inspectorData} onClose={() => { setSelectedLead(null); setCallLogs([]); setLeadContext(null); }} secondaryActions={selectedLead ? [{ label: "Log Call", icon: <PhoneCall size={15} />, onClick: () => { window.location.href = `/call-logs?lead_id=${encodeURIComponent(selectedLead.lead_id)}&lead_name=${encodeURIComponent(selectedLead.business_name)}`; } }, ...(selectedLead.assigned_to === currentUser?.user_id ? [{ label: creatingTask === selectedLead.lead_id ? "Saving Task" : "Create Task", icon: <ListPlus size={15} />, onClick: () => void createLeadTask(selectedLead) }] : [])] : []} primaryAction={selectedLead && selectedPrimary && selectedLead.assigned_to === currentUser?.user_id ? { label: `Move to ${selectedPrimary.to}`, icon: <ChevronRight size={15} />, onClick: () => moveLead(selectedLead, selectedPrimary.to) } : undefined} />
     <Modal open={showAddModal} onClose={() => setShowAddModal(false)} title="Create a new lead" description="Pipeline checks every historical stage, including Converted, before creating the lead." size="sm"><form onSubmit={createLead} className="space-y-4">
       <Input label="Business name" required value={newLead.business} onChange={(e) => setNewLead({ ...newLead, business: e.target.value })} /><Input label="Contact person" required value={newLead.contact} onChange={(e) => setNewLead({ ...newLead, contact: e.target.value })} /><Input label="Phone number" required value={newLead.phone} onChange={(e) => setNewLead({ ...newLead, phone: e.target.value })} /><Input label="Area or city" value={newLead.area} onChange={(e) => setNewLead({ ...newLead, area: e.target.value })} />
       <label className="space-y-1.5"><span className="field-label">Lead source</span><select className="field-control" value={newLead.source} onChange={(e) => setNewLead({ ...newLead, source: e.target.value })}><option>Cold Call</option><option>Referral</option><option>Website</option><option>Field Visit</option><option>Other</option></select></label>

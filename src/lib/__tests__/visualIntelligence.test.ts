@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import {
-  buildRelativeKpiProfile,
+  buildEmployeeTeamComparison,
   buildVisitAnalytics,
   getContributionRows,
   metricTotal,
@@ -46,15 +46,15 @@ describe("visual intelligence truth models", () => {
     expect(buildVisitAnalytics(fortyDays).activity).toHaveLength(31);
   });
 
-  it("keeps KPI contribution totals exact and radar normalization unit-local", () => {
+  it("keeps KPI contribution totals exact and compares raw employee/team values", () => {
     const calls = getContributionRows(teamRows, "calls_made");
     expect(calls.total).toBe(10);
     expect(calls.rows).toHaveLength(teamRows.length);
     expect(calls.rows.reduce((sum, row) => sum + row.value, 0)).toBe(calls.total);
 
-    const profile = buildRelativeKpiProfile(teamRows, teamRows[0].user_id);
-    expect(profile.find((point) => point.metric === "Calls")).toMatchObject({ employee: 100, employeeRaw: 8, max: 8 });
-    expect(profile.every((point) => point.employee >= 0 && point.employee <= 100 && point.team >= 0 && point.team <= 100)).toBe(true);
+    const profile = buildEmployeeTeamComparison(teamRows, teamRows[0].user_id);
+    expect(profile.find((point) => point.metric === "Calls")).toMatchObject({ employeeRaw: 8, teamRaw: 10 / 3 });
+    expect(profile.every((point) => point.employeeRaw >= 0 && point.teamRaw >= 0)).toBe(true);
     expect(metricTotal(teamRows.map((row) => ({ value: row.calls_made })))).toBe(10);
   });
 });

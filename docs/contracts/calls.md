@@ -10,6 +10,10 @@ A newly saved online call receives exact-item priority confirmation by its exist
 
 Never delete call logs or remove an outbox item before exact confirmation. Retry the same ID and idempotency key. Arbitrary text is never a relational UUID. `call_logs.user_id` is the immutable creator and sole update authority; Admin read visibility is not write authority. `log_id`, `user_id`, and the original timestamp are immutable. `outcome` remains the single Call response/status fact. Employee counts union unique local/remote IDs; Admin KPI uses unique confirmed IDs. Follow-up attribution remains the canonical completed subset of genuine calls.
 
+An explicit Pipeline Log Call handoff carries the exact Lead UUID through the canonical client-reference parser. The ordinary directory-client and standalone Call flows remain unchanged, and the existing Call UUID/outbox/idempotency path remains the only write path.
+
+The Calls reach composition is a read-only visualization over the genuine-call ID set: Reached plus No response must exactly partition genuine Calls today. Follow-up remains a separate overlapping workflow signal and is never stacked into that composition. No visualization request or write is added.
+
 Authoritative call-history availability must not depend on unrelated KPI/task enrichment. Optional metric failure may explicitly degrade today's derived metrics, but cannot hide successfully retrieved confirmed call rows. Online history merges server-confirmed rows with the current user's durable pending insert or update by `log_id`; the pending owner edit wins display precedence until its exact server update confirms.
 
 Pending Call edits rewrite the existing `call-log:<log_id>` INSERT payload. Confirmed edits use one coalesced `call-update:<log_id>` semantic UPDATE. Both retain the same logical Call and local row. A terminal ownership, validation, missing-row, or synthetic-audit denial is retained as review-required recovery state instead of retrying forever. Follow-up reconciliation updates one active source-linked intent, deactivates obsolete active intent without deletion, and preserves completed history.

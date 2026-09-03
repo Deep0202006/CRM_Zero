@@ -21,6 +21,9 @@ import { DistributorMasterImportModal } from "@/components/distributors/Distribu
 import { ReceivablesCreateModal } from "@/components/receivables/ReceivablesCreateModal";
 import { AdminReceivableActionModal } from "@/components/receivables/AdminReceivableActionModal";
 import { ErpDistributionDonut, erpDistributionReconciles, type ErpDistributionCategory } from "@/components/analytics/ErpDistributionDonut";
+import { AnalyticsBoundary, AnalyticsPanel } from "@/components/analytics/AnalyticsPanel";
+import { IndependentMetricBars } from "@/components/analytics/MetricOrbit";
+import { buildDistributorMilestones } from "@/lib/analytics/viewModels";
 
 const metricFilters = [
   ["Total Distributors", "total", {}],
@@ -393,6 +396,7 @@ export default function DistributorStatusPage() {
           </button>
         ))}
       </div>
+      {metrics && <AnalyticsBoundary><AnalyticsPanel eyebrow="Operational progress" title="Distributor milestones" description="Independent authoritative counts for installation and training complete, mapped, and billed. These overlapping milestones are not stacked or summed." labelledBy="distributor-milestones"><IndependentMetricBars metrics={buildDistributorMilestones(metrics)} valueLabel="Distributors" /></AnalyticsPanel></AnalyticsBoundary>}
       {metrics && <ErpDistributionDonut
         title="Distributor ERP Footprint"
         description="Official ERP assignment from Distributor Status. Each Distributor account is counted once."
