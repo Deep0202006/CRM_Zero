@@ -57,7 +57,52 @@
       "identity": ["user_id"],
       "notes": [
         "Auth login identity and public profile fields are independent authorities.",
-        "Imports resolve employee login identity through canonical resolver."
+        "Imports resolve employee login identity through canonical resolver.",
+        "Ordinary application and Admin features cannot delete employee identity or protected history.",
+        "A retired identity may be erased only by the exact-UUID, dry-run-first, production-Owner operation governed by docs/contracts/IDENTITY_ERASURE.md."
+      ],
+      "mustNotOwn": [
+        "customer or company facts",
+        "Lead or Client Query business history",
+        "another employee's Task",
+        "financial, Distributor, ERP, Field Visit, Mapping, or chat-message authority"
+      ]
+    },
+    {
+      "id": "retired_employee_identity_erasure_operation",
+      "kind": "ONE_TIME_OWNER_OPERATION",
+      "authority": "docs/contracts/IDENTITY_ERASURE.md exact-UUID Owner operation",
+      "identity": ["owner_authorization_id", "target user_id", "dry-run manifest hash"],
+      "writeSelectors": [
+        { "schema": "public", "resource": "users", "column": "manager_id", "operationKinds": ["update"] },
+        { "schema": "public", "resource": "user_capabilities", "column": "assigned_by", "operationKinds": ["update"] },
+        { "schema": "public", "resource": "tasks", "column": "assigned_by", "operationKinds": ["update"] },
+        { "schema": "public", "resource": "task_status_history", "column": "changed_by", "operationKinds": ["update"] },
+        { "schema": "public", "resource": "leads", "column": "assigned_to", "operationKinds": ["update"] },
+        { "schema": "public", "resource": "client_queries", "column": "assigned_to", "operationKinds": ["update"] },
+        { "schema": "public", "resource": "client_queries", "column": "resolved_by", "operationKinds": ["update"] },
+        { "schema": "public", "resource": "chat_read_state", "operationKinds": ["delete"], "wholeResource": true },
+        { "schema": "public", "resource": "chat_push_subscriptions", "operationKinds": ["delete"], "wholeResource": true },
+        { "schema": "public", "resource": "chat_members", "operationKinds": ["delete"], "wholeResource": true },
+        { "schema": "public", "resource": "user_capabilities", "operationKinds": ["delete"], "wholeResource": true },
+        { "schema": "public", "resource": "team_work_events", "operationKinds": ["delete"], "wholeResource": true },
+        { "schema": "public", "resource": "tasks", "operationKinds": ["delete"], "wholeResource": true },
+        { "schema": "public", "resource": "attendance", "operationKinds": ["delete"], "wholeResource": true },
+        { "schema": "public", "resource": "call_logs", "operationKinds": ["delete"], "wholeResource": true },
+        { "schema": "public", "resource": "users", "operationKinds": ["delete"], "wholeResource": true },
+        { "schema": "pg_temp", "resource": "identity_erasure_targets", "operationKinds": ["insert"] },
+        { "schema": "pg_temp", "resource": "identity_erasure_expected_dependencies", "operationKinds": ["insert"] },
+        { "schema": "pg_temp", "resource": "identity_erasure_expected_rows", "operationKinds": ["insert"] },
+        { "schema": "pg_temp", "resource": "identity_erasure_current_dependencies", "operationKinds": ["insert"] },
+        { "schema": "pg_temp", "resource": "identity_erasure_current_rows", "operationKinds": ["insert"] },
+        { "schema": "pg_temp", "resource": "identity_erasure_applied_counts", "operationKinds": ["insert"] },
+        { "schema": "pg_temp", "resource": "identity_erasure_postcheck_targets", "operationKinds": ["insert"] },
+        { "schema": "pg_temp", "resource": "identity_erasure_postcheck_rows", "operationKinds": ["insert"] }
+      ],
+      "rules": [
+        "Selectors authorize only the reviewed one-time manual artifact paths mapped to the auth domain.",
+        "Execution requires the exact dry-run manifest and production Owner authorization; it is not an application writer.",
+        "Field Visits, chat messages/conversations, customer facts, financial facts, Distributor facts, ERP facts, and Mapping facts remain non-writable."
       ]
     },
     {
