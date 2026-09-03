@@ -413,7 +413,8 @@
       ],
       "criticalTests": [
         "src/lib/__tests__/teamKpiContract.test.ts",
-        "src/lib/__tests__/teamKpiWorkflowAttribution.test.ts"
+        "src/lib/__tests__/teamKpiWorkflowAttribution.test.ts",
+        "src/lib/__tests__/teamKpiLiveAggregation.test.ts"
       ],
       "mustNotWriteAuthorityRefs": [
         "attendance"
