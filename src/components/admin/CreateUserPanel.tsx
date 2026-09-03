@@ -215,7 +215,7 @@ export function CreateUserPanel() {
             label="Full name"
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
-            placeholder="e.g. Prince K"
+            placeholder="e.g. Anika S"
             required
           />
           <Input
@@ -223,7 +223,7 @@ export function CreateUserPanel() {
             type="text"
             value={form.email}
             onChange={(e) => setForm({ ...form, email: e.target.value })}
-            placeholder="e.g. zerodata_prince"
+            placeholder="e.g. zerodata_anika"
             required
           />
           <Input

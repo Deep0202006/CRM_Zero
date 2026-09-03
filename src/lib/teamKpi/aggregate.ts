@@ -25,19 +25,23 @@ function humanize(code: string): string { return code.split("_").filter(Boolean)
 export function isSyntheticCallOutcome(outcome: string | null): boolean { return isSyntheticAuditCall({ outcome }); }
 
 export function buildTeamKpiReport(input: BuildTeamKpiReportInput): TeamKpiResponse {
-  const activeUsers = input.users.filter((user) => isActive(user.is_active));
-  const metrics = getCanonicalDailyTeamMetrics({
-    userIds: activeUsers.map((user) => user.user_id), calls: input.calls, tasks: input.tasks, taskHistory: input.taskHistory,
-    queries: input.clientQueries, mappings: input.mappings, targets: input.allocatedTargets,
-  });
-  const metricsByUser = new Map(metrics.map((metric) => [metric.user_id, metric]));
-  const labels = new Map(input.capabilities.map((capability) => [capability.code, capability.label]));
   const codesByUser = new Map<string, string[]>();
   for (const assignment of input.userCapabilities) {
     const codes = codesByUser.get(assignment.user_id) ?? [];
     if (!codes.includes(assignment.capability_code)) codes.push(assignment.capability_code);
     codesByUser.set(assignment.user_id, codes);
   }
+  const activeUsers = [...new Map(input.users.filter((user) =>
+    isActive(user.is_active) &&
+    user.name.trim().toLowerCase() !== "zerodataadmin" &&
+    !codesByUser.get(user.user_id)?.includes("erp_partner_viewer"),
+  ).map((user) => [user.user_id, user])).values()];
+  const metrics = getCanonicalDailyTeamMetrics({
+    userIds: activeUsers.map((user) => user.user_id), calls: input.calls, tasks: input.tasks, taskHistory: input.taskHistory,
+    queries: input.clientQueries, mappings: input.mappings, targets: input.allocatedTargets,
+  });
+  const metricsByUser = new Map(metrics.map((metric) => [metric.user_id, metric]));
+  const labels = new Map(input.capabilities.map((capability) => [capability.code, capability.label]));
   const warnings = [...(input.warnings ?? []), ...metrics.flatMap((metric) => metric.warnings)];
   const rows = activeUsers.map((user) => {
     const metric = metricsByUser.get(user.user_id)!;

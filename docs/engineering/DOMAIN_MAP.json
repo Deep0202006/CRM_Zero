@@ -102,15 +102,32 @@
       "aliases": [
         "employee authentication",
         "login authentication",
-        "login"
+        "login",
+        "retired employee identity",
+        "identity erasure",
+        "employee offboarding erasure"
       ],
-      "riskFloor": "R2",
-      "riskEscalators": [],
+      "riskFloor": "R3",
+      "riskEscalators": [
+        "AUTHORIZATION",
+        "SECURITY",
+        "PRODUCTION"
+      ],
       "surfacePaths": [
         "src/app/login",
         "src/app/onboarding",
         "src/app/api/admin",
-        "src/app/api/push"
+        "src/app/api/push",
+        "src/components/admin"
+      ],
+      "pathPatterns": [
+        "src/components/admin/**",
+        "src/lib/__tests__/retiredEmployeeIdentityErasurePolicy.test.ts",
+        "src/lib/__tests__/userRetirementArtifacts.test.ts",
+        "docs/operations/ravi-prince-retirement.md",
+        "supabase/manual/precheck_ravi_prince_retirement.sql",
+        "supabase/manual/execute_ravi_prince_identity_erasure.sql",
+        "supabase/manual/postcheck_ravi_prince_identity_erasure.sql"
       ],
       "codeRoots": [
         "src/context/AuthContext.tsx",
@@ -119,10 +136,12 @@
       "serverBoundaries": [],
       "contractPaths": [
         "docs/contracts/auth-session.md",
-        "docs/contracts/ROLE_MATRIX.md"
+        "docs/contracts/ROLE_MATRIX.md",
+        "docs/contracts/IDENTITY_ERASURE.md"
       ],
       "authorityRefs": [
-        "employee_identity"
+        "employee_identity",
+        "retired_employee_identity_erasure_operation"
       ],
       "capabilityRefs": [
         "employee-import-identity"
@@ -131,7 +150,9 @@
         "AUTH_PROFILE_IDENTITY",
         "SERVER_AUTHORIZATION"
       ],
-      "criticalTests": [],
+      "criticalTests": [
+        "src/lib/__tests__/retiredEmployeeIdentityErasurePolicy.test.ts"
+      ],
       "mustNotWriteAuthorityRefs": []
     },
     {
@@ -395,7 +416,8 @@
       ],
       "criticalTests": [
         "src/lib/__tests__/teamKpiContract.test.ts",
-        "src/lib/__tests__/teamKpiWorkflowAttribution.test.ts"
+        "src/lib/__tests__/teamKpiWorkflowAttribution.test.ts",
+        "src/lib/__tests__/teamKpiLiveAggregation.test.ts"
       ],
       "mustNotWriteAuthorityRefs": [
         "attendance"
@@ -919,6 +941,9 @@
         "src/lib/__tests__/adminVisitAndLayoutContract.test.ts",
         "src/lib/__tests__/visualIntelligence.test.ts",
         "src/lib/__tests__/visualIntelligenceV2.test.ts"
+      ],
+      "pathPatterns": [
+        "src/lib/__tests__/visualIntelligence.test.ts"
       ],
       "mustNotWriteAuthorityRefs": []
     },

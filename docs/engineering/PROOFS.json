@@ -37,7 +37,8 @@
       "runner": "jest",
       "selectors": { "effects": ["AUTHORIZATION", "SECURITY"], "global": true },
       "paths": [
-        "src/lib/__tests__/productionConsistencyGuards.test.ts"
+        "src/lib/__tests__/productionConsistencyGuards.test.ts",
+        "src/lib/__tests__/retiredEmployeeIdentityErasurePolicy.test.ts"
       ]
     },
     {
