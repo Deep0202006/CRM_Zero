@@ -18,6 +18,8 @@ import { getCurrentISTDate, getISTDateKey } from "@/lib/dateTime";
 import { buildSelfScheduledFollowUpTask, needsCallFollowUp, parseFollowUpSourceCallId, reconcileCallFollowUpTasks } from "@/lib/followUps";
 import { CALL_LOGS_CHANGED_EVENT, fetchCallLogSnapshot, formatCallHistoryCount } from "@/lib/callLogs/repository";
 import { getCanonicalDailyUserMetrics, isGenuineCallLog, isSyntheticAuditCall } from "@/lib/workMetrics/canonical";
+import { AnalyticsBoundary, AnalyticsPanel } from "@/components/analytics/AnalyticsPanel";
+import { buildCallReachComposition } from "@/lib/analytics/viewModels";
 
 export default function CallLogsPage() {
   const { currentUser, isAdmin } = useAuth();
@@ -334,9 +336,10 @@ export default function CallLogsPage() {
 
   const todayKey = getCurrentISTDate();
   const todayLogs = [...new Map(logs.filter((log) => log.user_id === currentUser?.user_id && getISTDateKey(log.timestamp) === todayKey && isGenuineCallLog(log)).map((log) => [log.log_id, log])).values()];
-  const callsToday = genuineCallIdsToday.size;
+  const callsToday = new Set([...genuineCallIdsToday, ...todayLogs.map((log) => log.log_id)]).size;
   const followupCallsToday = followupCallIdsToday.size;
   const reachedClients = reachedCallIdsToday.size;
+  const reachComposition = buildCallReachComposition(callsToday, reachedClients);
   const unknownAuditLike = confirmedLogs.filter((log) => !isSyntheticAuditCall(log) && /\b(?:pipeline|stage|transition|audit|system[- ]generated)\b/i.test(log.outcome)).length;
   const historyCountDescription = formatCallHistoryCount({ authoritative: historyAuthoritative, lifetimeConfirmedTotal, pendingCount: pendingSyncCount, loadedCount: logs.length });
 
@@ -359,6 +362,8 @@ export default function CallLogsPage() {
         <MetricCard label="Follow-up calls today" value={followupCallsToday} icon={<AlertCircle size={17} />} tone="warning" note="Included in Calls today" />
         <MetricCard label="Clients reached" value={reachedClients} icon={<CheckCircle2 size={17} />} tone="success" note="Outcomes other than no response" />
       </div>
+
+      {callsToday > 0 && reachComposition && <AnalyticsBoundary><AnalyticsPanel eyebrow="Today’s genuine calls" title="Reach composition" description="Reached and no-response are an exact partition of genuine calls today. Follow-up remains a separate workflow signal." labelledBy="call-reach-composition"><div className="space-y-4"><div className="flex h-5 overflow-hidden rounded-full bg-[var(--viz-track)]" role="img" aria-label={reachComposition.map((item) => `${item.label} ${item.value}`).join(", ")}>{reachComposition.filter((item) => item.value > 0).map((item) => <span key={item.key} style={{ width: `${item.value / callsToday * 100}%`, background: item.color }} />)}</div><div className="grid gap-2 sm:grid-cols-2">{reachComposition.map((item) => <div key={item.key} className="flex items-center justify-between text-xs"><span className="flex items-center gap-2 text-[var(--text-secondary)]"><span className="h-2.5 w-2.5 rounded-full" style={{ background: item.color }} />{item.label}</span><strong className="tabular-nums">{item.value} · {Math.round(item.value / callsToday * 100)}%</strong></div>)}</div></div></AnalyticsPanel></AnalyticsBoundary>}
 
       {isAdmin && unknownAuditLike > 0 && <div className="alert-panel alert-panel--warning" role="alert"><AlertCircle size={16} /><span>{unknownAuditLike} unknown audit-like call outcome(s) require classification review.</span></div>}
       {historyNotice && <div className="alert-panel alert-panel--warning" role="status"><AlertCircle size={16} /><span>{historyNotice}</span></div>}

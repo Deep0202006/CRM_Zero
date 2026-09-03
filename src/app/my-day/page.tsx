@@ -33,6 +33,7 @@ import PaymentCollectionsPriorityPanel from "@/components/PaymentCollectionsPrio
 import { AnalyticsSkeleton } from "@/components/analytics/AnalyticsPanel";
 import { NumberTicker } from "@/components/analytics/NumberTicker";
 import type { AnalyticsMetric } from "@/lib/analytics/viewModels";
+import { classifyTaskFocus } from "@/lib/pipeline/salesReview";
 
 const MyDayIntelligence = dynamic(() => import("@/components/analytics/MyDayIntelligence"), {
   ssr: false,
@@ -41,7 +42,8 @@ const MyDayIntelligence = dynamic(() => import("@/components/analytics/MyDayInte
 
 interface WeeklyDigestTaskPerformance { assigned_to: string; completed_count: number; total_count: number; }
 interface WeeklyDigest { week_start: string; data: { stuck_leads: { id: string; name: string; status: string; days_in_stage: number; assigned_to: string }[]; task_performance: WeeklyDigestTaskPerformance[]; upcoming_renewals: { id: string; name: string; renewal_date: string }[]; }; }
-interface DailySummary { genuine_calls_today: number; followup_calls_today: number; confirmed_genuine_call_ids: string[]; confirmed_followup_call_ids: string[]; normal_tasks_completed_today: number; followup_tasks_completed_today: number; total_tasks_completed_today: number; pending_followups: number; unique_completed_work: number; generated_at: string; }
+interface FocusSignal { id: string; kind: "task" | "lead"; title: string; due_date: string | null; related_lead_id: string | null; priority: "P0" | "P1" | "P2"; reason_code: string; reason: string }
+interface DailySummary { genuine_calls_today: number; followup_calls_today: number; confirmed_genuine_call_ids: string[]; confirmed_followup_call_ids: string[]; normal_tasks_completed_today: number; followup_tasks_completed_today: number; total_tasks_completed_today: number; pending_followups: number; unique_completed_work: number; focus_signals?: FocusSignal[]; focus_limit?: number; generated_at: string; }
 
 export default function MyDayPage() {
   const { currentUser, capabilities, hasOnboarding, hasSupport, isFieldStaff, isAdmin } = useAuth();
@@ -463,14 +465,10 @@ export default function MyDayPage() {
     { key: "later", label: "Scheduled later", value: stats.scheduledLater, color: "var(--viz-info)" },
   ];
   const todayKey = getCurrentISTDate();
-  const focusQueue = [...missed, ...inProgress, ...pending]
-    .map((task) => {
-      const level = task.status === "Missed" || task.due_date < todayKey ? "P0" : task.due_date === todayKey || task.priority === "High" ? "P1" : "P2";
-      const reason = task.status === "Missed" ? "Missed task" : task.due_date < todayKey ? "Overdue next action" : task.due_date === todayKey ? "Due today" : task.priority === "High" ? "High-priority next action" : "Scheduled next action";
-      return { task, level, reason };
-    })
-    .sort((left, right) => left.level.localeCompare(right.level) || left.task.due_date.localeCompare(right.task.due_date) || left.task.task_id.localeCompare(right.task.task_id))
-    .slice(0, 8);
+  const focusQueue: FocusSignal[] = dailySummary?.focus_signals ?? [...missed, ...inProgress, ...pending]
+    .map((task) => ({ id: `task:${task.task_id}`, kind: "task" as const, title: task.title, due_date: task.due_date, related_lead_id: task.related_lead_id ?? null, ...classifyTaskFocus(task, todayKey, Boolean(currentUser && isValidSelfScheduledFollowUp(task, currentUser.user_id))) }))
+    .sort((left, right) => left.priority.localeCompare(right.priority) || String(left.due_date).localeCompare(String(right.due_date)) || left.id.localeCompare(right.id))
+    .slice(0, 50);
 
   return (
     <div className="app-page">
@@ -509,22 +507,22 @@ export default function MyDayPage() {
         }
       />
 
-      <PaymentCollectionsPriorityPanel />
-
-      {dailySummaryError && <div className="alert-panel alert-panel--danger" role="alert"><AlertCircle size={16} className="mt-0.5 shrink-0" /><span>{dailySummaryError}</span></div>}
-
       {!loading && focusQueue.length > 0 && (
         <section className="surface-panel overflow-hidden" aria-labelledby="focus-queue-title">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-subtle)] px-5 py-4"><div><p className="section-kicker">Deterministic priority</p><h2 id="focus-queue-title" className="mt-1 section-title">Focus queue</h2></div><Chip variant="neutral" size="sm">Top {focusQueue.length}</Chip></div>
-          <div className="divide-y divide-[var(--border-subtle)]">{focusQueue.map(({ task, level, reason }) => (
-            <article key={task.task_id} className="flex flex-wrap items-center gap-3 px-5 py-3">
-              <Chip variant={level === "P0" ? "danger" : level === "P1" ? "warning" : "neutral"} size="sm">{level}</Chip>
-              <div className="min-w-0 flex-1"><p className="truncate text-[13px] font-semibold text-[var(--text-primary)]">{task.title}</p><p className="text-[11px] text-[var(--text-muted)]">{reason} · due {task.due_date}{task.related_lead_id ? " · linked to exact pipeline lead" : ""}</p></div>
-              <Chip variant="neutral" size="sm">{task.priority}</Chip>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-subtle)] px-5 py-4"><div><p className="section-kicker">Deterministic priority</p><h2 id="focus-queue-title" className="mt-1 section-title">Focus queue</h2></div><Chip variant="neutral" size="sm">{focusQueue.length} of max {dailySummary?.focus_limit ?? 50}</Chip></div>
+          <div className="divide-y divide-[var(--border-subtle)]">{focusQueue.map((item) => (
+            <article key={item.id} className="flex flex-wrap items-center gap-3 px-5 py-3">
+              <Chip variant={item.priority === "P0" ? "danger" : item.priority === "P1" ? "warning" : "neutral"} size="sm">{item.priority}</Chip>
+              <div className="min-w-0 flex-1"><p className="truncate text-[13px] font-semibold text-[var(--text-primary)]">{item.title}</p><p className="text-[11px] text-[var(--text-muted)]">{item.reason} · {item.reason_code}{item.due_date ? ` · due ${item.due_date}` : ""}{item.related_lead_id ? " · exact pipeline lead" : ""}</p></div>
+              <Chip variant="neutral" size="sm">{item.kind === "task" ? "Task" : "Lead"}</Chip>
             </article>
           ))}</div>
         </section>
       )}
+
+      <PaymentCollectionsPriorityPanel />
+
+      {dailySummaryError && <div className="alert-panel alert-panel--danger" role="alert"><AlertCircle size={16} className="mt-0.5 shrink-0" /><span>{dailySummaryError}</span></div>}
 
       {!loading && <MyDayIntelligence focus={focusMetrics} urgency={urgencyMetrics} />}
       {paymentFollowUps.length > 0 && (

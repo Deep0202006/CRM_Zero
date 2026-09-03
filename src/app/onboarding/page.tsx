@@ -3,7 +3,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertCircle, CheckCircle2, ChevronRight, Layers, ListPlus, PhoneCall, Plus, RefreshCw, Search } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { db, transactionalMutation, type LocalCallLog } from "@/lib/db";
+import { db, type LocalCallLog } from "@/lib/db";
+import { createExplicitPipelineTask } from "@/lib/pipeline/taskAction";
 import { transitionLead, retryPendingPipelineTransitions } from "@/lib/leadStageService";
 import { stagesForSegment, type PipelineStage } from "@/lib/pipelineStages";
 import { getEmployeeTransitionActions, type PipelineLeadView, type PipelineSegment } from "@/lib/pipeline/contract";
@@ -47,6 +48,7 @@ export default function OnboardingPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [message, setMessage] = useState<{ tone: "success" | "danger"; text: string; existing?: PipelineLeadView } | null>(null);
   const [transitioning, setTransitioning] = useState<string | null>(null);
+  const [creatingTask, setCreatingTask] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -105,13 +107,13 @@ export default function OnboardingPage() {
   };
 
   const createLeadTask = async (lead: PipelineLeadView) => {
-    if (!currentUser || lead.assigned_to !== currentUser.user_id) return;
-    const title = `Follow up: ${lead.business_name}`;
-    const duplicate = await db.tasks.where("assigned_to").equals(currentUser.user_id).filter((task) => task.is_active !== false && task.status !== "Completed" && task.related_lead_id === lead.lead_id && task.title === title).first();
-    if (duplicate) { setMessage({ tone: "danger", text: "An active exact Lead task already exists." }); return; }
-    const createdAt = new Date().toISOString();
-    await transactionalMutation("tasks", "INSERT", { task_id: crypto.randomUUID(), assigned_to: currentUser.user_id, assigned_by: currentUser.user_id, title, description: `Explicit Pipeline follow-up for ${lead.business_name}.`, priority: "Medium", status: "Pending", source: "manual", template_id: null, related_lead_id: lead.lead_id, due_date: new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()), started_at: null, completed_at: null, proof_note: null, proof_photo_url: null, created_at: createdAt, is_active: true });
-    setMessage({ tone: "success", text: "Exact Lead task saved for sync." });
+    if (!currentUser || creatingTask || lead.assigned_to !== currentUser.user_id) return;
+    setCreatingTask(lead.lead_id);
+    try {
+      const { result } = await createExplicitPipelineTask({ userId: currentUser.user_id, leadId: lead.lead_id, businessName: lead.business_name });
+      setMessage({ tone: "success", text: result === "created" ? "Exact Lead task saved for sync." : "This exact Pipeline task is already saved." });
+    } catch { setMessage({ tone: "danger", text: "Task could not be saved. Try again; retries keep the same exact Task identity." }); }
+    finally { setCreatingTask(null); }
   };
 
   const moveLead = async (lead: PipelineLeadView, target: PipelineStage) => {
@@ -189,7 +191,7 @@ export default function OnboardingPage() {
       </article>; })}
     </div></section>
     <div className="flex items-center justify-between gap-3"><p className="text-xs text-[var(--text-muted)]">Page {page} · showing {leads.length} of {total}</p><div className="flex gap-2"><Button size="sm" variant="outline" disabled={page === 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>Previous</Button><Button size="sm" variant="outline" disabled={!hasMore} onClick={() => setPage((value) => value + 1)}>Next</Button></div></div>
-    <RecordInspector record={inspectorData} onClose={() => { setSelectedLead(null); setCallLogs([]); setLeadContext(null); }} secondaryActions={selectedLead ? [{ label: "Log Call", icon: <PhoneCall size={15} />, onClick: () => { window.location.href = `/call-logs?lead_id=${encodeURIComponent(selectedLead.lead_id)}&lead_name=${encodeURIComponent(selectedLead.business_name)}`; } }, ...(selectedLead.assigned_to === currentUser?.user_id ? [{ label: "Create Task", icon: <ListPlus size={15} />, onClick: () => void createLeadTask(selectedLead) }] : [])] : []} primaryAction={selectedLead && selectedPrimary && selectedLead.assigned_to === currentUser?.user_id ? { label: `Move to ${selectedPrimary.to}`, icon: <ChevronRight size={15} />, onClick: () => moveLead(selectedLead, selectedPrimary.to) } : undefined} />
+    <RecordInspector record={inspectorData} onClose={() => { setSelectedLead(null); setCallLogs([]); setLeadContext(null); }} secondaryActions={selectedLead ? [{ label: "Log Call", icon: <PhoneCall size={15} />, onClick: () => { window.location.href = `/call-logs?lead_id=${encodeURIComponent(selectedLead.lead_id)}&lead_name=${encodeURIComponent(selectedLead.business_name)}`; } }, ...(selectedLead.assigned_to === currentUser?.user_id ? [{ label: creatingTask === selectedLead.lead_id ? "Saving Task" : "Create Task", icon: <ListPlus size={15} />, onClick: () => void createLeadTask(selectedLead) }] : [])] : []} primaryAction={selectedLead && selectedPrimary && selectedLead.assigned_to === currentUser?.user_id ? { label: `Move to ${selectedPrimary.to}`, icon: <ChevronRight size={15} />, onClick: () => moveLead(selectedLead, selectedPrimary.to) } : undefined} />
     <Modal open={showAddModal} onClose={() => setShowAddModal(false)} title="Create a new lead" description="Pipeline checks every historical stage, including Converted, before creating the lead." size="sm"><form onSubmit={createLead} className="space-y-4">
       <Input label="Business name" required value={newLead.business} onChange={(e) => setNewLead({ ...newLead, business: e.target.value })} /><Input label="Contact person" required value={newLead.contact} onChange={(e) => setNewLead({ ...newLead, contact: e.target.value })} /><Input label="Phone number" required value={newLead.phone} onChange={(e) => setNewLead({ ...newLead, phone: e.target.value })} /><Input label="Area or city" value={newLead.area} onChange={(e) => setNewLead({ ...newLead, area: e.target.value })} />
       <label className="space-y-1.5"><span className="field-label">Lead source</span><select className="field-control" value={newLead.source} onChange={(e) => setNewLead({ ...newLead, source: e.target.value })}><option>Cold Call</option><option>Referral</option><option>Website</option><option>Field Visit</option><option>Other</option></select></label>

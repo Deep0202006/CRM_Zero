@@ -4,7 +4,7 @@
 
 My Day, Team KPI, and Visits Overview render a shared presentation-only visual layer over data those pages already loaded. Recharts is the sole chart engine. Analytics components accept serializable view models through props and contain no Supabase client, fetch, Realtime, polling, Storage, or business mutation path.
 
-My Day shows independent work signals and mutually labelled task-urgency buckets; unlike work types are never summed. Team KPI shows horizontal work-by-type bars, employee contribution by a selected exact metric, and a grouped same-unit employee/team comparison. Pipeline uses ordered horizontal stage counts and current-stage-age bars; its charts consume the server inspection projection. Visits visualizations describe the current bounded page, reconcile every loaded outcome including historical unknowns, and bucket real check-in timestamps with the shared Asia/Kolkata helper. ERP composition adapts from donut to bars above six categories while preserving its unique-business reconciliation.
+My Day shows independent work signals and task-urgency bars; unlike work types are never summed. Team KPI shows horizontal work-by-type bars, employee contribution by a selected exact metric, and grouped raw same-unit employee/team values. Pipeline uses canonical ordered stage counts, separate current-stage age and completed-stage velocity, source conversion, and real 12-period activity/direction history. Visits visualizations describe the current bounded page, reconcile every loaded outcome including historical unknowns, bucket real check-in timestamps with the shared Asia/Kolkata helper, and use a true 100% field-mix bar only when the partition reconciles. ERP composition adapts from donut to bars above six categories while preserving its unique-business reconciliation; field ERP coverage uses paired 0–100 bars. Calls, Distributor milestones, and Renewals reuse their existing authoritative page metrics with no chart-owned request.
 
 ## VISUAL TRUTH
 
@@ -22,6 +22,7 @@ Every visualization declares its source metric, filter scope, timezone, unit, de
 - Team KPI: one initial `/api/team-kpi` request; existing scoped Realtime signal; no polling.
 - Visits Overview: one initial bounded `/api/admin/visits` request; page size 50; evidence remains click-only; no polling.
 - Manager Pipeline: one bounded `/api/pipeline/inspection` request per explicit server-filter change; page size 50; no polling or chart-owned request.
+- Calls, Distributor Status, Renewals, and Field ERP: zero visualization requests; their existing metrics/read paths are unchanged.
 - Visualization database-query delta: zero.
 - Visualization writes, Storage reads, and Realtime channels: zero.
 

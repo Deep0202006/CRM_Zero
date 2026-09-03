@@ -32,7 +32,7 @@ export default function VisitsIntelligence({ model, matchedTotal, page }: { mode
           labelledBy="visits-field-mix"
           className="xl:col-span-2"
         >
-          <div className="mx-auto w-full max-w-3xl"><FieldMix metrics={model.fieldMix} /></div>
+          <div className="mx-auto w-full max-w-3xl"><FieldMix metrics={model.fieldMix} total={model.representedTotal} /></div>
         </AnalyticsPanel>
       </section>
     </AnalyticsBoundary>

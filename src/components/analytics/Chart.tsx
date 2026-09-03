@@ -1,15 +1,22 @@
 "use client";
 
-import { createContext, useContext, useId, type CSSProperties, type ReactNode } from "react";
+import { createContext, useContext, useId, type ReactNode } from "react";
 
 export type ChartConfig = Record<string, { label: string; color: string }>;
 
 const ChartContext = createContext<ChartConfig>({});
 
+export function ChartStyle({ id, config }: { id: string; config: ChartConfig }) {
+  const declarations = Object.entries(config)
+    .filter(([key, value]) => /^[a-z0-9_-]+$/i.test(key) && value.color)
+    .map(([key, value]) => `--color-${key}:${value.color};--chart-${key}:${value.color};`)
+    .join("");
+  return declarations ? <style>{`[data-chart="${id}"]{${declarations}}`}</style> : null;
+}
+
 export function ChartContainer({ config, className = "", children }: { config: ChartConfig; className?: string; children: ReactNode }) {
   const id = useId().replace(/:/g, "");
-  const style = Object.fromEntries(Object.entries(config).map(([key, value]) => [`--chart-${key}`, value.color])) as CSSProperties;
-  return <ChartContext.Provider value={config}><div data-chart={id} data-chart-height="stable" className={`min-w-0 ${className}`} style={style}>{children}</div></ChartContext.Provider>;
+  return <ChartContext.Provider value={config}><ChartStyle id={id} config={config} /><div data-chart={id} data-chart-height="stable" className={`min-w-0 ${className}`}>{children}</div></ChartContext.Provider>;
 }
 
 type TooltipItem = { dataKey?: string | number; name?: string | number; value?: string | number; color?: string; payload?: Record<string, unknown> };

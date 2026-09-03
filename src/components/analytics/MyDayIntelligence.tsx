@@ -2,7 +2,7 @@
 
 import type { AnalyticsMetric } from "@/lib/analytics/viewModels";
 import { AnalyticsBoundary, AnalyticsPanel } from "./AnalyticsPanel";
-import { MetricOrbit, UrgencyTracker } from "./MetricOrbit";
+import { IndependentMetricBars, UrgencyTracker } from "./MetricOrbit";
 
 export default function MyDayIntelligence({ focus, urgency }: { focus: AnalyticsMetric[]; urgency: AnalyticsMetric[] }) {
   return (
@@ -14,7 +14,7 @@ export default function MyDayIntelligence({ focus, urgency }: { focus: Analytics
           description="Already-loaded work signals stay separate; unlike counts are never summed into a fabricated focus total."
           labelledBy="my-day-work-signals"
         >
-          <MetricOrbit metrics={focus} centerLabel="Focus signals" />
+          <IndependentMetricBars metrics={focus} valueLabel="Focus signals" />
         </AnalyticsPanel>
         <AnalyticsPanel
           eyebrow="Task urgency"

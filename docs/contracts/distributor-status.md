@@ -12,6 +12,7 @@ Distributor Status is the operational lifecycle and renewal sub-domain beneath P
 - Mapped means installation, training, and mapping are done. Active/Inactive and Billed remain overlapping projections and do not imply Mapped.
 - Renewal reminders derive from the one PostgreSQL `renewal_date`: T-2, T-1, today, and overdue, and only operationally billed Distributor accounts participate. No Task, reminder row, Pipeline follow-up, Call, or polling is created.
 - Payment Collection Renewals is a read/edit experience over that same field. Its four urgency cards are derived against the IST business date and never become stored status.
+- Distributor milestone bars reuse the existing aggregate request and show installation-and-training done, mapped, and billed as independent overlapping counts; they are never stacked or summed. Renewal urgency uses that screen's existing metrics request in the exact order Overdue, Today, Tomorrow, In two days, with an explicit healthy all-zero state.
 
 ## IDENTITY AND IMPORT
 

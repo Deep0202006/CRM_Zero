@@ -136,24 +136,57 @@ export function getContributionRows(rows: TeamKpiAnalyticsRow[], key: TeamKpiMet
   };
 }
 
-export function buildRelativeKpiProfile(rows: TeamKpiAnalyticsRow[], selectedUserId: string) {
+export function buildEmployeeTeamComparison(rows: TeamKpiAnalyticsRow[], selectedUserId: string) {
   const selected = rows.find((row) => row.user_id === selectedUserId) ?? rows[0];
   if (!selected) return [];
 
   return TEAM_KPI_METRICS.map((metric) => {
     const rawValues = rows.map((row) => safeCount(row[metric.key]));
-    const max = Math.max(1, ...rawValues);
     const teamRaw = rows.length ? rawValues.reduce((sum, value) => sum + value, 0) / rows.length : 0;
     const employeeRaw = safeCount(selected[metric.key]);
     return {
       metric: metric.label,
-      employee: Math.round((employeeRaw / max) * 100),
-      team: Math.round((teamRaw / max) * 100),
       employeeRaw,
       teamRaw,
-      max,
     };
   });
+}
+
+export function partitionReconciles(metrics: Array<Pick<AnalyticsMetric, "value">>, total: number): boolean {
+  return total >= 0 && metricTotal(metrics) === total;
+}
+
+export function buildRenewalUrgency(metrics: { overdue: number; today: number; tomorrow: number; in_two_days: number }): AnalyticsMetric[] {
+  return [
+    { key: "overdue", label: "Overdue", value: safeCount(metrics.overdue), color: "var(--viz-danger)" },
+    { key: "today", label: "Today", value: safeCount(metrics.today), color: "var(--viz-warning)" },
+    { key: "tomorrow", label: "Tomorrow", value: safeCount(metrics.tomorrow), color: "var(--viz-info)" },
+    { key: "in_two_days", label: "In two days", value: safeCount(metrics.in_two_days), color: "var(--viz-primary)" },
+  ];
+}
+
+export function buildDistributorMilestones(metrics: { installation_training_done: number; mapped: number; billed: number }): AnalyticsMetric[] {
+  return [
+    { key: "installation_training_done", label: "Installation + training done", value: safeCount(metrics.installation_training_done), color: "var(--viz-primary)" },
+    { key: "mapped", label: "Mapped", value: safeCount(metrics.mapped), color: "var(--viz-info)" },
+    { key: "billed", label: "Billed", value: safeCount(metrics.billed), color: "var(--viz-success)" },
+  ];
+}
+
+export function buildCallReachComposition(total: number, reached: number): AnalyticsMetric[] | null {
+  if (!Number.isInteger(total) || !Number.isInteger(reached) || total < 0 || reached < 0 || reached > total) return null;
+  return [
+    { key: "reached", label: "Reached", value: reached, color: "var(--viz-success)" },
+    { key: "no_response", label: "No response", value: total - reached, color: "var(--viz-warning)" },
+  ];
+}
+
+export function buildErpCoverageRows(segments: Record<string, { coverage_percent: number } | undefined>) {
+  return (["Retailer", "Distributor"] as const).map((label) => ({
+    key: label.toLowerCase(),
+    label,
+    value: Math.max(0, Math.min(100, Number(segments[label]?.coverage_percent) || 0)),
+  }));
 }
 
 export function metricTotal(metrics: Array<Pick<AnalyticsMetric, "value">>): number {

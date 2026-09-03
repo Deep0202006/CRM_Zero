@@ -15,8 +15,9 @@ import {
   YAxis,
 } from "recharts";
 import {
-  buildRelativeKpiProfile,
+  buildEmployeeTeamComparison,
   getContributionRows,
+  partitionReconciles,
   TEAM_KPI_METRICS,
   type AnalyticsMetric,
   type TeamKpiAnalyticsRow,
@@ -136,7 +137,7 @@ export function ActivityFlow({ points }: { points: VisitActivityPoint[] }) {
   );
 }
 
-export function ContributionRing({ rows }: { rows: TeamKpiAnalyticsRow[] }) {
+export function EmployeeContributionBars({ rows }: { rows: TeamKpiAnalyticsRow[] }) {
   const [metricKey, setMetricKey] = useState<TeamKpiMetricKey>("total_completed_work");
   const selectedMetric = TEAM_KPI_METRICS.find((metric) => metric.key === metricKey) ?? TEAM_KPI_METRICS[0];
   const contribution = getContributionRows(rows, metricKey);
@@ -163,11 +164,11 @@ export function ContributionRing({ rows }: { rows: TeamKpiAnalyticsRow[] }) {
   );
 }
 
-export function KpiRadarProfile({ rows }: { rows: TeamKpiAnalyticsRow[] }) {
+export function EmployeeTeamComparison({ rows }: { rows: TeamKpiAnalyticsRow[] }) {
   const [selectedUserId, setSelectedUserId] = useState(rows[0]?.user_id ?? "");
   const selected = rows.find((row) => row.user_id === selectedUserId) ?? rows[0];
-  const profile = useMemo(() => buildRelativeKpiProfile(rows, selected?.user_id ?? ""), [rows, selected?.user_id]);
-  if (!selected) return <AnalyticsEmptyState title="No employee profile" description="An active team member is required for the relative KPI profile." />;
+  const profile = useMemo(() => buildEmployeeTeamComparison(rows, selected?.user_id ?? ""), [rows, selected?.user_id]);
+  if (!selected) return <AnalyticsEmptyState title="No employee comparison" description="An active team member is required for an employee-to-team comparison." />;
 
   return (
     <div>
@@ -194,15 +195,10 @@ export function KpiRadarProfile({ rows }: { rows: TeamKpiAnalyticsRow[] }) {
   );
 }
 
-export function FieldMix({ metrics }: { metrics: AnalyticsMetric[] }) {
-  const total = metrics.reduce((sum, metric) => sum + metric.value, 0);
-  return (
-    <div className="space-y-3">
-      {metrics.map((metric) => {
-        const share = total ? metric.value / total : 0;
-        return <div key={metric.key}><div className="mb-1.5 flex items-center justify-between gap-3 text-[12px]"><span className="flex items-center gap-2 text-[var(--text-secondary)]"><span className="h-2.5 w-2.5 rounded-full" style={{ background: metric.color }} />{metric.label}</span><span className="font-semibold tabular-nums text-[var(--text-primary)]">{metric.value} <span className="font-normal text-[var(--text-muted)]">· {Math.round(share * 100)}%</span></span></div><div className="h-2 overflow-hidden rounded-full bg-[var(--viz-track)]"><div className="h-full rounded-full transition-[width] duration-[var(--motion-emphasis)]" style={{ width: `${share * 100}%`, background: metric.color }} /></div></div>;
-      })}
-      {!total && <AnalyticsEmptyState title="No field mix" description="The current bounded page has no confirmed visits to classify." />}
-    </div>
-  );
+export function FieldMix({ metrics, total }: { metrics: AnalyticsMetric[]; total: number }) {
+  if (!partitionReconciles(metrics, total)) return <AnalyticsEmptyState title="Field mix unavailable" description="The loaded segment buckets do not reconcile to the represented visit total, so the composition is hidden." />;
+  if (!total) return <AnalyticsEmptyState title="No field mix" description="The current bounded page has no confirmed visits to classify." />;
+  return <div className="space-y-4"><div className="flex h-5 w-full overflow-hidden rounded-full bg-[var(--viz-track)]" role="img" aria-label={`Field mix: ${metrics.map((metric) => `${metric.label} ${metric.value}`).join(", ")}`}>
+    {metrics.filter((metric) => metric.value > 0).map((metric) => <span key={metric.key} style={{ width: `${metric.value / total * 100}%`, background: metric.color }} />)}
+  </div><div className="grid gap-2 sm:grid-cols-3">{metrics.map((metric) => <div key={metric.key} className="flex items-center justify-between gap-3 text-[12px]"><span className="flex items-center gap-2 text-[var(--text-secondary)]"><span className="h-2.5 w-2.5 rounded-full" style={{ background: metric.color }} />{metric.label}</span><span className="font-semibold tabular-nums text-[var(--text-primary)]">{metric.value} <span className="font-normal text-[var(--text-muted)]">· {Math.round(metric.value / total * 100)}%</span></span></div>)}</div></div>;
 }
