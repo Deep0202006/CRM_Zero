@@ -5,12 +5,13 @@ import { git, root, sha256 } from "./kernel-lib.mjs";
 
 const requiredFiles = ["task.json", "acceptance.json", "context.json", "plan.json", "progress.jsonl", "proof.json", "delivery.json", "snapshot.json", "handoff.md"];
 const generatedFiles = new Set(["task.json", "progress.jsonl", "snapshot.json", "handoff.md"]);
-const secretPattern = /"(?:password|secret|token|api[_-]?key|authorization|cookie)"\s*:|(?:sk|gh[oparsu])_[A-Za-z0-9_-]{16,}|eyJ[A-Za-z0-9_-]{12,}\.[A-Za-z0-9_-]{12,}\.[A-Za-z0-9_-]{12,}/i;
+const secretKeyPattern = /"(?:password|secret|token|api[_-]?key|authorization|cookie)"\s*:/i;
+const credentialPattern = /(?:sk|gh[oparsu])_[A-Za-z0-9_-]{16,}|eyJ[A-Za-z0-9_-]{12,}\.[A-Za-z0-9_-]{12,}\.[A-Za-z0-9_-]{12,}/;
 const terminalStatuses = new Set(["COMPLETE", "RELEASE_COMPLETE"]);
 const stateRoot = () => process.env.ZD_OS_STATE_ROOT || resolve(root, git("rev-parse", "--git-path", "zd-os/tasks"));
 export const taskDirectory = (taskId) => { if (!/^[a-z0-9][a-z0-9-]{7,79}$/.test(taskId)) throw new Error("TASK_ID_INVALID"); return resolve(stateRoot(), taskId); };
 const atomicWrite = (path, value) => { mkdirSync(dirname(path), { recursive: true }); const temporary = `${path}.tmp-${process.pid}-${randomUUID()}`; writeFileSync(temporary, typeof value === "string" ? value : `${JSON.stringify(value, null, 2)}\n`, { flag: "wx" }); renameSync(temporary, path); };
-const bounded = (value) => { const text = JSON.stringify(value); if (Buffer.byteLength(text) > 256 * 1024) throw new Error("TASK_STATE_TOO_LARGE"); if (secretPattern.test(text)) throw new Error("TASK_STATE_SENSITIVE_DATA"); return value; };
+const bounded = (value) => { const text = JSON.stringify(value); if (Buffer.byteLength(text) > 256 * 1024) throw new Error("TASK_STATE_TOO_LARGE"); if (secretKeyPattern.test(text) || credentialPattern.test(text)) throw new Error("TASK_STATE_SENSITIVE_DATA"); return value; };
 const wait = (milliseconds) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds);
 const processAlive = (pid) => { try { process.kill(pid, 0); return true; } catch (error) { return error.code === "EPERM"; } };
 const removeStaleLock = (path) => {

@@ -116,10 +116,11 @@ const boundedPacket = (items, budget) => {
 // Codex 0.152.1 spills additionalContext above 2,500 approximate tokens at
 // four bytes/token. Staying below 9,000 bytes leaves deterministic headroom.
 export const SESSION_CONTEXT_MAX_BYTES = 9_000;
-const sessionSecretPattern = /"(?:password|secret|token|api[_-]?key|authorization|cookie)"\s*:|(?:sk|gh[oparsu])_[A-Za-z0-9_-]{16,}|eyJ[A-Za-z0-9_-]{12,}\.[A-Za-z0-9_-]{12,}\.[A-Za-z0-9_-]{12,}/i;
+const sessionSecretKeyPattern = /"(?:password|secret|token|api[_-]?key|authorization|cookie)"\s*:/i;
+const sessionCredentialPattern = /(?:sk|gh[oparsu])_[A-Za-z0-9_-]{16,}|eyJ[A-Za-z0-9_-]{12,}\.[A-Za-z0-9_-]{12,}\.[A-Za-z0-9_-]{12,}/;
 export const serializeSessionContext = (payload = {}, budget = SESSION_CONTEXT_MAX_BYTES, pointer = null) => {
   const serialized = JSON.stringify(payload);
-  if (sessionSecretPattern.test(serialized)) throw new Error("SESSION_CONTEXT_SENSITIVE_DATA");
+  if (sessionSecretKeyPattern.test(serialized) || sessionCredentialPattern.test(serialized)) throw new Error("SESSION_CONTEXT_SENSITIVE_DATA");
   const byteCount = Buffer.byteLength(serialized); if (byteCount <= budget) return serialized;
   if (!pointer) throw new Error(`SESSION_CONTEXT_POINTER_REQUIRED:${byteCount}:${budget}`);
   const compact = JSON.stringify({ kernel: payload.kernel ?? "V6A", boundTaskId: pointer.taskId, sessionStatus: "CONTEXT_REREAD_REQUIRED", contextPointer: pointer, reread: "npm run crm:session:reread", completionClaim: false });
