@@ -72,18 +72,18 @@ ranges, URLs, alternate registries and unregistered packages remain denied.
 Continuity regression proof executes the real SessionStart, UserPromptSubmit,
 PreToolUse, PostToolUse and Stop scripts as JSON child processes in a temporary
 managed Git worktree. Direct function tests alone are not lifecycle evidence;
-actual Codex Desktop lifecycle remains a separately stated manual gate when the
-host cannot be automated.
+supported-host acceptance additionally requires a genuinely fresh Codex CLI
+session to load SessionStart and persist its canonical session record, plus actual
+CLI PreToolUse and PostToolUse integration. The receipt records sanitized paths,
+hashes, event types, exit status and repository/task/session identities, never
+prompt prose, credentials, environment dumps or secrets.
 
-Manual Desktop acceptance uses a disposable managed feature worktree and empty
-`ZD_OS_STATE_ROOT`/`ZD_OS_SESSION_ROOT`: launch Codex Desktop from that environment;
-observe `AWAITING_TASK`; prove a Git read is allowed and an edit is denied; submit
-`NEW_TASK: Prove Desktop V6A lifecycle`; restart and compact; ask `status?`, then
-`continue`, then one requirement amendment; confirm the same task ID, unchanged
-task revision for status/continuation, an incremented revision and invalidated
-proof for the amendment; complete that disposable task, submit another
-`NEW_TASK:` requirement, and confirm immediate successor binding. Preserve the
-session/task snapshots and hook JSON outputs as the evidence bundle.
+Codex CLI is the supported and required Engineering OS execution host. On Windows,
+Codex CLI 0.153.2 launches the portable `commandWindows` definitions through
+`cmd.exe`; acceptance therefore requires that exact transport behavior as well as
+the registered child-process proof of all five lifecycle entrypoints. Codex
+Desktop is currently unverified, outside the supported execution contract and
+non-blocking. No Desktop lifecycle acceptance or certification is claimed.
 
 ## Completion
 

@@ -36,6 +36,7 @@ try {
   gitAt(fixture, "config", "user.name", "CRM Hook Fixture"); gitAt(fixture, "config", "user.email", "fixture@example.invalid"); gitAt(fixture, "add", "scripts/engineering", "docs/engineering", "docs/contracts/engineering-os.md", ".codex/hooks.json", "package.json", "AGENTS.md"); const staged = spawnSync("git", ["diff", "--cached", "--quiet"], { cwd: fixture, encoding: "utf8", env: gitEnvironmentFor(fixture) }); if (staged.status === 1) gitAt(fixture, "commit", "-m", "test: current V6A hook fixture"); else assert.equal(staged.status, 0, staged.stderr);
   const identity = { branch: fixtureBranch, worktree: fixture, ...repositoryIdentity(fixture) }, sessionId = `fresh-${suffix}`;
 
+  const contract = readFileSync(resolve(fixture, "docs/contracts/engineering-os.md"), "utf8"); assert.match(contract, /Codex CLI is the supported and required Engineering OS execution host/); assert.match(contract, /Codex\s+Desktop is currently unverified[\s\S]*non-blocking/); assert.doesNotMatch(contract, /Manual Desktop acceptance/);
   const configured = JSON.parse(readFileSync(resolve(fixture, ".codex/hooks.json"), "utf8")).hooks, windowsCommands = Object.values(configured).flatMap((groups) => groups.flatMap((group) => group.hooks.map((item) => item.commandWindows)));
   assert.equal(windowsCommands.length, 5); assert(windowsCommands.every((command) => /^git -c alias\.zd-hook=!node zd-hook scripts\/engineering\/hooks\/[a-z-]+\.mjs$/.test(command)));
   let configuredSessionStart = null;
