@@ -105,6 +105,7 @@ export const resolveContext = ({ task = "", exactPath, index, graphify = true, g
   take(ordered.find((candidate) => candidate.matchedBy.some((reason) => relationshipKinds.has(reason.kind))));
   for (const domain of selected) take(ordered.find((candidate) => (domain.serverBoundaries ?? []).some((path) => matchesRoot(candidate.path, path))));
   for (const domain of selected) for (const path of domain.codeRoots ?? []) take(ordered.find((candidate) => matchesRoot(candidate.path, path)));
+  for (const domain of selected) if (!(domain.surfacePaths?.length || domain.codeRoots?.length || domain.serverBoundaries?.length)) for (const path of domain.contractPaths ?? []) take(ordered.find((candidate) => matchesRoot(candidate.path, path)));
   for (const domain of selected) take(ordered.find((candidate) => domainForPath(domain, candidate.path)));
   for (const candidate of ordered) take(candidate);
   bounded.sort((a, b) => b.score - a.score || a.path.localeCompare(b.path));

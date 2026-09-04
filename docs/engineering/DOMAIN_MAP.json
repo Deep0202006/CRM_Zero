@@ -63,7 +63,13 @@
       "pathPatterns": [
         "docs/handover/**",
         "scripts/handover/**",
-        ".handover/**"
+        ".handover/**",
+        "next.config.ts",
+        "vercel.json",
+        "src/proxy.ts",
+        "src/lib/backendEnvironment.ts",
+        "src/lib/supabaseClient.ts",
+        "src/lib/__tests__/productionConsistencyGuards.test.ts"
       ],
       "codeRoots": [],
       "serverBoundaries": [],

@@ -298,6 +298,9 @@ try {
   for (const path of ["tools/unmapped-runner.mjs", "config/tool.ini", "db/queries.prisma"]) {
     const impact = compileImpact({ entries: [{ status: "A", path }], patch: "" }); assert.equal(impact.risk, "R3"); assert.equal(impact.writable, false); assert(impact.unresolved.some((item) => item.code === "UNMAPPED_PATH"));
   }
+  for (const path of ["next.config.ts", "vercel.json", "src/proxy.ts", "src/lib/backendEnvironment.ts", "src/lib/supabaseClient.ts", "src/lib/__tests__/productionConsistencyGuards.test.ts"]) {
+    const impact = compileImpact({ entries: [{ status: "M", path }], patch: "" }); assert(impact.domains.includes("platform-handover")); assert.equal(impact.writable, true); assert.equal(impact.writeOperations.length + impact.unknownOperations.length, 0);
+  }
   const multiline = compileImpact({ entries: [{ status: "M", path: "src/lib/pipeline/contract.ts" }], patch: "+const result = supabase\n+  .from(\"leads\")\n+  .update({ status: \"won\" })\n+  .eq(\"id\", leadId);" });
   assert(multiline.changedAuthorities.includes("pipeline_stage")); assert.equal(multiline.writable, true);
   const unknownAuthority = compileImpact({ entries: [{ status: "M", path: "src/lib/pipeline/contract.ts" }], patch: "+await supabase.from(\"unknown_fixture\").update({ value: 1 });" });
