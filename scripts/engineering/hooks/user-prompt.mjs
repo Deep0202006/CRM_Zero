@@ -1,23 +1,21 @@
-import { resolveContext } from "../context.mjs";
+import { resolve } from "node:path";
 import { mintOwnerPermit } from "../release-controller.mjs";
-import { beginExternalTask, readHookInput, requireContinuation, updateState } from "./state-store.mjs";
-const input = await readHookInput(), sessionId = input.session_id ?? "unknown", prompt = input.prompt ?? input.user_prompt ?? "";
-if (/^OWNER_RELEASE_APPROVED\|/.test(prompt)) {
-  const permit = mintOwnerPermit({ line: prompt, sessionId });
-  console.log(JSON.stringify({ hookSpecificOutput: { hookEventName: "UserPromptSubmit", additionalContext: JSON.stringify({ ownerReleasePermit: permit, completionClaim: false }) } }));
-  process.exit(0);
+import { amendTask, readTaskSnapshot } from "../task-state.mjs";
+import { serializeSessionContext } from "../experience.mjs";
+import { readHookInput, resolveBoundTask } from "./state-store.mjs";
+
+export const submitUserPrompt = ({ sessionId, prompt }) => {
+  const binding = resolveBoundTask(sessionId), continuation = /^KERNEL_CONTINUE\|taskId=([a-z0-9-]+)\b/i.exec(prompt);
+  if (continuation && continuation[1] !== binding.task.taskId) throw new Error(`CONTINUATION_TASK_MISMATCH:${continuation[1]}:${binding.task.taskId}`);
+  if (/^OWNER_RELEASE_APPROVED\|/.test(prompt)) {
+    const permit = mintOwnerPermit({ line: prompt, sessionId, taskId: binding.task.taskId });
+    return { hookSpecificOutput: { hookEventName: "UserPromptSubmit", additionalContext: serializeSessionContext({ boundTaskId: binding.task.taskId, ownerReleasePermit: permit, completionClaim: false }) } };
+  }
+  const amendment = continuation ? null : amendTask(binding.task.taskId, binding.task.revision, prompt);
+  return { hookSpecificOutput: { hookEventName: "UserPromptSubmit", additionalContext: serializeSessionContext({ boundTaskId: binding.task.taskId, amendment: amendment ? { sequence: amendment.amendment.sequence, requirementHash: amendment.amendment.requirementHash } : null, task: readTaskSnapshot(binding.task.taskId) }) } };
+};
+
+if (process.argv[1] && resolve(process.argv[1]) === resolve(import.meta.filename)) {
+  try { const input = await readHookInput(); console.log(JSON.stringify(submitUserPrompt({ sessionId: input.session_id ?? "unknown", prompt: input.prompt ?? input.user_prompt ?? "" }))); }
+  catch (error) { console.log(JSON.stringify({ continue: false, stopReason: `TASK_AMENDMENT_FAILED:${error.message}` })); }
 }
-const continuation = /^KERNEL_CONTINUE\|taskId=([a-f0-9-]+)\b/i.exec(prompt);
-const expansion = /^KERNEL_SCOPE_EXPAND\|taskId=([a-f0-9-]+)\|path=([^|\s]+)\|task=(.+)$/i.exec(prompt);
-let state;
-if (expansion) {
-  state = requireContinuation(sessionId, expansion[1]);
-  const resolution = resolveContext({ task: expansion[3], exactPath: expansion[2] });
-  state = updateState(sessionId, (current) => ({ ...current, resolution, scopeRevision: current.scopeRevision + 1, status: resolution.status === "RESOLVED" ? "IMPLEMENTATION_IN_PROGRESS" : "SCOPE_UNRESOLVED" }));
-} else if (continuation) state = requireContinuation(sessionId, continuation[1]);
-else state = beginExternalTask(sessionId, prompt);
-if (!continuation && !expansion) {
-  const resolution = resolveContext({ task: prompt });
-  state = updateState(sessionId, (current) => ({ ...current, resolution, status: resolution.status === "RESOLVED" ? "IMPLEMENTATION_IN_PROGRESS" : "SCOPE_UNRESOLVED" }));
-}
-console.log(JSON.stringify({ hookSpecificOutput: { hookEventName: "UserPromptSubmit", additionalContext: JSON.stringify({ taskId: state.taskId, status: state.status, resolution: state.resolution }) } }));

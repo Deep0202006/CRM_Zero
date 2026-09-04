@@ -113,22 +113,12 @@ const boundedPacket = (items, budget) => {
   return selected;
 };
 
-export const serializeSessionContext = ({ safetyConflict = null, kernel, sessionStatus, repository, task, experiencePacket = [], nextAction, handoff = "" } = {}, budget = 800) => {
-  const payload = {
-    ...(safetyConflict ? { safetyConflict } : {}),
-    kernel,
-    sessionStatus,
-    repository,
-    task,
-    experience: experiencePacket.slice(0, 3).map((item) => ({ id: item.id, action: String(item.requiredPreventionAction ?? item.rule ?? "").slice(0, 80) })),
-    nextAction,
-    handoff: String(handoff).replace(/\s+/g, " ").trim().slice(0, 120),
-  };
-  while (Buffer.byteLength(JSON.stringify(payload)) > budget && payload.experience.length > 1) payload.experience.pop();
-  if (Buffer.byteLength(JSON.stringify(payload)) > budget) payload.handoff = payload.handoff.slice(0, 40);
-  if (Buffer.byteLength(JSON.stringify(payload)) > budget) delete payload.handoff;
+// Codex 0.152.1 spills additionalContext above 2,500 approximate tokens at
+// four bytes/token. Staying below 9,000 bytes leaves deterministic headroom.
+export const SESSION_CONTEXT_MAX_BYTES = 9_000;
+export const serializeSessionContext = (payload = {}, budget = SESSION_CONTEXT_MAX_BYTES) => {
   const serialized = JSON.stringify(payload);
-  if (Buffer.byteLength(serialized) > budget) throw new Error("SESSION_CONTEXT_BUDGET_EXCEEDED");
+  if (Buffer.byteLength(serialized) > budget) throw new Error(`SESSION_CONTEXT_BUDGET_EXCEEDED:${Buffer.byteLength(serialized)}:${budget}`);
   return serialized;
 };
 

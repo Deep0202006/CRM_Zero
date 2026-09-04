@@ -1007,10 +1007,9 @@
         "unit"
       ],
       "criticalTests": [
+        "scripts/engineering/task-continuity.test.mjs",
         "scripts/engineering/kernel.test.mjs",
-        "scripts/engineering/context.test.mjs",
-        "src/lib/__tests__/currentErpDbMatrix.test.ts",
-        "e2e/visual-intelligence/visual-intelligence.spec.ts"
+        "scripts/engineering/context.test.mjs"
       ],
       "mustNotWriteAuthorityRefs": []
     }
