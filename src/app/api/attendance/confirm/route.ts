@@ -1,5 +1,6 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
+import { createServerServiceClient } from "@/lib/serverBackendEnvironment";
 import { attendanceEvidencePath, SELFIE_BUCKET } from "@/lib/fieldVisits/retention";
 import { getISTDateKey, isValidISTDateKey } from "@/lib/dateTime";
 import { ATTENDANCE_QUEUE_SCHEMA_VERSION, normalizeAttendanceConfirmationPayload, parseAttendanceQueueSchemaVersion } from "@/lib/syncPayload";
@@ -23,10 +24,6 @@ type FailureTelemetry = {
   reason: string;
 };
 
-function adminClient(): SupabaseClient | null {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL, key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  return url && key ? createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } }) : null;
-}
 function safeContractMarker(value: string | null): string {
   return value === "attendance-queue-v2" ? value : "unidentified";
 }
@@ -64,10 +61,12 @@ export async function POST(request: Request) {
     client_contract: clientContract,
     queue_schema_version: "missing",
   };
-  const client = adminClient();
+  const serviceResult = createServerServiceClient();
   const authHeader = request.headers.get("authorization") ?? "";
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
-  if (!client || !token) return fail(401, "AUTH_REQUIRED", { ...baseTelemetry, stage: "authentication", reason: "AUTH_REQUIRED" });
+  if (!serviceResult.ok) return fail(503, "BACKEND_UNAVAILABLE", { ...baseTelemetry, stage: "configuration", reason: serviceResult.reason });
+  const client = serviceResult.client;
+  if (!token) return fail(401, "AUTH_REQUIRED", { ...baseTelemetry, stage: "authentication", reason: "AUTH_REQUIRED" });
   const auth = await client.auth.getUser(token);
   if (auth.error || !auth.data.user) return fail(401, "AUTH_REQUIRED", { ...baseTelemetry, stage: "authentication", reason: "AUTH_REQUIRED" });
   let form: FormData;

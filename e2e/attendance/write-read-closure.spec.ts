@@ -26,14 +26,14 @@ async function seedRole(page: Page, capabilities: string[]) {
     await new Promise<void>((resolve, reject) => { transaction.oncomplete = () => resolve(); transaction.onerror = () => reject(transaction.error); });
     database.close();
     localStorage.setItem("authenticated_user_id", employeeId);
-    localStorage.setItem("sb-e2e-auth-token", JSON.stringify({ access_token: employeeToken, refresh_token: "e2e", expires_at: 1999999999, expires_in: 999999999, token_type: "bearer", user: { id: employeeId, aud: "authenticated", role: "authenticated", email: "employee@example.test", app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() } }));
+    localStorage.setItem("sb-127-auth-token", JSON.stringify({ access_token: employeeToken, refresh_token: "e2e", expires_at: 1999999999, expires_in: 999999999, token_type: "bearer", user: { id: employeeId, aud: "authenticated", role: "authenticated", email: "employee@example.test", app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() } }));
   }, { employeeId, adminId, attendanceId, today, capabilities, employeeToken: token(employeeId) });
 }
 
 async function becomeAdmin(page: Page) {
   await page.evaluate(({ adminId, adminToken }) => {
     localStorage.setItem("authenticated_user_id", adminId);
-    localStorage.setItem("sb-e2e-auth-token", JSON.stringify({ access_token: adminToken, refresh_token: "e2e", expires_at: 1999999999, expires_in: 999999999, token_type: "bearer", user: { id: adminId, aud: "authenticated", role: "authenticated", email: "admin@example.test", app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() } }));
+    localStorage.setItem("sb-127-auth-token", JSON.stringify({ access_token: adminToken, refresh_token: "e2e", expires_at: 1999999999, expires_in: 999999999, token_type: "bearer", user: { id: adminId, aud: "authenticated", role: "authenticated", email: "admin@example.test", app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() } }));
   }, { adminId, adminToken: token(adminId) });
   await page.goto("/login");
   await page.waitForURL("**/attendance");
@@ -41,7 +41,7 @@ async function becomeAdmin(page: Page) {
 
 async function mockClosure(page: Page, capabilities: string[]) {
   const attendance = [{ attendance_id: attendanceId, user_id: employeeId, date: today, clock_in: `${today}T04:00:00.000Z`, clock_out: null, selfie_captured: capabilities.includes("field_dist") || capabilities.includes("field_ret") }];
-  await page.route("https://e2e.supabase.co/**", async (route) => {
+  await page.route("http://127.0.0.1:54321/**", async (route) => {
     if (route.request().url().includes("/auth/v1/user")) {
       const bearer = route.request().headers().authorization?.replace(/^Bearer\s+/i, "") ?? token(employeeId);
       const id = JSON.parse(Buffer.from(bearer.split(".")[1], "base64url").toString()).sub as string;

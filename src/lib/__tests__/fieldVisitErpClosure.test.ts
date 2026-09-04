@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import type { LocalFieldVisit } from "@/lib/db";
-import { canonicalErpConfirmation, VisitConfirmationSchema } from "@/app/api/field-visits/confirm/route";
+import { canonicalErpConfirmation, VisitConfirmationSchema } from "@/app/api/field-visits/confirm/contract";
 import { buildFieldVisitConfirmPayload, canonicalErpReconciliation } from "@/lib/fieldVisits/sync";
 
 const read = (relative: string) => fs.readFileSync(path.join(process.cwd(), relative), "utf8");

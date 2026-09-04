@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { getCurrentISTDate, getISTBusinessDayBounds, isValidISTDateKey } from "@/lib/dateTime";
+import { createServerServiceClient } from "@/lib/serverBackendEnvironment";
 import { buildRepresentativeDirectory, type RepresentativeDirectoryRow } from "@/lib/fieldVisits/representatives";
 
 export const runtime = "nodejs";
@@ -89,16 +90,13 @@ async function loadRepresentativeDirectory(admin: SupabaseClient) {
 }
 
 export async function GET(request: Request) {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!supabaseUrl || !serviceKey) return errorResponse(500, "Admin visit reporting is not configured.");
+  const serviceResult = createServerServiceClient();
+  if (!serviceResult.ok) return errorResponse(503, `BACKEND_UNAVAILABLE:${serviceResult.reason}`);
 
   const token = getBearerToken(request);
   if (!token) return errorResponse(401, "Authentication required.");
 
-  const admin = createClient(supabaseUrl, serviceKey, {
-    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
-  });
+  const admin = serviceResult.client;
 
   try {
     const { data: authData, error: authError } = await admin.auth.getUser(token);

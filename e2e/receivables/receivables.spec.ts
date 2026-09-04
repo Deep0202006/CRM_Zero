@@ -29,7 +29,7 @@ async function seedUser(page: Page, role: "admin" | "employee") {
     await new Promise<void>((resolve, reject) => { transaction.oncomplete = () => resolve(); transaction.onerror = () => reject(transaction.error); });
     database.close();
     localStorage.setItem("authenticated_user_id", userId);
-    localStorage.setItem("sb-e2e-auth-token", JSON.stringify({ access_token: accessToken, refresh_token: "e2e-refresh", expires_at: Math.floor(Date.now() / 1000) + 3600, expires_in: 3600, token_type: "bearer", user: { id: userId, aud: "authenticated", role: "authenticated", email: `${role}@example.test`, app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() } }));
+    localStorage.setItem("sb-127-auth-token", JSON.stringify({ access_token: accessToken, refresh_token: "e2e-refresh", expires_at: Math.floor(Date.now() / 1000) + 3600, expires_in: 3600, token_type: "bearer", user: { id: userId, aud: "authenticated", role: "authenticated", email: `${role}@example.test`, app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() } }));
   }, { userId, role, accessToken: token(userId) });
 }
 
@@ -38,7 +38,7 @@ function summaryRow(overrides: Record<string, unknown> = {}) {
 }
 
 async function mockBackend(page: Page, role: "admin" | "employee") {
-  await page.route("https://e2e.supabase.co/**", async (route) => route.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
+  await page.route("http://127.0.0.1:54321/**", async (route) => route.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
   await page.route("**/api/distributors?**", async (route) => route.fulfill({ json: { rows: [{ distributor_id: distributorId, distributor_name: "Acme Distribution", distributor_reference: "ACME-1", assigned_to: employeeId, billing_status: "billed" }], page: 1, pageSize: 50, total: 1 } }));
   await page.route("**/api/receivables/health", async (route) => route.fulfill({ json: { ready: true } }));
   await page.route("**/api/receivables/admin**", async (route) => {

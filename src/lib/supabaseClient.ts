@@ -1,18 +1,32 @@
 import { createClient } from "@supabase/supabase-js";
+import { resolveBackendEnvironment } from "./backendEnvironment";
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co";
-const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "BUILD_TIME_PLACEHOLDER_KEY";
+export const backendEnvironment = resolveBackendEnvironment({
+  deployment: process.env.NEXT_PUBLIC_ZERODATA_DEPLOYMENT_ENV,
+  url: process.env.NEXT_PUBLIC_SUPABASE_URL,
+  anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+});
 
-if (!process.env.NEXT_PUBLIC_SUPABASE_URL && typeof window !== 'undefined') {
-  console.error("Missing NEXT_PUBLIC_SUPABASE_URL environment variable.");
+if (backendEnvironment.status === "unavailable" && typeof window !== "undefined") {
+  console.error(
+    `[backend-environment] deployment=${backendEnvironment.deployment} reason=${backendEnvironment.reason}`,
+  );
 }
 
-// Detect if Supabase is fully configured with real keys
-export const isSupabaseConfigured = 
-  !!process.env.NEXT_PUBLIC_SUPABASE_URL && 
-  !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY && 
-  !url.includes("your-project-ref") && 
-  !anonKey.includes("your-anon-public-key") &&
-  !url.includes("placeholder");
+export const isSupabaseConfigured = backendEnvironment.status === "configured";
 
-export const supabase = createClient(url, anonKey);
+export const supabase =
+  backendEnvironment.status === "configured"
+    ? createClient(backendEnvironment.url, backendEnvironment.anonKey)
+    : createClient("http://127.0.0.1", "backend-unavailable", {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+          detectSessionInUrl: false,
+        },
+        global: {
+          fetch: async () => {
+            throw new Error(`BACKEND_UNAVAILABLE:${backendEnvironment.reason}`);
+          },
+        },
+      });

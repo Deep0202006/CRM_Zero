@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { getCurrentISTDate } from "@/lib/dateTime";
+import { createServerAnonClient, createServerServiceClient } from "@/lib/serverBackendEnvironment";
 import { parseTeamKpiResponse } from "@/lib/teamKpi/contract";
 import { loadTeamKpiServerReport, TeamKpiServerError } from "@/lib/teamKpi/serverReport";
 
@@ -10,9 +11,6 @@ export const revalidate = 0;
 
 function jsonError(status: number, code: string, message: string) {
   return NextResponse.json({ code, message }, { status, headers: { "Cache-Control": "no-store, max-age=0" } });
-}
-function client(url: string, key: string, token?: string): SupabaseClient {
-  return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }, ...(token ? { global: { headers: { Authorization: `Bearer ${token}` } } } : {}) });
 }
 function active(value: unknown): boolean { return value === true || value === 1 || (typeof value === "string" && ["1", "true", "t"].includes(value.toLowerCase())); }
 async function isAdmin(service: SupabaseClient, userId: string): Promise<boolean> {
@@ -24,15 +22,14 @@ async function isAdmin(service: SupabaseClient, userId: string): Promise<boolean
 }
 
 export async function GET(request: NextRequest) {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !anon || !serviceKey || serviceKey === "BUILD_TIME_PLACEHOLDER_KEY") return jsonError(500, "SUPABASE_NOT_CONFIGURED", "Canonical Team KPI server access is not configured.");
   const authorization = request.headers.get("authorization") ?? "";
   if (!authorization.startsWith("Bearer ")) return jsonError(401, "AUTHENTICATION_REQUIRED", "Sign in again to view Team KPI.");
   const token = authorization.slice(7).trim();
-  const userClient = client(url, anon, token);
-  const service = client(url, serviceKey);
+  const userResult = createServerAnonClient(token);
+  const serviceResult = createServerServiceClient();
+  if (!userResult.ok || !serviceResult.ok) return jsonError(503, "SUPABASE_NOT_CONFIGURED", "Canonical Team KPI server access is not configured.");
+  const userClient = userResult.client;
+  const service = serviceResult.client;
   try {
     const { data, error } = await userClient.auth.getUser(token);
     if (error || !data.user) return jsonError(401, "AUTHENTICATION_REQUIRED", "Your session has expired. Sign in again.");

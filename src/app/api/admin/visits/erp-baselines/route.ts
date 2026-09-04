@@ -1,4 +1,5 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { createServerServiceClient } from "@/lib/serverBackendEnvironment";
 import { z } from "zod";
 import { listErpSystems } from "@/lib/erp/server";
 import { canonicalErpIdSchema } from "@/lib/erp/validation";
@@ -8,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 const segmentSchema = z.enum(["Retailer", "Distributor"]);
 const stateSchema = z.enum(["erp", "none", "not_captured"]);
-export const erpIdSchema = canonicalErpIdSchema;
+const erpIdSchema = canonicalErpIdSchema;
 const operationSchema = z.union([
   z.object({ operation: z.literal("set"), segment_type: segmentSchema, business_ref: z.string().trim().min(1).max(256), erp_id: erpIdSchema }).strict(),
   z.object({ operation: z.literal("set"), segment_type: segmentSchema, business_ref: z.string().trim().min(1).max(256), erp_name: z.string().trim().min(1).max(160) }).strict(),
@@ -30,11 +31,11 @@ async function authorize(request: Request): Promise<
   | { service: SupabaseClient; actorId: string }
   | { response: Response }
 > {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const token = (request.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
-  if (!url || !serviceKey || !token) return { response: Response.json({ code: "AUTH_REQUIRED" }, { status: 401 }) };
-  const service = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
+  if (!token) return { response: Response.json({ code: "AUTH_REQUIRED" }, { status: 401 }) };
+  const serviceResult = createServerServiceClient();
+  if (!serviceResult.ok) return { response: Response.json({ code: "BACKEND_UNAVAILABLE", reason: serviceResult.reason }, { status: 503 }) };
+  const service = serviceResult.client;
   const { data: identity, error: identityError } = await service.auth.getUser(token);
   if (identityError || !identity.user) return { response: Response.json({ code: "AUTH_REQUIRED" }, { status: 401 }) };
   const [{ data: account }, { data: capabilities }] = await Promise.all([

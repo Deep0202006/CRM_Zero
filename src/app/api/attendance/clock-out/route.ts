@@ -1,6 +1,6 @@
-import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { getCurrentISTDate } from "@/lib/dateTime";
+import { createServerServiceClient } from "@/lib/serverBackendEnvironment";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,16 +28,13 @@ function bearerToken(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !serviceKey) return fail(500, "Attendance clock-out is not configured.");
+  const serviceResult = createServerServiceClient();
+  if (!serviceResult.ok) return fail(503, `BACKEND_UNAVAILABLE:${serviceResult.reason}`);
 
   const token = bearerToken(request);
   if (!token) return fail(401, "Authentication required.");
 
-  const admin = createClient(url, serviceKey, {
-    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
-  });
+  const admin = serviceResult.client;
 
   try {
     const { data: auth, error: authError } = await admin.auth.getUser(token);

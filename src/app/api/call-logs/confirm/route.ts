@@ -1,20 +1,18 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { callConfirmationSchema, hasCanonicalCallClientReference } from "@/lib/callLogs/serverContract";
+import { createServerServiceClient } from "@/lib/serverBackendEnvironment";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 function json(status: number, body: Record<string, unknown>) { return Response.json(body, { status, headers: { "Cache-Control": "no-store" } }); }
 function active(value: unknown) { return value === true || value === 1 || value === "1" || value === "true"; }
-function adminClient(): SupabaseClient | null {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  return url && key ? createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } }) : null;
-}
 function tokenOf(request: Request) { const value = request.headers.get("authorization") ?? ""; return value.startsWith("Bearer ") ? value.slice(7).trim() : ""; }
 
 export async function POST(request: Request) {
-  const service = adminClient(); const token = tokenOf(request);
-  if (!service || !token) return json(401, { ok: false, code: "AUTH_REQUIRED", message: "Sign in again before retrying this call." });
+  const serviceResult = createServerServiceClient(); const token = tokenOf(request);
+  if (!serviceResult.ok) return json(503, { ok: false, code: "BACKEND_UNAVAILABLE", reason: serviceResult.reason });
+  const service = serviceResult.client;
+  if (!token) return json(401, { ok: false, code: "AUTH_REQUIRED", message: "Sign in again before retrying this call." });
   let input: unknown;
   try { input = await request.json(); } catch { return json(400, { ok: false, code: "CALL_VALIDATION_FAILED", message: "Call details could not be read." }); }
   const parsed = callConfirmationSchema.safeParse(input);

@@ -28,12 +28,12 @@ async function seedAdmin(page: Page) {
     await new Promise<void>((resolve, reject) => { transaction.oncomplete = () => resolve(); transaction.onerror = () => reject(transaction.error); });
     database.close();
     localStorage.setItem("authenticated_user_id", id);
-    localStorage.setItem("sb-e2e-auth-token", JSON.stringify({ access_token: accessToken, refresh_token: "e2e", expires_at: 1999999999, expires_in: 999999999, token_type: "bearer", user: { id, aud: "authenticated", role: "authenticated", email: "admin@example.test", app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() } }));
+    localStorage.setItem("sb-127-auth-token", JSON.stringify({ access_token: accessToken, refresh_token: "e2e", expires_at: 1999999999, expires_in: 999999999, token_type: "bearer", user: { id, aud: "authenticated", role: "authenticated", email: "admin@example.test", app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() } }));
   }, { id: admin, accessToken: token(admin) });
 }
 
 async function mockAttendance(page: Page) {
-  await page.route("https://e2e.supabase.co/**", (route) => route.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
+  await page.route("http://127.0.0.1:54321/**", (route) => route.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
   await page.route("**/api/admin/attendance**", (route) => route.fulfill({ json: {
     date_from: "2026-08-12",
     date_to: "2026-08-12",
@@ -65,7 +65,7 @@ for (const viewport of [{ name: "desktop", width: 1280, height: 900 }, { name: "
 test("date changes never resolve stale attendance as absent", async ({ page }) => {
   let staleResponseFinished = false;
   await page.setViewportSize({ width: 1280, height: 900 });
-  await page.route("https://e2e.supabase.co/**", (route) => route.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
+  await page.route("http://127.0.0.1:54321/**", (route) => route.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
   await page.route("**/api/admin/attendance**", async (route) => {
     const url = new URL(route.request().url());
     const date = url.searchParams.get("date_from") ?? "";
@@ -95,7 +95,7 @@ test("date changes never resolve stale attendance as absent", async ({ page }) =
 test("stale local office capability cannot create evidence-free Attendance for a server field role", async ({ page }) => {
   const employee = "10000000-0000-4000-a000-000000000020";
   let authorityPreflights = 0;
-  await page.route("https://e2e.supabase.co/**", (route) => route.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
+  await page.route("http://127.0.0.1:54321/**", (route) => route.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
   await page.route("**/api/attendance/mine?**", (route) => { authorityPreflights += 1; return route.fulfill({ json: { ok: true, user_id: employee, date: "2026-08-14", mode: "field_selfie", attendance: [] } }); });
   await page.goto("/login");
   await expect.poll(() => page.evaluate(async () => {
@@ -114,7 +114,7 @@ test("stale local office capability cannot create evidence-free Attendance for a
     await new Promise<void>((resolve, reject) => { transaction.oncomplete = () => resolve(); transaction.onerror = () => reject(transaction.error); });
     database.close();
     localStorage.setItem("authenticated_user_id", id);
-    localStorage.setItem("sb-e2e-auth-token", JSON.stringify({ access_token: accessToken, refresh_token: "e2e", expires_at: 1999999999, expires_in: 999999999, token_type: "bearer", user: { id, aud: "authenticated", role: "authenticated", email: "field@example.test", app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() } }));
+    localStorage.setItem("sb-127-auth-token", JSON.stringify({ access_token: accessToken, refresh_token: "e2e", expires_at: 1999999999, expires_in: 999999999, token_type: "bearer", user: { id, aud: "authenticated", role: "authenticated", email: "field@example.test", app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() } }));
   }, { id: employee, accessToken: token(employee) });
   await page.reload();
   await page.waitForURL("**/attendance");

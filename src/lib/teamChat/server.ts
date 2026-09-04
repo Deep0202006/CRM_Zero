@@ -1,6 +1,10 @@
 import "server-only";
 
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  createServerAnonClient,
+  createServerServiceClient,
+} from "../serverBackendEnvironment";
 
 export interface ChatServerContext {
   userId: string;
@@ -15,16 +19,14 @@ export async function requireChatContext(request: Request): Promise<ChatServerCo
   const authorization = request.headers.get("authorization");
   if (!authorization?.startsWith("Bearer ")) return chatJson(401, { ok: false, code: "AUTHENTICATION_REQUIRED" });
   const token = authorization.slice(7);
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !anon || !serviceKey) return chatJson(503, { ok: false, code: "CHAT_NOT_CONFIGURED" });
-
-  const authenticated = createClient(url, anon, {
-    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
-    global: { headers: { Authorization: `Bearer ${token}` } },
-  });
-  const service = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
+  const authenticatedResult = createServerAnonClient(token);
+  const serviceResult = createServerServiceClient();
+  if (!authenticatedResult.ok || !serviceResult.ok) {
+    const failed = !authenticatedResult.ok ? authenticatedResult : serviceResult;
+    return chatJson(503, { ok: false, code: "CHAT_NOT_CONFIGURED", backend_reason: failed.reason });
+  }
+  const authenticated = authenticatedResult.client;
+  const service = serviceResult.client;
   const { data: auth, error: authError } = await authenticated.auth.getUser(token);
   if (authError || !auth.user) return chatJson(401, { ok: false, code: "AUTHENTICATION_REQUIRED" });
   const { data: profile, error: profileError } = await service.from("users").select("user_id,is_active").eq("user_id", auth.user.id).maybeSingle();

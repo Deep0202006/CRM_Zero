@@ -18,13 +18,13 @@ async function seed(page: Page, id: string, role: "employee" | "admin") {
     tx.objectStore("user_capabilities").put({ id: `${id}-cap`, user_id: id, capability_code: role === "admin" ? "admin" : "ret_onboarding", assigned_at: new Date().toISOString() });
     await new Promise<void>((resolve, reject) => { tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); }); database.close();
     localStorage.setItem("authenticated_user_id", id);
-    localStorage.setItem("sb-e2e-auth-token", JSON.stringify({ access_token: accessToken, refresh_token: "e2e", expires_at: 1999999999, expires_in: 999999999, token_type: "bearer", user: { id, aud: "authenticated", role: "authenticated", email: `${role}@example.test`, app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() } }));
+    localStorage.setItem("sb-127-auth-token", JSON.stringify({ access_token: accessToken, refresh_token: "e2e", expires_at: 1999999999, expires_in: 999999999, token_type: "bearer", user: { id, aud: "authenticated", role: "authenticated", email: `${role}@example.test`, app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() } }));
   }, { id, role, accessToken: token(id) });
 }
 
 async function mock(page: Page, actor: string) {
-  await page.route("https://e2e.supabase.co/**", route => route.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
-  await page.route("https://e2e.supabase.co/auth/v1/user", route => route.fulfill({ json: { id: actor, aud: "authenticated", role: "authenticated", email: "user@example.test", app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() } }));
+  await page.route("http://127.0.0.1:54321/**", route => route.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
+  await page.route("http://127.0.0.1:54321/auth/v1/user", route => route.fulfill({ json: { id: actor, aud: "authenticated", role: "authenticated", email: "user@example.test", app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() } }));
   await page.route("**/api/pipeline/leads**", route => {
     const segment = new URL(route.request().url()).searchParams.get("segment") ?? "Retailer";
     const leads = segment === "Retailer"

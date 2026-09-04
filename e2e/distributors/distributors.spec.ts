@@ -49,7 +49,7 @@ async function seed(
       database.close();
       localStorage.setItem("authenticated_user_id", id);
       localStorage.setItem(
-        "sb-e2e-auth-token",
+        "sb-127-auth-token",
         JSON.stringify({
           access_token: accessToken,
           refresh_token: "e2e",
@@ -353,7 +353,7 @@ test("Admin Distributor import preview shows the server-resolved operational emp
   ).toBeVisible();
 });
 async function mock(page: Page) {
-  await page.route("https://e2e.supabase.co/**", (route) =>
+  await page.route("http://127.0.0.1:54321/**", (route) =>
     route.fulfill({ status: 200, contentType: "application/json", body: "[]" }),
   );
   await page.route("**/api/distributors/metrics", (route) =>
@@ -579,7 +579,7 @@ test("Admin Distributor Status renders the canonical ERP footprint from its exis
 });
 
 async function mockRenewals(page: Page, renewalRows = [row]) {
-  await page.route("https://e2e.supabase.co/**", (route) =>
+  await page.route("http://127.0.0.1:54321/**", (route) =>
     route.fulfill({ status: 200, contentType: "application/json", body: "[]" }),
   );
   await page.route(`**/api/distributors/${distributorId}`, (route) =>
@@ -858,7 +858,7 @@ test("assigned employee manually updates canonical renewal with minimal versione
 test("valid empty employee dataset is active while API failure is visible", async ({
   page,
 }) => {
-  await page.route("https://e2e.supabase.co/**", (route) =>
+  await page.route("http://127.0.0.1:54321/**", (route) =>
     route.fulfill({ status: 200, contentType: "application/json", body: "[]" }),
   );
   await seed(page, employee, false);
@@ -887,7 +887,7 @@ test("valid empty employee dataset is active while API failure is visible", asyn
 test("employee cannot use the Admin Distributor Status authority surface", async ({
   page,
 }) => {
-  await page.route("https://e2e.supabase.co/**", (route) =>
+  await page.route("http://127.0.0.1:54321/**", (route) =>
     route.fulfill({ status: 200, contentType: "application/json", body: "[]" }),
   );
   await seed(page, employee, false);
@@ -1059,7 +1059,7 @@ test("ERP Partner Viewer sees only scoped read-only Distributor and Renewal page
   page,
 }) => {
   const internalRequests: string[] = [], distributorRequests: URL[] = [];
-  await page.route("https://e2e.supabase.co/**", (route) =>
+  await page.route("http://127.0.0.1:54321/**", (route) =>
     route.fulfill({ status: 200, contentType: "application/json", body: "[]" }),
   );
   await page.route("**/api/erp-partner/distributors?**", (route) => {

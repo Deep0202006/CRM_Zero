@@ -1,16 +1,16 @@
-import { createClient } from "@supabase/supabase-js";
 import { getCurrentISTDate, getISTBusinessDayBounds } from "@/lib/dateTime";
+import { createServerAnonClient, createServerServiceClient } from "@/lib/serverBackendEnvironment";
 
 export const runtime = "nodejs"; export const dynamic = "force-dynamic";
 const PAGE_SIZE = 50; const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 function json(status: number, body: Record<string, unknown>) { return Response.json(body, { status, headers: { "Cache-Control": "no-store" } }); }
 function active(value: unknown) { return value === true || value === 1 || value === "1" || value === "true"; }
 export async function GET(request: Request) {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL; const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const authorization = request.headers.get("authorization") ?? ""; const token = authorization.startsWith("Bearer ") ? authorization.slice(7).trim() : "";
-  if (!url || !anon || !key || !token) return json(401, { code: "AUTH_REQUIRED" });
-  const authClient = createClient(url, anon, { auth: { persistSession: false, autoRefreshToken: false }, global: { headers: { Authorization: `Bearer ${token}` } } });
-  const service = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+  if (!token) return json(401, { code: "AUTH_REQUIRED" });
+  const authResult = createServerAnonClient(token), serviceResult = createServerServiceClient();
+  if (!authResult.ok || !serviceResult.ok) return json(503, { code: "BACKEND_UNAVAILABLE" });
+  const authClient = authResult.client, service = serviceResult.client;
   const { data: auth, error: authError } = await authClient.auth.getUser(token);
   if (authError || !auth.user) return json(401, { code: "AUTH_REQUIRED" });
   const { data: account } = await service.from("users").select("user_id,is_active").eq("user_id", auth.user.id).maybeSingle();

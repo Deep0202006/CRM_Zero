@@ -2,6 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./e2e",
+  testIgnore: "backend-isolation/**",
   fullyParallel: false,
   workers: process.env.PLAYWRIGHT_E2E_WEBPACK === "true" ? 1 : undefined,
   retries: 0,

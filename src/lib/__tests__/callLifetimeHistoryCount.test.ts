@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { historyBody, loadCallHistoryWithOptionalMetrics, type CallHistoryDependencies } from "@/app/api/call-logs/history/route";
+import { historyBody, loadCallHistoryWithOptionalMetrics, type CallHistoryDependencies } from "@/app/api/call-logs/history/service";
 import { formatCallHistoryCount } from "../callLogs/repository";
 import type { LocalCallLog } from "../db";
 
@@ -71,11 +71,12 @@ describe("lifetime call-history count", () => {
   it("preserves today's canonical metric and non-destructive call contracts", () => {
     const page = source("src/app/call-logs/page.tsx");
     const route = source("src/app/api/call-logs/history/route.ts");
-    const changed = [page, route, source("src/lib/callLogs/repository.ts")].join("\n");
+    const service = source("src/app/api/call-logs/history/service.ts");
+    const changed = [page, route, service, source("src/lib/callLogs/repository.ts")].join("\n");
     expect(page).toContain("snapshot.confirmedGenuineCallIds");
     expect(page).toContain("snapshot.confirmedFollowupCallIds");
     expect(page).toContain("snapshot.confirmedReachedCallIds");
-    expect(route).toContain("getCanonicalDailyUserMetrics");
+    expect(service).toContain("getCanonicalDailyUserMetrics");
     expect(changed).not.toMatch(/call_logs\.clear\s*\(|call_logs\.bulkDelete\s*\(|localStorage\.clear\s*\(|deleteDatabase\s*\(/);
     expect(changed).not.toMatch(/from\(["']call_logs["']\)[\s\S]{0,120}\.delete\s*\(/);
   });

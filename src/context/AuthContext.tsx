@@ -11,7 +11,7 @@ import {
   countActiveSyncQueueItems,
   saveAttendanceWithEvidence,
 } from "@/lib/db";
-import { supabase } from "@/lib/supabaseClient";
+import { isSupabaseConfigured, supabase } from "@/lib/supabaseClient";
 import { getCurrentISTDate } from "@/lib/dateTime";
 import { syncFieldVisits } from "@/lib/fieldVisits/sync";
 
@@ -64,6 +64,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     async function initAuth() {
       try {
         setIsLoading(true);
+        if (!isSupabaseConfigured) {
+          const savedUserId = localStorage.getItem("authenticated_user_id");
+          if (savedUserId && !localStorage.getItem("zerodata_outbox_owner_id")) {
+            const queuedOperations = await countActiveSyncQueueItems();
+            if (queuedOperations > 0) {
+              localStorage.setItem("zerodata_outbox_owner_id", savedUserId);
+            }
+          }
+          localStorage.removeItem("authenticated_user_id");
+          setCurrentUser(null);
+          setCapabilities([]);
+          return;
+        }
         const users = await db.users.toArray();
         setAllUsers(users);
 
@@ -181,6 +194,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     try {
+      if (!isSupabaseConfigured) {
+        setIsLoading(false);
+        return false;
+      }
       const rawUsername = email.trim().toLowerCase();
       const authEmail = rawUsername.includes("@")
         ? rawUsername

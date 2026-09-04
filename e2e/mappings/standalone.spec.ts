@@ -21,7 +21,7 @@ async function seedSupportEmployee(page: Page) {
     await new Promise<void>((resolve, reject) => { tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); });
     database.close();
     localStorage.setItem("authenticated_user_id", id);
-    localStorage.setItem("sb-e2e-auth-token", JSON.stringify({ access_token: accessToken, refresh_token: "e2e", expires_at: 1999999999, expires_in: 999999999, token_type: "bearer", user: { id, aud: "authenticated", role: "authenticated", email: "support@example.test", app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() } }));
+    localStorage.setItem("sb-127-auth-token", JSON.stringify({ access_token: accessToken, refresh_token: "e2e", expires_at: 1999999999, expires_in: 999999999, token_type: "bearer", user: { id, aud: "authenticated", role: "authenticated", email: "support@example.test", app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() } }));
   }, { id: employeeId, accessToken: token(employeeId) });
 }
 
@@ -38,8 +38,8 @@ async function mappingSnapshot(page: Page) {
 }
 
 test("Mapping accepts canonical suggestions and arbitrary text with zero Lead side effect", async ({ page, context }) => {
-  await page.route("https://e2e.supabase.co/**", (route) => route.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
-  await page.route("https://e2e.supabase.co/auth/v1/user", (route) => route.fulfill({ json: { id: employeeId, aud: "authenticated", role: "authenticated", email: "support@example.test", app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() } }));
+  await page.route("http://127.0.0.1:54321/**", (route) => route.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
+  await page.route("http://127.0.0.1:54321/auth/v1/user", (route) => route.fulfill({ json: { id: employeeId, aud: "authenticated", role: "authenticated", email: "support@example.test", app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() } }));
   await seedSupportEmployee(page);
   await page.goto("/mappings");
   await expect(page.getByRole("heading", { name: "Distributor-retailer mappings" })).toBeVisible();
@@ -107,8 +107,8 @@ test("Mapping accepts canonical suggestions and arbitrary text with zero Lead si
 });
 
 test("Admin receives Update only for the Mapping Admin created", async ({ page, context }) => {
-  await page.route("https://e2e.supabase.co/**", (route) => route.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
-  await page.route("https://e2e.supabase.co/auth/v1/user", (route) => route.fulfill({ json: { id: employeeId, aud: "authenticated", role: "authenticated", email: "support@example.test", app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() } }));
+  await page.route("http://127.0.0.1:54321/**", (route) => route.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
+  await page.route("http://127.0.0.1:54321/auth/v1/user", (route) => route.fulfill({ json: { id: employeeId, aud: "authenticated", role: "authenticated", email: "support@example.test", app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() } }));
   await seedSupportEmployee(page);
   await page.evaluate(async ({ id }) => {
     const request = indexedDB.open("CRMDatabase");
