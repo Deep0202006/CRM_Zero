@@ -18,8 +18,8 @@ import { canonicalEvidencePath, diagnoseProof, proofFailureDiagnostics, runRegis
 import { executeRegressionCases, validateCaseResult } from "./regression-executors.mjs";
 import { queryGraphify, resolveContext, revalidateCandidate } from "./context.mjs";
 import { doctor } from "./kernel-doctor.mjs";
-import { applyStallPolicy, evaluateStopState, protectedRequiredChecks, remoteGate, requiredRemoteChecks } from "./hooks/stop.mjs";
-import { beginExternalTask, compareAndSwap, loadState, requireContinuation, sessionPath, sessionsDirectory } from "./hooks/state-store.mjs";
+import { applyStallPolicy, protectedRequiredChecks, remoteGate, requiredRemoteChecks } from "./hooks/stop.mjs";
+import { compareAndSwap, loadState, sessionPath, sessionsDirectory } from "./hooks/state-store.mjs";
 import { dirtyFingerprint, environmentPolicyHash, git, gitEnvironmentFor, gitNullConfig, inspectMigrationBoundaryTransition, parseMigrationNumber, repositoryIdentity, root, safeEnvironment, sha256, validateMigrationBoundaryTransition, validateMigrationLedger } from "./kernel-lib.mjs";
 import { containsAssertionWeakening } from "../quality/assertion-policy.mjs";
 import { inspectMigrationGate, runReleaseSelfTest, TARGETS, validateReleaseReceipt, waitForChecks, waitForGitDeployment } from "./release-controller.mjs";
@@ -104,15 +104,6 @@ try {
     assert.equal(repositoryIdentity().headSha, currentHead);
     const isolatedRegistry = command(root, process.execPath, ["scripts/engineering/registry-index.mjs"], isolatedEnvironment);
     assert.equal(isolatedRegistry.status, 0, isolatedRegistry.stderr); assert.match(isolatedRegistry.stdout, /"nodes":/); matrix.state.push("registry-index-disposable-git");
-    const session = `kernel-test-${randomUUID()}`, first = beginExternalTask(session, "first external task");
-    compareAndSwap(session, first.revision, { ...first, evidence: [{ proofId: "old" }], failureSignatures: ["old"], resolution: { status: "RESOLVED" }, progressSignature: "old" });
-    const second = beginExternalTask(session, "second external task");
-    assert.notEqual(second.taskId, first.taskId); assert.deepEqual(second.evidence, []); assert.deepEqual(second.failureSignatures, []); assert.equal(second.resolution, undefined); assert.equal(second.progressSignature, undefined);
-    assert.equal(requireContinuation(session, second.taskId).taskId, second.taskId); assert.throws(() => requireContinuation(session, first.taskId), /CONTINUATION_TASK_MISMATCH/);
-    const expandHook = command(root, process.execPath, ["scripts/engineering/hooks/user-prompt.mjs"], isolatedEnvironment, JSON.stringify({ session_id: session, prompt: `KERNEL_SCOPE_EXPAND|taskId=${second.taskId}|path=scripts/engineering/context.mjs|task=inspect exact context resolver` }));
-    assert.equal(expandHook.status, 0); assert.equal(loadState(session).scopeRevision, 1); assert.equal(loadState(session).resolution.status, "RESOLVED");
-    matrix.state.push("external-reset", "exact-continuation", "evidence-backed-scope-expansion");
-
     const staleSession = `kernel-test-${randomUUID()}`, stale = loadState(staleSession), stateModuleUrl = pathToFileURL(resolve(root, "scripts/engineering/hooks/state-store.mjs")).href;
     const code = `import {compareAndSwap} from ${JSON.stringify(stateModuleUrl)};try{compareAndSwap(process.argv[1],Number(process.argv[2]),{status:'IMPLEMENTATION_IN_PROGRESS'});process.exit(0)}catch(e){console.error(e.message);process.exit(2)}`;
     const children = [0, 1].map(() => new Promise((done) => { const child = spawn(process.execPath, ["--input-type=module", "-e", code, staleSession, String(stale.revision)], { cwd: root, env: { ...process.env, ...isolatedEnvironment }, stdio: ["ignore", "pipe", "pipe"] }); let stderr = ""; child.stderr.on("data", (chunk) => stderr += chunk); child.on("exit", (status) => done({ status, stderr })); }));
@@ -125,29 +116,8 @@ try {
 
     const corruptSession = `kernel-test-${randomUUID()}`, corruptPath = sessionPath(corruptSession);
     mkdirSync(dirname(corruptPath), { recursive: true }); writeFileSync(corruptPath, "{interrupted");
-    assert.throws(() => loadState(corruptSession), /STATE_CORRUPT_PRESERVED/); assert(readdirSync(dirname(corruptPath)).some((name) => name.startsWith(`${corruptSession}.json.corrupt-`)));
-    const hookSession = `kernel-test-${randomUUID()}`;
-    assert.equal(command(root, process.execPath, ["scripts/engineering/hooks/session-start.mjs"], isolatedEnvironment, JSON.stringify({ session_id: hookSession })).status, 0);
-    assert.equal(command(root, process.execPath, ["scripts/engineering/hooks/post-tool.mjs"], isolatedEnvironment, JSON.stringify({ session_id: hookSession, tool_name: "fixture", tool_input: { command: "synthetic-private-input" }, tool_response: { exit_code: 9, stdout: "synthetic-private-output", stderr: "synthetic-private-error" } })).status, 0);
-    const postState = loadState(hookSession), storedState = readFileSync(sessionPath(hookSession), "utf8");
-    assert.equal(postState.failureSignatures[0].length, 64); assert(!storedState.includes("synthetic-private"));
-    matrix.state.push("corrupt-preserved-fail-closed", "hook-schema-valid", "failure-output-hashed-only");
-
-    const stallSession = `kernel-test-${randomUUID()}`, stopInvocation = () => command(root, process.execPath, ["scripts/engineering/hooks/stop.mjs"], isolatedEnvironment, JSON.stringify({ session_id: stallSession }));
-    const firstStop = JSON.parse(stopInvocation().stdout), secondStop = JSON.parse(stopInvocation().stdout), thirdStop = JSON.parse(stopInvocation().stdout), fourthStop = JSON.parse(stopInvocation().stdout);
-    assert.match(firstStop.reason, /strategy=FOCUSED_RETRY\|stallCount=1/); assert.match(secondStop.reason, /strategy=STRATEGY_CHANGE_REQUIRED\|stallCount=2/);
-    assert.equal(thirdStop.stopReason, "STALL_LIMIT"); assert.equal(fourthStop.stopReason, "STALL_LIMIT"); assert.equal(loadState(stallSession).stallCount, 3);
-    matrix.stall.push("stop-cli-third-stall-limit", "stop-cli-fourth-no-continuation");
-
-    const runPreTool = (cmd) => command(root, process.execPath, ["scripts/engineering/hooks/pre-tool.mjs"], isolatedEnvironment, JSON.stringify({ session_id: `kernel-test-${randomUUID()}`, tool_name: "exec_command", tool_input: { cmd } }));
-    for (const cmd of ["node -e require('fs').writeFileSync('x','y')", "python -c open('x','w')", "git apply patch.diff", "git checkout -- file", "git restore file", "git push origin HEAD:main", "git push origin feature/x --force", "git branch -D feature/x", "git remote set-url origin https://example.invalid/repo.git", "git worktree remove .worktrees/x", "git worktree prune", "supabase --project-ref X db push", "npx supabase db push", "npm exec -- vercel deploy", "printf fixture > file", "powershell -EncodedCommand ZgBpAHgAdAB1AHIAZQA="]) {
-      const hook = runPreTool(cmd); assert.equal(hook.status, 0); assert.match(hook.stdout, /SAFETY_CONFLICT:COMMAND_POLICY/);
-    }
-    assert.match(runPreTool("git worktree add .worktrees/x chore/x").stdout, /SAFETY_CONFLICT:WORKTREE_SCOPE/);
-    assert.equal(runPreTool("git status --short").stdout, ""); assert.match(runPreTool("git push origin chore/engineering-kernel-v4").stdout, /SAFETY_CONFLICT:PREPUSH_CERTIFICATE_REQUIRED/);
-    const scopedWorktree = command(root, process.execPath, ["scripts/engineering/hooks/pre-tool.mjs"], isolatedEnvironment, JSON.stringify({ session_id: session, tool_name: "exec_command", tool_input: { cmd: "git worktree add .worktrees/kernel-test-safe chore/kernel-test-safe" } }));
-    assert.equal(scopedWorktree.stdout, "");
-    matrix.risk.push("pretool-command-matrix-denied", "pretool-read-only-allowed", "pretool-feature-push-requires-certificate", "pretool-worktree-add-requires-resolved-scope", "pretool-worktree-add-exact-resolved-scope");
+    assert.throws(() => loadState(corruptSession), /STATE_CORRUPT/); assert.equal(readFileSync(corruptPath, "utf8"), "{interrupted");
+    matrix.state.push("corrupt-visible-fail-closed");
 
     const identity = { schemaVersion: 1, baseSha, headSha: currentHead, treeSha: currentTree, dirtyFingerprint: dirtyFingerprint(), impactHash: "b".repeat(64), planHash: "a".repeat(64), requiredProofs: ["kernel-fixture-pass"], requiredByKind: { unit: ["kernel-fixture-pass"] }, notRequiredKinds: [] };
     const ciEnvironment = { CI: "true", GITHUB_ACTIONS: "true", GITHUB_REPOSITORY: "Deep0202006/CRM_Zero", GITHUB_WORKFLOW: "CRM Product Verification", GITHUB_RUN_ID: "123456", GITHUB_RUN_ATTEMPT: "1", GITHUB_SHA: currentHead, GITHUB_REF: "refs/pull/89/merge", GITHUB_JOB: "preflight", GITHUB_EVENT_NAME: "pull_request", KERNEL_BASE_SHA: baseSha, KERNEL_HEAD_SHA: currentHead };
@@ -245,6 +215,8 @@ try {
 
   for (const [text, expected, name] of [
     ["git status --short", CommandClass.READ_ONLY_ALLOWED, "git-read"], ["npm run kernel:test", CommandClass.REGISTERED_VERIFICATION_ALLOWED, "registered-test"],
+    ["npm run crm:session:reread", CommandClass.REGISTERED_VERIFICATION_ALLOWED, "context-reread"], ["npm run crm:task -- --task \"Repair engineering control\"", CommandClass.SCOPED_MUTATION_ALLOWED, "task-bootstrap"],
+    ["npm install --save-exact --ignore-scripts --registry=https://registry.npmjs.org zod@4.1.12", CommandClass.SCOPED_MUTATION_ALLOWED, "exact-package-add"], ["npm install zod@4.1.12", CommandClass.UNKNOWN_MUTATION_SHAPE, "package-add-unregistered"], ["npm install --save-exact --ignore-scripts --registry=https://registry.npmjs.org zod@latest", CommandClass.UNKNOWN_MUTATION_SHAPE, "package-tag-denied"], ["npm install --save-exact --ignore-scripts --registry=https://evil.invalid zod@4.1.12", CommandClass.UNKNOWN_MUTATION_SHAPE, "alternate-registry-denied"],
     ["git branch", CommandClass.READ_ONLY_ALLOWED, "branch-list-default"], ["git branch --list", CommandClass.READ_ONLY_ALLOWED, "branch-list"], ["git branch -a", CommandClass.READ_ONLY_ALLOWED, "branch-all"], ["git branch -r", CommandClass.READ_ONLY_ALLOWED, "branch-remotes"], ["git branch -vv", CommandClass.READ_ONLY_ALLOWED, "branch-verbose"], ["git branch --show-current", CommandClass.READ_ONLY_ALLOWED, "branch-current"],
     ["git branch -d feature/x", CommandClass.PROHIBITED, "branch-delete"], ["git branch -D feature/x", CommandClass.PROHIBITED, "branch-force-delete"], ["git branch --delete feature/x", CommandClass.PROHIBITED, "branch-delete-long"], ["git branch -m old new", CommandClass.PROHIBITED, "branch-move"], ["git branch -M old new", CommandClass.PROHIBITED, "branch-force-move"], ["git branch feature/x", CommandClass.PROHIBITED, "branch-create"],
     ["git remote", CommandClass.READ_ONLY_ALLOWED, "remote-list"], ["git remote -v", CommandClass.READ_ONLY_ALLOWED, "remote-verbose"], ["git remote get-url origin", CommandClass.READ_ONLY_ALLOWED, "remote-url"], ["git remote show origin", CommandClass.READ_ONLY_ALLOWED, "remote-show"], ["git remote add upstream https://example.invalid/repo.git", CommandClass.PROHIBITED, "remote-add"], ["git remote set-url origin https://example.invalid/repo.git", CommandClass.PROHIBITED, "remote-set-url"],
@@ -295,7 +267,7 @@ try {
   const repo = temp("kernel-git-");
   assert.equal(gitAt(repo, "init", "-q", "-b", "main").status, 0); gitAt(repo, "config", "user.email", "fixture@example.invalid"); gitAt(repo, "config", "user.name", "Kernel Fixture");
   writeFileSync(resolve(repo, "base.txt"), "base\n"); gitAt(repo, "add", "base.txt"); gitAt(repo, "commit", "-q", "-m", "base");
-  const base = gitAt(repo, "rev-parse", "HEAD").stdout.trim(), baseTree = gitAt(repo, "rev-parse", "HEAD^{tree}").stdout.trim(); gitAt(repo, "update-ref", "refs/remotes/origin/main", base); gitAt(repo, "checkout", "-q", "-b", "feature"); writeFileSync(resolve(repo, "head.txt"), "head\n"); gitAt(repo, "add", "head.txt"); gitAt(repo, "commit", "-q", "-m", "head");
+  const base = gitAt(repo, "rev-parse", "HEAD").stdout.trim(); gitAt(repo, "update-ref", "refs/remotes/origin/main", base); gitAt(repo, "checkout", "-q", "-b", "feature"); writeFileSync(resolve(repo, "head.txt"), "head\n"); gitAt(repo, "add", "head.txt"); gitAt(repo, "commit", "-q", "-m", "head");
   const cleanFingerprint = dirtyFingerprint(repo), fingerprintPath = resolve(repo, "fingerprint.txt"); writeFileSync(fingerprintPath, "one\n"); const firstFingerprint = dirtyFingerprint(repo); writeFileSync(fingerprintPath, "two\n");
   assert.notEqual(cleanFingerprint, firstFingerprint); assert.notEqual(firstFingerprint, dirtyFingerprint(repo)); unlinkSync(fingerprintPath); matrix.state.push("content-sensitive-worktree");
   const head = gitAt(repo, "rev-parse", "HEAD").stdout.trim(), staleBase = gitAt(repo, "commit-tree", "HEAD^{tree}", "-m", "unrelated").stdout.trim();
@@ -308,13 +280,7 @@ try {
   assert.equal(gate("pending-nonzero").status, "REMOTE_PENDING"); assert.equal(gate("failed-nonzero").status, "REMOTE_FAILED"); assert.equal(gate("auth").status, "EXTERNAL_DEPENDENCY"); assert.equal(gate("malformed").status, "REMOTE_FAILED");
   assert.equal(gate("wrong-head").reason, "HEAD_MISMATCH"); assert.equal(gate("stale-base").reason, "BASE_NOT_ANCESTOR"); assert.equal(gate("no-pr").status, "PR_REQUIRED");
   process.env.stop_hook_active = "true"; assert.equal(gate("failed-attest").status, "REMOTE_FAILED"); delete process.env.stop_hook_active;
-  const stopState = { taskId: "fixture", resolution: { status: "RESOLVED" }, baseline: { headSha: base, treeSha: baseTree, baseSha: base, dirtyFingerprint: cleanFingerprint }, evidence: [{ status: "PASS", name: "TASK_CERTIFIED", ownerApproval: true }] };
-  let remoteCalls = 0; writeFileSync(fingerprintPath, "forged-local-change\n");
-  const dirtyStop = evaluateStopState({ state: stopState, cwd: repo, remote: () => { remoteCalls += 1; return { status: "READY_TO_END" }; } });
-  assert.equal(dirtyStop.status, "WORKTREE_DIRTY_COMMIT_REQUIRED"); assert.equal(remoteCalls, 0); assert(!JSON.stringify(dirtyStop).includes("TASK_CERTIFIED")); unlinkSync(fingerprintPath);
-  assert.equal(evaluateStopState({ state: stopState, cwd: repo, remote: () => gate("success") }).status, "READY_TO_END");
-  assert.equal(evaluateStopState({ state: { ...stopState, baseline: { headSha: head, treeSha: gitAt(repo, "rev-parse", "HEAD^{tree}").stdout.trim(), baseSha: base, dirtyFingerprint: cleanFingerprint } }, cwd: repo, remote: () => { throw new Error("REMOTE_MUST_NOT_RUN"); } }).status, "IMPLEMENTATION_IN_PROGRESS");
-  matrix.stopRemote.push("protected-four-workflow-six-pass", "workflow-attestation-missing", "workflow-unit-pending", "workflow-attestation-failed", "protected-verify-missing", "protected-duplicate", "workflow-gate-duplicate", "optional-failure-ignored", "pending-json-nonzero", "failed-json-nonzero", "auth-external", "malformed-closed", "head-mismatch", "stale-base", "no-pr", "active-flag-no-bypass", "dirty-forged-local-blocked-before-remote", "no-task-certified-or-owner-approval");
+  matrix.stopRemote.push("protected-four-workflow-six-pass", "workflow-attestation-missing", "workflow-unit-pending", "workflow-attestation-failed", "protected-verify-missing", "protected-duplicate", "workflow-gate-duplicate", "optional-failure-ignored", "pending-json-nonzero", "failed-json-nonzero", "auth-external", "malformed-closed", "head-mismatch", "stale-base", "no-pr", "active-flag-no-bypass");
 
   let stallState = { status: "IMPLEMENTATION_IN_PROGRESS", stallCount: 0 }, advance = (result) => { const decision = applyStallPolicy(stallState, result); stallState = { ...stallState, ...decision.state }; return decision; }, stallDecision;
   stallDecision = advance({ status: "IMPLEMENTATION_IN_PROGRESS" }); assert.equal(stallDecision.state.stallCount, 1); assert.equal(stallDecision.continuation, "FOCUSED_RETRY");

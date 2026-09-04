@@ -113,23 +113,19 @@ const boundedPacket = (items, budget) => {
   return selected;
 };
 
-export const serializeSessionContext = ({ safetyConflict = null, kernel, sessionStatus, repository, task, experiencePacket = [], nextAction, handoff = "" } = {}, budget = 800) => {
-  const payload = {
-    ...(safetyConflict ? { safetyConflict } : {}),
-    kernel,
-    sessionStatus,
-    repository,
-    task,
-    experience: experiencePacket.slice(0, 3).map((item) => ({ id: item.id, action: String(item.requiredPreventionAction ?? item.rule ?? "").slice(0, 80) })),
-    nextAction,
-    handoff: String(handoff).replace(/\s+/g, " ").trim().slice(0, 120),
-  };
-  while (Buffer.byteLength(JSON.stringify(payload)) > budget && payload.experience.length > 1) payload.experience.pop();
-  if (Buffer.byteLength(JSON.stringify(payload)) > budget) payload.handoff = payload.handoff.slice(0, 40);
-  if (Buffer.byteLength(JSON.stringify(payload)) > budget) delete payload.handoff;
+// Codex 0.152.1 spills additionalContext above 2,500 approximate tokens at
+// four bytes/token. Staying below 9,000 bytes leaves deterministic headroom.
+export const SESSION_CONTEXT_MAX_BYTES = 9_000;
+const sessionSecretKeyPattern = /"(?:password|secret|token|api[_-]?key|authorization|cookie)"\s*:/i;
+const sessionCredentialPattern = /(?:sk|gh[oparsu])_[A-Za-z0-9_-]{16,}|eyJ[A-Za-z0-9_-]{12,}\.[A-Za-z0-9_-]{12,}\.[A-Za-z0-9_-]{12,}/;
+export const serializeSessionContext = (payload = {}, budget = SESSION_CONTEXT_MAX_BYTES, pointer = null) => {
   const serialized = JSON.stringify(payload);
-  if (Buffer.byteLength(serialized) > budget) throw new Error("SESSION_CONTEXT_BUDGET_EXCEEDED");
-  return serialized;
+  if (sessionSecretKeyPattern.test(serialized) || sessionCredentialPattern.test(serialized)) throw new Error("SESSION_CONTEXT_SENSITIVE_DATA");
+  const byteCount = Buffer.byteLength(serialized); if (byteCount <= budget) return serialized;
+  if (!pointer) throw new Error(`SESSION_CONTEXT_POINTER_REQUIRED:${byteCount}:${budget}`);
+  const compact = JSON.stringify({ kernel: payload.kernel ?? "V6A", boundTaskId: pointer.taskId, sessionStatus: "CONTEXT_REREAD_REQUIRED", contextPointer: pointer, reread: "npm run crm:session:reread", completionClaim: false });
+  if (Buffer.byteLength(compact) > budget) throw new Error(`SESSION_CONTEXT_POINTER_BUDGET_EXCEEDED:${Buffer.byteLength(compact)}:${budget}`);
+  return compact;
 };
 
 export const selectExperience = ({ task = "", domains = [], risk = "R0", candidatePaths = [], requiredProofIds = [], requiredProofKinds = [], environment = {}, failureSignatures = [] } = {}, { lessons = readJson("docs/engineering/LESSONS.json").lessons, incidents = readIncidentRegistry().incidents, budget = EXPERIENCE_PACKET_MAX_BYTES } = {}) => {

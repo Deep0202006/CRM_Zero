@@ -66,8 +66,10 @@ const rpc = assumptions.find((item) => item.class === "rpc_api_signatures"), dat
 const unrelatedReceipt = { proofId: "receivables-postgres", kind: "postgres", status: "PASS", evidencePayloadHash: hex("a") }, parity = { status: "PASS", parityHash: hex("b") }, identity = { headSha: sha("a") }, ledger = validateMigrationLedger(baseLedger);
 assert.equal(proveAssumptions([rpc], { parity, receipts: [unrelatedReceipt], ledger, identity })[0].status, "UNPROVEN");
 
-const session = serializeSessionContext({ kernel: "V5", sessionStatus: "ACTIVE", repository: { branch: "fix/x", head: sha("a"), dirty: false }, task: { id: "task-1", status: "IMPLEMENTATION_READY" }, experiencePacket: [{ id: "LESSON_A", rule: "keep evidence scoped" }, { id: "LESSON_B", rule: "second" }], nextAction: "run focused proof", handoff: "x".repeat(4000) });
-assert(Buffer.byteLength(session) <= 800); assert.match(session, /LESSON_A/); assert.match(session, /IMPLEMENTATION_READY/);
+const session = serializeSessionContext({ kernel: "V6A", boundTaskId: "task-1", task: { objective: "keep durable context complete", acceptance: [{ id: "A", status: "PENDING" }], writeScope: ["scripts/engineering/task-state.mjs"], nextAction: "run focused proof" } });
+assert(Buffer.byteLength(session) < 9_000); assert.match(session, /task-1/); assert.match(session, /IMPLEMENTATION_READY|durable context complete/);
+const contextPointer = { schemaVersion: 1, taskId: "task-1", revision: 7, path: ".tmp/engineering/fixture/snapshot.json", byteCount: 10_000, sha256: hex("c") }, compactSession = JSON.parse(serializeSessionContext({ kernel: "V6A", required: "x".repeat(9_000) }, 900, contextPointer));
+assert.equal(compactSession.sessionStatus, "CONTEXT_REREAD_REQUIRED"); assert.deepEqual(compactSession.contextPointer, contextPointer); assert.throws(() => serializeSessionContext({ required: "x".repeat(9_000) }), /SESSION_CONTEXT_POINTER_REQUIRED/); assert.throws(() => serializeSessionContext({ token: "unsafe" }), /SESSION_CONTEXT_SENSITIVE_DATA/); assert.doesNotThrow(() => serializeSessionContext({ event: "TASK_RESUMED_WITH_HEAD_CHANGE" }));
 
 const state = resolve(tmpdir(), `zd-precision-${randomUUID()}`), priorState = process.env.ZD_OS_STATE_ROOT; process.env.ZD_OS_STATE_ROOT = state; mkdirSync(resolve(state, "metric-task"), { recursive: true }); writeTaskExperience("metric-task", { schemaVersion: 1, task: "metric-task", assumptions: [], incidents: [], metrics: { events: {}, pushCount: 0, ciAttemptCount: 0, firstPassCiSuccess: null } });
 recordMetricEvent("metric-task", { type: "push", key: sha("a") }); recordMetricEvent("metric-task", { type: "push", key: sha("a") }); recordMetricEvent("metric-task", { type: "ci", key: `7:${sha("a")}` });
@@ -84,4 +86,4 @@ const sourceIndex = buildSourceIndex({ writeCache: false }), located = sourceInd
 const resolved = resolveContext({ task: `precision supplied index ${randomUUID()}`, index: sourceIndex, graphifyOptions: { graphPath, stampPath, cachePath, headSha: sha("8"), treeSha: tree, executable: "graphify-fixture", spawn: (_file, args) => args[0] === "--version" ? { status: 0, stdout: "graphify 0.9.48" } : (graphQueries += 1, { status: 0, stdout: `${located.path}\n` }) } });
 assert.equal(resolved.graphifyEvidence.status, "GRAPHIFY_QUERIED"); assert.equal(resolved.graphifyEvidence.grantsAuthority, false); assert.equal(graphQueries, 1); rmSync(graphRoot, { recursive: true, force: true });
 
-console.log(JSON.stringify({ code: "V5_PRECISION_TEST_PASS", selectedUi: uiPlan.requiredProofs, selectedDb: dbPlan.requiredProofs, graphQueries }));
+console.log(JSON.stringify({ code: "V6A_PRECISION_TEST_PASS", selectedUi: uiPlan.requiredProofs, selectedDb: dbPlan.requiredProofs, graphQueries }));

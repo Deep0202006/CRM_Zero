@@ -63,7 +63,7 @@ const safeNpmScripts = new Set([
   "quality:repository", "quality:knowledge", "quality:invariants", "kernel:doctor", "kernel:test", "kernel:status",
   "context:resolve", "context:explain", "context:test", "registry:index", "impact:compile", "proof:plan", "proof:run",
   "proof:certify-ci", "regression:test", "typecheck", "lint", "build", "test", "handover:check", "graphify:verify",
-  "crm:task", "crm:benchmark", "crm:release", "crm:workspace",
+  "crm:task", "crm:benchmark", "crm:release", "crm:workspace", "crm:session:status", "crm:session:snapshot", "crm:session:reread",
 ]);
 const databaseClients = new Set(["psql", "pgcli", "mysql", "sqlcmd"]);
 const infrastructure = new Set(["vercel", "terraform", "docker", "kubectl", "aws", "az", "gcloud", "cloudflare", "supabase"]);
@@ -77,6 +77,11 @@ export const parseWorktreeAddTokens = (tokens) => {
   const destination = normalized[3].replaceAll("\\", "/"), branch = normalized[4];
   if (!/^\.worktrees\/[a-z0-9._-]+$/i.test(destination) || !featureBranch.test(branch) || /^(?:main|master)$/i.test(branch)) return null;
   return { destination, branch };
+};
+export const parseExactPackageAddTokens = (tokens) => {
+  const normalized = tokens.map(String); if (executableName(normalized[0]) !== "npm" || normalized.length !== 6 || normalized[1] !== "install" || normalized[2] !== "--save-exact" || normalized[3] !== "--ignore-scripts" || normalized[4] !== "--registry=https://registry.npmjs.org") return null;
+  const packageSpec = normalized[5], match = /^(@[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._-]*|[a-z0-9][a-z0-9._-]*)@(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/.exec(packageSpec);
+  return match ? { packageSpec, packageName: match[1], version: packageSpec.slice(match[1].length + 1) } : null;
 };
 
 export const classifyCommand = (command) => {
@@ -156,7 +161,9 @@ export const classifyCommand = (command) => {
   if (executable === "npm") {
     if (lower[0] === "ci") return result(CommandClass.REGISTERED_VERIFICATION_ALLOWED, "NPM_CI", original);
     if (lower[0] === "test") return result(CommandClass.REGISTERED_VERIFICATION_ALLOWED, "NPM_TEST", original);
+    if (lower[0] === "run" && args[1] === "crm:task" && args[2] === "--" && args[3] === "--task" && args.length === 5 && Buffer.byteLength(args[4]) >= 8) return result(CommandClass.SCOPED_MUTATION_ALLOWED, "TASK_BOOTSTRAP", original);
     if (lower[0] === "run" && safeNpmScripts.has(args[1])) return result(CommandClass.REGISTERED_VERIFICATION_ALLOWED, "NPM_REGISTERED_SCRIPT", original);
+    if (parseExactPackageAddTokens(original)) return result(CommandClass.SCOPED_MUTATION_ALLOWED, "NPM_EXACT_PACKAGE_ADD", original);
     return result(CommandClass.UNKNOWN_MUTATION_SHAPE, "NPM_COMMAND_UNREGISTERED", original);
   }
 

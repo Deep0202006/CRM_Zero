@@ -695,6 +695,7 @@
       "runner": "fixed-commands",
       "commands": [
         { "file": "node", "args": ["scripts/engineering/task-controller.mjs", "--self-test"] },
+        { "file": "node", "args": ["scripts/engineering/task-continuity.test.mjs"] },
         { "file": "node", "args": ["scripts/engineering/context.test.mjs"] },
         { "file": "node", "args": ["scripts/engineering/experience.test.mjs"] },
         { "file": "node", "args": ["scripts/engineering/precision.test.mjs"] },

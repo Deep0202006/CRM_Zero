@@ -20,6 +20,19 @@ required reuse; DOMAIN_MAP sets risk floors; PROOFS registers executable proof.
 When `crm:task` returns a managed worktree in its task packet, perform all subsequent
 task edits and proofs in that exact worktree.
 
+The durable packet under `.git/zd-os/tasks/<task-id>/` is the only task authority.
+Session state carries transport metadata plus one `boundTaskId`; every hook uses
+that exact compatible unfinished task and fails closed on branch/worktree drift.
+Zero matches means `AWAITING_TASK`: allow read-only inspection and exact bootstrap,
+but no other mutation. Multiple matches are ambiguous. Terminal tasks unbind.
+Status and continuation prompts do not amend. Requirement prompts evolve
+acceptance/plan and invalidate current proof/delivery. `NEW_TASK: <requirement>`
+or exact `npm run crm:task -- --task "<requirement>"` creates and binds a successor
+without asking the Owner for internal IDs. Automatic hook context is metadata-only;
+on a pointer capsule run `npm run crm:session:reread` before mutation. Use
+`npm run crm:session:status` or `npm run crm:session:snapshot` for read-only
+diagnostics; never hand-author `handoff.md` or suppress corrupt state.
+
 After a change run `impact:compile`, `proof:plan`, and only registered proofs.
 Unknown executable/config paths, control-plane changes, schema, RLS, auth,
 money, platform, production, migrations, and workflows are R3. GitHub CI binds
