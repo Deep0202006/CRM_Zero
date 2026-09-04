@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 import { serializeSessionContext } from "./experience.mjs";
@@ -10,7 +10,7 @@ import { appendProgress, createTask, loadTask, nextTaskId, readTaskSnapshot, tas
 import { contextRereadPending, loadState, sessionPath } from "./hooks/state-store.mjs";
 
 const taskRoot = makeEngineeringTemp("continuity-task-state"), sessionRoot = makeEngineeringTemp("continuity-session-state"), previousTaskRoot = process.env.ZD_OS_STATE_ROOT, previousSessionRoot = process.env.ZD_OS_SESSION_ROOT, suffix = randomUUID().slice(0, 8), fixtureBranch = `chore/v6a-hook-fixture-${suffix}`;
-const repository = dirname(git("rev-parse", "--path-format=absolute", "--git-common-dir")), fixture = resolve(repository, ".worktrees", `v6a-hook-fixture-${suffix}`), gitAt = (cwd, ...args) => execFileSync("git", args, { cwd, encoding: "utf8", env: gitEnvironmentFor(cwd), maxBuffer: 64 << 20 }).trim();
+const repository = dirname(git("rev-parse", "--path-format=absolute", "--git-common-dir")), fixture = resolve(repository, ".worktrees", `v6a hook fixture ${suffix}`), gitAt = (cwd, ...args) => execFileSync("git", args, { cwd, encoding: "utf8", env: gitEnvironmentFor(cwd), maxBuffer: 64 << 20 }).trim();
 process.env.ZD_OS_STATE_ROOT = taskRoot; process.env.ZD_OS_SESSION_ROOT = sessionRoot;
 
 const hook = (name, input) => {
@@ -32,11 +32,33 @@ const prepare = (taskId, packageAdds = []) => {
 
 try {
   gitAt(root, "worktree", "add", "-b", fixtureBranch, fixture, "HEAD");
-  cpSync(resolve(root, "scripts/engineering"), resolve(fixture, "scripts/engineering"), { recursive: true, force: true }); cpSync(resolve(root, "docs/engineering"), resolve(fixture, "docs/engineering"), { recursive: true, force: true }); cpSync(resolve(root, "docs/contracts/engineering-os.md"), resolve(fixture, "docs/contracts/engineering-os.md"), { force: true }); cpSync(resolve(root, "package.json"), resolve(fixture, "package.json"), { force: true }); cpSync(resolve(root, "AGENTS.md"), resolve(fixture, "AGENTS.md"), { force: true });
-  gitAt(fixture, "config", "user.name", "CRM Hook Fixture"); gitAt(fixture, "config", "user.email", "fixture@example.invalid"); gitAt(fixture, "add", "scripts/engineering", "docs/engineering", "docs/contracts/engineering-os.md", "package.json", "AGENTS.md"); const staged = spawnSync("git", ["diff", "--cached", "--quiet"], { cwd: fixture, encoding: "utf8", env: gitEnvironmentFor(fixture) }); if (staged.status === 1) gitAt(fixture, "commit", "-m", "test: current V6A hook fixture"); else assert.equal(staged.status, 0, staged.stderr);
+  cpSync(resolve(root, "scripts/engineering"), resolve(fixture, "scripts/engineering"), { recursive: true, force: true }); cpSync(resolve(root, "docs/engineering"), resolve(fixture, "docs/engineering"), { recursive: true, force: true }); cpSync(resolve(root, "docs/contracts/engineering-os.md"), resolve(fixture, "docs/contracts/engineering-os.md"), { force: true }); cpSync(resolve(root, ".codex/hooks.json"), resolve(fixture, ".codex/hooks.json"), { force: true }); cpSync(resolve(root, "package.json"), resolve(fixture, "package.json"), { force: true }); cpSync(resolve(root, "AGENTS.md"), resolve(fixture, "AGENTS.md"), { force: true });
+  gitAt(fixture, "config", "user.name", "CRM Hook Fixture"); gitAt(fixture, "config", "user.email", "fixture@example.invalid"); gitAt(fixture, "add", "scripts/engineering", "docs/engineering", "docs/contracts/engineering-os.md", ".codex/hooks.json", "package.json", "AGENTS.md"); const staged = spawnSync("git", ["diff", "--cached", "--quiet"], { cwd: fixture, encoding: "utf8", env: gitEnvironmentFor(fixture) }); if (staged.status === 1) gitAt(fixture, "commit", "-m", "test: current V6A hook fixture"); else assert.equal(staged.status, 0, staged.stderr);
   const identity = { branch: fixtureBranch, worktree: fixture, ...repositoryIdentity(fixture) }, sessionId = `fresh-${suffix}`;
 
+  const configured = JSON.parse(readFileSync(resolve(fixture, ".codex/hooks.json"), "utf8")).hooks, windowsCommands = Object.values(configured).flatMap((groups) => groups.flatMap((group) => group.hooks.map((item) => item.commandWindows)));
+  assert.equal(windowsCommands.length, 5); assert(windowsCommands.every((command) => /^git -c alias\.zd-hook=!node zd-hook scripts\/engineering\/hooks\/[a-z-]+\.mjs$/.test(command)));
+  let configuredSessionStart = null;
+  if (process.platform === "win32") {
+    const inputs = {
+      SessionStart: { session_id: `configured-start-${suffix}`, source: "startup" },
+      UserPromptSubmit: { session_id: `configured-prompt-${suffix}`, prompt: "status" },
+      PreToolUse: { session_id: `configured-pre-${suffix}`, tool_name: "exec_command", tool_input: { cmd: "git status --short" } },
+      PostToolUse: { session_id: `configured-post-${suffix}`, tool_name: "exec_command", tool_input: { cmd: "git status --short" }, tool_response: { exit_code: 0, stdout: "", stderr: "" } },
+      Stop: { session_id: `configured-stop-${suffix}` },
+    };
+    for (const [event, input] of Object.entries(inputs)) {
+      const command = configured[event][0].hooks[0].commandWindows, result = spawnSync(command, { cwd: fixture, encoding: "utf8", env: process.env, input: JSON.stringify(input), shell: process.env.ComSpec ?? "cmd.exe" });
+      assert.equal(result.status, 0, `${event}: ${result.stderr || result.stdout}`); assert.equal(result.stderr, "", event); if (event === "SessionStart") configuredSessionStart = JSON.parse(result.stdout);
+    }
+    const probe = resolve(fixture, "scripts/engineering/hooks/launcher-probe.mjs"), probeCommand = windowsCommands[0].replace("session-start.mjs", "launcher-probe.mjs");
+    writeFileSync(probe, 'process.stdin.pipe(process.stdout); console.error("launcher-stderr"); process.exitCode = 7;\n');
+    try { const result = spawnSync(probeCommand, { cwd: fixture, encoding: "utf8", env: process.env, input: "launcher-stdin", shell: process.env.ComSpec ?? "cmd.exe" }); assert.equal(result.status, 7); assert.equal(result.stdout, "launcher-stdin"); assert.equal(result.stderr, "launcher-stderr\n"); }
+    finally { rmSync(probe); }
+  }
+
   const zero = automatic(hook("session-start", { session_id: sessionId, source: "startup" })); assert.equal(zero.sessionStatus, "AWAITING_TASK"); assert.equal(zero.boundTaskId, null); assert.equal(zero.taskBootstrap.required, true);
+  if (configuredSessionStart) assert.deepEqual(automatic(configuredSessionStart), zero);
   assert.equal(hook("pre-tool", { session_id: sessionId, tool_name: "exec_command", tool_input: { cmd: "git status --short" } }), null);
   assert.equal(hook("pre-tool", { session_id: sessionId, tool_name: "exec_command", tool_input: { cmd: "npm run crm:task -- --task \"Create hook lifecycle fixture\"" } }), null);
   assert.match(hook("pre-tool", { session_id: sessionId, tool_name: "apply_patch", tool_input: { patch: "fixture" } }).hookSpecificOutput.permissionDecisionReason, /SESSION_TASK_UNBOUND/);
@@ -75,7 +97,7 @@ try {
   const corruptId = `20260904-corrupt-${suffix}`, corruptPath = resolve(taskRoot, corruptId, "task.json"); mkdirSync(dirname(corruptPath), { recursive: true }); writeFileSync(corruptPath, "{interrupted"); const corrupt = hook("session-start", { session_id: `corrupt-${suffix}`, source: "startup" }); assert.equal(corrupt.continue, false); assert.match(corrupt.stopReason, /TASK_DISCOVERY_CORRUPT/); assert.equal(readFileSync(corruptPath, "utf8"), "{interrupted");
 
   const pointer = { schemaVersion: 1, taskId: successorId, revision: 1, path: ".tmp/engineering/fixture/snapshot.json", byteCount: 10_000, sha256: "a".repeat(64) }, compact = JSON.parse(serializeSessionContext({ kernel: "V6A", required: "x".repeat(10_000) }, 900, pointer)); assert.equal(compact.contextPointer.sha256, pointer.sha256); assert.throws(() => serializeSessionContext({ token: "unsafe" }), /SESSION_CONTEXT_SENSITIVE_DATA/);
-  console.log(JSON.stringify({ code: "TASK_CONTINUITY_CHILD_HOOKS_PASS", hooks: ["SessionStart", "UserPromptSubmit", "PreToolUse", "PostToolUse", "Stop"], cases: ["zero-bootstrap", "resume", "status-continuation", "amendment-invalidation", "completed-successor", "ambiguity", "overflow-reread-ack", "secret-exclusion", "stale-lock", "corruption", "package-policy", "handoff-determinism"], taskId, successorId }));
+  console.log(JSON.stringify({ code: "TASK_CONTINUITY_CHILD_HOOKS_PASS", hooks: ["SessionStart", "UserPromptSubmit", "PreToolUse", "PostToolUse", "Stop"], cases: ["windows-configured-commands", "space-bearing-worktree", "zero-bootstrap", "resume", "status-continuation", "amendment-invalidation", "completed-successor", "ambiguity", "overflow-reread-ack", "secret-exclusion", "stale-lock", "corruption", "package-policy", "handoff-determinism"], taskId, successorId }));
 } finally {
   if (previousTaskRoot === undefined) delete process.env.ZD_OS_STATE_ROOT; else process.env.ZD_OS_STATE_ROOT = previousTaskRoot;
   if (previousSessionRoot === undefined) delete process.env.ZD_OS_SESSION_ROOT; else process.env.ZD_OS_SESSION_ROOT = previousSessionRoot;
