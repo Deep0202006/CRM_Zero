@@ -116,10 +116,15 @@ const boundedPacket = (items, budget) => {
 // Codex 0.152.1 spills additionalContext above 2,500 approximate tokens at
 // four bytes/token. Staying below 9,000 bytes leaves deterministic headroom.
 export const SESSION_CONTEXT_MAX_BYTES = 9_000;
-export const serializeSessionContext = (payload = {}, budget = SESSION_CONTEXT_MAX_BYTES) => {
+const sessionSecretPattern = /"(?:password|secret|token|api[_-]?key|authorization|cookie)"\s*:|(?:sk|gh[oparsu])_[A-Za-z0-9_-]{16,}|eyJ[A-Za-z0-9_-]{12,}\.[A-Za-z0-9_-]{12,}\.[A-Za-z0-9_-]{12,}/i;
+export const serializeSessionContext = (payload = {}, budget = SESSION_CONTEXT_MAX_BYTES, pointer = null) => {
   const serialized = JSON.stringify(payload);
-  if (Buffer.byteLength(serialized) > budget) throw new Error(`SESSION_CONTEXT_BUDGET_EXCEEDED:${Buffer.byteLength(serialized)}:${budget}`);
-  return serialized;
+  if (sessionSecretPattern.test(serialized)) throw new Error("SESSION_CONTEXT_SENSITIVE_DATA");
+  const byteCount = Buffer.byteLength(serialized); if (byteCount <= budget) return serialized;
+  if (!pointer) throw new Error(`SESSION_CONTEXT_POINTER_REQUIRED:${byteCount}:${budget}`);
+  const compact = JSON.stringify({ kernel: payload.kernel ?? "V6A", boundTaskId: pointer.taskId, sessionStatus: "CONTEXT_REREAD_REQUIRED", contextPointer: pointer, reread: "npm run crm:session:reread", completionClaim: false });
+  if (Buffer.byteLength(compact) > budget) throw new Error(`SESSION_CONTEXT_POINTER_BUDGET_EXCEEDED:${Buffer.byteLength(compact)}:${budget}`);
+  return compact;
 };
 
 export const selectExperience = ({ task = "", domains = [], risk = "R0", candidatePaths = [], requiredProofIds = [], requiredProofKinds = [], environment = {}, failureSignatures = [] } = {}, { lessons = readJson("docs/engineering/LESSONS.json").lessons, incidents = readIncidentRegistry().incidents, budget = EXPERIENCE_PACKET_MAX_BYTES } = {}) => {

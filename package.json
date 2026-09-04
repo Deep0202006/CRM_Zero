@@ -35,6 +35,7 @@
     "crm:task": "node scripts/engineering/task-controller.mjs",
     "crm:session:status": "node scripts/engineering/session-observability.mjs",
     "crm:session:snapshot": "node scripts/engineering/session-observability.mjs --snapshot",
+    "crm:session:reread": "node scripts/engineering/session-observability.mjs --reread",
     "crm:benchmark": "node scripts/engineering/benchmark.mjs",
     "crm:release": "node scripts/engineering/release-entry.mjs",
     "crm:workspace": "node scripts/engineering/workspace-audit.mjs",

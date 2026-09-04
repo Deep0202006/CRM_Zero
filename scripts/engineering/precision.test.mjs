@@ -68,7 +68,8 @@ assert.equal(proveAssumptions([rpc], { parity, receipts: [unrelatedReceipt], led
 
 const session = serializeSessionContext({ kernel: "V6A", boundTaskId: "task-1", task: { objective: "keep durable context complete", acceptance: [{ id: "A", status: "PENDING" }], writeScope: ["scripts/engineering/task-state.mjs"], nextAction: "run focused proof" } });
 assert(Buffer.byteLength(session) < 9_000); assert.match(session, /task-1/); assert.match(session, /IMPLEMENTATION_READY|durable context complete/);
-assert.throws(() => serializeSessionContext({ required: "x".repeat(9_000) }), /SESSION_CONTEXT_BUDGET_EXCEEDED/);
+const contextPointer = { schemaVersion: 1, taskId: "task-1", revision: 7, path: ".tmp/engineering/fixture/snapshot.json", byteCount: 10_000, sha256: hex("c") }, compactSession = JSON.parse(serializeSessionContext({ kernel: "V6A", required: "x".repeat(9_000) }, 900, contextPointer));
+assert.equal(compactSession.sessionStatus, "CONTEXT_REREAD_REQUIRED"); assert.deepEqual(compactSession.contextPointer, contextPointer); assert.throws(() => serializeSessionContext({ required: "x".repeat(9_000) }), /SESSION_CONTEXT_POINTER_REQUIRED/); assert.throws(() => serializeSessionContext({ token: "unsafe" }), /SESSION_CONTEXT_SENSITIVE_DATA/);
 
 const state = resolve(tmpdir(), `zd-precision-${randomUUID()}`), priorState = process.env.ZD_OS_STATE_ROOT; process.env.ZD_OS_STATE_ROOT = state; mkdirSync(resolve(state, "metric-task"), { recursive: true }); writeTaskExperience("metric-task", { schemaVersion: 1, task: "metric-task", assumptions: [], incidents: [], metrics: { events: {}, pushCount: 0, ciAttemptCount: 0, firstPassCiSuccess: null } });
 recordMetricEvent("metric-task", { type: "push", key: sha("a") }); recordMetricEvent("metric-task", { type: "push", key: sha("a") }); recordMetricEvent("metric-task", { type: "ci", key: `7:${sha("a")}` });

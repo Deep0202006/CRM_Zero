@@ -1,19 +1,16 @@
 import { resolve } from "node:path";
 import { doctor } from "../kernel-doctor.mjs";
-import { readTaskSnapshot, taskDirectory } from "../task-state.mjs";
-import { readFileSync } from "node:fs";
-import { bindSession, readHookInput, updateState } from "./state-store.mjs";
+import { readAutomaticTaskContext, taskContextPointer } from "../task-state.mjs";
+import { bindSession, readHookInput, requireContextReread, updateState } from "./state-store.mjs";
 import { serializeSessionContext } from "../experience.mjs";
 
 export const startSession = ({ sessionId, source = "startup" }) => {
-  const health = doctor(), binding = bindSession(sessionId), directory = taskDirectory(binding.task.taskId), context = JSON.parse(readFileSync(resolve(directory, "context.json"), "utf8"));
+  const health = doctor(), binding = bindSession(sessionId);
   if (health.failures.length) updateState(sessionId, (current) => ({ ...current, status: "SAFETY_CONFLICT" }));
-  const additionalContext = serializeSessionContext({
-    kernel: "V6A", source, sessionStatus: health.failures.length ? "SAFETY_CONFLICT" : binding.state.status,
-    safetyConflict: health.failures[0] ?? null, boundTaskId: binding.task.taskId,
-    task: readTaskSnapshot(binding.task.taskId),
-    experience: (context.experiencePacket ?? []).slice(0, 3).map((item) => ({ id: item.id, action: item.requiredPreventionAction ?? item.rule })),
-  });
+  const sessionStatus = health.failures.length ? "SAFETY_CONFLICT" : binding.state.status;
+  if (!binding.task) return { hookSpecificOutput: { hookEventName: "SessionStart", additionalContext: serializeSessionContext({ kernel: "V6A", source, sessionStatus, boundTaskId: null, taskBootstrap: { required: true, command: "npm run crm:task -- --task <requirement>" }, completionClaim: false }) } };
+  const pointer = taskContextPointer(binding.task.taskId), additionalContext = serializeSessionContext({ kernel: "V6A", source, sessionStatus, boundTaskId: binding.task.taskId, task: readAutomaticTaskContext(binding.task.taskId), completionClaim: false }, undefined, pointer);
+  if (JSON.parse(additionalContext).contextPointer) requireContextReread(sessionId, pointer);
   return { hookSpecificOutput: { hookEventName: "SessionStart", additionalContext } };
 };
 

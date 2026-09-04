@@ -116,8 +116,8 @@ try {
 
     const corruptSession = `kernel-test-${randomUUID()}`, corruptPath = sessionPath(corruptSession);
     mkdirSync(dirname(corruptPath), { recursive: true }); writeFileSync(corruptPath, "{interrupted");
-    assert.throws(() => loadState(corruptSession), /STATE_CORRUPT_PRESERVED/); assert(readdirSync(dirname(corruptPath)).some((name) => name.startsWith(`${corruptSession}.json.corrupt-`)));
-    matrix.state.push("corrupt-preserved-fail-closed");
+    assert.throws(() => loadState(corruptSession), /STATE_CORRUPT/); assert.equal(readFileSync(corruptPath, "utf8"), "{interrupted");
+    matrix.state.push("corrupt-visible-fail-closed");
 
     const identity = { schemaVersion: 1, baseSha, headSha: currentHead, treeSha: currentTree, dirtyFingerprint: dirtyFingerprint(), impactHash: "b".repeat(64), planHash: "a".repeat(64), requiredProofs: ["kernel-fixture-pass"], requiredByKind: { unit: ["kernel-fixture-pass"] }, notRequiredKinds: [] };
     const ciEnvironment = { CI: "true", GITHUB_ACTIONS: "true", GITHUB_REPOSITORY: "Deep0202006/CRM_Zero", GITHUB_WORKFLOW: "CRM Product Verification", GITHUB_RUN_ID: "123456", GITHUB_RUN_ATTEMPT: "1", GITHUB_SHA: currentHead, GITHUB_REF: "refs/pull/89/merge", GITHUB_JOB: "preflight", GITHUB_EVENT_NAME: "pull_request", KERNEL_BASE_SHA: baseSha, KERNEL_HEAD_SHA: currentHead };
@@ -215,6 +215,8 @@ try {
 
   for (const [text, expected, name] of [
     ["git status --short", CommandClass.READ_ONLY_ALLOWED, "git-read"], ["npm run kernel:test", CommandClass.REGISTERED_VERIFICATION_ALLOWED, "registered-test"],
+    ["npm run crm:session:reread", CommandClass.REGISTERED_VERIFICATION_ALLOWED, "context-reread"], ["npm run crm:task -- --task \"Repair engineering control\"", CommandClass.SCOPED_MUTATION_ALLOWED, "task-bootstrap"],
+    ["npm install --save-exact --ignore-scripts --registry=https://registry.npmjs.org zod@4.1.12", CommandClass.SCOPED_MUTATION_ALLOWED, "exact-package-add"], ["npm install zod@4.1.12", CommandClass.UNKNOWN_MUTATION_SHAPE, "package-add-unregistered"], ["npm install --save-exact --ignore-scripts --registry=https://registry.npmjs.org zod@latest", CommandClass.UNKNOWN_MUTATION_SHAPE, "package-tag-denied"], ["npm install --save-exact --ignore-scripts --registry=https://evil.invalid zod@4.1.12", CommandClass.UNKNOWN_MUTATION_SHAPE, "alternate-registry-denied"],
     ["git branch", CommandClass.READ_ONLY_ALLOWED, "branch-list-default"], ["git branch --list", CommandClass.READ_ONLY_ALLOWED, "branch-list"], ["git branch -a", CommandClass.READ_ONLY_ALLOWED, "branch-all"], ["git branch -r", CommandClass.READ_ONLY_ALLOWED, "branch-remotes"], ["git branch -vv", CommandClass.READ_ONLY_ALLOWED, "branch-verbose"], ["git branch --show-current", CommandClass.READ_ONLY_ALLOWED, "branch-current"],
     ["git branch -d feature/x", CommandClass.PROHIBITED, "branch-delete"], ["git branch -D feature/x", CommandClass.PROHIBITED, "branch-force-delete"], ["git branch --delete feature/x", CommandClass.PROHIBITED, "branch-delete-long"], ["git branch -m old new", CommandClass.PROHIBITED, "branch-move"], ["git branch -M old new", CommandClass.PROHIBITED, "branch-force-move"], ["git branch feature/x", CommandClass.PROHIBITED, "branch-create"],
     ["git remote", CommandClass.READ_ONLY_ALLOWED, "remote-list"], ["git remote -v", CommandClass.READ_ONLY_ALLOWED, "remote-verbose"], ["git remote get-url origin", CommandClass.READ_ONLY_ALLOWED, "remote-url"], ["git remote show origin", CommandClass.READ_ONLY_ALLOWED, "remote-show"], ["git remote add upstream https://example.invalid/repo.git", CommandClass.PROHIBITED, "remote-add"], ["git remote set-url origin https://example.invalid/repo.git", CommandClass.PROHIBITED, "remote-set-url"],
