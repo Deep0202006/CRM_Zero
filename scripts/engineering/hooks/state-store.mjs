@@ -95,7 +95,7 @@ export const resolveOrBindSessionTask = (sessionId, { exactTaskId, identity: sup
   const stored = readStored(sessionId); let current = stored.value;
   const identity = suppliedIdentity ?? currentBindingIdentity();
   if (stored.legacy) {
-    const matches = compatible(identity); if (matches.length > 1) throw new Error(`LEGACY_SESSION_BINDING_AMBIGUOUS:${matches.length}`);
+    const matches = compatible(identity); if (matches.length > 1) throw new Error(`SESSION_BINDING_AMBIGUOUS:${matches.length}`);
     const preserved = `${path}.v1-preserved-${sha256(stored.raw).slice(0, 12)}.json`; if (!existsSync(preserved)) copyFileSync(path, preserved);
     current = { ...initial(sessionId), revision: Number.isInteger(stored.legacy.revision) ? stored.legacy.revision : 0, boundTaskId: matches[0]?.taskId };
   }
