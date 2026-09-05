@@ -1,14 +1,14 @@
 import { resolve } from "node:path";
 import { doctor } from "../kernel-doctor.mjs";
 import { readAutomaticTaskContext, taskContextPointer } from "../task-state.mjs";
-import { bindSession, readHookInput, requireContextReread, updateState } from "./state-store.mjs";
+import { readHookInput, requireContextReread, resolveOrBindSessionTask, updateState } from "./state-store.mjs";
 import { serializeSessionContext } from "../experience.mjs";
 
 export const startSession = ({ sessionId, source = "startup" }) => {
-  const health = doctor(), binding = bindSession(sessionId);
+  const health = doctor(), binding = resolveOrBindSessionTask(sessionId);
   if (health.failures.length) updateState(sessionId, (current) => ({ ...current, status: "SAFETY_CONFLICT" }));
   const sessionStatus = health.failures.length ? "SAFETY_CONFLICT" : binding.state.status;
-  if (!binding.task) return { hookSpecificOutput: { hookEventName: "SessionStart", additionalContext: serializeSessionContext({ kernel: "V6A", source, sessionStatus, boundTaskId: null, taskBootstrap: { required: true, command: "npm run crm:task -- --task <requirement>" }, completionClaim: false }) } };
+  if (!binding.task) return { hookSpecificOutput: { hookEventName: "SessionStart", additionalContext: serializeSessionContext({ kernel: "V6A", source, sessionStatus, boundTaskId: null, ...(binding.recovery ? { recovery: { required: true, action: binding.recovery.intent, reason: binding.recovery.reason } } : { taskBootstrap: { required: true, command: "npm run crm:task -- --task <requirement>" } }), completionClaim: false }) } };
   const pointer = taskContextPointer(binding.task.taskId), additionalContext = serializeSessionContext({ kernel: "V6A", source, sessionStatus, boundTaskId: binding.task.taskId, task: readAutomaticTaskContext(binding.task.taskId), completionClaim: false }, undefined, pointer);
   if (JSON.parse(additionalContext).contextPointer) requireContextReread(sessionId, pointer);
   return { hookSpecificOutput: { hookEventName: "SessionStart", additionalContext } };

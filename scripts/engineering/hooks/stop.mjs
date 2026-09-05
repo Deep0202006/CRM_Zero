@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { readHookInput, repositoryIdentity, resolveBoundTask, root, updateState } from "./state-store.mjs";
+import { readHookInput, repositoryIdentity, resolveOrBindSessionTask, root, updateState } from "./state-store.mjs";
 import { run, sha256 } from "../kernel-lib.mjs";
 import { readFileSync } from "node:fs";
 import { taskDirectory } from "../task-state.mjs";
@@ -71,11 +71,11 @@ if (process.argv[1] && resolve(process.argv[1]) === resolve(import.meta.filename
   const input = await readHookInput(), sessionId = input.session_id ?? "unknown";
   let result;
   let binding;
-  try { binding = resolveBoundTask(sessionId); result = evaluateDurableTaskStop(binding.task); }
+  try { binding = resolveOrBindSessionTask(sessionId); result = binding.task ? evaluateDurableTaskStop(binding.task) : { status: binding.resolution, reason: binding.recovery?.intent ?? "CREATE_TASK" }; }
   catch (error) { result = { status: "SAFETY_CONFLICT", reason: error.message }; }
   let decision;
-  if (binding) updateState(sessionId, (current) => { decision = applyStallPolicy(current, result); return { ...current, ...decision.state }; });
+  if (binding?.task) updateState(sessionId, (current) => { decision = applyStallPolicy(current, result); return { ...current, ...decision.state }; });
   else decision = { result, state: { stallCount: 0 } };
   result = decision.result;
-  if (result.status !== "READY_TO_END") console.log(JSON.stringify(["EXTERNAL_DEPENDENCY", "HUMAN_APPROVAL_REQUIRED", "SAFETY_CONFLICT", "STALL_LIMIT"].includes(result.status) ? { stopReason: result.status, systemMessage: `${result.status}:${result.reason ?? "review required"}` } : { decision: "block", reason: `KERNEL_CONTINUE|taskId=${binding.task.taskId}|status=${result.status}|reason=${result.reason ?? "continue"}${decision.continuation ? `|strategy=${decision.continuation}|stallCount=${decision.state.stallCount}` : ""}` }));
+  if (result.status !== "READY_TO_END") console.log(JSON.stringify(["EXTERNAL_DEPENDENCY", "HUMAN_APPROVAL_REQUIRED", "SAFETY_CONFLICT", "STALL_LIMIT", "RECOVERY_REQUIRED", "AWAITING_TASK"].includes(result.status) ? { stopReason: result.status, systemMessage: `${result.status}:${result.reason ?? "review required"}` } : { decision: "block", reason: `KERNEL_CONTINUE|taskId=${binding.task.taskId}|status=${result.status}|reason=${result.reason ?? "continue"}${decision.continuation ? `|strategy=${decision.continuation}|stallCount=${decision.state.stallCount}` : ""}` }));
 }
