@@ -10,12 +10,24 @@ permits broad read-only investigation; it never grants write authority.
 
 `.git/zd-os/tasks/<task-id>/` is the sole authority for task identity, objective,
 acceptance, scope, blockers, proof and delivery. Session files contain only
-transport/runtime state and one `boundTaskId`. SessionStart binds exactly one
-compatible unfinished durable task. With zero matches it enters `AWAITING_TASK`,
-permits read-only inspection plus exact task bootstrap, and denies other mutation;
-multiple matches fail as ambiguous. Terminal or released tasks are unbound.
-UserPromptSubmit, PreToolUse, PostToolUse and Stop use the same ID and fail closed
-on branch or worktree mismatch.
+transport/runtime state and one `boundTaskId`. SessionStart and UserPromptSubmit
+invoke the same lock-bounded `resolveOrBindSessionTask` transition. A valid binding
+is verified and reused; otherwise exactly one compatible unfinished durable task
+is atomically bound. Compatibility requires the same canonical common Git
+directory, full branch identity and normalized literal worktree, with the recorded
+HEAD equal to or an ancestor of local HEAD. Tracked or untracked interruption is
+not a resume failure and recovery never cleans, resets, stashes, moves, copies or
+discloses it. Multiple matches fail `SESSION_BINDING_AMBIGUOUS`; corrupt discovery
+fails `TASK_DISCOVERY_CORRUPT`; terminal or released tasks are never rebound.
+
+With zero matches, the canonical bootstrap workspace enters `AWAITING_TASK`.
+A registered linked `feat/`, `fix/` or `chore/` worktree instead enters
+`RECOVERY_REQUIRED` and advertises the task-ID-free `RESUME_CURRENT_WORKSPACE`
+action. The action may adopt that branch, worktree and exactly identified open PR
+in place only when registration, topology, claims and non-divergent ancestry are
+safe. It creates no branch, worktree or PR and rewrites no history. A local HEAD
+ahead of the PR head is valid. UserPromptSubmit, PreToolUse, PostToolUse and Stop
+use the same ID and fail closed on repository, branch, worktree or history mismatch.
 
 Status questions and exact continuation phrases are non-amending. Every prompt
 records only a monotonic sequence, disposition, byte count and SHA-256 in session
@@ -24,7 +36,20 @@ moves current proof to history, clears current proof and delivery, and returns t
 task to investigation. Stop cannot certify it until scope and proof are current.
 A new task requires `NEW_TASK: <requirement>` or exact
 `npm run crm:task -- --task "<requirement>"`; the operation creates a collision-safe
-task and binds the initiating session without Owner-supplied internal IDs.
+task and binds the initiating session without Owner-supplied internal IDs. Prompt-
+time status, resume and continuation first recover the binding and never amend the
+task. An unbound `KERNEL_CONTINUE|taskId=...` binds that exact compatible,
+nonterminal task before continuation validation. `NEW_TASK` returns
+`NEW_TASK_ACTIVE_TASK_EXISTS` whenever an unfinished task exists, regardless of
+requirement text, and never creates a duplicate.
+
+New-task suitability is separate from existing-task recovery and reports the
+specific sanitized reason: `BRANCH_UNSUITABLE`, `PRIMARY_WORKTREE_UNSUITABLE`,
+`WORKTREE_NOT_REGISTERED`, `WORKTREE_LOCATION_UNSUITABLE`,
+`WORKTREE_DIRTY_FOR_NEW_TASK`, `ACTIVE_TASK_EXISTS`, `TASK_BRANCH_MISMATCH`,
+`TASK_WORKTREE_MISMATCH`, `TASK_HISTORY_DIVERGED` or
+`TASK_RECOVERY_AMBIGUOUS`. Existing-task recovery never applies the new-task
+cleanliness rule.
 
 ## Before the first edit
 
@@ -59,6 +84,15 @@ head and delivery changes regenerate it. `crm:session:status` and
 `crm:session:snapshot` are read-only diagnostics and never repair, migrate or
 rename state.
 
+Binding and rebinding are operational session metadata: they do not increment task
+or requirements revision, amend acceptance, invalidate proof, alter delivery or
+drift release approval. Creation while holding the session lock re-reads discovery
+and identity; a failed session write rolls back only the task created by that
+operation, so retry is idempotent and cannot expose an unbound duplicate. Stop
+returns one actionable `RECOVERY_REQUIRED:RESUME_CURRENT_WORKSPACE` result for an
+orphaned linked workspace and does not increment the stall counter or emit an
+endless `KERNEL_CONTINUE` loop.
+
 Legacy V1 session task IDs are untrusted. Migration preserves the original file
 and binds only when exactly one unfinished durable task matches branch and
 worktree; zero enters `AWAITING_TASK` and multiple matches fail closed.
@@ -72,18 +106,21 @@ ranges, URLs, alternate registries and unregistered packages remain denied.
 Continuity regression proof executes the real SessionStart, UserPromptSubmit,
 PreToolUse, PostToolUse and Stop scripts as JSON child processes in a temporary
 managed Git worktree. Direct function tests alone are not lifecycle evidence;
-supported-host acceptance additionally requires a genuinely fresh Codex CLI
-session to load SessionStart and persist its canonical session record, plus actual
-CLI PreToolUse and PostToolUse integration. The receipt records sanitized paths,
-hashes, event types, exit status and repository/task/session identities, never
-prompt prose, credentials, environment dumps or secrets.
+the child-process suite also executes their portable Windows commands through the
+exact `cmd.exe /D /S /C` transport. The receipt records sanitized paths, hashes,
+event types, exit status and repository/task/session identities, never prompt
+prose, credentials, environment dumps or secrets.
 
-Codex CLI is the supported and required Engineering OS execution host. On Windows,
-Codex CLI 0.153.2 launches the portable `commandWindows` definitions through
-`cmd.exe`; acceptance therefore requires that exact transport behavior as well as
-the registered child-process proof of all five lifecycle entrypoints. Codex
-Desktop is currently unverified, outside the supported execution contract and
-non-blocking. No Desktop lifecycle acceptance or certification is claimed.
+Codex CLI is the supported Engineering OS execution host. The final enabled-hook
+canary on Codex CLI 0.153.2 completed fresh and resumed turns but did not invoke
+the repository hook commands or persist a session record. Therefore the five
+project hook registrations are intentionally absent from `.codex/hooks.json`.
+The controllers remain available as explicit commands and the five entrypoints,
+Windows transport, continuity state machine, proof, readiness and release gates
+remain executable CI/readiness controls. This availability fallback is permanent:
+repository hooks are non-blocking and no further hook redesign cycle is required.
+Global/user Ponytail configuration is not modified. Codex Desktop remains outside
+the supported execution contract and non-blocking.
 
 ## Completion
 
