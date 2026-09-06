@@ -4,12 +4,12 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, relative, resolve } from "node:path";
 import { buildSourceIndex } from "./source-index.mjs";
 import { resolveContext } from "./context.mjs";
-import { appendProgress, assertCompleteTaskDirectory, compareAndSwapTask, createTask, findActiveTask, loadTask, nextTaskId, taskDirectory, updateTaskState, writeTaskArtifact } from "./task-state.mjs";
+import { appendProgress, assertCompleteTaskDirectory, compareAndSwapTask, createTask, findActiveTask, listTasks, loadTask, nextTaskId, normalizeLiteralPath, stateRoot, taskDirectory, updateTaskState, writeTaskArtifact } from "./task-state.mjs";
 import { git, gitEnvironmentFor, parseArgs, root, sha256 } from "./kernel-lib.mjs";
 import { makeEngineeringTemp, removeEngineeringTemp } from "./managed-paths.mjs";
 import { initializeTaskExperience } from "./experience.mjs";
 
-const identity = () => ({ branch: git("branch", "--show-current"), worktree: git("rev-parse", "--show-toplevel"), baseSha: git("rev-parse", "origin/main"), headSha: git("rev-parse", "HEAD"), treeSha: git("rev-parse", "HEAD^{tree}") });
+const identity = () => ({ branch: git("branch", "--show-current"), worktree: git("rev-parse", "--show-toplevel"), repositoryCommonGitDir: git("rev-parse", "--path-format=absolute", "--git-common-dir"), baseSha: git("rev-parse", "origin/main"), headSha: git("rev-parse", "HEAD"), treeSha: git("rev-parse", "HEAD^{tree}") });
 const gitAt = (cwd, ...args) => execFileSync("git", args, { cwd, encoding: "utf8", env: gitEnvironmentFor(cwd), maxBuffer: 64 << 20 }).trim();
 const branchKind = (task) => /\b(cleanup|containment|config|configuration|kernel|tooling|maintenance)\b/i.test(task) ? "chore" : /\b(fix|bug|repair|correct|broken|error|failure)\b/i.test(task) ? "fix" : "feat";
 const branchSlug = (task) => String(task).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 42).replace(/-$/g, "") || "owner-task";
@@ -29,16 +29,53 @@ export const provisionTaskWorkspace = (task, from = root) => {
   }
   throw new Error("TASK_WORKSPACE_COLLISION_LIMIT");
 };
-const currentWorkspaceIsSuitable = (task, current) => {
-  const common = gitAt(current.worktree, "rev-parse", "--path-format=absolute", "--git-common-dir"), repository = dirname(common), child = relative(resolve(repository, ".worktrees"), current.worktree);
-  const rootLocalFeature = /^(?:feat|fix|chore)\//.test(current.branch) && child && !child.startsWith("..") && !isAbsolute(child);
-  const clean = !gitAt(current.worktree, "status", "--porcelain=v1", "--untracked-files=all"), active = findActiveTask({ branch: current.branch, worktree: current.worktree });
-  return rootLocalFeature && clean && (!active || active.task === task);
+const worktreeRecords = (cwd) => {
+  const raw = execFileSync("git", ["worktree", "list", "--porcelain", "-z"], { cwd, encoding: "utf8", env: gitEnvironmentFor(cwd), maxBuffer: 64 << 20 });
+  return raw.split("\0\0").map((record) => Object.fromEntries(record.split("\0").filter(Boolean).map((line) => { const split = line.indexOf(" "); return split < 0 ? [line, true] : [line.slice(0, split), line.slice(split + 1)]; }))).filter((record) => record.worktree);
 };
+export const inspectWorkspaceSuitability = ({ task, current = identity(), mode = "new-task", records: suppliedRecords, repository: suppliedRepository, dirty: suppliedDirty, tasks: suppliedTasks } = {}) => {
+  const common = gitAt(current.worktree, "rev-parse", "--path-format=absolute", "--git-common-dir"), repository = suppliedRepository ?? dirname(common), records = suppliedRecords ?? worktreeRecords(current.worktree), normalizedCurrent = normalizeLiteralPath(current.worktree), registered = records.find((record) => normalizeLiteralPath(record.worktree) === normalizedCurrent), primary = records[0], child = relative(resolve(repository, ".worktrees"), current.worktree), inManagedLocation = child && !child.startsWith("..") && !isAbsolute(child), branchSuitable = /^(?:feat|fix|chore)\/[A-Za-z0-9._/-]+$/.test(current.branch);
+  if (!current.branch || !branchSuitable) return { suitable: false, reason: "BRANCH_UNSUITABLE" };
+  if (!registered) return { suitable: false, reason: "WORKTREE_NOT_REGISTERED" };
+  if (primary && normalizeLiteralPath(primary.worktree) === normalizedCurrent) return { suitable: false, reason: "PRIMARY_WORKTREE_UNSUITABLE" };
+  if (!inManagedLocation) return { suitable: false, reason: "WORKTREE_LOCATION_UNSUITABLE" };
+  const claims = (suppliedTasks ?? listTasks({ unfinishedOnly: true })).filter((candidate) => candidate.branch === current.branch || normalizeLiteralPath(candidate.worktree) === normalizedCurrent);
+  const exact = claims.filter((candidate) => candidate.branch === current.branch && normalizeLiteralPath(candidate.worktree) === normalizedCurrent);
+  if (exact.length > 1 || claims.length > 1) return { suitable: false, reason: "TASK_RECOVERY_AMBIGUOUS" };
+  if (claims.some((candidate) => candidate.branch !== current.branch)) return { suitable: false, reason: "TASK_BRANCH_MISMATCH" };
+  if (claims.some((candidate) => normalizeLiteralPath(candidate.worktree) !== normalizedCurrent)) return { suitable: false, reason: "TASK_WORKTREE_MISMATCH" };
+  if (mode === "new-task") {
+    if (suppliedDirty ?? Boolean(gitAt(current.worktree, "status", "--porcelain=v1", "--untracked-files=all"))) return { suitable: false, reason: "WORKTREE_DIRTY_FOR_NEW_TASK" };
+    if (exact.length && exact[0].task !== task) return { suitable: false, reason: "ACTIVE_TASK_EXISTS", taskId: exact[0].taskId };
+  } else if (exact.length) return { suitable: false, reason: "ACTIVE_TASK_EXISTS", taskId: exact[0].taskId };
+  return { suitable: true, reason: null, repository, registered };
+};
+export const currentWorkspaceIsSuitable = (task, current = identity()) => inspectWorkspaceSuitability({ task, current, mode: "new-task" });
 export const createTaskInCurrentWorkspace = (task, { inspectOnly = false } = {}) => {
-  const current = identity(), active = findActiveTask({ branch: current.branch, worktree: current.worktree }); if (active?.task === task) return { task: active, context: JSON.parse(readFileSync(resolve(taskDirectory(active.taskId), "context.json"), "utf8")), directory: taskDirectory(active.taskId), reused: true }; if (!currentWorkspaceIsSuitable(task, current)) throw new Error("NEW_TASK_WORKSPACE_UNSUITABLE");
+  const current = identity(), active = findActiveTask({ branch: current.branch, worktree: current.worktree }); if (active?.task === task) return { task: active, context: JSON.parse(readFileSync(resolve(taskDirectory(active.taskId), "context.json"), "utf8")), directory: taskDirectory(active.taskId), reused: true }; if (active) throw new Error(`ACTIVE_TASK_EXISTS:${active.taskId}`); const suitability = currentWorkspaceIsSuitable(task, current); if (!suitability.suitable) throw new Error(suitability.reason);
   const index = buildSourceIndex(), context = resolveContext({ task, index }), taskId = nextTaskId(task, current.branch); createTask({ taskId, task, inspectOnly, identity: current, context: { schemaVersion: 1, index: { headSha: index.headSha, treeSha: index.treeSha, dirtyFingerprint: index.dirtyFingerprint }, ...context } });
   initializeTaskExperience({ taskId, task, context, identity: current }); appendProgress(taskId, { event: "CONTEXT_RESOLVED", status: context.status, candidateCount: context.candidatePaths.length, graphifyQueries: context.graphifyEvidence?.status === "GRAPHIFY_QUERIED" ? 1 : 0 }); return { task: loadTask(taskId), context, directory: taskDirectory(taskId) };
+};
+const ghJson = (args, cwd) => {
+  const common = gitAt(cwd, "rev-parse", "--path-format=absolute", "--git-common-dir"), isolatedState = normalizeLiteralPath(stateRoot()) !== normalizeLiteralPath(resolve(common, "zd-os/tasks"));
+  if (isolatedState && process.env.ZD_OS_RECOVERY_PR_FIXTURE) { try { return JSON.parse(process.env.ZD_OS_RECOVERY_PR_FIXTURE); } catch { throw new Error("TASK_RECOVERY_PR_INVALID"); } }
+  const result = spawnSync("gh", args, { cwd, encoding: "utf8", env: process.env, shell: false, maxBuffer: 4 << 20 });
+  if (result.status !== 0) throw new Error("TASK_RECOVERY_PR_UNAVAILABLE");
+  try { return JSON.parse(result.stdout); } catch { throw new Error("TASK_RECOVERY_PR_INVALID"); }
+};
+export const createRecoveryTaskInCurrentWorkspace = () => {
+  const current = identity(), suitability = inspectWorkspaceSuitability({ current, mode: "recovery" }); if (!suitability.suitable) throw new Error(suitability.reason);
+  const pulls = ghJson(["pr", "list", "--state", "open", "--head", current.branch, "--json", "number,headRefName,headRefOid,baseRefName,baseRefOid,isDraft"], current.worktree);
+  if (!Array.isArray(pulls) || pulls.length !== 1 || pulls[0].headRefName !== current.branch || !pulls[0].number || !/^[0-9a-f]{40}$/.test(pulls[0].headRefOid ?? "")) throw new Error("TASK_RECOVERY_AMBIGUOUS");
+  const pr = pulls[0]; if (!process.env.ZD_OS_RECOVERY_PR_FIXTURE) gitAt(current.worktree, "fetch", "origin", current.branch);
+  const remoteHeadPresent = spawnSync("git", ["cat-file", "-e", `${pr.headRefOid}^{commit}`], { cwd: current.worktree, env: gitEnvironmentFor(current.worktree) }).status === 0;
+  const remoteAncestor = remoteHeadPresent && spawnSync("git", ["merge-base", "--is-ancestor", pr.headRefOid, current.headSha], { cwd: current.worktree, env: gitEnvironmentFor(current.worktree) }).status === 0;
+  const localAncestor = remoteHeadPresent && spawnSync("git", ["merge-base", "--is-ancestor", current.headSha, pr.headRefOid], { cwd: current.worktree, env: gitEnvironmentFor(current.worktree) }).status === 0;
+  if (!remoteAncestor && !localAncestor) throw new Error("TASK_HISTORY_DIVERGED");
+  const task = `Resume current workspace for PR #${pr.number}`, index = buildSourceIndex(), context = resolveContext({ task, index }), taskId = nextTaskId(task, current.branch), recovery = { intent: "RESUME_CURRENT_WORKSPACE", pr: pr.number, remoteHead: pr.headRefOid, baseRefName: pr.baseRefName, baseRefOid: pr.baseRefOid, adoptedAt: new Date().toISOString() };
+  createTask({ taskId, task, identity: current, recovery, context: { schemaVersion: 1, index: { headSha: index.headSha, treeSha: index.treeSha, dirtyFingerprint: index.dirtyFingerprint }, ...context } });
+  initializeTaskExperience({ taskId, task, context, identity: current }); appendProgress(taskId, { event: "CONTEXT_RESOLVED", status: context.status, candidateCount: context.candidatePaths.length, recoveryIntent: recovery.intent });
+  return { task: loadTask(taskId), context, directory: taskDirectory(taskId), recoveredWorkspace: { pr: pr.number, branch: current.branch, remoteHead: pr.headRefOid } };
 };
 const compact = (taskId) => { const task = loadTask(taskId), context = JSON.parse(readFileSync(resolve(taskDirectory(taskId), "context.json"), "utf8")); return { task, context: { status: context.status, domains: context.domains, risk: context.risk, authorities: context.authorities, capabilities: context.capabilities, candidatePaths: context.candidatePaths?.map(({ path, contentHash, matchedBy }) => ({ path, contentHash, matchedBy })) }, directory: taskDirectory(taskId), resume: `npm run crm:task -- --resume ${taskId}` }; };
 const selfTest = () => {
@@ -71,7 +108,9 @@ export const runTaskController = () => {
   const statusId = args.value("--status"), resumeId = args.value("--resume"); if (statusId || resumeId) { const id = statusId || resumeId, current = identity(); let pack = compact(id); if (pack.task.branch !== current.branch || pack.task.worktree.replaceAll("\\", "/") !== current.worktree.replaceAll("\\", "/")) throw new Error("TASK_BRANCH_WORKTREE_MISMATCH"); if (resumeId) { if (pack.task.headSha !== current.headSha || pack.task.treeSha !== current.treeSha) { const proof = JSON.parse(readFileSync(resolve(taskDirectory(id), "proof.json"), "utf8")); updateTaskState(id, pack.task.revision, { taskPatch: { headSha: current.headSha, treeSha: current.treeSha, status: "LOCAL_PROOFS_REQUIRED" }, artifacts: { "proof.json": { ...proof, revision: pack.task.revision + 1, focusedRuns: [], broadRuns: [], invalidatedProofIds: [...new Set([...(proof.invalidatedProofIds ?? []), ...(proof.focusedRuns ?? []).map((run) => run.proofId).filter(Boolean)])], proofsInvalidated: (proof.proofsInvalidated ?? 0) + 1 } }, progress: [{ event: "TASK_RESUMED_WITH_HEAD_CHANGE" }] }); } else appendProgress(id, { event: "TASK_RESUMED" }); pack = compact(id); } return pack; }
   const task = args.value("--task"); if (!task || task.length < 8 || task.length > 2000) throw new Error("TASK_REQUIREMENT_INVALID");
   const current = identity();
-  if (!args.has("--managed-adopt") && !currentWorkspaceIsSuitable(task, current)) {
+  const active = findActiveTask({ branch: current.branch, worktree: current.worktree }); if (active && active.task !== task) throw new Error(`NEW_TASK_ACTIVE_TASK_EXISTS:${active.taskId}`);
+  const suitability = currentWorkspaceIsSuitable(task, current);
+  if (!args.has("--managed-adopt") && !suitability.suitable) {
     const managed = provisionTaskWorkspace(task, current.worktree), controller = resolve(managed.worktree, "scripts/engineering/task-controller.mjs"), child = spawnSync(process.execPath, [controller, ...process.argv.slice(2), "--managed-adopt"], { cwd: managed.worktree, encoding: "utf8", env: process.env, shell: false });
     if (child.status !== 0) throw new Error(`TASK_WORKSPACE_ADOPTION_FAILED:${child.stderr.trim()}`);
     return { ...JSON.parse(child.stdout), managedWorkspace: managed };

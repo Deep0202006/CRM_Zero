@@ -8,7 +8,11 @@ const generatedFiles = new Set(["task.json", "progress.jsonl", "snapshot.json", 
 const secretKeyPattern = /"(?:password|secret|token|api[_-]?key|authorization|cookie)"\s*:/i;
 const credentialPattern = /(?:sk|gh[oparsu])_[A-Za-z0-9_-]{16,}|eyJ[A-Za-z0-9_-]{12,}\.[A-Za-z0-9_-]{12,}\.[A-Za-z0-9_-]{12,}/;
 const terminalStatuses = new Set(["COMPLETE", "RELEASE_COMPLETE"]);
-const stateRoot = () => process.env.ZD_OS_STATE_ROOT || resolve(root, git("rev-parse", "--git-path", "zd-os/tasks"));
+export const stateRoot = () => process.env.ZD_OS_STATE_ROOT || resolve(root, git("rev-parse", "--git-path", "zd-os/tasks"));
+export const normalizeLiteralPath = (value) => {
+  const normalized = resolve(String(value)).replaceAll("\\", "/").replace(/\/$/, "");
+  return process.platform === "win32" ? normalized.toLowerCase() : normalized;
+};
 export const taskDirectory = (taskId) => { if (!/^[a-z0-9][a-z0-9-]{7,79}$/.test(taskId)) throw new Error("TASK_ID_INVALID"); return resolve(stateRoot(), taskId); };
 const atomicWrite = (path, value) => { mkdirSync(dirname(path), { recursive: true }); const temporary = `${path}.tmp-${process.pid}-${randomUUID()}`; writeFileSync(temporary, typeof value === "string" ? value : `${JSON.stringify(value, null, 2)}\n`, { flag: "wx" }); renameSync(temporary, path); };
 const bounded = (value) => { const text = JSON.stringify(value); if (Buffer.byteLength(text) > 256 * 1024) throw new Error("TASK_STATE_TOO_LARGE"); if (secretKeyPattern.test(text) || credentialPattern.test(text)) throw new Error("TASK_STATE_SENSITIVE_DATA"); return value; };
@@ -105,11 +109,16 @@ export const updateTaskState = (taskId, expectedRevision, update) => withLock(ta
 
 export const makeTaskId = (task, branch = git("branch", "--show-current"), attempt = 0) => `${new Date().toISOString().slice(0,10).replaceAll("-", "")}-${sha256(`${branch}\0${task}\0${attempt}`).slice(0,12)}`;
 export const nextTaskId = (task, branch = git("branch", "--show-current")) => { for (let attempt = 0; attempt < 100; attempt += 1) { const taskId = makeTaskId(task, branch, attempt); if (!existsSync(taskDirectory(taskId))) return taskId; } throw new Error("TASK_ID_COLLISION_LIMIT"); };
-export const createTask = ({ taskId, task, inspectOnly = false, identity, context }) => withLock(taskDirectory(taskId), () => {
-  const directory = taskDirectory(taskId), taskPath = resolve(directory, "task.json"); if (existsSync(taskPath)) throw new Error("TASK_ALREADY_EXISTS");
-  const now = new Date().toISOString(), record = bounded({ schemaVersion: 1, taskId, revision: 0, requirementsRevision: 0, task, inspectOnly, status: inspectOnly ? "INSPECTION_READY" : "INVESTIGATION_REQUIRED", branch: identity.branch, worktree: identity.worktree, baseSha: identity.baseSha, headSha: identity.headSha, treeSha: identity.treeSha, createdAt: now, updatedAt: now });
-  atomicWrite(taskPath, record); atomicWrite(resolve(directory, "acceptance.json"), { schemaVersion: 1, revision: 0, items: [], nonGoals: [], observableOutcome: "PENDING_INVESTIGATION" }); atomicWrite(resolve(directory, "context.json"), bounded(context)); atomicWrite(resolve(directory, "plan.json"), { schemaVersion: 1, revision: 0, reproduction: "PENDING", rootCause: "PENDING", affectedAuthority: context.authorities ?? [], capabilitiesReused: context.capabilities ?? [], writeScope: [], protectedPaths: ["src/**", "public/**", "supabase/**", ".env*", "middleware.*", "proxy.*", "next.config.*", "vercel.json"], risk: context.risk, focusedProof: context.requiredProofRefs ?? [], amendments: [] });
-  writeFileSync(resolve(directory, "progress.jsonl"), `${JSON.stringify({ sequence: 1, at: now, event: "TASK_CREATED", revision: 0 })}\n`, { flag: "wx" }); atomicWrite(resolve(directory, "proof.json"), { schemaVersion: 1, revision: 0, focusedRuns: [], broadRuns: [], historicalRuns: [], freshProofsReused: 0, proofsInvalidated: 0, invalidatedProofIds: [], avoidableReruns: 0 }); atomicWrite(resolve(directory, "delivery.json"), { schemaVersion: 1, revision: 0, status: "NOT_PUBLISHED" }); regenerateViews(taskId); return record;
+export const createTask = ({ taskId, task, inspectOnly = false, identity, context, recovery }) => withLock(resolve(stateRoot(), ".task-creation"), () => {
+  const directory = taskDirectory(taskId); if (existsSync(directory)) throw new Error("TASK_ALREADY_EXISTS"); const staging = resolve(stateRoot(), `.task-create-${taskId}-${process.pid}-${randomUUID()}`); mkdirSync(staging, { recursive: false });
+  const now = new Date().toISOString(), record = bounded({ schemaVersion: 1, taskId, revision: 0, requirementsRevision: 0, task, inspectOnly, status: inspectOnly ? "INSPECTION_READY" : "INVESTIGATION_REQUIRED", branch: identity.branch, worktree: identity.worktree, repositoryCommonGitDir: identity.repositoryCommonGitDir, baseSha: identity.baseSha, headSha: identity.headSha, treeSha: identity.treeSha, ...(recovery ? { recovery } : {}), createdAt: now, updatedAt: now });
+  const acceptance = { schemaVersion: 1, revision: 0, items: [], nonGoals: [], observableOutcome: "PENDING_INVESTIGATION" }, plan = { schemaVersion: 1, revision: 0, reproduction: "PENDING", rootCause: "PENDING", affectedAuthority: context.authorities ?? [], capabilitiesReused: context.capabilities ?? [], writeScope: [], protectedPaths: ["src/**", "public/**", "supabase/**", ".env*", "middleware.*", "proxy.*", "next.config.*", "vercel.json"], risk: context.risk, focusedProof: context.requiredProofRefs ?? [], amendments: [] }, progress = bounded({ sequence: 1, at: now, event: recovery ? "TASK_RECOVERY_ADOPTED" : "TASK_CREATED", revision: 0, ...(recovery ? { pr: recovery.pr, remoteHead: recovery.remoteHead } : {}) }), proofFile = { schemaVersion: 1, revision: 0, focusedRuns: [], broadRuns: [], historicalRuns: [], freshProofsReused: 0, proofsInvalidated: 0, invalidatedProofIds: [], avoidableReruns: 0 }, deliveryFile = recovery ? { schemaVersion: 1, revision: 0, status: "RECOVERED_OPEN_PR", pr: recovery.pr, head: recovery.remoteHead, base: recovery.baseRefName, adoptedBranch: identity.branch } : { schemaVersion: 1, revision: 0, status: "NOT_PUBLISHED" };
+  const proof = proofSummary(proofFile), snapshot = bounded({ schemaVersion: 2, taskId, objective: task, status: record.status, revision: 0, repository: { branch: record.branch, worktree: record.worktree, base: record.baseSha, head: record.headSha, tree: record.treeSha }, acceptance: [], nonGoals: [], authorities: context.authorities ?? [], writeScope: [], protectedPaths: plan.protectedPaths, risk: context.risk, blockers: [], recentFailures: [], amendments: [], proof, delivery: deliverySummary(deliveryFile), progress: [progress], resume: `npm run crm:task -- --resume ${taskId}`, nextAction: nextAction({ task: record, acceptance, delivery: deliveryFile, proof }) });
+  try {
+    atomicWrite(resolve(staging, "task.json"), record); atomicWrite(resolve(staging, "acceptance.json"), acceptance); atomicWrite(resolve(staging, "context.json"), bounded(context)); atomicWrite(resolve(staging, "plan.json"), plan);
+    if (process.env.ZD_OS_FAULT_DURING_TASK_CREATE === "1" && process.env.ZD_OS_STATE_ROOT) throw new Error("INJECTED_TASK_WRITE_FAILURE");
+    writeFileSync(resolve(staging, "progress.jsonl"), `${JSON.stringify(progress)}\n`, { flag: "wx" }); atomicWrite(resolve(staging, "proof.json"), proofFile); atomicWrite(resolve(staging, "delivery.json"), deliveryFile); atomicWrite(resolve(staging, "snapshot.json"), snapshot); atomicWrite(resolve(staging, "handoff.md"), renderSnapshotHandoff(snapshot)); renameSync(staging, directory); return record;
+  } catch (error) { rmSync(staging, { recursive: true, force: true }); throw error; }
 });
 export const loadTask = (taskId) => readRecord(taskId);
 export const compareAndSwapTask = (taskId, expectedRevision, patch) => updateTaskState(taskId, expectedRevision, { taskPatch: patch }).task;
@@ -135,14 +144,14 @@ export const synchronizeTaskHead = (taskId, identity) => { const current = loadT
 export const consumeTaskDeliveryPermit = (taskId, validate) => withLock(taskDirectory(taskId), () => { const current = readRecord(taskId), delivery = readJson(resolve(taskDirectory(taskId), "delivery.json")); validate(delivery); const consumed = bounded({ ...delivery, consumed: true, consumedAt: new Date().toISOString(), revision: current.revision + 1 }); commitUnlocked(taskId, current, { artifacts: { "delivery.json": consumed } }); return consumed; });
 export const assertCompleteTaskDirectory = (taskId) => { const directory = taskDirectory(taskId), missing = requiredFiles.filter((name) => !existsSync(resolve(directory, name))); if (missing.length) throw new Error(`TASK_FILES_MISSING:${missing.join(",")}`); return { taskId, directory, files: requiredFiles }; };
 export const isTaskTerminal = (taskId) => { const task = loadTask(taskId), delivery = readJson(resolve(taskDirectory(taskId), "delivery.json")); return terminalStatuses.has(task.status) || delivery.status === "RELEASE_COMPLETE"; };
-const normalized = (value) => String(value).replaceAll("\\", "/");
-export const listCompatibleTasks = ({ branch = git("branch", "--show-current"), worktree = git("rev-parse", "--show-toplevel"), unfinishedOnly = true } = {}) => {
+export const listTasks = ({ unfinishedOnly = false } = {}) => {
   if (!existsSync(stateRoot())) return []; const tasks = [], corrupt = [];
-  for (const entry of readdirSync(stateRoot(), { withFileTypes: true }).filter((item) => item.isDirectory())) {
-    try { const task = loadTask(entry.name), unfinished = !isTaskTerminal(task.taskId); if (task.branch === branch && normalized(task.worktree) === normalized(worktree) && (!unfinishedOnly || unfinished)) tasks.push(task); }
+  for (const entry of readdirSync(stateRoot(), { withFileTypes: true }).filter((item) => item.isDirectory() && !item.name.startsWith("."))) {
+    try { const task = loadTask(entry.name), unfinished = !isTaskTerminal(task.taskId); if (!unfinishedOnly || unfinished) tasks.push(task); }
     catch (error) { corrupt.push({ taskId: entry.name, error: error.message }); }
   }
   if (corrupt.length) throw new Error(`TASK_DISCOVERY_CORRUPT:${corrupt.length}:${sha256(JSON.stringify(corrupt)).slice(0, 12)}`);
   return tasks.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 };
+export const listCompatibleTasks = ({ branch = git("branch", "--show-current"), worktree = git("rev-parse", "--show-toplevel"), unfinishedOnly = true } = {}) => listTasks({ unfinishedOnly }).filter((task) => task.branch === branch && normalizeLiteralPath(task.worktree) === normalizeLiteralPath(worktree));
 export const findActiveTask = (options = {}) => listCompatibleTasks(options)[0] ?? null;

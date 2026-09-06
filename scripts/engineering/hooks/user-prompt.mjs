@@ -1,13 +1,14 @@
 import { resolve } from "node:path";
 import { mintOwnerPermit } from "../release-controller.mjs";
-import { createTaskInCurrentWorkspace } from "../task-controller.mjs";
+import { createRecoveryTaskInCurrentWorkspace, createTaskInCurrentWorkspace } from "../task-controller.mjs";
 import { amendTask, readAutomaticTaskContext, taskContextPointer } from "../task-state.mjs";
 import { serializeSessionContext } from "../experience.mjs";
-import { createAndBindSessionTask, loadState, readHookInput, requireContextReread, resolveBoundTask, sha256, updateState } from "./state-store.mjs";
+import { createAndBindSessionTask, loadState, readHookInput, requireContextReread, resolveOrBindSessionTask, sha256, updateState } from "./state-store.mjs";
 
 export const classifyUserPrompt = (prompt) => {
   const text = String(prompt ?? "").trim();
   if (/^OWNER_RELEASE_APPROVED\|/.test(text)) return { disposition: "OWNER_RELEASE", text };
+  if (/^RESUME_CURRENT_WORKSPACE$/i.test(text)) return { disposition: "RESUME_CURRENT_WORKSPACE", text };
   const kernelContinue = /^KERNEL_CONTINUE\|taskId=([a-z0-9-]+)\b/i.exec(text); if (kernelContinue) return { disposition: "CONTINUATION", text, taskId: kernelContinue[1] };
   const nextTask = /^NEW_TASK:\s*(.{8,})$/is.exec(text); if (nextTask) return { disposition: "NEW_TASK", text, requirement: nextTask[1].trim() };
   if (/^(?:status|progress|what(?:'s| is) the (?:current )?(?:status|progress)|where do we stand)\??$/i.test(text)) return { disposition: "STATUS", text };
@@ -23,18 +24,22 @@ const automaticContext = (sessionId, task, fields) => {
 };
 
 export const submitUserPrompt = ({ sessionId, prompt }) => {
-  const classified = classifyUserPrompt(prompt); let binding = null;
-  try { binding = resolveBoundTask(sessionId, { allowTerminal: classified.disposition === "NEW_TASK" }); } catch (error) { if (error.message !== "SESSION_TASK_UNBOUND") throw error; }
-  if (classified.taskId && classified.taskId !== binding?.task.taskId) throw new Error(`CONTINUATION_TASK_MISMATCH:${classified.taskId}:${binding?.task.taskId ?? "UNBOUND"}`);
+  const classified = classifyUserPrompt(prompt), binding = resolveOrBindSessionTask(sessionId, { exactTaskId: classified.taskId });
   if (classified.disposition === "OWNER_RELEASE") {
     if (!binding?.task) throw new Error("SESSION_TASK_UNBOUND"); const permit = mintOwnerPermit({ line: classified.text, sessionId, taskId: binding.task.taskId }); recordPrompt(sessionId, classified);
     return { hookSpecificOutput: { hookEventName: "UserPromptSubmit", additionalContext: automaticContext(sessionId, binding.task, { promptDisposition: classified.disposition, ownerReleasePermit: permit }) } };
   }
   if (classified.disposition === "NEW_TASK") {
+    if (binding.task) throw new Error(`NEW_TASK_ACTIVE_TASK_EXISTS:${binding.task.taskId}`);
+    if (binding.resolution === "RECOVERY_REQUIRED") throw new Error("RECOVERY_REQUIRED:RESUME_CURRENT_WORKSPACE");
     const created = createAndBindSessionTask(sessionId, () => createTaskInCurrentWorkspace(classified.requirement)); recordPrompt(sessionId, classified);
     return { hookSpecificOutput: { hookEventName: "UserPromptSubmit", additionalContext: automaticContext(sessionId, created.task, { promptDisposition: classified.disposition, createdTaskId: created.task.taskId }) } };
   }
-  if (!binding?.task) { recordPrompt(sessionId, classified); return { hookSpecificOutput: { hookEventName: "UserPromptSubmit", additionalContext: automaticContext(sessionId, null, { promptDisposition: classified.disposition, taskBootstrapRequired: true }) } }; }
+  if (classified.disposition === "RESUME_CURRENT_WORKSPACE") {
+    const recovered = binding.task ? binding : createAndBindSessionTask(sessionId, createRecoveryTaskInCurrentWorkspace, { reuseExisting: true }); recordPrompt(sessionId, classified);
+    return { hookSpecificOutput: { hookEventName: "UserPromptSubmit", additionalContext: automaticContext(sessionId, recovered.task, { promptDisposition: classified.disposition, recoveredWorkspace: recovered.recoveredWorkspace ?? null }) } };
+  }
+  if (!binding?.task) { recordPrompt(sessionId, classified); return { hookSpecificOutput: { hookEventName: "UserPromptSubmit", additionalContext: automaticContext(sessionId, null, { promptDisposition: classified.disposition, ...(binding.recovery ? { recovery: { required: true, action: binding.recovery.intent, reason: binding.recovery.reason } } : { taskBootstrapRequired: true }) }) } }; }
   const amendment = classified.disposition === "AMENDMENT" ? amendTask(binding.task.taskId, binding.task.revision, classified.text) : null; recordPrompt(sessionId, classified); const task = amendment?.task ?? binding.task;
   return { hookSpecificOutput: { hookEventName: "UserPromptSubmit", additionalContext: automaticContext(sessionId, task, { promptDisposition: classified.disposition, amendment: amendment ? { sequence: amendment.amendment.amendmentSequence, requirementHash: amendment.amendment.requirementHash } : null }) } };
 };
