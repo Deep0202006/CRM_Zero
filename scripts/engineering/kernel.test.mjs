@@ -303,7 +303,7 @@ try {
   }
   const literalDomainCases = [
     ["platform-handover", ["src/lib/serverBackendEnvironment.ts", "src/lib/serverBackendIdentity.ts", "src/components/BackendEnvironmentBoundary.tsx", "src/components/AuthorizedCrmShell.tsx", "docs/contracts/BACKEND_ENVIRONMENT_ISOLATION.md", "e2e/backend-isolation/backend-isolation.spec.ts", "scripts/handover/check.mjs", "src/lib/__tests__/backendEnvironment.test.ts", "src/lib/__tests__/backendIsolationContract.test.ts", "src/lib/__tests__/serverBackendEnvironment.test.ts", "src/lib/__tests__/supabaseClientEnvironment.test.ts"]],
-    ["engineering-control", ["jest.config.js", "playwright.isolation.config.ts", "scripts/test/server-only.cjs"]],
+    ["engineering-control", ["jest.config.js", "playwright.isolation.config.ts", "scripts/test/server-only.cjs", "tsconfig.json"]],
     ["attendance", ["src/lib/__tests__/attendanceWriteReadClosure.test.ts"]],
     ["calls", ["src/lib/__tests__/callLifetimeHistoryCount.test.ts"]],
     ["field-visits", ["src/lib/__tests__/fieldVisitErpClosure.test.ts", "src/lib/__tests__/fieldVisitPincodeClosure.test.ts", "src/lib/__tests__/fieldVisitRecoveryCompatibility.test.ts"]],

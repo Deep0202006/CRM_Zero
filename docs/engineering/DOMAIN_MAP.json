@@ -1019,6 +1019,7 @@
         "playwright.config.ts",
         "playwright.isolation.config.ts",
         "scripts/test/server-only.cjs",
+        "tsconfig.json",
         ".github/**",
         ".codex/**"
       ],
