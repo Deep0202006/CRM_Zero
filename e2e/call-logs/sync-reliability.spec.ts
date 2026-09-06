@@ -134,7 +134,7 @@ test("failed pull backs off, preserves cache, then records success only after a 
   expect(await readStore<Record<string, unknown>>(page, "call_logs")).toEqual([expect.objectContaining({ log_id: localLogId })]);
   const failedRequestCount = hydrationRequests;
   await page.reload();
-  await page.waitForTimeout(100);
+  await page.waitForLoadState("networkidle");
   expect(hydrationRequests).toBe(failedRequestCount);
 
   failUsers = false;
@@ -204,7 +204,7 @@ test("an account switch rejects the outstanding page before local apply", async 
   await seedSession(page);
   await page.goto("/call-logs");
   await expect.poll(() => page.evaluate(() => localStorage.getItem("authenticated_user_id"))).toBe(otherUserId);
-  await page.waitForTimeout(100);
+  await page.waitForLoadState("networkidle");
   expect((await readStore<Record<string, unknown>>(page, "call_logs")).some((row) => row.log_id === remoteLogId)).toBe(false);
   expect(await page.evaluate((id) => localStorage.getItem(`last_pull_sync:${id}`), userId)).toBeNull();
 });
@@ -247,7 +247,7 @@ test("two tabs share one bounded hydration run", async ({ page, context }) => {
   await install(sibling);
   await Promise.all([page.goto("/call-logs"), sibling.goto("/call-logs")]);
   await expect.poll(() => page.evaluate((id) => localStorage.getItem(`last_pull_sync:${id}`), userId)).not.toBeNull();
-  await page.waitForTimeout(150);
+  await Promise.all([page.waitForLoadState("networkidle"), sibling.waitForLoadState("networkidle")]);
   expect(hydrationRequests).toBe(18);
   expect(peakConcurrentRequests).toBe(1);
 });
@@ -299,7 +299,7 @@ test("repeated lifecycle triggers coalesce into one sequential reconciliation", 
   await seedSession(page);
   await page.goto("/call-logs");
   await expect.poll(() => hydrationRequests).toBe(36);
-  await page.waitForTimeout(100);
+  await page.waitForLoadState("networkidle");
   expect(hydrationRequests).toBe(36);
   expect(peakConcurrentRequests).toBe(1);
 });
