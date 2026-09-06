@@ -1584,6 +1584,11 @@ export async function processSyncQueueExcept(idempotencyKey: string): Promise<vo
 // ─────────────────────────────────────────────────────────────────────────────
 
 const FULL_PULL_MIN_INTERVAL_MS = 30 * 60 * 1000;
+const FULL_PULL_RETRY_BASE_MS = 60 * 1000;
+const FULL_PULL_RETRY_MAX_MS = 5 * 60 * 1000;
+const FULL_PULL_PAGE_SIZE = 1000;
+const FULL_PULL_MAX_PAGES_PER_TABLE = 10;
+const FULL_PULL_BROWSER_LOCK = "zerodata-pull-sync-v1";
 const HYDRATION_COLUMNS: Record<string, string> = {
   // Evidence payloads are never part of ordinary hydration. Legacy data URLs
   // remain server-side until the explicitly authorized lifecycle purge.
@@ -1591,141 +1596,216 @@ const HYDRATION_COLUMNS: Record<string, string> = {
   leads: "lead_id,business_name,contact_person,phone,segment_type,status,loss_reason,assigned_to,created_at,onboarded_at,stage_entered_at,lead_source,area,re_engage_after,lead_source_other,renewal_date,renewal_reminder_sent",
   tasks: "task_id,assigned_to,assigned_by,title,description,priority,status,source,template_id,related_lead_id,due_date,started_at,completed_at,proof_note,proof_photo_url,created_at,is_active,cancelled_at,cancellation_reason",
 };
-let activePullDownSync: Promise<void> | null = null;
-function fullPullSyncKey(): string {
-  return `last_pull_sync:${localStorage.getItem("authenticated_user_id") ?? "anonymous"}`;
+export type PullDownSyncStatus = "success" | "throttled" | "retry_scheduled" | "unavailable" | "identity_changed";
+export interface PullDownSyncResult {
+  status: PullDownSyncStatus;
+  userId?: string;
+  tablesCompleted: number;
+  requests: number;
+  pagesApplied: number;
+  rowsApplied: number;
+  peakBufferedRows: number;
 }
 
-async function pullDownSyncInternal() {
-  if (typeof window === "undefined" || !navigator.onLine || !isSupabaseConfigured) {
-    return;
-  }
+interface PullRetryState {
+  failures: number;
+  nextAttemptAt: number;
+  outcome: "failed" | "partial";
+  tablesCompleted: number;
+  requests: number;
+  pagesApplied: number;
+  rowsApplied: number;
+  peakBufferedRows: number;
+}
 
-  console.log("Pulling latest data from Supabase...");
+class PullSyncError extends Error {
+  constructor(readonly result: PullDownSyncResult, message: string) { super(message); }
+}
+
+let activePullDownSync: Promise<PullDownSyncResult> | null = null;
+let pullDownRerunRequestedFor: string | null = null;
+
+function emptyPullResult(status: PullDownSyncStatus, userId?: string): PullDownSyncResult {
+  return { status, userId, tablesCompleted: 0, requests: 0, pagesApplied: 0, rowsApplied: 0, peakBufferedRows: 0 };
+}
+
+function fullPullSyncKey(userId?: string): string {
+  if (!userId) return `last_pull_sync:${localStorage.getItem("authenticated_user_id") ?? "anonymous"}`;
+  return `last_pull_sync:${userId}`;
+}
+
+function pullRetryKey(userId: string): string { return `pull_sync_retry:${userId}`; }
+function pullAttemptKey(userId: string): string { return `last_pull_attempt:${userId}`; }
+
+function readPullRetry(userId: string): PullRetryState | null {
   try {
-    const tables = [
-      "users",
-      "capabilities",
-      "user_capabilities",
-      "client_queries",
-      "mappings",
-      "mapping_requests",
-      "task_templates",
-      "tasks",
-      "task_status_history",
-      "internal_tickets",
-      "attendance",
-      "call_logs",
-      "task_upload_batches",
-      "allocated_targets",
-      "field_visits",
-      "lead_registration_checklist",
-      "lead_installation_details",
-      "lead_payment_details",
-    ];
+    const parsed = JSON.parse(localStorage.getItem(pullRetryKey(userId)) ?? "null") as Partial<PullRetryState> | null;
+    if (!parsed || !Number.isFinite(parsed.failures) || !Number.isFinite(parsed.nextAttemptAt)) return null;
+    return parsed as PullRetryState;
+  } catch { return null; }
+}
 
-    for (const remoteTableName of tables) {
-      const localTableName = REMOTE_TO_LOCAL_TABLE[remoteTableName] || remoteTableName;
-      const pk = TABLE_PK[localTableName] ?? "id";
-      let allData: DynamicRow[] = [];
-      let from = 0;
-      const limit = 1000;
-      let fetchError = null;
+async function pullIdentityMatches(userId: string): Promise<boolean> {
+  if (localStorage.getItem("authenticated_user_id") !== userId) return false;
+  const { data } = await supabase.auth.getSession();
+  return data.session?.user.id === userId;
+}
 
-      while (true) {
-        const { data, error } = await supabase
-          .from(remoteTableName)
-          .select(HYDRATION_COLUMNS[remoteTableName] ?? "*")
-          .order(pk, { ascending: true })
-          .range(from, from + limit - 1);
-        if (error) {
-          fetchError = error;
-          break;
+async function withPullDownBrowserLock<T>(work: () => Promise<T>): Promise<T> {
+  if (typeof navigator === "undefined" || !navigator.locks) return work();
+  return navigator.locks.request(FULL_PULL_BROWSER_LOCK, { mode: "exclusive", signal: AbortSignal.timeout(30_000) }, work);
+}
+
+async function applyHydrationPage(table: DynamicTable, localTableName: string, pk: string, data: DynamicRow[], userId: string): Promise<number> {
+  return db.transaction("rw", [table, db.sync_queue], async () => {
+    if (localStorage.getItem("authenticated_user_id") !== userId) throw new PullSyncError(emptyPullResult("identity_changed", userId), "PULL_IDENTITY_CHANGED");
+    const pending = await db.sync_queue
+      .where("table_name").equals(localTableName)
+      .and((item) => isActiveSyncQueueItem(item))
+      .toArray();
+    const pendingInsertIds = new Set(pending.filter((item) => item.action === "INSERT").map((item) => getDynamicField(item.data, pk)));
+    const pendingMutationIds = new Set(pending.filter((item) => item.action === "UPDATE" || item.action === "DELETE").map((item) => getDynamicField(item.data, pk)));
+    const safeDataToPut = data.filter((d) => !pendingInsertIds.has(d[pk]) && !pendingMutationIds.has(d[pk]));
+    if (safeDataToPut.length) await table.bulkPut(safeDataToPut);
+    return safeDataToPut.length;
+  });
+}
+
+async function pullDownSyncInternal(userId: string): Promise<PullDownSyncResult> {
+  const result = emptyPullResult("success", userId);
+  if (typeof window === "undefined" || !navigator.onLine || !isSupabaseConfigured) return { ...result, status: "unavailable" };
+
+  if (!(await pullIdentityMatches(userId))) throw new PullSyncError({ ...result, status: "identity_changed" }, "PULL_IDENTITY_CHANGED");
+  console.log("Pulling latest data from Supabase...");
+  const tables = [
+    "users",
+    "capabilities",
+    "user_capabilities",
+    "client_queries",
+    "mappings",
+    "mapping_requests",
+    "task_templates",
+    "tasks",
+    "task_status_history",
+    "internal_tickets",
+    "attendance",
+    "call_logs",
+    "task_upload_batches",
+    "allocated_targets",
+    "field_visits",
+    "lead_registration_checklist",
+    "lead_installation_details",
+    "lead_payment_details",
+  ];
+
+  for (const remoteTableName of tables) {
+    const localTableName = REMOTE_TO_LOCAL_TABLE[remoteTableName] || remoteTableName;
+    const table = dynamicTables[localTableName];
+    const pk = TABLE_PK[localTableName] ?? "id";
+    let tableComplete = false;
+
+    for (let page = 0; page < FULL_PULL_MAX_PAGES_PER_TABLE; page += 1) {
+      if (!(await pullIdentityMatches(userId))) throw new PullSyncError({ ...result, status: "identity_changed" }, "PULL_IDENTITY_CHANGED");
+      const from = page * FULL_PULL_PAGE_SIZE;
+      const { data, error } = await supabase
+        .from(remoteTableName)
+        .select(HYDRATION_COLUMNS[remoteTableName] ?? "*")
+        .order(pk, { ascending: true })
+        .range(from, from + FULL_PULL_PAGE_SIZE - 1);
+      result.requests += 1;
+      if (error) throw new PullSyncError(result, "PULL_PAGE_FAILED");
+      if (!(await pullIdentityMatches(userId))) throw new PullSyncError({ ...result, status: "identity_changed" }, "PULL_IDENTITY_CHANGED");
+
+      const pageData = (data ?? []) as unknown as DynamicRow[];
+      result.peakBufferedRows = Math.max(result.peakBufferedRows, pageData.length);
+      if (pageData.length) {
+        try { result.rowsApplied += await applyHydrationPage(table, localTableName, pk, pageData, userId); }
+        catch (error) {
+          if (error instanceof PullSyncError && error.result.status === "identity_changed") throw new PullSyncError({ ...result, status: "identity_changed" }, error.message);
+          throw new PullSyncError(result, "PULL_APPLY_FAILED");
         }
-        if (data && data.length > 0) {
-          allData = allData.concat(data as unknown as DynamicRow[]);
-          from += limit;
-          if (data.length < limit) break;
-        } else {
-          break;
-        }
+        result.pagesApplied += 1;
       }
-
-      if (fetchError && allData.length === 0) {
-        console.warn(`Failed to pull table ${remoteTableName}:`, fetchError);
-        continue;
-      }
-
-      const data = allData;
-
-      if (data && data.length > 0) {
-        const table = dynamicTables[localTableName];
-
-        // Find local items
-        const localItems = await table.toArray();
-        const localIds = new Set(localItems.map((item: DynamicRow) => item[pk]));
-        const remoteIds = new Set(data.map((d: DynamicRow) => d[pk]));
-
-        // Get IDs in local that are NOT in remote
-        const idsToDelete = [...localIds].filter(id => !remoteIds.has(id));
-
-        // Check if these IDs are waiting to be inserted in the sync_queue
-        const pendingInserts = await db.sync_queue
-          .filter(item => item.table_name === localTableName && item.action === "INSERT")
-          .toArray();
-        const pendingInsertIds = new Set(pendingInserts.map(item => getDynamicField(item.data, pk)));
-
-        const safeIdsToDelete = idsToDelete.filter(id => !pendingInsertIds.has(id));
-
-        // Check if items have pending updates or deletes in the sync_queue
-        const pendingMutations = await db.sync_queue
-          .filter(item => isActiveSyncQueueItem(item) && item.table_name === localTableName && (item.action === "UPDATE" || item.action === "DELETE"))
-          .toArray();
-        const pendingMutationIds = new Set(pendingMutations.map(item => getDynamicField(item.data, pk)));
-
-        const safeDataToPut = data.filter(
-          (d: DynamicRow) =>
-            !pendingInsertIds.has(d[pk]) &&
-            !pendingMutationIds.has(d[pk]),
-        );
-
-        await db.transaction('rw', table, async () => {
-          if (safeIdsToDelete.length > 0) {
-            // DO NOT DELETE LOCAL DATA! The user explicitly requested to never remove data.
-            // Old data purged from Supabase should remain accessible locally.
-            // await table.bulkDelete(safeIdsToDelete);
-          }
-          if (safeDataToPut.length > 0) {
-            await table.bulkPut(safeDataToPut);
-          }
-        });
-      } else if (data && data.length === 0) {
-        // An empty result can mean either a genuinely empty remote table or an
-        // RLS-restricted view. Never repopulate the server from browser cache.
-        // Pending writes are already represented explicitly in sync_queue and
-        // are the only local records allowed to travel upward.
-        console.info(`Remote table ${remoteTableName} returned no visible rows; local data was preserved without recovery writes.`);
+      if (pageData.length < FULL_PULL_PAGE_SIZE) {
+        tableComplete = true;
+        result.tablesCompleted += 1;
+        break;
       }
     }
-
-    console.log("Downward sync complete.");
-    localStorage.setItem(fullPullSyncKey(), Date.now().toString());
-  } catch (err) {
-    console.error("Failed to perform pull down sync:", err);
+    if (!tableComplete) throw new PullSyncError(result, "PULL_TABLE_PAGE_LIMIT");
   }
+
+  if (!(await pullIdentityMatches(userId))) throw new PullSyncError({ ...result, status: "identity_changed" }, "PULL_IDENTITY_CHANGED");
+  console.log("Downward sync complete.");
+  return result;
 }
 
-export function pullDownSync(): Promise<void> {
-  if (typeof window === "undefined" || !navigator.onLine || !isSupabaseConfigured) return Promise.resolve();
-  if (activePullDownSync) return activePullDownSync;
+function schedulePullRetry(userId: string, failed: PullDownSyncResult, priorRetry = readPullRetry(userId)): PullDownSyncResult {
+  const failures = (priorRetry?.failures ?? 0) + 1;
+  const delay = Math.min(FULL_PULL_RETRY_MAX_MS, FULL_PULL_RETRY_BASE_MS * 2 ** Math.min(failures - 1, 3));
+  const retry: PullRetryState = {
+    failures,
+    nextAttemptAt: Date.now() + delay,
+    outcome: failed.tablesCompleted || failed.pagesApplied ? "partial" : "failed",
+    tablesCompleted: failed.tablesCompleted,
+    requests: failed.requests,
+    pagesApplied: failed.pagesApplied,
+    rowsApplied: failed.rowsApplied,
+    peakBufferedRows: failed.peakBufferedRows,
+  };
+  localStorage.setItem(pullRetryKey(userId), JSON.stringify(retry));
+  console.warn("Downward sync remains incomplete and will retry after backoff.");
+  return { ...failed, status: "retry_scheduled" };
+}
 
-  const lastSync = Number.parseInt(localStorage.getItem(fullPullSyncKey()) ?? "0", 10);
-  if (Number.isFinite(lastSync) && Date.now() - lastSync < FULL_PULL_MIN_INTERVAL_MS) return Promise.resolve();
+async function pullDownSyncOnce(ignoreSuccessCooldown: boolean): Promise<PullDownSyncResult> {
+  if (typeof window === "undefined" || !navigator.onLine || !isSupabaseConfigured) return emptyPullResult("unavailable");
+  const userId = localStorage.getItem("authenticated_user_id");
+  if (!userId) return emptyPullResult("unavailable");
 
-  // Claim the cooldown before I/O so login, online, visibility, and sibling-tab
-  // triggers converge on one hydration pass instead of multiplying full pulls.
-  localStorage.setItem(fullPullSyncKey(), Date.now().toString());
-  activePullDownSync = pullDownSyncInternal().finally(() => { activePullDownSync = null; });
+  try { return await withPullDownBrowserLock(async () => {
+    if (!(await pullIdentityMatches(userId))) return emptyPullResult("identity_changed", userId);
+    const now = Date.now();
+    const lastSuccess = Number.parseInt(localStorage.getItem(fullPullSyncKey(userId)) ?? "0", 10);
+    if (!ignoreSuccessCooldown && Number.isFinite(lastSuccess) && now - lastSuccess < FULL_PULL_MIN_INTERVAL_MS) return emptyPullResult("throttled", userId);
+    const priorRetry = readPullRetry(userId);
+    if (!ignoreSuccessCooldown && priorRetry && now < priorRetry.nextAttemptAt) return { ...emptyPullResult("retry_scheduled", userId), ...priorRetry, status: "retry_scheduled", userId };
+
+    localStorage.setItem(pullAttemptKey(userId), now.toString());
+    try {
+      const result = await pullDownSyncInternal(userId);
+      if (result.status !== "success") return result;
+      localStorage.setItem(fullPullSyncKey(userId), Date.now().toString());
+      localStorage.removeItem(pullRetryKey(userId));
+      return result;
+    } catch (error) {
+      const failed = error instanceof PullSyncError ? error.result : emptyPullResult("retry_scheduled", userId);
+      if (failed.status === "identity_changed") return failed;
+      return schedulePullRetry(userId, failed, priorRetry);
+    }
+  }); } catch { return schedulePullRetry(userId, emptyPullResult("retry_scheduled", userId)); }
+}
+
+async function drainPullDownSync(): Promise<PullDownSyncResult> {
+  let result = emptyPullResult("unavailable");
+  let bypassCooldown = false;
+  for (let run = 0; run < 2; run += 1) {
+    pullDownRerunRequestedFor = null;
+    result = await pullDownSyncOnce(bypassCooldown);
+    const requestedUserId = pullDownRerunRequestedFor;
+    if (!requestedUserId || (requestedUserId === result.userId && result.status !== "success")) break;
+    bypassCooldown = requestedUserId === result.userId;
+  }
+  return result;
+}
+
+export function pullDownSync(): Promise<PullDownSyncResult> {
+  if (typeof window === "undefined" || !navigator.onLine || !isSupabaseConfigured) return Promise.resolve(emptyPullResult("unavailable"));
+  if (activePullDownSync) {
+    pullDownRerunRequestedFor = localStorage.getItem("authenticated_user_id");
+    return activePullDownSync;
+  }
+  activePullDownSync = drainPullDownSync().finally(() => { activePullDownSync = null; });
   return activePullDownSync;
 }
 
@@ -1788,17 +1868,17 @@ if (typeof window !== "undefined") {
 
             if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
               const record = payload.new;
-
-              // Skip if we have a pending offline mutation for this item (our local version is newer)
-              const pendingMutation = await db.sync_queue
-                .where("table_name").equals(tableName)
-                .and(item => isActiveSyncQueueItem(item) && getDynamicField(item.data, pk) === record[pk])
-                .first();
-
-              if (!pendingMutation) {
-                await db.transaction('rw', table, async () => {
-                  await table.put(record);
-                });
+              let applied = false;
+              await db.transaction('rw', [table, db.sync_queue], async () => {
+                const pendingMutation = await db.sync_queue
+                  .where("table_name").equals(tableName)
+                  .and(item => isActiveSyncQueueItem(item) && getDynamicField(item.data, pk) === record[pk])
+                  .first();
+                if (pendingMutation) return;
+                await table.put(record);
+                applied = true;
+              });
+              if (applied) {
                 if (tableName === "call_logs") {
                   window.dispatchEvent(new CustomEvent("zerodata:call-logs-changed"));
                 }
@@ -1807,18 +1887,20 @@ if (typeof window !== "undefined") {
             } else if (payload.eventType === 'DELETE') {
               const oldRecord = payload.old;
               if (oldRecord && oldRecord[pk]) {
-                const pendingMutation = await db.sync_queue
-                  .where("table_name").equals(tableName)
-                  .and(item => isActiveSyncQueueItem(item) && getDynamicField(item.data, pk) === oldRecord[pk])
-                  .first();
-                if (pendingMutation) return;
-                await db.transaction('rw', table, async () => {
+                let deleted = false;
+                await db.transaction('rw', [table, db.sync_queue], async () => {
+                  const pendingMutation = await db.sync_queue
+                    .where("table_name").equals(tableName)
+                    .and(item => isActiveSyncQueueItem(item) && getDynamicField(item.data, pk) === oldRecord[pk])
+                    .first();
+                  if (pendingMutation) return;
                   await table.delete(oldRecord[pk]);
+                  deleted = true;
                 });
-                if (tableName === "call_logs") {
+                if (deleted && tableName === "call_logs") {
                   window.dispatchEvent(new CustomEvent("zerodata:call-logs-changed"));
                 }
-                if (tableName === "mapping_requests") window.dispatchEvent(new CustomEvent("zerodata:mapping-requests-changed"));
+                if (deleted && tableName === "mapping_requests") window.dispatchEvent(new CustomEvent("zerodata:mapping-requests-changed"));
               }
             }
           } catch (err) {
