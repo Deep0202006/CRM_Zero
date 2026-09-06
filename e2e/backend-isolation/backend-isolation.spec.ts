@@ -57,6 +57,6 @@ test("Preview is inert, sanitized, responsive, and disconnected", async ({
   await expect(page).toHaveURL(/\/admin$/);
   await expect(status).toBeVisible();
   await expect(page.locator('[class*="animate-spin"]')).toHaveCount(0);
-  await page.waitForTimeout(500);
+  await page.waitForLoadState("networkidle");
   expect(supabaseRequests).toEqual([]);
 });

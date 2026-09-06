@@ -89,7 +89,8 @@
       "codeRoots": [],
       "serverBoundaries": [],
       "contractPaths": [
-        "docs/engineering/PLATFORM_HANDOVER.md"
+        "docs/engineering/PLATFORM_HANDOVER.md",
+        "docs/contracts/BACKEND_ENVIRONMENT_ISOLATION.md"
       ],
       "authorityRefs": [
         "platform_runtime_placement"
