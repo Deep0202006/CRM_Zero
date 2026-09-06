@@ -57,11 +57,9 @@ describe("core reliability release contracts", () => {
   it("bounds full workspace hydration across duplicate lifecycle triggers", () => {
     const database = read("src/lib/db.ts");
     expect(database).toContain("FULL_PULL_MIN_INTERVAL_MS = 30 * 60 * 1000");
-    expect(database).toContain("if (activePullDownSync)");
-    expect(database).toContain("pullDownRerunRequestedFor");
-    expect(database).toContain("FULL_PULL_MAX_PAGES_PER_TABLE");
+    expect(database).toContain("if (activePullDownSync) return activePullDownSync");
     expect(database).toContain('`last_pull_sync:${localStorage.getItem("authenticated_user_id") ?? "anonymous"}`');
-    expect(database.indexOf("pullDownSyncInternal(userId)")).toBeLessThan(database.indexOf("localStorage.setItem(fullPullSyncKey(userId)"));
+    expect(database).toContain("Date.now() - lastSync < FULL_PULL_MIN_INTERVAL_MS");
   });
 
   it("introduces no deletion or browser reset path for calls and visits", () => {

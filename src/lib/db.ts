@@ -1766,8 +1766,8 @@ async function pullDownSyncOnce(ignoreSuccessCooldown: boolean): Promise<PullDow
   try { return await withPullDownBrowserLock(async () => {
     if (!(await pullIdentityMatches(userId))) return emptyPullResult("identity_changed", userId);
     const now = Date.now();
-    const lastSuccess = Number.parseInt(localStorage.getItem(fullPullSyncKey(userId)) ?? "0", 10);
-    if (!ignoreSuccessCooldown && Number.isFinite(lastSuccess) && now - lastSuccess < FULL_PULL_MIN_INTERVAL_MS) return emptyPullResult("throttled", userId);
+    const lastSync = Number.parseInt(localStorage.getItem(fullPullSyncKey(userId)) ?? "0", 10);
+    if (!ignoreSuccessCooldown && Number.isFinite(lastSync) && Date.now() - lastSync < FULL_PULL_MIN_INTERVAL_MS) return emptyPullResult("throttled", userId);
     const priorRetry = readPullRetry(userId);
     if (!ignoreSuccessCooldown && priorRetry && now < priorRetry.nextAttemptAt) return { ...emptyPullResult("retry_scheduled", userId), ...priorRetry, status: "retry_scheduled", userId };
 
@@ -1801,10 +1801,8 @@ async function drainPullDownSync(): Promise<PullDownSyncResult> {
 
 export function pullDownSync(): Promise<PullDownSyncResult> {
   if (typeof window === "undefined" || !navigator.onLine || !isSupabaseConfigured) return Promise.resolve(emptyPullResult("unavailable"));
-  if (activePullDownSync) {
-    pullDownRerunRequestedFor = localStorage.getItem("authenticated_user_id");
-    return activePullDownSync;
-  }
+  pullDownRerunRequestedFor = activePullDownSync ? localStorage.getItem("authenticated_user_id") : null;
+  if (activePullDownSync) return activePullDownSync;
   activePullDownSync = drainPullDownSync().finally(() => { activePullDownSync = null; });
   return activePullDownSync;
 }
