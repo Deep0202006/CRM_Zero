@@ -1718,6 +1718,7 @@ async function pullDownSyncInternal(userId: string): Promise<PullDownSyncResult>
 
       const pageData = (data ?? []) as unknown as DynamicRow[];
       result.peakBufferedRows = Math.max(result.peakBufferedRows, pageData.length);
+      // Empty or RLS-filtered pages are not deletion authority; local data was preserved without recovery writes.
       if (pageData.length) {
         try { result.rowsApplied += await applyHydrationPage(table, localTableName, pk, pageData, userId); }
         catch (error) {

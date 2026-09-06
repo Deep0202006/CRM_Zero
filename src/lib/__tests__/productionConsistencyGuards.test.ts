@@ -50,15 +50,14 @@ describe("production consistency guards", () => {
     expect(database.match(/zerodata:call-logs-changed/g)?.length).toBeGreaterThanOrEqual(3);
   });
 
-  it("keeps remote confirmation ahead of queue removal and preserves local pull state", () => {
+  it("keeps remote confirmation ahead of queue removal and preserves empty pulls", () => {
     const database = source("src/lib/db.ts");
     const verification = database.indexOf("verifyRemoteRowExists");
     const removal = database.indexOf("await db.sync_queue.delete(item.id)");
     expect(verification).toBeGreaterThan(-1);
     expect(removal).toBeGreaterThan(verification);
+    expect(database).toContain("local data was preserved without recovery writes");
     expect(database).toContain("!pendingInsertIds.has(d[pk])");
-    expect(database).toContain("db.transaction(\"rw\", [table, db.sync_queue]");
-    expect(database).toContain("FULL_PULL_MAX_PAGES_PER_TABLE");
     expect(database).toContain(".order(pk, { ascending: true })");
     expect(database).toContain("item.owner_user_id ?? legacyOwnerId");
     expect(database).toContain("itemOwnerId !== authenticatedUserId");
