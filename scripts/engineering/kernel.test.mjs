@@ -302,7 +302,7 @@ try {
     const impact = compileImpact({ entries: [{ status: "M", path }], patch: "" }); assert(impact.domains.includes("platform-handover")); assert.equal(impact.writable, true); assert.equal(impact.writeOperations.length + impact.unknownOperations.length, 0);
   }
   const literalDomainCases = [
-    ["platform-handover", ["src/lib/serverBackendEnvironment.ts", "src/lib/serverBackendIdentity.ts", "src/components/BackendEnvironmentBoundary.tsx", "src/components/AuthorizedCrmShell.tsx", "docs/contracts/BACKEND_ENVIRONMENT_ISOLATION.md", "e2e/backend-isolation/backend-isolation.spec.ts", "src/lib/__tests__/backendEnvironment.test.ts", "src/lib/__tests__/backendIsolationContract.test.ts", "src/lib/__tests__/serverBackendEnvironment.test.ts", "src/lib/__tests__/supabaseClientEnvironment.test.ts"]],
+    ["platform-handover", ["src/lib/serverBackendEnvironment.ts", "src/lib/serverBackendIdentity.ts", "src/components/BackendEnvironmentBoundary.tsx", "src/components/AuthorizedCrmShell.tsx", "docs/contracts/BACKEND_ENVIRONMENT_ISOLATION.md", "e2e/backend-isolation/backend-isolation.spec.ts", "scripts/handover/check.mjs", "src/lib/__tests__/backendEnvironment.test.ts", "src/lib/__tests__/backendIsolationContract.test.ts", "src/lib/__tests__/serverBackendEnvironment.test.ts", "src/lib/__tests__/supabaseClientEnvironment.test.ts"]],
     ["engineering-control", ["jest.config.js", "playwright.isolation.config.ts", "scripts/test/server-only.cjs"]],
     ["attendance", ["src/lib/__tests__/attendanceWriteReadClosure.test.ts"]],
     ["calls", ["src/lib/__tests__/callLifetimeHistoryCount.test.ts"]],
