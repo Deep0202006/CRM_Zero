@@ -7,6 +7,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   if (!isReceivablesReady()) return apiError(503, "RECEIVABLES_UNAVAILABLE", "Payment Collections are not activated yet.");
   const context = await contextFor(request);
+  if (context instanceof Response) return context;
   if (!context) return apiError(401, "AUTH_REQUIRED", "Sign in again.");
   if (!context.isAdmin) return apiError(403, "ADMIN_REQUIRED", "System Administrator access required.");
   const detailId = new URL(request.url).searchParams.get("receivable_id");

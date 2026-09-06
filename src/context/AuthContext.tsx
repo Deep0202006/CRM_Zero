@@ -65,14 +65,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       try {
         setIsLoading(true);
         if (!isSupabaseConfigured) {
-          const savedUserId = localStorage.getItem("authenticated_user_id");
-          if (savedUserId && !localStorage.getItem("zerodata_outbox_owner_id")) {
-            const queuedOperations = await countActiveSyncQueueItems();
-            if (queuedOperations > 0) {
-              localStorage.setItem("zerodata_outbox_owner_id", savedUserId);
-            }
-          }
-          localStorage.removeItem("authenticated_user_id");
           setCurrentUser(null);
           setCapabilities([]);
           return;

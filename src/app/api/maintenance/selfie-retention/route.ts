@@ -1,5 +1,5 @@
 import { purgeExpiredSelfies } from "@/lib/fieldVisits/retention";
-import { createServerServiceClient } from "@/lib/serverBackendEnvironment";
+import { backendUnavailableResponse, createServerServiceClient } from "@/lib/serverBackendEnvironment";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,9 +12,9 @@ function authorized(request: Request): boolean {
 }
 
 export async function GET(request: Request) {
-  if (!authorized(request)) return Response.json({ ok: false, code: "CRON_AUTH_REQUIRED" }, { status: 401 });
   const serviceResult = createServerServiceClient();
-  if (!serviceResult.ok) return Response.json({ ok: false, code: "RETENTION_NOT_CONFIGURED", backend_reason: serviceResult.reason }, { status: 503 });
+  if (!serviceResult.ok) return backendUnavailableResponse();
+  if (!authorized(request)) return Response.json({ ok: false, code: "CRON_AUTH_REQUIRED" }, { status: 401 });
   try {
     const result = await purgeExpiredSelfies(serviceResult.client);
     console.info("Selfie retention completed", result);

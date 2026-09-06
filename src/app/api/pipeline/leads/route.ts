@@ -3,6 +3,7 @@ import type { ConfirmedPipelineOperation } from "@/lib/pipeline/legacyRecovery";
 
 export async function GET(request: Request) {
   const context = await createPipelineServerContext(request);
+  if (context instanceof Response) return context;
   if (!context) return Response.json({ code: "PIPELINE_UNAUTHORIZED" }, { status: 401 });
   try {
     const url = new URL(request.url);

@@ -6,7 +6,7 @@ const row = z.object({ rowNumber: z.number().int().min(2).max(5001), distributor
 const requestSchema = z.object({ mode: z.enum(["preview", "confirm"]), operation_id: z.string().uuid(), filename: z.string().trim().min(1).max(255), preview_hash: z.string().optional(), rows: z.array(row).min(1).max(5000) }).strict();
 
 export async function POST(request: Request) {
-  const context = await contextFor(request); if (!context) return apiError(401, "AUTH_REQUIRED", "Sign in again."); if (!context.isAdmin) return apiError(403, "ADMIN_REQUIRED", "System Administrator access required.");
+  const context = await contextFor(request); if (context instanceof Response) return context; if (!context) return apiError(401, "AUTH_REQUIRED", "Sign in again."); if (!context.isAdmin) return apiError(403, "ADMIN_REQUIRED", "System Administrator access required.");
   let raw: unknown; try { raw = await request.json(); } catch { return apiError(400, "INVALID_JSON", "Invalid import request."); }
   const parsed = requestSchema.safeParse(raw); if (!parsed.success) return apiError(400, "IMPORT_INVALID", parsed.error.issues[0]?.message ?? "Invalid import request.");
   let preview; try { preview = await buildDistributorImportPreview(context.service, parsed.data.operation_id, parsed.data.rows); } catch (error) { return distributorReadError(error as { code?: string }, "Authoritative import preview is temporarily unavailable."); }

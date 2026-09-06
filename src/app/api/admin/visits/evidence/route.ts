@@ -1,16 +1,16 @@
 import { NextResponse } from "next/server";
-import { createServerServiceClient } from "@/lib/serverBackendEnvironment";
+import { backendUnavailableResponse, createServerServiceClient } from "@/lib/serverBackendEnvironment";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
+  const serviceResult = createServerServiceClient();
+  if (!serviceResult.ok) return backendUnavailableResponse();
   const authorization = request.headers.get("authorization") ?? "";
   const token = authorization.startsWith("Bearer ") ? authorization.slice(7).trim() : "";
   if (!token) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
 
-  const serviceResult = createServerServiceClient();
-  if (!serviceResult.ok) return NextResponse.json({ error: "BACKEND_UNAVAILABLE", reason: serviceResult.reason }, { status: 503 });
   const admin = serviceResult.client;
   const { data: authData } = await admin.auth.getUser(token);
   if (!authData.user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });

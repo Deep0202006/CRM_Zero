@@ -7,33 +7,48 @@ jest.mock("@supabase/supabase-js", () => ({ createClient }));
 jest.mock("../serverBackendIdentity", () => ({ getServerBackendEnvironment }));
 
 import {
+  backendUnavailableResponse,
   createServerAnonClient,
   createServerServiceClient,
 } from "../serverBackendEnvironment";
 
 describe("server backend client boundary", () => {
+  const originalEnvironment = { ...process.env };
+
   beforeEach(() => {
+    process.env = { ...originalEnvironment };
     createClient.mockClear();
     getServerBackendEnvironment.mockReset();
     delete process.env.SUPABASE_SERVICE_ROLE_KEY;
   });
 
-  it("never constructs a client when backend classification is unavailable", () => {
-    getServerBackendEnvironment.mockReturnValue({
-      status: "unavailable",
-      deployment: "preview",
-      reason: "PREVIEW_BACKEND_DISABLED",
-    });
-    expect(createServerAnonClient("token")).toEqual({
-      ok: false,
-      deployment: "preview",
-      reason: "PREVIEW_BACKEND_DISABLED",
-    });
-    expect(createServerServiceClient().ok).toBe(false);
-    expect(createClient).not.toHaveBeenCalled();
+  afterAll(() => {
+    process.env = originalEnvironment;
   });
 
-  it("preserves production client inputs under the authorized contract", () => {
+  it.each(["preview", "development"])(
+    "never evaluates the privileged-key accessor for %s",
+    (deployment) => {
+      let privilegedReads = 0;
+      process.env = new Proxy(process.env, {
+        get(target, property, receiver) {
+          if (property === "SUPABASE_SERVICE_ROLE_KEY") privilegedReads += 1;
+          return Reflect.get(target, property, receiver);
+        },
+      });
+      getServerBackendEnvironment.mockReturnValue({
+        status: "unavailable",
+        deployment,
+        reason: `${deployment.toUpperCase()}_BACKEND_DISABLED`,
+      });
+      expect(createServerAnonClient()).toEqual({ ok: false });
+      expect(createServerServiceClient()).toEqual({ ok: false });
+      expect(privilegedReads).toBe(0);
+      expect(createClient).not.toHaveBeenCalled();
+    },
+  );
+
+  it("preserves production inputs after authorization", () => {
     getServerBackendEnvironment.mockReturnValue({
       status: "configured",
       deployment: "production",
@@ -54,7 +69,7 @@ describe("server backend client boundary", () => {
     ]);
   });
 
-  it("fails closed when the server-only credential is absent", () => {
+  it("fails closed when the privileged credential is absent", () => {
     getServerBackendEnvironment.mockReturnValue({
       status: "configured",
       deployment: "production",
@@ -62,15 +77,11 @@ describe("server backend client boundary", () => {
       url: "https://authorized.example",
       anonKey: "public-fixture-key",
     });
-    expect(createServerServiceClient()).toEqual({
-      ok: false,
-      deployment: "production",
-      reason: "MISSING_SERVICE_ROLE_CONFIGURATION",
-    });
+    expect(createServerServiceClient()).toEqual({ ok: false });
     expect(createClient).not.toHaveBeenCalled();
   });
 
-  it("allows only an anonymous client for the deterministic test fixture", () => {
+  it("allows only an anonymous loopback client for the test fixture", () => {
     getServerBackendEnvironment.mockReturnValue({
       status: "configured",
       deployment: "test",
@@ -79,11 +90,13 @@ describe("server backend client boundary", () => {
       anonKey: "zerodata-local-test-fixture",
     });
     expect(createServerAnonClient().ok).toBe(true);
-    expect(createServerServiceClient()).toEqual({
-      ok: false,
-      deployment: "test",
-      reason: "PRIVILEGED_CLIENT_NOT_AVAILABLE",
-    });
+    expect(createServerServiceClient()).toEqual({ ok: false });
     expect(createClient).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns one sanitized unavailable response", async () => {
+    const response = backendUnavailableResponse();
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ error: "CRM_UNAVAILABLE" });
   });
 });

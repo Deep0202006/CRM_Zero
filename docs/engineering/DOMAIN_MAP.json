@@ -66,9 +66,18 @@
         ".handover/**",
         "next.config.ts",
         "vercel.json",
-        "src/proxy.ts",
         "src/lib/backendEnvironment.ts",
+        "src/lib/serverBackendEnvironment.ts",
+        "src/lib/serverBackendIdentity.ts",
         "src/lib/supabaseClient.ts",
+        "src/components/BackendEnvironmentBoundary.tsx",
+        "src/components/AuthorizedCrmShell.tsx",
+        "docs/contracts/BACKEND_ENVIRONMENT_ISOLATION.md",
+        "e2e/backend-isolation/backend-isolation.spec.ts",
+        "src/lib/__tests__/backendEnvironment.test.ts",
+        "src/lib/__tests__/backendIsolationContract.test.ts",
+        "src/lib/__tests__/serverBackendEnvironment.test.ts",
+        "src/lib/__tests__/supabaseClientEnvironment.test.ts",
         "src/lib/__tests__/productionConsistencyGuards.test.ts"
       ],
       "codeRoots": [],
@@ -177,6 +186,9 @@
         "src/lib/attendance",
         "src/app/attendance"
       ],
+      "pathPatterns": [
+        "src/lib/__tests__/attendanceWriteReadClosure.test.ts"
+      ],
       "serverBoundaries": [
         "src/app/api/attendance/confirm/route.ts"
       ],
@@ -218,7 +230,8 @@
         "src/lib/db.ts"
       ],
       "pathPatterns": [
-        "src/lib/__tests__/callHistoryAuthority.test.ts"
+        "src/lib/__tests__/callHistoryAuthority.test.ts",
+        "src/lib/__tests__/callLifetimeHistoryCount.test.ts"
       ],
       "serverBoundaries": [
         "src/app/api/call-logs/confirm/route.ts",
@@ -264,6 +277,11 @@
         "src/lib/fieldVisits",
         "src/app/visits",
         "src/components/visits"
+      ],
+      "pathPatterns": [
+        "src/lib/__tests__/fieldVisitErpClosure.test.ts",
+        "src/lib/__tests__/fieldVisitPincodeClosure.test.ts",
+        "src/lib/__tests__/fieldVisitRecoveryCompatibility.test.ts"
       ],
       "serverBoundaries": [
         "src/app/api/field-visits"
@@ -401,6 +419,9 @@
         "src/lib/teamKpi",
         "src/app/manager/kpi",
         "src/lib/analytics/viewModels.ts"
+      ],
+      "pathPatterns": [
+        "src/lib/__tests__/teamKpiApiContract.test.ts"
       ],
       "serverBoundaries": [
         "src/app/api/team-kpi/route.ts"
@@ -949,7 +970,8 @@
         "src/lib/__tests__/visualIntelligenceV2.test.ts"
       ],
       "pathPatterns": [
-        "src/lib/__tests__/visualIntelligence.test.ts"
+        "src/lib/__tests__/visualIntelligence.test.ts",
+        "e2e/visual-intelligence/visual-intelligence.spec.ts"
       ],
       "mustNotWriteAuthorityRefs": []
     },
@@ -986,7 +1008,10 @@
         "docs/engineering/**",
         "docs/contracts/engineering-os.md",
         "docs/contracts/release-automation.md",
+        "jest.config.js",
         "playwright.config.ts",
+        "playwright.isolation.config.ts",
+        "scripts/test/server-only.cjs",
         ".github/**",
         ".codex/**"
       ],

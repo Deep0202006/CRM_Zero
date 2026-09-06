@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getCurrentISTDate } from "@/lib/dateTime";
-import { createServerAnonClient, createServerServiceClient } from "@/lib/serverBackendEnvironment";
+import { backendUnavailableResponse, createServerAnonClient, createServerServiceClient } from "@/lib/serverBackendEnvironment";
 import { parseTeamKpiResponse } from "@/lib/teamKpi/contract";
 import { loadTeamKpiServerReport, TeamKpiServerError } from "@/lib/teamKpi/serverReport";
 
@@ -22,12 +22,12 @@ async function isAdmin(service: SupabaseClient, userId: string): Promise<boolean
 }
 
 export async function GET(request: NextRequest) {
+  const userResult = createServerAnonClient();
+  const serviceResult = createServerServiceClient();
+  if (!userResult.ok || !serviceResult.ok) return backendUnavailableResponse();
   const authorization = request.headers.get("authorization") ?? "";
   if (!authorization.startsWith("Bearer ")) return jsonError(401, "AUTHENTICATION_REQUIRED", "Sign in again to view Team KPI.");
   const token = authorization.slice(7).trim();
-  const userResult = createServerAnonClient(token);
-  const serviceResult = createServerServiceClient();
-  if (!userResult.ok || !serviceResult.ok) return jsonError(503, "SUPABASE_NOT_CONFIGURED", "Canonical Team KPI server access is not configured.");
   const userClient = userResult.client;
   const service = serviceResult.client;
   try {

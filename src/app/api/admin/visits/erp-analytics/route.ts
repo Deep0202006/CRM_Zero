@@ -1,10 +1,10 @@
-import { createServerServiceClient } from "@/lib/serverBackendEnvironment";
+import { backendUnavailableResponse, createServerServiceClient } from "@/lib/serverBackendEnvironment";
 export const runtime = "nodejs"; export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
+  const serviceResult = createServerServiceClient();
+  if (!serviceResult.ok) return backendUnavailableResponse();
   const token = (request.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
   if (!token) return Response.json({ code: "AUTH_REQUIRED" }, { status: 401 });
-  const serviceResult = createServerServiceClient();
-  if (!serviceResult.ok) return Response.json({ code: "BACKEND_UNAVAILABLE", reason: serviceResult.reason }, { status: 503 });
   const admin = serviceResult.client;
   const { data: auth } = await admin.auth.getUser(token); if (!auth.user) return Response.json({ code: "AUTH_REQUIRED" }, { status: 401 });
   const [{ data: user }, { data: caps }] = await Promise.all([admin.from("users").select("is_active").eq("user_id", auth.user.id).maybeSingle(), admin.from("user_capabilities").select("capability_code").eq("user_id", auth.user.id)]);

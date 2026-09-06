@@ -1,11 +1,11 @@
-import "server-only"; import { createHash } from "crypto"; import type { SupabaseClient } from "@supabase/supabase-js"; import { createServerAnonClient, createServerServiceClient } from "../serverBackendEnvironment";
+import "server-only"; import { createHash } from "crypto"; import type { SupabaseClient } from "@supabase/supabase-js"; import { backendUnavailableResponse, createServerAnonClient, createServerServiceClient } from "../serverBackendEnvironment";
 export interface ReceivablesContext { userId: string; isAdmin: boolean; isErpPartnerViewer: boolean; userClient: SupabaseClient; service: SupabaseClient }
 export function isReceivablesReady() { return process.env.RECEIVABLES_V1_READY === "true"; }
 export function canonicalize(value: unknown): string { if (Array.isArray(value)) return `[${value.map(canonicalize).join(",")}]`; if (value && typeof value === "object") return `{${Object.entries(value as Record<string,unknown>).sort(([a],[b]) => a.localeCompare(b)).map(([k,v]) => `${JSON.stringify(k)}:${canonicalize(v)}`).join(",")}}`; return JSON.stringify(value); }
 export function requestHash(value: unknown) { return createHash("sha256").update(canonicalize(value)).digest("hex"); }
 function bearer(request: Request) { const h=request.headers.get("authorization")??""; return h.toLowerCase().startsWith("bearer ") ? h.slice(7).trim() : null; }
-export async function contextFor(request: Request): Promise<ReceivablesContext | null> {
-  const token=bearer(request); if(!token) return null; const userResult=createServerAnonClient(token), serviceResult=createServerServiceClient(); if(!userResult.ok||!serviceResult.ok)return null;
+export async function contextFor(request: Request): Promise<ReceivablesContext | Response | null> {
+  const userResult=createServerAnonClient(), serviceResult=createServerServiceClient(); if(!userResult.ok||!serviceResult.ok)return backendUnavailableResponse(); const token=bearer(request); if(!token) return null;
   const userClient=userResult.client, service=serviceResult.client;
   const {data:auth,error}=await userClient.auth.getUser(token); if(error||!auth.user)return null;
   const [{data:user},{data:caps}]=await Promise.all([service.from("users").select("user_id,is_active").eq("user_id",auth.user.id).maybeSingle(),service.from("user_capabilities").select("capability_code").eq("user_id",auth.user.id)]);

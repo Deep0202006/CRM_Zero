@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getCurrentISTDate, getISTBusinessDayBounds, isValidISTDateKey } from "@/lib/dateTime";
-import { createServerServiceClient } from "@/lib/serverBackendEnvironment";
+import { backendUnavailableResponse, createServerServiceClient } from "@/lib/serverBackendEnvironment";
 import { buildRepresentativeDirectory, type RepresentativeDirectoryRow } from "@/lib/fieldVisits/representatives";
 
 export const runtime = "nodejs";
@@ -91,7 +91,7 @@ async function loadRepresentativeDirectory(admin: SupabaseClient) {
 
 export async function GET(request: Request) {
   const serviceResult = createServerServiceClient();
-  if (!serviceResult.ok) return errorResponse(503, `BACKEND_UNAVAILABLE:${serviceResult.reason}`);
+  if (!serviceResult.ok) return backendUnavailableResponse();
 
   const token = getBearerToken(request);
   if (!token) return errorResponse(401, "Authentication required.");

@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
-import { createServerServiceClient } from "@/lib/serverBackendEnvironment";
+import { backendUnavailableResponse, createServerServiceClient } from "@/lib/serverBackendEnvironment";
 import { attendanceEvidencePath, SELFIE_BUCKET } from "@/lib/fieldVisits/retention";
 import { getISTDateKey, isValidISTDateKey } from "@/lib/dateTime";
 import { ATTENDANCE_QUEUE_SCHEMA_VERSION, normalizeAttendanceConfirmationPayload, parseAttendanceQueueSchemaVersion } from "@/lib/syncPayload";
@@ -64,7 +64,7 @@ export async function POST(request: Request) {
   const serviceResult = createServerServiceClient();
   const authHeader = request.headers.get("authorization") ?? "";
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
-  if (!serviceResult.ok) return fail(503, "BACKEND_UNAVAILABLE", { ...baseTelemetry, stage: "configuration", reason: serviceResult.reason });
+  if (!serviceResult.ok) return backendUnavailableResponse();
   const client = serviceResult.client;
   if (!token) return fail(401, "AUTH_REQUIRED", { ...baseTelemetry, stage: "authentication", reason: "AUTH_REQUIRED" });
   const auth = await client.auth.getUser(token);

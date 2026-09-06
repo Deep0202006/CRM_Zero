@@ -1,15 +1,15 @@
 import { getCurrentISTDate, getISTBusinessDayBounds } from "@/lib/dateTime";
-import { createServerAnonClient, createServerServiceClient } from "@/lib/serverBackendEnvironment";
+import { backendUnavailableResponse, createServerAnonClient, createServerServiceClient } from "@/lib/serverBackendEnvironment";
 
 export const runtime = "nodejs"; export const dynamic = "force-dynamic";
 const PAGE_SIZE = 50; const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 function json(status: number, body: Record<string, unknown>) { return Response.json(body, { status, headers: { "Cache-Control": "no-store" } }); }
 function active(value: unknown) { return value === true || value === 1 || value === "1" || value === "true"; }
 export async function GET(request: Request) {
+  const authResult = createServerAnonClient(), serviceResult = createServerServiceClient();
+  if (!authResult.ok || !serviceResult.ok) return backendUnavailableResponse();
   const authorization = request.headers.get("authorization") ?? ""; const token = authorization.startsWith("Bearer ") ? authorization.slice(7).trim() : "";
   if (!token) return json(401, { code: "AUTH_REQUIRED" });
-  const authResult = createServerAnonClient(token), serviceResult = createServerServiceClient();
-  if (!authResult.ok || !serviceResult.ok) return json(503, { code: "BACKEND_UNAVAILABLE" });
   const authClient = authResult.client, service = serviceResult.client;
   const { data: auth, error: authError } = await authClient.auth.getUser(token);
   if (authError || !auth.user) return json(401, { code: "AUTH_REQUIRED" });

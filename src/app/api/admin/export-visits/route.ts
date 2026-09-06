@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import * as xlsx from "xlsx";
-import { createServerServiceClient } from "@/lib/serverBackendEnvironment";
+import { backendUnavailableResponse, createServerServiceClient } from "@/lib/serverBackendEnvironment";
 import { getISTBusinessDayBounds, isValidISTDateKey } from "@/lib/dateTime";
 import { getOutcomeLabel } from "@/lib/fieldVisits/contract";
 import { buildErpIntelligenceExportRows, type ErpSegment } from "./exportRows";
@@ -27,7 +27,7 @@ async function verifyAdmin(admin: SupabaseClient, token: string) {
 
 export async function GET(request: Request) {
   const serviceResult = createServerServiceClient();
-  if (!serviceResult.ok) return jsonError(503, `BACKEND_UNAVAILABLE:${serviceResult.reason}`);
+  if (!serviceResult.ok) return backendUnavailableResponse();
   const authorization = request.headers.get("authorization") ?? "";
   const token = authorization.startsWith("Bearer ") ? authorization.slice(7).trim() : "";
   if (!token) return jsonError(401, "Authentication required.");

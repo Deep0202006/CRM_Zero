@@ -1,5 +1,5 @@
 import { callConfirmationSchema, hasCanonicalCallClientReference } from "@/lib/callLogs/serverContract";
-import { createServerServiceClient } from "@/lib/serverBackendEnvironment";
+import { backendUnavailableResponse, createServerServiceClient } from "@/lib/serverBackendEnvironment";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,7 +10,7 @@ function tokenOf(request: Request) { const value = request.headers.get("authoriz
 
 export async function POST(request: Request) {
   const serviceResult = createServerServiceClient(); const token = tokenOf(request);
-  if (!serviceResult.ok) return json(503, { ok: false, code: "BACKEND_UNAVAILABLE", reason: serviceResult.reason });
+  if (!serviceResult.ok) return backendUnavailableResponse();
   const service = serviceResult.client;
   if (!token) return json(401, { ok: false, code: "AUTH_REQUIRED", message: "Sign in again before retrying this call." });
   let input: unknown;

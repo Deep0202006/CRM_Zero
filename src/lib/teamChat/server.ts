@@ -2,6 +2,7 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
+  backendUnavailableResponse,
   createServerAnonClient,
   createServerServiceClient,
 } from "../serverBackendEnvironment";
@@ -16,15 +17,14 @@ export function chatJson(status: number, body: Record<string, unknown>): Respons
 }
 
 export async function requireChatContext(request: Request): Promise<ChatServerContext | Response> {
+  const authenticatedResult = createServerAnonClient();
+  const serviceResult = createServerServiceClient();
+  if (!authenticatedResult.ok || !serviceResult.ok) {
+    return backendUnavailableResponse();
+  }
   const authorization = request.headers.get("authorization");
   if (!authorization?.startsWith("Bearer ")) return chatJson(401, { ok: false, code: "AUTHENTICATION_REQUIRED" });
   const token = authorization.slice(7);
-  const authenticatedResult = createServerAnonClient(token);
-  const serviceResult = createServerServiceClient();
-  if (!authenticatedResult.ok || !serviceResult.ok) {
-    const failed = !authenticatedResult.ok ? authenticatedResult : serviceResult;
-    return chatJson(503, { ok: false, code: "CHAT_NOT_CONFIGURED", backend_reason: failed.reason });
-  }
   const authenticated = authenticatedResult.client;
   const service = serviceResult.client;
   const { data: auth, error: authError } = await authenticated.auth.getUser(token);

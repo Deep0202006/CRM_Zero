@@ -1,43 +1,29 @@
 import "server-only";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { BackendEnvironment } from "./backendEnvironment";
 import { getServerBackendEnvironment } from "./serverBackendIdentity";
 
 type ServerClientFailure = {
   ok: false;
-  deployment: BackendEnvironment["deployment"];
-  reason: string;
 };
 
 type ServerClientSuccess = {
   ok: true;
-  deployment: "production" | "test";
-  reason: "AUTHORIZED_PRODUCTION" | "AUTHORIZED_TEST_FIXTURE";
   client: SupabaseClient;
 };
 
 export type ServerClientResult = ServerClientFailure | ServerClientSuccess;
 
-function failure(
-  backend: BackendEnvironment,
-  reason: string = backend.reason,
-): ServerClientFailure {
-  return {
-    ok: false,
-    deployment: backend.deployment,
-    reason,
-  };
+function failure(): ServerClientFailure {
+  return { ok: false };
 }
 
 export function createServerAnonClient(accessToken?: string): ServerClientResult {
   const backend = getServerBackendEnvironment();
-  if (backend.status !== "configured") return failure(backend);
+  if (backend.status !== "configured") return failure();
 
   return {
     ok: true,
-    deployment: backend.deployment,
-    reason: backend.reason,
     client: createClient(backend.url, backend.anonKey, {
       auth: {
         persistSession: false,
@@ -53,20 +39,18 @@ export function createServerAnonClient(accessToken?: string): ServerClientResult
 
 export function createServerServiceClient(): ServerClientResult {
   const backend = getServerBackendEnvironment();
-  if (backend.status !== "configured") return failure(backend);
+  if (backend.status !== "configured") return failure();
   if (backend.deployment !== "production") {
-    return failure(backend, "PRIVILEGED_CLIENT_NOT_AVAILABLE");
+    return failure();
   }
 
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!serviceRoleKey || serviceRoleKey === "BUILD_TIME_PLACEHOLDER_KEY") {
-    return failure(backend, "MISSING_SERVICE_ROLE_CONFIGURATION");
+    return failure();
   }
 
   return {
     ok: true,
-    deployment: backend.deployment,
-    reason: backend.reason,
     client: createClient(backend.url, serviceRoleKey, {
       auth: {
         persistSession: false,
@@ -75,4 +59,8 @@ export function createServerServiceClient(): ServerClientResult {
       },
     }),
   };
+}
+
+export function backendUnavailableResponse(): Response {
+  return Response.json({ error: "CRM_UNAVAILABLE" }, { status: 503 });
 }

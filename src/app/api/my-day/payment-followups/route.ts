@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentISTDate } from "@/lib/dateTime";
-import { createServerServiceClient } from "@/lib/serverBackendEnvironment";
+import { backendUnavailableResponse, createServerServiceClient } from "@/lib/serverBackendEnvironment";
 import { resolvePaymentFollowUpIdentity } from "@/lib/fieldVisits/paymentFollowUps";
 
 export const runtime = "nodejs";
@@ -13,7 +13,7 @@ function responseError(status: number, error: string) {
 
 export async function GET(request: Request) {
   const serviceResult = createServerServiceClient();
-  if (!serviceResult.ok) return responseError(503, `BACKEND_UNAVAILABLE:${serviceResult.reason}`);
+  if (!serviceResult.ok) return backendUnavailableResponse();
   const authorization = request.headers.get("authorization") ?? "";
   const token = authorization.startsWith("Bearer ") ? authorization.slice(7).trim() : "";
   if (!token) return responseError(401, "Authentication required.");

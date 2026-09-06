@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { createServerServiceClient } from "@/lib/serverBackendEnvironment";
+import { backendUnavailableResponse, createServerServiceClient } from "@/lib/serverBackendEnvironment";
 import { z } from "zod";
 import { listErpSystems } from "@/lib/erp/server";
 import { canonicalErpIdSchema } from "@/lib/erp/validation";
@@ -31,10 +31,10 @@ async function authorize(request: Request): Promise<
   | { service: SupabaseClient; actorId: string }
   | { response: Response }
 > {
+  const serviceResult = createServerServiceClient();
+  if (!serviceResult.ok) return { response: backendUnavailableResponse() };
   const token = (request.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
   if (!token) return { response: Response.json({ code: "AUTH_REQUIRED" }, { status: 401 }) };
-  const serviceResult = createServerServiceClient();
-  if (!serviceResult.ok) return { response: Response.json({ code: "BACKEND_UNAVAILABLE", reason: serviceResult.reason }, { status: 503 }) };
   const service = serviceResult.client;
   const { data: identity, error: identityError } = await service.auth.getUser(token);
   if (identityError || !identity.user) return { response: Response.json({ code: "AUTH_REQUIRED" }, { status: 401 }) };

@@ -1,6 +1,6 @@
 import { getCurrentISTDate, isValidISTDateKey } from "@/lib/dateTime";
 import { attendanceModeForCapabilities } from "@/lib/attendance/roles";
-import { createServerServiceClient } from "@/lib/serverBackendEnvironment";
+import { backendUnavailableResponse, createServerServiceClient } from "@/lib/serverBackendEnvironment";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,7 +15,7 @@ export async function GET(request: Request) {
   const serviceResult = createServerServiceClient();
   const authorization = request.headers.get("authorization") ?? "";
   const token = authorization.startsWith("Bearer ") ? authorization.slice(7).trim() : "";
-  if (!serviceResult.ok) return fail(503, "BACKEND_UNAVAILABLE");
+  if (!serviceResult.ok) return backendUnavailableResponse();
   const service = serviceResult.client;
   if (!token) return fail(401, "AUTH_REQUIRED");
   const auth = await service.auth.getUser(token);

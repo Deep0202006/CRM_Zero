@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerServiceClient } from "@/lib/serverBackendEnvironment";
+import { backendUnavailableResponse, createServerServiceClient } from "@/lib/serverBackendEnvironment";
 import { CreateUserSchema } from "./schema";
 
 function generatePassword() {
@@ -7,12 +7,12 @@ function generatePassword() {
 }
 
 export async function POST(req: NextRequest) {
+  const serviceResult = createServerServiceClient();
+  if (!serviceResult.ok) return backendUnavailableResponse();
   const token = req.headers.get("authorization")?.replace("Bearer ", "");
   if (!token)
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
-  const serviceResult = createServerServiceClient();
-  if (!serviceResult.ok) return NextResponse.json({ error: "BACKEND_UNAVAILABLE", reason: serviceResult.reason }, { status: 503 });
   const supabaseAdmin = serviceResult.client;
 
   const {

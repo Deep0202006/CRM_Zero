@@ -1,11 +1,11 @@
 import { listErpSystems } from "@/lib/erp/server";
-import { createServerAnonClient, createServerServiceClient } from "@/lib/serverBackendEnvironment";
+import { backendUnavailableResponse, createServerAnonClient, createServerServiceClient } from "@/lib/serverBackendEnvironment";
 export const runtime = "nodejs"; export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
+  const authResult = createServerAnonClient(), serviceResult = createServerServiceClient();
+  if (!authResult.ok || !serviceResult.ok) return backendUnavailableResponse();
   const token = (request.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
   if (!token) return Response.json({ code: "AUTH_REQUIRED" }, { status: 401 });
-  const authResult = createServerAnonClient(token), serviceResult = createServerServiceClient();
-  if (!authResult.ok || !serviceResult.ok) return Response.json({ code: "BACKEND_UNAVAILABLE" }, { status: 503 });
   const auth = authResult.client, service = serviceResult.client;
   const { data: identity } = await auth.auth.getUser(token); if (!identity.user) return Response.json({ code: "AUTH_REQUIRED" }, { status: 401 });
   const [{ data: account }, { data: capabilities }] = await Promise.all([service.from("users").select("is_active").eq("user_id", identity.user.id).maybeSingle(), service.from("user_capabilities").select("capability_code").eq("user_id", identity.user.id)]);

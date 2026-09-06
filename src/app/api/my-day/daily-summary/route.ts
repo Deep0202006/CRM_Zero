@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentISTDate } from "@/lib/dateTime";
-import { createServerAnonClient, createServerServiceClient } from "@/lib/serverBackendEnvironment";
+import { backendUnavailableResponse, createServerAnonClient, createServerServiceClient } from "@/lib/serverBackendEnvironment";
 import { getIstDayBounds, loadTeamKpiServerReport } from "@/lib/teamKpi/serverReport";
 import { getCanonicalDailyUserMetrics } from "@/lib/workMetrics/canonical";
 import { isValidSelfScheduledFollowUp } from "@/lib/followUps";
@@ -15,11 +15,11 @@ function error(status: number, code: string, message: string) { return NextRespo
 function active(value: unknown) { return value === true || value === 1 || (typeof value === "string" && ["1", "true", "t"].includes(value.toLowerCase())); }
 
 export async function GET(request: NextRequest) {
+  const userResult = createServerAnonClient(), serviceResult = createServerServiceClient();
+  if (!userResult.ok || !serviceResult.ok) return backendUnavailableResponse();
   const authorization = request.headers.get("authorization") ?? "";
   if (!authorization.startsWith("Bearer ")) return error(401, "AUTHENTICATION_REQUIRED", "Sign in again to view My Day.");
   const token = authorization.slice(7).trim();
-  const userResult = createServerAnonClient(token), serviceResult = createServerServiceClient();
-  if (!userResult.ok || !serviceResult.ok) return error(503, "SUPABASE_NOT_CONFIGURED", "Daily summary server access is not configured.");
   const userClient = userResult.client, service = serviceResult.client;
   const { data: auth, error: authError } = await userClient.auth.getUser(token);
   if (authError || !auth.user) return error(401, "AUTHENTICATION_REQUIRED", "Your session has expired. Sign in again.");

@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { createServerServiceClient } from "@/lib/serverBackendEnvironment";
+import { backendUnavailableResponse, createServerServiceClient } from "@/lib/serverBackendEnvironment";
 import { generateEvidencePath } from "@/lib/fieldVisits/contract";
 import {
   canonicalErpConfirmation,
@@ -65,7 +65,7 @@ async function equalEvidence(admin: SupabaseClient, path: string, incoming: Blob
 export async function POST(request: Request) {
   const serviceResult = createServerServiceClient();
   const token = getToken(request);
-  if (!serviceResult.ok) return response(503, "BACKEND_UNAVAILABLE", serviceResult.reason);
+  if (!serviceResult.ok) return backendUnavailableResponse();
   const admin = serviceResult.client;
   if (!token) return response(401, "AUTH_REQUIRED", "Sign in again before retrying this visit.");
 

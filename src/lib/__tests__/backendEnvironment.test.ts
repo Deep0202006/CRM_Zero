@@ -1,77 +1,123 @@
 import {
-  AUTHORIZED_PRODUCTION_SUPABASE_HOST,
+  AUTHORIZED_PRODUCTION_SUPABASE_URL,
   TEST_FIXTURE_CONFIGURATION,
   TEST_FIXTURE_RUNTIME,
   classifyBuildEnvironment,
   resolveBackendEnvironment,
 } from "../backendEnvironment";
 
-const productionUrl = `https://${AUTHORIZED_PRODUCTION_SUPABASE_HOST}`;
-
 function publicAnonKey(overrides: Record<string, unknown> = {}) {
   const encode = (value: unknown) =>
     Buffer.from(JSON.stringify(value)).toString("base64url");
   return `${encode({ alg: "HS256", typ: "JWT" })}.${encode({
-    ref: AUTHORIZED_PRODUCTION_SUPABASE_HOST.split(".")[0],
+    ref: "gwfjkpsoaoherntwhdyf",
     role: "anon",
     ...overrides,
-  })}.fixture-signature`;
+  })}.c2lnbmF0dXJl`;
 }
 
-describe("backend environment isolation", () => {
-  it.each([
-    [{ VERCEL_ENV: "production", VERCEL_TARGET_ENV: "production" }, "production"],
-    [{ VERCEL_ENV: "preview", VERCEL_TARGET_ENV: "preview" }, "preview"],
-    [
-      { VERCEL_ENV: "development", VERCEL_TARGET_ENV: "development" },
-      "development",
-    ],
-    [{ NODE_ENV: "test" }, "test"],
-    [{ NODE_ENV: "development" }, "development"],
-    [
-      {
-        NODE_ENV: "production",
-        url: TEST_FIXTURE_CONFIGURATION.url,
-        anonKey: TEST_FIXTURE_CONFIGURATION.anonKey,
-      },
-      "test",
-    ],
-    [{ NODE_ENV: "production" }, "unknown"],
-    [{}, "unknown"],
-  ])("classifies build metadata %#", (environment, expected) => {
-    expect(classifyBuildEnvironment(environment)).toBe(expected);
-  });
+const production = {
+  deployment: "production",
+  serverDeployment: "production" as const,
+  url: AUTHORIZED_PRODUCTION_SUPABASE_URL,
+  anonKey: publicAnonKey(),
+};
 
-  it("preserves the authorized production configuration unchanged", () => {
-    const anonKey = publicAnonKey();
-    expect(
-      resolveBackendEnvironment({
-        deployment: "production",
-        serverDeployment: "production",
-        url: productionUrl,
-        anonKey,
-      }),
-    ).toEqual({
+describe("backend environment authority", () => {
+  it("authorizes only the exact agreeing Production identity and configuration", () => {
+    expect(resolveBackendEnvironment(production)).toEqual({
       status: "configured",
       deployment: "production",
       reason: "AUTHORIZED_PRODUCTION",
-      url: productionUrl,
-      anonKey,
+      url: AUTHORIZED_PRODUCTION_SUPABASE_URL,
+      anonKey: production.anonKey,
     });
   });
 
-  it("classifies preview as an explicit unavailable-data state", () => {
-    expect(resolveBackendEnvironment({ deployment: "preview" })).toEqual({
-      status: "unavailable",
-      deployment: "preview",
-      reason: "PREVIEW_BACKEND_DISABLED",
-    });
+  it.each([
+    { ...production, url: undefined },
+    { ...production, anonKey: undefined },
+  ])("fails closed when Production public configuration is missing", (input) => {
+    expect(resolveBackendEnvironment(input).status).toBe("unavailable");
   });
 
-  it("maps the exact local test sentinel to a loopback-only fixture", () => {
+  it.each([
+    ["http://gwfjkpsoaoherntwhdyf.supabase.co", publicAnonKey()],
+    ["https://foreign.supabase.co", publicAnonKey()],
+    [`${AUTHORIZED_PRODUCTION_SUPABASE_URL}/rest`, publicAnonKey()],
+    [AUTHORIZED_PRODUCTION_SUPABASE_URL, "not-a-jwt"],
+    [AUTHORIZED_PRODUCTION_SUPABASE_URL, publicAnonKey({ ref: "foreign" })],
+    [AUTHORIZED_PRODUCTION_SUPABASE_URL, publicAnonKey({ role: "authenticated" })],
+    [AUTHORIZED_PRODUCTION_SUPABASE_URL, publicAnonKey({ role: "service_role" })],
+  ])("rejects invalid Production URL or legacy public JWT %#", (url, anonKey) => {
+    expect(
+      resolveBackendEnvironment({ ...production, url, anonKey }).status,
+    ).toBe("unavailable");
+  });
+
+  it("does not claim signature verification and rejects malformed JWT syntax", () => {
     expect(
       resolveBackendEnvironment({
-        deployment: "test",
+        ...production,
+        anonKey: "e30.e30.not+base64url",
+      }).status,
+    ).toBe("unavailable");
+  });
+
+  it("rejects shape-only opaque publishable keys without repository fingerprint authority", () => {
+    expect(
+      resolveBackendEnvironment({
+        ...production,
+        anonKey: `sb_publishable_${"x".repeat(80)}`,
+      }).status,
+    ).toBe("unavailable");
+  });
+
+  it("fails closed for contradictory build/runtime identity", () => {
+    expect(
+      resolveBackendEnvironment({
+        ...production,
+        serverDeployment: "preview",
+      }),
+    ).toMatchObject({
+      status: "unavailable",
+      reason: "CONTRADICTORY_DEPLOYMENT_IDENTITY",
+    });
+  });
+
+  it.each(["preview", "development", "custom", "unknown"] as const)(
+    "keeps %s unavailable with production-looking values",
+    (deployment) => {
+      expect(
+        resolveBackendEnvironment({ ...production, deployment, serverDeployment: deployment }),
+      ).toMatchObject({ status: "unavailable", deployment });
+    },
+  );
+
+  it("recognizes custom, unknown, and contradictory Vercel identities", () => {
+    expect(
+      classifyBuildEnvironment({
+        VERCEL_ENV: "preview",
+        VERCEL_TARGET_ENV: "qa",
+      }),
+    ).toBe("custom");
+    expect(classifyBuildEnvironment({ VERCEL_TARGET_ENV: "preview" })).toBe(
+      "unknown",
+    );
+    expect(
+      classifyBuildEnvironment({
+        VERCEL_ENV: "preview",
+        VERCEL_TARGET_ENV: "production",
+      }),
+    ).toBe("contradictory");
+  });
+
+  it("authorizes the loopback fixture only under NODE_ENV=test without Vercel metadata", () => {
+    const sentinel = { NODE_ENV: "test", ...TEST_FIXTURE_CONFIGURATION };
+    expect(classifyBuildEnvironment(sentinel)).toBe("test");
+    expect(
+      resolveBackendEnvironment({
+        deployment: classifyBuildEnvironment(sentinel),
         ...TEST_FIXTURE_CONFIGURATION,
       }),
     ).toEqual({
@@ -80,103 +126,35 @@ describe("backend environment isolation", () => {
       reason: "AUTHORIZED_TEST_FIXTURE",
       ...TEST_FIXTURE_RUNTIME,
     });
-  });
-
-  it("never treats the test sentinel as hosted deployment authority", () => {
+    expect(
+      classifyBuildEnvironment({ NODE_ENV: "production", ...TEST_FIXTURE_CONFIGURATION }),
+    ).toBe("unknown");
     expect(
       classifyBuildEnvironment({
+        NODE_ENV: "test",
         VERCEL_ENV: "preview",
         VERCEL_TARGET_ENV: "preview",
         ...TEST_FIXTURE_CONFIGURATION,
       }),
     ).toBe("preview");
+  });
+
+  it("never authorizes a hosted endpoint for test", () => {
     expect(
       resolveBackendEnvironment({
-        deployment: "preview",
-        ...TEST_FIXTURE_CONFIGURATION,
-      }).reason,
-    ).toBe("NON_PRODUCTION_BACKEND_REJECTED");
+        deployment: "test",
+        url: AUTHORIZED_PRODUCTION_SUPABASE_URL,
+        anonKey: publicAnonKey(),
+      }).status,
+    ).toBe("unavailable");
   });
 
-  it.each(["preview", "development", "test"] as const)(
-    "rejects the production backend in %s",
-    (deployment) => {
-      expect(
-        resolveBackendEnvironment({
-          deployment,
-          url: productionUrl,
-          anonKey: publicAnonKey(),
-        }),
-      ).toEqual({
-        status: "unavailable",
-        deployment,
-        reason: "NON_PRODUCTION_PRODUCTION_BACKEND_REJECTED",
-      });
-    },
-  );
-
-  it.each(["preview", "development", "test"] as const)(
-    "rejects any hosted backend in %s",
-    (deployment) => {
-      expect(
-        resolveBackendEnvironment({
-          deployment,
-          url: "https://fixture.invalid.example",
-          anonKey: "fixture",
-        }).reason,
-      ).toBe("NON_PRODUCTION_BACKEND_REJECTED");
-    },
-  );
-
-  it("fails closed for missing and contradictory deployment identity", () => {
-    expect(resolveBackendEnvironment({}).reason).toBe(
-      "MISSING_DEPLOYMENT_IDENTITY",
-    );
-    expect(
-      resolveBackendEnvironment({
-        deployment: "preview",
-        serverDeployment: "production",
-      }).reason,
-    ).toBe("CONTRADICTORY_DEPLOYMENT_IDENTITY");
-  });
-
-  it("rejects malformed deployment metadata", () => {
-    expect(resolveBackendEnvironment({ deployment: "other" }).reason).toBe(
-      "MALFORMED_DEPLOYMENT_IDENTITY",
-    );
-    expect(
-      classifyBuildEnvironment({
-        VERCEL_ENV: "preview",
-        VERCEL_TARGET_ENV: "other",
-        NODE_ENV: "production",
-      }),
-    ).toBe("malformed");
-  });
-
-  it.each([
-    [`${productionUrl}:444`, publicAnonKey()],
-    [`${productionUrl}/rest`, publicAnonKey()],
-    [productionUrl, "a.b.c"],
-    [productionUrl, publicAnonKey({ role: "service_role" })],
-    [productionUrl, publicAnonKey({ ref: "different-project" })],
-  ])("rejects malformed production public configuration", (url, anonKey) => {
-    expect(
-      resolveBackendEnvironment({
-        deployment: "production",
-        url,
-        anonKey,
-      }).reason,
-    ).toBe("MALFORMED_PUBLIC_CONFIGURATION");
-  });
-
-  it("keeps browser and server decisions identical for valid production", () => {
-    const input = {
-      deployment: "production",
-      url: productionUrl,
-      anonKey: publicAnonKey(),
-    };
-    expect(resolveBackendEnvironment(input)).toEqual(
-      resolveBackendEnvironment({ ...input, serverDeployment: "production" }),
-    );
+  it("keeps browser and server decision tables aligned", () => {
+    const browser = resolveBackendEnvironment({
+      deployment: production.deployment,
+      url: production.url,
+      anonKey: production.anonKey,
+    });
+    expect(resolveBackendEnvironment(production)).toEqual(browser);
   });
 });

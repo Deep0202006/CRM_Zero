@@ -1,5 +1,5 @@
 import { callOwnerUpdateSchema, hasCanonicalCallClientReference } from "@/lib/callLogs/serverContract";
-import { createServerServiceClient } from "@/lib/serverBackendEnvironment";
+import { backendUnavailableResponse, createServerServiceClient } from "@/lib/serverBackendEnvironment";
 import { isSyntheticAuditCall } from "@/lib/workMetrics/canonical";
 
 export const runtime = "nodejs";
@@ -10,7 +10,7 @@ function active(value: unknown) { return value === true || value === 1 || value 
 function tokenOf(request: Request) { const value = request.headers.get("authorization") ?? ""; return value.startsWith("Bearer ") ? value.slice(7).trim() : ""; }
 export async function PATCH(request: Request, { params }: { params: Promise<{ log_id: string }> }) {
   const serviceResult = createServerServiceClient(); const token = tokenOf(request); const { log_id } = await params;
-  if (!serviceResult.ok) return json(503, { ok: false, code: "BACKEND_UNAVAILABLE", reason: serviceResult.reason });
+  if (!serviceResult.ok) return backendUnavailableResponse();
   const service = serviceResult.client;
   if (!token) return json(401, { ok: false, code: "AUTH_REQUIRED", message: "Sign in again before retrying this update." });
   const { data: auth, error: authError } = await service.auth.getUser(token);

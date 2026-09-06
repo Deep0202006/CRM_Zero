@@ -1,5 +1,5 @@
 import { getCurrentISTDate } from "@/lib/dateTime";
-import { createServerAnonClient, createServerServiceClient } from "@/lib/serverBackendEnvironment";
+import { backendUnavailableResponse, createServerAnonClient, createServerServiceClient } from "@/lib/serverBackendEnvironment";
 import { getIstDayBounds } from "@/lib/teamKpi/serverReport";
 import { loadCallHistoryWithOptionalMetrics } from "./service";
 
@@ -17,12 +17,12 @@ function active(value: unknown) {
 }
 
 export async function GET(request: Request) {
+  const authResult = createServerAnonClient(), serviceResult = createServerServiceClient();
+  if (!authResult.ok || !serviceResult.ok) return backendUnavailableResponse();
   const authorization = request.headers.get("authorization") ?? "";
   const token = authorization.startsWith("Bearer ") ? authorization.slice(7).trim() : "";
   if (!token) return response(401, { code: "AUTH_REQUIRED" });
 
-  const authResult = createServerAnonClient(token), serviceResult = createServerServiceClient();
-  if (!authResult.ok || !serviceResult.ok) return response(503, { code: "BACKEND_UNAVAILABLE" });
   const authClient = authResult.client, service = serviceResult.client;
   const { data: auth, error: authError } = await authClient.auth.getUser(token);
   if (authError || !auth.user) return response(401, { code: "AUTH_REQUIRED" });

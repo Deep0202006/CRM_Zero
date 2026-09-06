@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerServiceClient } from "@/lib/serverBackendEnvironment";
+import { backendUnavailableResponse, createServerServiceClient } from "@/lib/serverBackendEnvironment";
 import { UpdateSchema } from "./schema";
 
 async function authorize(request: NextRequest) {
+  const serviceResult = createServerServiceClient();
+  if (!serviceResult.ok) return backendUnavailableResponse();
   const token = request.headers.get("authorization")?.replace("Bearer ", "");
   if (!token) return NextResponse.json({ error: "Admin access required" }, { status: 403 });
-  const serviceResult = createServerServiceClient();
-  if (!serviceResult.ok) return NextResponse.json({ error: "BACKEND_UNAVAILABLE", reason: serviceResult.reason }, { status: 503 });
   const service = serviceResult.client;
   const { data } = await service.auth.getUser(token);
   if (!data.user) return NextResponse.json({ error: "Admin access required" }, { status: 403 });
@@ -21,7 +21,7 @@ async function authorize(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   const authority = await authorize(request);
-  if (authority instanceof NextResponse) return authority;
+  if (authority instanceof Response) return authority;
   const { service } = authority;
   const [capabilities, erps] = await Promise.all([
     service
@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const authority = await authorize(request);
-  if (authority instanceof NextResponse) return authority;
+  if (authority instanceof Response) return authority;
   const parsed = UpdateSchema.safeParse(await request.json());
   if (!parsed.success)
     return NextResponse.json(

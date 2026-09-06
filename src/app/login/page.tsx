@@ -5,11 +5,7 @@ import Image from "next/image";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/db";
-import {
-  backendEnvironment,
-  isSupabaseConfigured,
-  supabase,
-} from "@/lib/supabaseClient";
+import { supabase } from "@/lib/supabaseClient";
 import styles from "./page.module.css";
 
 export default function LoginPage() {
@@ -103,19 +99,6 @@ export default function LoginPage() {
             Welcome to <span className={styles.titleBlue}>CRM</span>
           </h1>
           <p className={styles.subtitle}>Sign in to your account</p>
-          {!isSupabaseConfigured && (
-            <div
-              className={styles.errorBanner}
-              role="status"
-              data-backend-mode="unavailable"
-              data-backend-deployment={backendEnvironment.deployment}
-              data-backend-reason={backendEnvironment.reason}
-            >
-              CRM backend unavailable ({backendEnvironment.deployment} /{" "}
-              {backendEnvironment.reason}). Authentication remains closed.
-            </div>
-          )}
-          
           <div className={styles.underline} />
 
           <form onSubmit={handleSubmit} className={styles.form} noValidate>
@@ -176,7 +159,7 @@ export default function LoginPage() {
             <button
               type="submit"
               className={styles.loginButton}
-              disabled={isLoading || !isSupabaseConfigured}
+              disabled={isLoading}
             >
               {isLoading ? "Verifying..." : "Login"}
             </button>

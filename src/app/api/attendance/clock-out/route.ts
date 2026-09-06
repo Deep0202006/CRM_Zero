@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentISTDate } from "@/lib/dateTime";
-import { createServerServiceClient } from "@/lib/serverBackendEnvironment";
+import { backendUnavailableResponse, createServerServiceClient } from "@/lib/serverBackendEnvironment";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,7 +29,7 @@ function bearerToken(request: Request) {
 
 export async function POST(request: Request) {
   const serviceResult = createServerServiceClient();
-  if (!serviceResult.ok) return fail(503, `BACKEND_UNAVAILABLE:${serviceResult.reason}`);
+  if (!serviceResult.ok) return backendUnavailableResponse();
 
   const token = bearerToken(request);
   if (!token) return fail(401, "Authentication required.");

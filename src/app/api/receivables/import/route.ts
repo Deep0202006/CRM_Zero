@@ -3,7 +3,7 @@ import { buildImportPreview } from "@/lib/receivables/importServer";
 import { importRequestSchema } from "@/lib/receivables/validation";
 
 export async function POST(request:Request){
- if(!isReceivablesReady())return apiError(503,"RECEIVABLES_UNAVAILABLE","Payment Collections are not activated yet.");const context=await contextFor(request);if(!context)return apiError(401,"AUTH_REQUIRED","Sign in again.");if(!context.isAdmin)return apiError(403,"ADMIN_REQUIRED","System Administrator access required.");
+ if(!isReceivablesReady())return apiError(503,"RECEIVABLES_UNAVAILABLE","Payment Collections are not activated yet.");const context=await contextFor(request);if(context instanceof Response)return context;if(!context)return apiError(401,"AUTH_REQUIRED","Sign in again.");if(!context.isAdmin)return apiError(403,"ADMIN_REQUIRED","System Administrator access required.");
  let raw:unknown;try{raw=await request.json()}catch{return apiError(400,"INVALID_JSON","Invalid import request.")}const parsed=importRequestSchema.safeParse(raw);if(!parsed.success)return apiError(400,"IMPORT_INVALID",parsed.error.issues[0]?.message??"Invalid import request.");
  let preview;try{preview=await buildImportPreview(context.service,parsed.data.operation_id,parsed.data.rows)}catch{return apiError(503,"IMPORT_UNAVAILABLE","Authoritative import preview is temporarily unavailable.")}
  if(parsed.data.mode==="preview")return Response.json({rows:preview.rows,counts:preview.counts,preview_hash:preview.preview_hash});

@@ -1,84 +1,63 @@
-const createClient = jest.fn((url: string, key: string, options?: unknown) => ({
-  url,
-  key,
-  options,
-}));
+jest.mock("client-only", () => ({}), { virtual: true });
 
+const createClient = jest.fn((url: string, key: string) => ({ url, key }));
 jest.mock("@supabase/supabase-js", () => ({ createClient }));
 
-const host = "gwfjkpsoaoherntwhdyf.supabase.co";
-const productionUrl = `https://${host}`;
+const productionUrl = "https://gwfjkpsoaoherntwhdyf.supabase.co";
 
 function publicAnonKey() {
   const encode = (value: unknown) =>
     Buffer.from(JSON.stringify(value)).toString("base64url");
-  return `${encode({ alg: "HS256" })}.${encode({ ref: host.split(".")[0], role: "anon" })}.fixture`;
+  return `${encode({ alg: "HS256" })}.${encode({ ref: "gwfjkpsoaoherntwhdyf", role: "anon" })}.c2lnbmF0dXJl`;
 }
 
 describe("browser Supabase client selection", () => {
-  const original = { ...process.env };
+  const originalEnvironment = { ...process.env };
 
   afterEach(() => {
-    process.env = { ...original };
+    process.env = { ...originalEnvironment };
     jest.resetModules();
     createClient.mockClear();
   });
 
-  it("uses the authorized production public values unchanged", async () => {
-    const anonKey = publicAnonKey();
+  it("constructs one singleton only after authorized Production access", async () => {
     process.env.NEXT_PUBLIC_ZERODATA_DEPLOYMENT_ENV = "production";
     process.env.NEXT_PUBLIC_SUPABASE_URL = productionUrl;
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = anonKey;
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = publicAnonKey();
     await jest.isolateModulesAsync(async () => {
-      const clientModule = (await import("../supabaseClient")) as {
-        isSupabaseConfigured: boolean;
-      };
+      const clientModule = await import("../supabaseClient");
       expect(clientModule.isSupabaseConfigured).toBe(true);
+      expect(createClient).not.toHaveBeenCalled();
+      expect(clientModule.getBrowserSupabaseClient()).toBe(
+        clientModule.getBrowserSupabaseClient(),
+      );
     });
-    expect(createClient.mock.calls[0]?.slice(0, 2)).toEqual([
-      productionUrl,
-      anonKey,
-    ]);
+    expect(createClient).toHaveBeenCalledTimes(1);
   });
 
-  it("uses a zero-network unavailable client for preview", async () => {
+  it("constructs no client and exposes no internal reason in Preview", async () => {
     process.env.NEXT_PUBLIC_ZERODATA_DEPLOYMENT_ENV = "preview";
     process.env.NEXT_PUBLIC_SUPABASE_URL = productionUrl;
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = publicAnonKey();
-    let configured = true;
     await jest.isolateModulesAsync(async () => {
-      configured = ((await import("../supabaseClient")) as {
-        isSupabaseConfigured: boolean;
-      }).isSupabaseConfigured;
+      const clientModule = await import("../supabaseClient");
+      expect(clientModule.isSupabaseConfigured).toBe(false);
+      expect(clientModule.getBrowserSupabaseClient()).toBeNull();
+      expect(() => clientModule.supabase.auth).toThrow("CRM_UNAVAILABLE");
     });
-    expect(configured).toBe(false);
-    const options = createClient.mock.calls[0]?.[2] as {
-      auth: Record<string, boolean>;
-      global: { fetch: () => Promise<never> };
-    };
-    expect(options.auth).toEqual({
-      persistSession: false,
-      autoRefreshToken: false,
-      detectSessionInUrl: false,
-    });
-    await expect(options.global.fetch()).rejects.toThrow(
-      "BACKEND_UNAVAILABLE:NON_PRODUCTION_PRODUCTION_BACKEND_REJECTED",
-    );
+    expect(createClient).not.toHaveBeenCalled();
   });
 
-  it("maps the test sentinel to a loopback-only public client", async () => {
+  it("maps the exact test classification and sentinel to loopback", async () => {
     process.env.NEXT_PUBLIC_ZERODATA_DEPLOYMENT_ENV = "test";
     process.env.NEXT_PUBLIC_SUPABASE_URL = "https://e2e.supabase.co";
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "e2e-anon-key";
     await jest.isolateModulesAsync(async () => {
-      const clientModule = (await import("../supabaseClient")) as {
-        isSupabaseConfigured: boolean;
-      };
-      expect(clientModule.isSupabaseConfigured).toBe(true);
+      const clientModule = await import("../supabaseClient");
+      expect(clientModule.getBrowserSupabaseClient()).toEqual({
+        url: "http://127.0.0.1:54321",
+        key: "zerodata-local-test-fixture",
+      });
     });
-    expect(createClient.mock.calls[0]?.slice(0, 2)).toEqual([
-      "http://127.0.0.1:54321",
-      "zerodata-local-test-fixture",
-    ]);
   });
 });

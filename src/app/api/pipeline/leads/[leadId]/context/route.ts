@@ -7,6 +7,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: Request, { params }: { params: Promise<{ leadId: string }> }) {
   const context = await createPipelineServerContext(request);
+  if (context instanceof Response) return context;
   if (!context) return Response.json({ code: "PIPELINE_UNAUTHORIZED" }, { status: 401 });
   const { leadId } = await params;
   if (!isCallLeadId(leadId)) return Response.json({ code: "PIPELINE_INVALID_LEAD" }, { status: 400 });

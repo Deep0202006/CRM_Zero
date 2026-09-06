@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isValidISTDateKey } from "@/lib/dateTime";
-import { createServerAnonClient, createServerServiceClient } from "@/lib/serverBackendEnvironment";
+import { backendUnavailableResponse, createServerAnonClient, createServerServiceClient } from "@/lib/serverBackendEnvironment";
 import type { AttendanceAuthorityRow } from "@/lib/attendance/authority";
 import { isAttendanceEligible } from "@/lib/attendance/roles";
 
@@ -29,6 +29,8 @@ async function readRegister(service: SupabaseClient, dateFrom: string, dateTo: s
 }
 
 export async function GET(request: NextRequest) {
+  const userResult = createServerAnonClient(), serviceResult = createServerServiceClient();
+  if (!userResult.ok || !serviceResult.ok) return backendUnavailableResponse();
   const authorization = request.headers.get("authorization") ?? "";
   if (!authorization.startsWith("Bearer ")) return fail(401, "AUTHENTICATION_REQUIRED");
   const token = authorization.slice(7).trim();
@@ -37,8 +39,6 @@ export async function GET(request: NextRequest) {
   if (!isValidISTDateKey(dateFrom) || !isValidISTDateKey(dateTo) || dateFrom > dateTo) return fail(400, "INVALID_ATTENDANCE_DATE");
   const rangeDays = Math.round((new Date(`${dateTo}T00:00:00Z`).getTime() - new Date(`${dateFrom}T00:00:00Z`).getTime()) / 86400000) + 1;
   if (rangeDays > 31) return fail(400, "ATTENDANCE_RANGE_TOO_LARGE");
-  const userResult = createServerAnonClient(token), serviceResult = createServerServiceClient();
-  if (!userResult.ok || !serviceResult.ok) return fail(503, "SUPABASE_NOT_CONFIGURED");
   const userClient = userResult.client, service = serviceResult.client;
   const { data: authData, error: authError } = await userClient.auth.getUser(token);
   if (authError || !authData.user) return fail(401, "AUTHENTICATION_REQUIRED");

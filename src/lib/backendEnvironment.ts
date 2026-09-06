@@ -1,5 +1,8 @@
+export const AUTHORIZED_PRODUCTION_SUPABASE_URL =
+  "https://gwfjkpsoaoherntwhdyf.supabase.co";
 export const AUTHORIZED_PRODUCTION_SUPABASE_HOST =
   "gwfjkpsoaoherntwhdyf.supabase.co";
+export const AUTHORIZED_PRODUCTION_PROJECT_REF = "gwfjkpsoaoherntwhdyf";
 
 export const TEST_FIXTURE_CONFIGURATION = {
   url: "https://e2e.supabase.co",
@@ -17,17 +20,22 @@ export type DeploymentEnvironment =
   | "development"
   | "test";
 
+export type DeploymentIdentity =
+  | DeploymentEnvironment
+  | "custom"
+  | "unknown"
+  | "contradictory";
+
 export type BackendEnvironmentReason =
   | "AUTHORIZED_PRODUCTION"
   | "AUTHORIZED_TEST_FIXTURE"
   | "PREVIEW_BACKEND_DISABLED"
   | "DEVELOPMENT_BACKEND_DISABLED"
   | "TEST_BACKEND_DISABLED"
-  | "NON_PRODUCTION_BACKEND_REJECTED"
-  | "NON_PRODUCTION_PRODUCTION_BACKEND_REJECTED"
-  | "MISSING_DEPLOYMENT_IDENTITY"
-  | "MALFORMED_DEPLOYMENT_IDENTITY"
+  | "CUSTOM_BACKEND_DISABLED"
+  | "UNKNOWN_BACKEND_DISABLED"
   | "CONTRADICTORY_DEPLOYMENT_IDENTITY"
+  | "NON_PRODUCTION_BACKEND_REJECTED"
   | "MISSING_PUBLIC_CONFIGURATION"
   | "MALFORMED_PUBLIC_CONFIGURATION"
   | "UNAUTHORIZED_PRODUCTION_BACKEND";
@@ -37,7 +45,7 @@ export type BackendEnvironment =
       status: "configured";
       deployment: "production";
       reason: "AUTHORIZED_PRODUCTION";
-      url: string;
+      url: typeof AUTHORIZED_PRODUCTION_SUPABASE_URL;
       anonKey: string;
     }
   | {
@@ -49,11 +57,14 @@ export type BackendEnvironment =
     }
   | {
       status: "unavailable";
-      deployment: DeploymentEnvironment | "unknown";
-      reason: Exclude<BackendEnvironmentReason, "AUTHORIZED_PRODUCTION">;
+      deployment: DeploymentIdentity;
+      reason: Exclude<
+        BackendEnvironmentReason,
+        "AUTHORIZED_PRODUCTION" | "AUTHORIZED_TEST_FIXTURE"
+      >;
     };
 
-type BuildEnvironment = {
+export type DeploymentIdentityInput = {
   VERCEL_ENV?: string;
   VERCEL_TARGET_ENV?: string;
   NODE_ENV?: string;
@@ -61,105 +72,111 @@ type BuildEnvironment = {
   anonKey?: string;
 };
 
-type BackendEnvironmentInput = {
+export type BackendEnvironmentInput = {
   deployment?: string;
-  serverDeployment?: string;
+  serverDeployment?: DeploymentIdentity;
   url?: string;
   anonKey?: string;
 };
 
-const DEPLOYMENTS = new Set<DeploymentEnvironment>([
+const STANDARD_VERCEL_ENVIRONMENTS = new Set([
   "production",
   "preview",
   "development",
-  "test",
 ]);
 
 export function classifyBuildEnvironment(
-  environment: BuildEnvironment,
-): DeploymentEnvironment | "unknown" | "malformed" {
-  if (environment.VERCEL_ENV !== undefined) {
+  environment: DeploymentIdentityInput,
+): DeploymentIdentity {
+  const vercelEnv = environment.VERCEL_ENV;
+  const targetEnv = environment.VERCEL_TARGET_ENV;
+
+  if (vercelEnv !== undefined || targetEnv !== undefined) {
     if (
-      environment.VERCEL_ENV === "production" ||
-      environment.VERCEL_ENV === "preview" ||
-      environment.VERCEL_ENV === "development"
+      (vercelEnv !== undefined &&
+        !STANDARD_VERCEL_ENVIRONMENTS.has(vercelEnv)) ||
+      (targetEnv !== undefined &&
+        !STANDARD_VERCEL_ENVIRONMENTS.has(targetEnv))
     ) {
-      if (
-        environment.VERCEL_TARGET_ENV !== undefined &&
-        environment.VERCEL_TARGET_ENV !== environment.VERCEL_ENV
-      ) {
-        return "malformed";
-      }
-      return environment.VERCEL_ENV;
+      return "custom";
     }
-    return "malformed";
+    if (!vercelEnv) return "unknown";
+    if (targetEnv && targetEnv !== vercelEnv) return "contradictory";
+    return vercelEnv as Exclude<DeploymentEnvironment, "test">;
   }
-  if (environment.VERCEL_TARGET_ENV !== undefined) return "malformed";
 
   if (
+    environment.NODE_ENV === "test" &&
     environment.url === TEST_FIXTURE_CONFIGURATION.url &&
     environment.anonKey === TEST_FIXTURE_CONFIGURATION.anonKey
   ) {
     return "test";
   }
-
-  if (environment.NODE_ENV === "test") return "test";
   if (environment.NODE_ENV === "development") return "development";
   return "unknown";
 }
 
-function parseDeployment(
-  value: string | undefined,
-): DeploymentEnvironment | "unknown" | "malformed" {
-  if (!value || value === "unknown") return "unknown";
-  return DEPLOYMENTS.has(value as DeploymentEnvironment)
-    ? (value as DeploymentEnvironment)
-    : "malformed";
+function parseDeployment(value: string | undefined): DeploymentIdentity {
+  switch (value) {
+    case "production":
+    case "preview":
+    case "development":
+    case "test":
+    case "custom":
+    case "unknown":
+    case "contradictory":
+      return value;
+    default:
+      return "unknown";
+  }
 }
 
-function parseSupabaseUrl(value: string | undefined): URL | null {
-  if (!value) return null;
+function decodeBase64UrlJson(value: string): Record<string, unknown> | null {
+  if (!/^[A-Za-z0-9_-]+$/.test(value) || value.length % 4 === 1) return null;
   try {
-    const parsed = new URL(value);
-    if (
-      parsed.protocol !== "https:" ||
-      parsed.pathname !== "/" ||
-      parsed.username ||
-      parsed.password ||
-      parsed.search ||
-      parsed.hash ||
-      parsed.port
-    ) {
-      return null;
-    }
-    return parsed;
+    const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+    const decoded = JSON.parse(globalThis.atob(padded)) as unknown;
+    return decoded !== null && typeof decoded === "object" && !Array.isArray(decoded)
+      ? (decoded as Record<string, unknown>)
+      : null;
   } catch {
     return null;
   }
 }
 
-function isPlausibleAnonKey(value: string): boolean {
-  if (value.startsWith("sb_publishable_")) return value.length >= 32;
+function isAuthorizedLegacyAnonJwt(value: string): boolean {
   const segments = value.split(".");
-  if (segments.length !== 3 || segments.some((segment) => !segment)) return false;
-  try {
-    const normalized = segments[1].replace(/-/g, "+").replace(/_/g, "/");
-    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
-    const payload = JSON.parse(globalThis.atob(padded)) as {
-      ref?: unknown;
-      role?: unknown;
-    };
-    return (
-      payload.ref === AUTHORIZED_PRODUCTION_SUPABASE_HOST.split(".")[0] &&
-      payload.role === "anon"
-    );
-  } catch {
+  if (
+    segments.length !== 3 ||
+    segments.some(
+      (segment) =>
+        !segment ||
+        !/^[A-Za-z0-9_-]+$/.test(segment) ||
+        segment.length % 4 === 1,
+    )
+  ) {
     return false;
   }
+  const header = decodeBase64UrlJson(segments[0]);
+  const payload = decodeBase64UrlJson(segments[1]);
+  return Boolean(
+    header &&
+      payload &&
+      payload.ref === AUTHORIZED_PRODUCTION_PROJECT_REF &&
+      payload.role === "anon",
+  );
+}
+
+function isAuthorizedPublicKey(value: string): boolean {
+  // No exact publishable-key SHA-256 fingerprint exists in repository authority.
+  // Opaque sb_publishable_* keys therefore remain unavailable by design.
+  if (value.startsWith("sb_publishable_")) return false;
+  return isAuthorizedLegacyAnonJwt(value);
 }
 
 function unavailable(
-  deployment: BackendEnvironment["deployment"],
+  deployment: DeploymentIdentity,
   reason: Exclude<
     BackendEnvironmentReason,
     "AUTHORIZED_PRODUCTION" | "AUTHORIZED_TEST_FIXTURE"
@@ -172,74 +189,64 @@ export function resolveBackendEnvironment(
   input: BackendEnvironmentInput,
 ): BackendEnvironment {
   const deployment = parseDeployment(input.deployment);
-  const serverDeployment = input.serverDeployment
-    ? parseDeployment(input.serverDeployment)
-    : undefined;
+  const serverDeployment = input.serverDeployment;
 
-  if (deployment === "malformed" || serverDeployment === "malformed") {
-    return unavailable("unknown", "MALFORMED_DEPLOYMENT_IDENTITY");
-  }
-  if (deployment === "unknown") {
-    return unavailable("unknown", "MISSING_DEPLOYMENT_IDENTITY");
-  }
   if (
-    serverDeployment !== undefined &&
-    (serverDeployment === "unknown" || serverDeployment !== deployment)
+    deployment === "contradictory" ||
+    serverDeployment === "contradictory" ||
+    (serverDeployment !== undefined && serverDeployment !== deployment)
   ) {
     return unavailable(deployment, "CONTRADICTORY_DEPLOYMENT_IDENTITY");
   }
 
-  const parsedUrl = parseSupabaseUrl(input.url);
-  const targetsProduction =
-    parsedUrl?.hostname === AUTHORIZED_PRODUCTION_SUPABASE_HOST;
-
-  if (
-    deployment === "test" &&
-    input.url === TEST_FIXTURE_CONFIGURATION.url &&
-    input.anonKey === TEST_FIXTURE_CONFIGURATION.anonKey
-  ) {
-    return {
-      status: "configured",
-      deployment,
-      reason: "AUTHORIZED_TEST_FIXTURE",
-      ...TEST_FIXTURE_RUNTIME,
-    };
+  if (deployment === "preview") {
+    return unavailable(deployment, "PREVIEW_BACKEND_DISABLED");
+  }
+  if (deployment === "development") {
+    return unavailable(deployment, "DEVELOPMENT_BACKEND_DISABLED");
+  }
+  if (deployment === "custom") {
+    return unavailable(deployment, "CUSTOM_BACKEND_DISABLED");
+  }
+  if (deployment === "unknown") {
+    return unavailable(deployment, "UNKNOWN_BACKEND_DISABLED");
   }
 
-  if (deployment !== "production") {
-    if (targetsProduction) {
-      return unavailable(
+  if (deployment === "test") {
+    if (
+      input.url === TEST_FIXTURE_CONFIGURATION.url &&
+      input.anonKey === TEST_FIXTURE_CONFIGURATION.anonKey
+    ) {
+      return {
+        status: "configured",
         deployment,
-        "NON_PRODUCTION_PRODUCTION_BACKEND_REJECTED",
-      );
+        reason: "AUTHORIZED_TEST_FIXTURE",
+        ...TEST_FIXTURE_RUNTIME,
+      };
     }
-    if (input.url || input.anonKey) {
-      return unavailable(deployment, "NON_PRODUCTION_BACKEND_REJECTED");
-    }
-    const reason =
-      deployment === "preview"
-        ? "PREVIEW_BACKEND_DISABLED"
-        : deployment === "development"
-          ? "DEVELOPMENT_BACKEND_DISABLED"
-          : "TEST_BACKEND_DISABLED";
-    return unavailable(deployment, reason);
+    return unavailable(
+      deployment,
+      input.url || input.anonKey
+        ? "NON_PRODUCTION_BACKEND_REJECTED"
+        : "TEST_BACKEND_DISABLED",
+    );
   }
 
   if (!input.url || !input.anonKey) {
     return unavailable(deployment, "MISSING_PUBLIC_CONFIGURATION");
   }
-  if (!parsedUrl || !isPlausibleAnonKey(input.anonKey)) {
-    return unavailable(deployment, "MALFORMED_PUBLIC_CONFIGURATION");
-  }
-  if (!targetsProduction) {
+  if (input.url !== AUTHORIZED_PRODUCTION_SUPABASE_URL) {
     return unavailable(deployment, "UNAUTHORIZED_PRODUCTION_BACKEND");
+  }
+  if (!isAuthorizedPublicKey(input.anonKey)) {
+    return unavailable(deployment, "MALFORMED_PUBLIC_CONFIGURATION");
   }
 
   return {
     status: "configured",
     deployment,
     reason: "AUTHORIZED_PRODUCTION",
-    url: parsedUrl.origin,
+    url: AUTHORIZED_PRODUCTION_SUPABASE_URL,
     anonKey: input.anonKey,
   };
 }

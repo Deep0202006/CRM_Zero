@@ -6,6 +6,7 @@ type DistributorRouteContext = { params: Promise<{ id: string }> };
 
 export async function GET(request: Request, routeContext: DistributorRouteContext) {
   const auth = await contextFor(request);
+  if (auth instanceof Response) return auth;
   if (!auth) return apiError(401, "AUTH_REQUIRED", "Sign in again.");
   const externalDenied = externalViewerDenied(auth);
   if (externalDenied) return externalDenied;

@@ -6,6 +6,7 @@ const emptyRenewals = { total: 0, rows: [] };
 
 export async function GET(request: Request) {
   const context = await contextFor(request);
+  if (context instanceof Response) return context;
   if (!context) return apiError(401, "AUTH_REQUIRED", "Sign in again.");
   const receivablesEnabled = isReceivablesReady();
   const renewalPromise = context.service.rpc("distributor_renewals_due_v1", { p_actor_id: context.userId, p_admin: context.isAdmin, p_limit: 5 });
