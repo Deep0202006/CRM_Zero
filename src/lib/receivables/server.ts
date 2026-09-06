@@ -5,7 +5,7 @@ export function canonicalize(value: unknown): string { if (Array.isArray(value))
 export function requestHash(value: unknown) { return createHash("sha256").update(canonicalize(value)).digest("hex"); }
 function bearer(request: Request) { const h=request.headers.get("authorization")??""; return h.toLowerCase().startsWith("bearer ") ? h.slice(7).trim() : null; }
 export async function contextFor(request: Request): Promise<ReceivablesContext | Response | null> {
-  const userResult=createServerAnonClient(), serviceResult=createServerServiceClient(); if(!userResult.ok||!serviceResult.ok)return backendUnavailableResponse(); const token=bearer(request); if(!token) return null;
+  const token=bearer(request), userResult=createServerAnonClient(token??undefined), serviceResult=createServerServiceClient(); if(!userResult.ok||!serviceResult.ok)return backendUnavailableResponse(); if(!token) return null;
   const userClient=userResult.client, service=serviceResult.client;
   const {data:auth,error}=await userClient.auth.getUser(token); if(error||!auth.user)return null;
   const [{data:user},{data:caps}]=await Promise.all([service.from("users").select("user_id,is_active").eq("user_id",auth.user.id).maybeSingle(),service.from("user_capabilities").select("capability_code").eq("user_id",auth.user.id)]);
