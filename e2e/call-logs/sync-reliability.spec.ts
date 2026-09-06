@@ -110,8 +110,10 @@ async function installBaseRoutes(page: Page, hydration: (route: Route, table: st
 test("failed pull backs off, preserves cache, then records success only after a complete retry", async ({ page }) => {
   let failUsers = true;
   let hydrationRequests = 0;
+  const firstAttemptTables = new Set<string>();
   await installBaseRoutes(page, async (route, table) => {
     hydrationRequests += 1;
+    if (failUsers) firstAttemptTables.add(table);
     if (table === "users" && failUsers) {
       await route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ code: "XX000", message: "fixture failure" }) });
       return;
@@ -130,6 +132,8 @@ test("failed pull backs off, preserves cache, then records success only after a 
   await page.goto("/call-logs");
 
   await expect.poll(() => page.evaluate((id) => localStorage.getItem(`pull_sync_retry:${id}`), userId)).not.toBeNull();
+  expect(firstAttemptTables.has("call_logs")).toBe(true);
+  expect(firstAttemptTables.has("field_visits")).toBe(true);
   expect(await page.evaluate((id) => localStorage.getItem(`last_pull_sync:${id}`), userId)).toBeNull();
   expect(await readStore<Record<string, unknown>>(page, "call_logs")).toEqual([expect.objectContaining({ log_id: localLogId })]);
   const failedRequestCount = hydrationRequests;
@@ -151,7 +155,9 @@ test("failed pull backs off, preserves cache, then records success only after a 
 
 test("later-page failure is partial and a mutation created during fetch wins atomically", async ({ page }) => {
   let callPage = 0;
+  const requestedTables = new Set<string>();
   await installBaseRoutes(page, async (route, table) => {
+    requestedTables.add(table);
     if (table !== "call_logs") {
       await route.fulfill({ status: 200, contentType: "application/json", body: "[]" });
       return;
@@ -176,6 +182,7 @@ test("later-page failure is partial and a mutation created during fetch wins ato
 
   const retry = await expect.poll(async () => page.evaluate((id) => JSON.parse(localStorage.getItem(`pull_sync_retry:${id}`) ?? "null"), userId)).not.toBeNull();
   void retry;
+  expect(requestedTables.has("field_visits")).toBe(true);
   const state = await page.evaluate((id) => JSON.parse(localStorage.getItem(`pull_sync_retry:${id}`) ?? "null"), userId) as { outcome: string; peakBufferedRows: number; pagesApplied: number; requests: number };
   expect(state).toMatchObject({ outcome: "partial", peakBufferedRows: 1000, pagesApplied: 1 });
   expect(state.requests).toBeGreaterThan(1);
@@ -191,9 +198,58 @@ test("later-page failure is partial and a mutation created during fetch wins ato
   }
 });
 
+test("a capped table remains partial without starving later Calls or Visits across retries", async ({ page }) => {
+  let hydrationRequests = 0;
+  let taskHistoryPage = 0;
+  await installBaseRoutes(page, async (route, table) => {
+    hydrationRequests += 1;
+    if (table === "task_status_history") {
+      taskHistoryPage += 1;
+      const rows = Array.from({ length: 1000 }, (_, index) => ({ id: `history-${taskHistoryPage}-${index}` }));
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(rows) });
+      return;
+    }
+    const attempt = Math.max(1, Math.ceil(taskHistoryPage / 10));
+    if (table === "call_logs") {
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([{ log_id: `call-${attempt}`, user_id: userId, timestamp: "2026-09-06T07:00:00.000Z", outcome: "Happy call" }]) });
+      return;
+    }
+    if (table === "field_visits") {
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([{ visit_id: `visit-${attempt}`, user_id: userId, visit_date: "2026-09-06" }]) });
+      return;
+    }
+    await route.fulfill({ status: 200, contentType: "application/json", body: "[]" });
+  });
+  await seedSession(page);
+  await page.goto("/call-logs");
+
+  await expect.poll(() => page.evaluate((id) => JSON.parse(localStorage.getItem(`pull_sync_retry:${id}`) ?? "null")?.failures, userId)).toBe(1);
+  const firstAttemptRequests = hydrationRequests;
+  expect(firstAttemptRequests).toBeLessThanOrEqual(180);
+  expect((await readStore<Record<string, unknown>>(page, "call_logs")).some((row) => row.log_id === "call-1")).toBe(true);
+  expect((await readStore<Record<string, unknown>>(page, "field_visits")).some((row) => row.visit_id === "visit-1")).toBe(true);
+  expect(await page.evaluate((id) => localStorage.getItem(`last_pull_sync:${id}`), userId)).toBeNull();
+
+  await page.evaluate((id) => {
+    const state = JSON.parse(localStorage.getItem(`pull_sync_retry:${id}`) ?? "{}");
+    localStorage.setItem(`pull_sync_retry:${id}`, JSON.stringify({ ...state, nextAttemptAt: 0 }));
+    window.dispatchEvent(new Event("online"));
+  }, userId);
+  await expect.poll(() => page.evaluate((id) => JSON.parse(localStorage.getItem(`pull_sync_retry:${id}`) ?? "null")?.failures, userId)).toBe(2);
+  expect(hydrationRequests - firstAttemptRequests).toBeLessThanOrEqual(180);
+  expect((await readStore<Record<string, unknown>>(page, "call_logs")).some((row) => row.log_id === "call-2")).toBe(true);
+  expect((await readStore<Record<string, unknown>>(page, "field_visits")).some((row) => row.visit_id === "visit-2")).toBe(true);
+  const retry = await page.evaluate((id) => JSON.parse(localStorage.getItem(`pull_sync_retry:${id}`) ?? "null"), userId) as { outcome: string; requests: number };
+  expect(retry.outcome).toBe("partial");
+  expect(retry.requests).toBeLessThanOrEqual(180);
+  expect(await page.evaluate((id) => localStorage.getItem(`last_pull_sync:${id}`), userId)).toBeNull();
+});
+
 test("an account switch rejects the outstanding page before local apply", async ({ page }) => {
   const remoteLogId = "72000000-0000-4000-a000-000000000099";
+  const requestedTables: string[] = [];
   await installBaseRoutes(page, async (route, table) => {
+    requestedTables.push(table);
     if (table === "call_logs") {
       await page.evaluate((id) => localStorage.setItem("authenticated_user_id", id), otherUserId);
       await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([{ log_id: remoteLogId, user_id: userId, timestamp: "2026-09-06T07:00:00.000Z", outcome: "Happy call" }]) });
@@ -205,6 +261,8 @@ test("an account switch rejects the outstanding page before local apply", async 
   await page.goto("/call-logs");
   await expect.poll(() => page.evaluate(() => localStorage.getItem("authenticated_user_id"))).toBe(otherUserId);
   await page.waitForLoadState("networkidle");
+  expect(requestedTables.at(-1)).toBe("call_logs");
+  expect(requestedTables).not.toContain("field_visits");
   expect((await readStore<Record<string, unknown>>(page, "call_logs")).some((row) => row.log_id === remoteLogId)).toBe(false);
   expect(await page.evaluate((id) => localStorage.getItem(`last_pull_sync:${id}`), userId)).toBeNull();
 });

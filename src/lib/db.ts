@@ -1697,6 +1697,7 @@ async function pullDownSyncInternal(userId: string): Promise<PullDownSyncResult>
     "lead_installation_details",
     "lead_payment_details",
   ];
+  let hasIncompleteTable = false;
 
   for (const remoteTableName of tables) {
     const localTableName = REMOTE_TO_LOCAL_TABLE[remoteTableName] || remoteTableName;
@@ -1707,13 +1708,17 @@ async function pullDownSyncInternal(userId: string): Promise<PullDownSyncResult>
     for (let page = 0; page < FULL_PULL_MAX_PAGES_PER_TABLE; page += 1) {
       if (!(await pullIdentityMatches(userId))) throw new PullSyncError({ ...result, status: "identity_changed" }, "PULL_IDENTITY_CHANGED");
       const from = page * FULL_PULL_PAGE_SIZE;
-      const { data, error } = await supabase
-        .from(remoteTableName)
-        .select(HYDRATION_COLUMNS[remoteTableName] ?? "*")
-        .order(pk, { ascending: true })
-        .range(from, from + FULL_PULL_PAGE_SIZE - 1);
       result.requests += 1;
-      if (error) throw new PullSyncError(result, "PULL_PAGE_FAILED");
+      let response;
+      try {
+        response = await supabase
+          .from(remoteTableName)
+          .select(HYDRATION_COLUMNS[remoteTableName] ?? "*")
+          .order(pk, { ascending: true })
+          .range(from, from + FULL_PULL_PAGE_SIZE - 1);
+      } catch { break; }
+      const { data, error } = response;
+      if (error) break;
       if (!(await pullIdentityMatches(userId))) throw new PullSyncError({ ...result, status: "identity_changed" }, "PULL_IDENTITY_CHANGED");
 
       const pageData = (data ?? []) as unknown as DynamicRow[];
@@ -1723,7 +1728,7 @@ async function pullDownSyncInternal(userId: string): Promise<PullDownSyncResult>
         try { result.rowsApplied += await applyHydrationPage(table, localTableName, pk, pageData, userId); }
         catch (error) {
           if (error instanceof PullSyncError && error.result.status === "identity_changed") throw new PullSyncError({ ...result, status: "identity_changed" }, error.message);
-          throw new PullSyncError(result, "PULL_APPLY_FAILED");
+          break;
         }
         result.pagesApplied += 1;
       }
@@ -1733,10 +1738,11 @@ async function pullDownSyncInternal(userId: string): Promise<PullDownSyncResult>
         break;
       }
     }
-    if (!tableComplete) throw new PullSyncError(result, "PULL_TABLE_PAGE_LIMIT");
+    if (!tableComplete) hasIncompleteTable = true;
   }
 
   if (!(await pullIdentityMatches(userId))) throw new PullSyncError({ ...result, status: "identity_changed" }, "PULL_IDENTITY_CHANGED");
+  if (hasIncompleteTable) throw new PullSyncError(result, "PULL_INCOMPLETE");
   console.log("Downward sync complete.");
   return result;
 }
