@@ -17,14 +17,14 @@ export function chatJson(status: number, body: Record<string, unknown>): Respons
 }
 
 export async function requireChatContext(request: Request): Promise<ChatServerContext | Response> {
-  const authenticatedResult = createServerAnonClient();
+  const authorization = request.headers.get("authorization");
+  const token = authorization?.startsWith("Bearer ") ? authorization.slice(7) : null;
+  const authenticatedResult = createServerAnonClient(token ?? undefined);
   const serviceResult = createServerServiceClient();
   if (!authenticatedResult.ok || !serviceResult.ok) {
     return backendUnavailableResponse();
   }
-  const authorization = request.headers.get("authorization");
-  if (!authorization?.startsWith("Bearer ")) return chatJson(401, { ok: false, code: "AUTHENTICATION_REQUIRED" });
-  const token = authorization.slice(7);
+  if (!token) return chatJson(401, { ok: false, code: "AUTHENTICATION_REQUIRED" });
   const authenticated = authenticatedResult.client;
   const service = serviceResult.client;
   const { data: auth, error: authError } = await authenticated.auth.getUser(token);
