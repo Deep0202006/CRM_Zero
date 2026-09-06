@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { coreRemotePayload, erpRemotePayload, optionalRemotePayload, resolveAttendanceId, validateLeadCompatibility, validateNewVisit, VisitConfirmationSchema } from "@/app/api/field-visits/confirm/route";
+import { coreRemotePayload, erpRemotePayload, optionalRemotePayload, resolveAttendanceId, validateLeadCompatibility, validateNewVisit, VisitConfirmationSchema } from "@/app/api/field-visits/confirm/contract";
 import { getCurrentISTDate } from "@/lib/dateTime";
 
 const read = (relative: string) => fs.readFileSync(path.join(process.cwd(), relative), "utf8");

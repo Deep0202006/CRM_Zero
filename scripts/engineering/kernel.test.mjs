@@ -298,8 +298,21 @@ try {
   for (const path of ["tools/unmapped-runner.mjs", "config/tool.ini", "db/queries.prisma"]) {
     const impact = compileImpact({ entries: [{ status: "A", path }], patch: "" }); assert.equal(impact.risk, "R3"); assert.equal(impact.writable, false); assert(impact.unresolved.some((item) => item.code === "UNMAPPED_PATH"));
   }
-  for (const path of ["next.config.ts", "vercel.json", "src/proxy.ts", "src/lib/backendEnvironment.ts", "src/lib/supabaseClient.ts", "src/lib/__tests__/productionConsistencyGuards.test.ts"]) {
+  for (const path of ["next.config.ts", "vercel.json", "src/lib/backendEnvironment.ts", "src/lib/supabaseClient.ts", "src/lib/__tests__/productionConsistencyGuards.test.ts"]) {
     const impact = compileImpact({ entries: [{ status: "M", path }], patch: "" }); assert(impact.domains.includes("platform-handover")); assert.equal(impact.writable, true); assert.equal(impact.writeOperations.length + impact.unknownOperations.length, 0);
+  }
+  const literalDomainCases = [
+    ["platform-handover", ["src/lib/serverBackendEnvironment.ts", "src/lib/serverBackendIdentity.ts", "src/components/BackendEnvironmentBoundary.tsx", "src/components/AuthorizedCrmShell.tsx", "docs/contracts/BACKEND_ENVIRONMENT_ISOLATION.md", "e2e/backend-isolation/backend-isolation.spec.ts", "scripts/handover/check.mjs", "src/lib/__tests__/backendEnvironment.test.ts", "src/lib/__tests__/backendIsolationContract.test.ts", "src/lib/__tests__/serverBackendEnvironment.test.ts", "src/lib/__tests__/supabaseClientEnvironment.test.ts"]],
+    ["engineering-control", ["jest.config.js", "playwright.isolation.config.ts", "scripts/test/server-only.cjs", "tsconfig.json"]],
+    ["attendance", ["src/lib/__tests__/attendanceWriteReadClosure.test.ts"]],
+    ["calls", ["src/lib/__tests__/callLifetimeHistoryCount.test.ts"]],
+    ["field-visits", ["src/lib/__tests__/fieldVisitErpClosure.test.ts", "src/lib/__tests__/fieldVisitPincodeClosure.test.ts", "src/lib/__tests__/fieldVisitRecoveryCompatibility.test.ts"]],
+    ["team-kpi", ["src/lib/__tests__/teamKpiApiContract.test.ts"]],
+    ["shared-ui", ["e2e/visual-intelligence/visual-intelligence.spec.ts"]],
+  ];
+  for (const [domain, paths] of literalDomainCases) for (const path of paths) {
+    const impact = compileImpact({ entries: [{ status: "M", path }], patch: "" }); assert(impact.domains.includes(domain), `${path} must map to ${domain}`); assert.equal(impact.writable, true);
+    const neighbor = compileImpact({ entries: [{ status: "M", path: `${path}.neighbor` }], patch: "" }); assert(!neighbor.domains.includes(domain), `${path}.neighbor must remain unmapped from ${domain}`);
   }
   const multiline = compileImpact({ entries: [{ status: "M", path: "src/lib/pipeline/contract.ts" }], patch: "+const result = supabase\n+  .from(\"leads\")\n+  .update({ status: \"won\" })\n+  .eq(\"id\", leadId);" });
   assert(multiline.changedAuthorities.includes("pipeline_stage")); assert.equal(multiline.writable, true);

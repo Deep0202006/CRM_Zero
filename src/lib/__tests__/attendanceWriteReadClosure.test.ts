@@ -8,6 +8,15 @@ import fs from "node:fs";
 import path from "node:path";
 
 jest.mock("@supabase/supabase-js", () => ({ createClient: jest.fn() }));
+jest.mock("@/lib/serverBackendIdentity", () => ({
+  getServerBackendEnvironment: () => ({
+    status: "configured",
+    deployment: "production",
+    reason: "AUTHORIZED_PRODUCTION",
+    url: "https://fixture.invalid",
+    anonKey: "fixture-public-key",
+  }),
+}));
 
 const mockedCreateClient = createClient as jest.Mock;
 const userId = "20000000-0000-4000-a000-000000000001";

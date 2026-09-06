@@ -7,8 +7,8 @@ const adminCallId = "23000000-0000-4000-a000-000000000001";
 function token(id: string) { const encode = (value: unknown) => Buffer.from(JSON.stringify(value)).toString("base64url"); return `${encode({ alg: "none" })}.${encode({ sub: id, exp: 1999999999 })}.e2e`; }
 
 async function mockAuth(page: Page, id: string) {
-  await page.route("https://e2e.supabase.co/**", (route) => route.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
-  await page.route("https://e2e.supabase.co/auth/v1/user", (route) => route.fulfill({ json: { id, aud: "authenticated", role: "authenticated", email: `${id}@example.test`, app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() } }));
+  await page.route("http://127.0.0.1:54321/**", (route) => route.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
+  await page.route("http://127.0.0.1:54321/auth/v1/user", (route) => route.fulfill({ json: { id, aud: "authenticated", role: "authenticated", email: `${id}@example.test`, app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() } }));
 }
 
 async function seed(page: Page, id: string, admin = false) {
@@ -21,7 +21,7 @@ async function seed(page: Page, id: string, admin = false) {
     if (admin) tx.objectStore("user_capabilities").put({ id: `${id}-admin`, user_id: id, capability_code: "admin", assigned_at: new Date().toISOString() });
     await new Promise<void>((resolve, reject) => { tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); }); database.close();
     localStorage.setItem("authenticated_user_id", id);
-    localStorage.setItem("sb-e2e-auth-token", JSON.stringify({ access_token: accessToken, refresh_token: "e2e", expires_at: 1999999999, expires_in: 999999999, token_type: "bearer", user: { id, aud: "authenticated", role: "authenticated", email: `${id}@example.test`, app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() } }));
+    localStorage.setItem("sb-127-auth-token", JSON.stringify({ access_token: accessToken, refresh_token: "e2e", expires_at: 1999999999, expires_in: 999999999, token_type: "bearer", user: { id, aud: "authenticated", role: "authenticated", email: `${id}@example.test`, app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() } }));
   }, { id, admin, accessToken: token(id) });
 }
 

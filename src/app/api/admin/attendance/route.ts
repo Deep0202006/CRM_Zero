@@ -1,15 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { isValidISTDateKey } from "@/lib/dateTime";
+import { backendUnavailableResponse, createServerAnonClient, createServerServiceClient } from "@/lib/serverBackendEnvironment";
 import type { AttendanceAuthorityRow } from "@/lib/attendance/authority";
 import { isAttendanceEligible } from "@/lib/attendance/roles";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function client(url: string, key: string, token?: string): SupabaseClient {
-  return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false }, ...(token ? { global: { headers: { Authorization: `Bearer ${token}` } } } : {}) });
-}
 function active(value: unknown) { return value === true || value === 1 || (typeof value === "string" && ["1", "true", "t"].includes(value.toLowerCase())); }
 function fail(status: number, code: string) { return NextResponse.json({ code }, { status, headers: { "Cache-Control": "no-store" } }); }
 
@@ -31,8 +29,8 @@ async function readRegister(service: SupabaseClient, dateFrom: string, dateTo: s
 }
 
 export async function GET(request: NextRequest) {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL, anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !anon || !serviceKey || serviceKey === "BUILD_TIME_PLACEHOLDER_KEY") return fail(500, "SUPABASE_NOT_CONFIGURED");
+  const userResult = createServerAnonClient(), serviceResult = createServerServiceClient();
+  if (!userResult.ok || !serviceResult.ok) return backendUnavailableResponse();
   const authorization = request.headers.get("authorization") ?? "";
   if (!authorization.startsWith("Bearer ")) return fail(401, "AUTHENTICATION_REQUIRED");
   const token = authorization.slice(7).trim();
@@ -41,7 +39,7 @@ export async function GET(request: NextRequest) {
   if (!isValidISTDateKey(dateFrom) || !isValidISTDateKey(dateTo) || dateFrom > dateTo) return fail(400, "INVALID_ATTENDANCE_DATE");
   const rangeDays = Math.round((new Date(`${dateTo}T00:00:00Z`).getTime() - new Date(`${dateFrom}T00:00:00Z`).getTime()) / 86400000) + 1;
   if (rangeDays > 31) return fail(400, "ATTENDANCE_RANGE_TOO_LARGE");
-  const userClient = client(url, anon, token), service = client(url, serviceKey);
+  const userClient = userResult.client, service = serviceResult.client;
   const { data: authData, error: authError } = await userClient.auth.getUser(token);
   if (authError || !authData.user) return fail(401, "AUTHENTICATION_REQUIRED");
   const [{ data: actor }, { data: actorCaps }] = await Promise.all([

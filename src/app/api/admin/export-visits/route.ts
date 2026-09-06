@@ -1,28 +1,14 @@
 import { NextResponse } from "next/server";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import * as xlsx from "xlsx";
+import { backendUnavailableResponse, createServerServiceClient } from "@/lib/serverBackendEnvironment";
 import { getISTBusinessDayBounds, isValidISTDateKey } from "@/lib/dateTime";
 import { getOutcomeLabel } from "@/lib/fieldVisits/contract";
+import { buildErpIntelligenceExportRows, type ErpSegment } from "./exportRows";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const EXPORT_PAGE_SIZE = 500;
-
-type ErpCategory = { erp_name: string; count: number; share_percent: number };
-type ErpSegment = { unique_businesses: number; observed_count: number; erp_using_count: number; none_count: number; not_captured_count: number; coverage_percent: number; categories: ErpCategory[] };
-
-export function buildErpIntelligenceExportRows(segment: "Retailer" | "Distributor", value?: ErpSegment) {
-  const summary = value ?? { unique_businesses: 0, observed_count: 0, erp_using_count: 0, none_count: 0, not_captured_count: 0, coverage_percent: 0, categories: [] };
-  return [
-    { Segment: segment, Section: "Summary", Metric: "Unique businesses", Value: summary.unique_businesses, Category: "", Businesses: "", "Share %": "" },
-    { Segment: segment, Section: "Summary", Metric: "Observed businesses", Value: summary.observed_count, Category: "", Businesses: "", "Share %": "" },
-    { Segment: segment, Section: "Summary", Metric: "ERP using", Value: summary.erp_using_count, Category: "", Businesses: "", "Share %": "" },
-    { Segment: segment, Section: "Summary", Metric: "Explicit None", Value: summary.none_count, Category: "", Businesses: "", "Share %": "" },
-    { Segment: segment, Section: "Summary", Metric: "Not captured", Value: summary.not_captured_count, Category: "", Businesses: "", "Share %": "" },
-    { Segment: segment, Section: "Summary", Metric: "Coverage %", Value: summary.coverage_percent, Category: "", Businesses: "", "Share %": "" },
-    ...summary.categories.map((category) => ({ Segment: segment, Section: "Latest unique business category", Metric: "", Value: "", Category: category.erp_name, Businesses: category.count, "Share %": category.share_percent })),
-  ];
-}
 
 function jsonError(status: number, error: string) {
   return NextResponse.json({ error }, { status, headers: { "Cache-Control": "no-store" } });
@@ -40,13 +26,12 @@ async function verifyAdmin(admin: SupabaseClient, token: string) {
 }
 
 export async function GET(request: Request) {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!supabaseUrl || !serviceKey) return jsonError(500, "Admin visit export is not configured.");
+  const serviceResult = createServerServiceClient();
+  if (!serviceResult.ok) return backendUnavailableResponse();
   const authorization = request.headers.get("authorization") ?? "";
   const token = authorization.startsWith("Bearer ") ? authorization.slice(7).trim() : "";
   if (!token) return jsonError(401, "Authentication required.");
-  const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
+  const admin = serviceResult.client;
   const authorizationStatus = await verifyAdmin(admin, token);
   if (authorizationStatus !== 200) return jsonError(authorizationStatus, authorizationStatus === 401 ? "Authentication required." : "Administrator access required.");
 

@@ -2,6 +2,7 @@ import { createPipelineServerContext, validateTransitionCommand } from "../serve
 
 export async function POST(request: Request) {
   const context = await createPipelineServerContext(request);
+  if (context instanceof Response) return context;
   if (!context) return Response.json({ code: "PIPELINE_UNAUTHORIZED" }, { status: 401 });
   let command: unknown;
   try { command = await request.json(); } catch { return Response.json({ code: "PIPELINE_INVALID_COMMAND" }, { status: 400 }); }

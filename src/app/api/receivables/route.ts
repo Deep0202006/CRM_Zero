@@ -15,6 +15,7 @@ export async function GET(request: Request) {
       "Payment Collections are not activated yet.",
     );
   const context = await contextFor(request);
+  if (context instanceof Response) return context;
   if (!context) return apiError(401, "AUTH_REQUIRED", "Sign in again.");
   const externalDenied = externalViewerDenied(context);
   if (externalDenied) return externalDenied;

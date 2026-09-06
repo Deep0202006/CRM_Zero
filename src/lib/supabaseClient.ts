@@ -1,18 +1,39 @@
-import { createClient } from "@supabase/supabase-js";
+import "client-only";
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co";
-const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "BUILD_TIME_PLACEHOLDER_KEY";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { resolveBackendEnvironment } from "./backendEnvironment";
 
-if (!process.env.NEXT_PUBLIC_SUPABASE_URL && typeof window !== 'undefined') {
-  console.error("Missing NEXT_PUBLIC_SUPABASE_URL environment variable.");
+export const backendEnvironment = resolveBackendEnvironment({
+  deployment: process.env.NEXT_PUBLIC_ZERODATA_DEPLOYMENT_ENV,
+  url: process.env.NEXT_PUBLIC_SUPABASE_URL,
+  anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+});
+
+export const isSupabaseConfigured = backendEnvironment.status === "configured";
+
+let authorizedClient: SupabaseClient | undefined;
+
+export function getBrowserSupabaseClient(): SupabaseClient | null {
+  if (backendEnvironment.status !== "configured") return null;
+  authorizedClient ??= createClient(
+    backendEnvironment.url,
+    backendEnvironment.anonKey,
+  );
+  return authorizedClient;
 }
 
-// Detect if Supabase is fully configured with real keys
-export const isSupabaseConfigured = 
-  !!process.env.NEXT_PUBLIC_SUPABASE_URL && 
-  !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY && 
-  !url.includes("your-project-ref") && 
-  !anonKey.includes("your-anon-public-key") &&
-  !url.includes("placeholder");
+function requireBrowserSupabaseClient(): SupabaseClient {
+  const client = getBrowserSupabaseClient();
+  if (!client) throw new Error("CRM_UNAVAILABLE");
+  return client;
+}
 
-export const supabase = createClient(url, anonKey);
+// Compatibility facade for existing browser callers. It never constructs a
+// Supabase client until an authorized property is actually used.
+export const supabase = new Proxy({} as SupabaseClient, {
+  get(_target, property) {
+    const client = requireBrowserSupabaseClient();
+    const value = Reflect.get(client, property, client) as unknown;
+    return typeof value === "function" ? value.bind(client) : value;
+  },
+});

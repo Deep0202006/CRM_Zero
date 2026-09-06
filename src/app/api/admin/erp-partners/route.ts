@@ -1,38 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
-import { createClient } from "@supabase/supabase-js";
-import { canonicalErpIdSchema } from "@/lib/erp/validation";
-
-export const UpdateSchema = z.object({
-  user_id: z.string().uuid(),
-  erp_scope_ids: z.array(canonicalErpIdSchema).min(1).max(100),
-});
+import { backendUnavailableResponse, createServerServiceClient } from "@/lib/serverBackendEnvironment";
+import { UpdateSchema } from "./schema";
 
 async function authorize(request: NextRequest) {
+  const serviceResult = createServerServiceClient();
+  if (!serviceResult.ok) return backendUnavailableResponse();
   const token = request.headers.get("authorization")?.replace("Bearer ", "");
-  if (!token) return null;
-  const service = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL ?? "https://placeholder.supabase.co",
-    process.env.SUPABASE_SERVICE_ROLE_KEY ?? "BUILD_TIME_PLACEHOLDER_KEY",
-  );
+  if (!token) return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+  const service = serviceResult.client;
   const { data } = await service.auth.getUser(token);
-  if (!data.user) return null;
+  if (!data.user) return NextResponse.json({ error: "Admin access required" }, { status: 403 });
   const { data: capability } = await service
     .from("user_capabilities")
     .select("capability_code")
     .eq("user_id", data.user.id)
     .eq("capability_code", "admin")
     .maybeSingle();
-  return capability ? { service, actorId: data.user.id } : null;
+  return capability ? { service, actorId: data.user.id } : NextResponse.json({ error: "Admin access required" }, { status: 403 });
 }
 
 export async function GET(request: NextRequest) {
   const authority = await authorize(request);
-  if (!authority)
-    return NextResponse.json(
-      { error: "Admin access required" },
-      { status: 403 },
-    );
+  if (authority instanceof Response) return authority;
   const { service } = authority;
   const [capabilities, erps] = await Promise.all([
     service
@@ -96,11 +85,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const authority = await authorize(request);
-  if (!authority)
-    return NextResponse.json(
-      { error: "Admin access required" },
-      { status: 403 },
-    );
+  if (authority instanceof Response) return authority;
   const parsed = UpdateSchema.safeParse(await request.json());
   if (!parsed.success)
     return NextResponse.json(

@@ -1,4 +1,5 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { backendUnavailableResponse, createServerAnonClient, createServerServiceClient } from "@/lib/serverBackendEnvironment";
 import type { PipelineCreateCommand, PipelineLeadView, PipelineSegment, PipelineTransitionCommand } from "@/lib/pipeline/contract";
 import { isPipelineStage } from "@/lib/pipeline/contract";
 import type { ConfirmedPipelineOperation } from "@/lib/pipeline/legacyRecovery";
@@ -15,14 +16,12 @@ export function bearerToken(request: Request) {
   return value.toLowerCase().startsWith("bearer ") ? value.slice(7).trim() : null;
 }
 
-export async function createPipelineServerContext(request: Request): Promise<PipelineServerContext | null> {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+export async function createPipelineServerContext(request: Request): Promise<PipelineServerContext | Response | null> {
+  const authResult = createServerAnonClient(), serviceResult = createServerServiceClient();
+  if (!authResult.ok || !serviceResult.ok) return backendUnavailableResponse();
   const token = bearerToken(request);
-  if (!url || !anon || !serviceKey || !token) return null;
-  const auth = createClient(url, anon, { auth: { persistSession: false, autoRefreshToken: false }, global: { headers: { Authorization: `Bearer ${token}` } } });
-  const service = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
+  if (!token) return null;
+  const auth = authResult.client, service = serviceResult.client;
   const { data: authenticated, error } = await auth.auth.getUser(token);
   if (error || !authenticated.user) return null;
   const userId = authenticated.user.id;

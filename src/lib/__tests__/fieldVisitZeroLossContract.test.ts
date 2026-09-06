@@ -5,6 +5,7 @@ import type { LocalFieldVisit } from "@/lib/db";
 
 const read = (relative: string) => fs.readFileSync(path.join(process.cwd(), relative), "utf8");
 const route = read("src/app/api/field-visits/confirm/route.ts");
+const contract = read("src/app/api/field-visits/confirm/contract.ts");
 const sync = read("src/lib/fieldVisits/sync.ts");
 const retailer = read("src/app/visits/new/retailer/page.tsx");
 const distributor = read("src/app/visits/new/distributor/page.tsx");
@@ -29,12 +30,12 @@ describe("field visit zero-loss contract", () => {
     expect(route).toContain('"ATTENDANCE_NOT_CONFIRMED"');
     expect(route).toContain('confirmed.user_id !== auth.user.id');
     expect(route).toContain('confirmed.visit_id !== visit.visit_id');
-    expect(route).toContain('lead_id: z.string().trim().min(1).max(250)');
-    expect(route).toContain('lead && lead.segment_type !== segment');
+    expect(contract).toContain('lead_id: z.string().trim().min(1).max(250)');
+    expect(contract).toContain('lead && lead.segment_type !== segment');
   });
 
   it("uses service role only in the server route and handles duplicate requests idempotently", () => {
-    expect(route).toContain("process.env.SUPABASE_SERVICE_ROLE_KEY");
+    expect(route).toContain("createServerServiceClient");
     expect(route).toContain('insertError?.code === "23505"');
     expect(route).toContain("alreadyConfirmed = true");
     expect(route).toContain("equalEvidence(admin, evidencePath, selfie)");

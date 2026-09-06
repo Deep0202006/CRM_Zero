@@ -1,26 +1,23 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { getCurrentISTDate, isValidISTDateKey } from "@/lib/dateTime";
 import { attendanceModeForCapabilities } from "@/lib/attendance/roles";
+import { backendUnavailableResponse, createServerServiceClient } from "@/lib/serverBackendEnvironment";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const COLUMNS = "attendance_id,user_id,date,clock_in,clock_out,latitude,longitude,selfie_captured,selfie_storage_path,selfie_uploaded_at,selfie_purged_at,selfie_purge_state";
 
-function serviceClient(): SupabaseClient | null {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL, key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  return url && key ? createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } }) : null;
-}
-
 function fail(status: number, code: string) {
   return Response.json({ ok: false, code }, { status, headers: { "Cache-Control": "no-store" } });
 }
 
 export async function GET(request: Request) {
-  const service = serviceClient();
+  const serviceResult = createServerServiceClient();
   const authorization = request.headers.get("authorization") ?? "";
   const token = authorization.startsWith("Bearer ") ? authorization.slice(7).trim() : "";
-  if (!service || !token) return fail(401, "AUTH_REQUIRED");
+  if (!serviceResult.ok) return backendUnavailableResponse();
+  const service = serviceResult.client;
+  if (!token) return fail(401, "AUTH_REQUIRED");
   const auth = await service.auth.getUser(token);
   if (auth.error || !auth.data.user) return fail(401, "AUTH_REQUIRED");
   const requestedDate = new URL(request.url).searchParams.get("date") ?? "";

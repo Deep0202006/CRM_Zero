@@ -2,6 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./e2e",
+  testIgnore: "backend-isolation/**",
   fullyParallel: false,
   workers: process.env.PLAYWRIGHT_E2E_WEBPACK === "true" ? 1 : undefined,
   retries: 0,
@@ -22,6 +23,7 @@ export default defineConfig({
     timeout: 120_000,
     env: {
       ...process.env,
+      NODE_ENV: "test",
       NEXT_PUBLIC_SUPABASE_URL: "https://e2e.supabase.co",
       NEXT_PUBLIC_SUPABASE_ANON_KEY: "e2e-anon-key",
       RECEIVABLES_V1_READY: "true",

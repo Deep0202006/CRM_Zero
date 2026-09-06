@@ -1,20 +1,9 @@
-import { z } from "zod";
 import { apiError, contextFor } from "@/lib/receivables/server";
-import { optionalCanonicalErpIdSchema } from "@/lib/erp/validation";
-
-export const querySchema = z
-  .object({
-    page: z.coerce.number().int().min(1).default(1),
-    pageSize: z.coerce.number().int().min(1).max(50).default(50),
-    filter: z
-      .enum(["all", "overdue", "today", "tomorrow", "in_two_days"])
-      .default("all"),
-    erp: optionalCanonicalErpIdSchema.default(""),
-  })
-  .strict();
+import { querySchema } from "./schema";
 export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   const context = await contextFor(request);
+  if (context instanceof Response) return context;
   if (!context) return apiError(401, "AUTH_REQUIRED", "Sign in again.");
   if (!context.isErpPartnerViewer)
     return apiError(

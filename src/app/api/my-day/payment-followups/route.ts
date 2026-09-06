@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import { getCurrentISTDate } from "@/lib/dateTime";
+import { backendUnavailableResponse, createServerServiceClient } from "@/lib/serverBackendEnvironment";
 import { resolvePaymentFollowUpIdentity } from "@/lib/fieldVisits/paymentFollowUps";
 
 export const runtime = "nodejs";
@@ -12,16 +12,13 @@ function responseError(status: number, error: string) {
 }
 
 export async function GET(request: Request) {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !serviceKey) return responseError(500, "Payment follow-up reminders are not configured.");
+  const serviceResult = createServerServiceClient();
+  if (!serviceResult.ok) return backendUnavailableResponse();
   const authorization = request.headers.get("authorization") ?? "";
   const token = authorization.startsWith("Bearer ") ? authorization.slice(7).trim() : "";
   if (!token) return responseError(401, "Authentication required.");
 
-  const admin = createClient(url, serviceKey, {
-    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
-  });
+  const admin = serviceResult.client;
   const { data: authData, error: authError } = await admin.auth.getUser(token);
   if (authError || !authData.user) return responseError(401, "Authentication required.");
   const userId = authData.user.id;

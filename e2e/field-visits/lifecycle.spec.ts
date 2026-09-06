@@ -26,13 +26,13 @@ async function seed(page: Page, role: "admin" | "employee", withAttendance = tru
     await new Promise<void>((resolve, reject) => { tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); });
     database.close();
     localStorage.setItem("authenticated_user_id", id);
-    localStorage.setItem("sb-e2e-auth-token", JSON.stringify({ access_token: accessToken, refresh_token: "e2e", expires_at: 1999999999, expires_in: 999999999, token_type: "bearer", user: { id, aud: "authenticated", role: "authenticated", email: `${role}@example.test`, app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() } }));
+    localStorage.setItem("sb-127-auth-token", JSON.stringify({ access_token: accessToken, refresh_token: "e2e", expires_at: 1999999999, expires_in: 999999999, token_type: "bearer", user: { id, aud: "authenticated", role: "authenticated", email: `${role}@example.test`, app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() } }));
   }, { id, role, accessToken: token(id), leadId, attendanceId, today, withAttendance });
 }
 
 async function mockSupabase(page: Page, userId = employeeId, withAttendance = true) {
-  await page.route("https://e2e.supabase.co/**", route => route.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
-  await page.route("https://e2e.supabase.co/auth/v1/user", route => route.fulfill({ json: { id: userId, aud: "authenticated", role: "authenticated", email: "employee@example.test", app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() } }));
+  await page.route("http://127.0.0.1:54321/**", route => route.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
+  await page.route("http://127.0.0.1:54321/auth/v1/user", route => route.fulfill({ json: { id: userId, aud: "authenticated", role: "authenticated", email: "employee@example.test", app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() } }));
   await page.route("**/api/attendance/mine**", route => route.fulfill({ json: { ok: true, date: today, user_id: userId, mode: "field_selfie", attendance: withAttendance ? [{ attendance_id: attendanceId, user_id: userId, date: today, clock_in: new Date().toISOString(), clock_out: null, selfie_captured: true }] : [] } }));
 }
 

@@ -23,12 +23,11 @@ const vercel = JSON.parse(read('vercel.json'));
 const capabilities = Object.fromEntries(requiredCapabilities.map((key) => [key, true]));
 
 function legacyVercelGuard(config) {
-  const legacyHash = 'f23c928aebeabcde32d01f4208130156a6cbfe5c7beeb799a942adf8e9474953';
   for (const section of [config.env ?? {}, config.build?.env ?? {}]) for (const [key, value] of Object.entries(section)) {
     if (key === 'SUPABASE_SERVICE_ROLE_KEY' || (/supabase\.co/i.test(String(value)) && key !== 'NEXT_PUBLIC_SUPABASE_URL') || (/SUPABASE_(?:ANON|SERVICE_ROLE)_KEY/i.test(key) && key !== 'NEXT_PUBLIC_SUPABASE_ANON_KEY')) return false;
   }
   const env = config.env ?? {}, build = config.build?.env ?? {};
-  return env.NEXT_PUBLIC_SUPABASE_URL === 'https://gwfjkpsoaoherntwhdyf.supabase.co' && build.NEXT_PUBLIC_SUPABASE_URL === env.NEXT_PUBLIC_SUPABASE_URL && sha256(env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '') === legacyHash && build.NEXT_PUBLIC_SUPABASE_ANON_KEY === env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  return ['NEXT_PUBLIC_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_ANON_KEY'].every((key) => !(key in env) && !(key in build));
 }
 
 assert.match(inventorySql.trim(), /^begin read only;[\s\S]*commit;$/i);

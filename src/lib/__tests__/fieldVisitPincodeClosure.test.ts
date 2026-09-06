@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { VisitConfirmationSchema, validateNewVisit } from "@/app/api/field-visits/confirm/route";
+import { VisitConfirmationSchema, validateNewVisit } from "@/app/api/field-visits/confirm/contract";
 import { PincodeSchema } from "@/lib/fieldVisits/contract";
 import { buildFieldVisitConfirmPayload, resolveVisitConfirmationMode } from "@/lib/fieldVisits/sync";
 import type { LocalFieldVisit } from "@/lib/db";

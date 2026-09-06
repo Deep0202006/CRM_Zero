@@ -16,6 +16,7 @@ const fieldsSchema = z.object({
 
 export async function POST(request: Request) {
   const context = await contextFor(request);
+  if (context instanceof Response) return context;
   if (!context) return apiError(401, "AUTH_REQUIRED", "Sign in again.");
   if (!context.isAdmin) return apiError(403, "ADMIN_REQUIRED", "System Administrator access required.");
   let form: FormData;

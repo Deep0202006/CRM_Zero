@@ -1,18 +1,17 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { backendUnavailableResponse, createServerServiceClient } from "@/lib/serverBackendEnvironment";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const serviceResult = createServerServiceClient();
+  if (!serviceResult.ok) return backendUnavailableResponse();
   const authorization = request.headers.get("authorization") ?? "";
   const token = authorization.startsWith("Bearer ") ? authorization.slice(7).trim() : "";
-  if (!url || !key) return NextResponse.json({ error: "Evidence access is not configured." }, { status: 500 });
   if (!token) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
 
-  const admin = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+  const admin = serviceResult.client;
   const { data: authData } = await admin.auth.getUser(token);
   if (!authData.user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   const [{ data: account, error: accountError }, { data: capabilities, error: capabilityError }] = await Promise.all([

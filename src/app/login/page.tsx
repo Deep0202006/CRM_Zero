@@ -99,7 +99,6 @@ export default function LoginPage() {
             Welcome to <span className={styles.titleBlue}>CRM</span>
           </h1>
           <p className={styles.subtitle}>Sign in to your account</p>
-          
           <div className={styles.underline} />
 
           <form onSubmit={handleSubmit} className={styles.form} noValidate>

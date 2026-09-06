@@ -20,6 +20,7 @@ function firstByLead<T extends Record<string, unknown>>(items: T[], key: keyof T
 
 export async function GET(request: Request) {
   const context = await createPipelineServerContext(request);
+  if (context instanceof Response) return context;
   if (!context) return Response.json({ code: "PIPELINE_UNAUTHORIZED" }, { status: 401 });
   const capabilityResult = await context.service.from("user_capabilities").select("capability_code").eq("user_id", context.userId);
   if (capabilityResult.error) return Response.json({ code: "PIPELINE_AUTHORIZATION_FAILED" }, { status: 503 });

@@ -1,8 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
-import { AuthProvider } from "@/context/AuthContext";
-import DashboardLayout from "@/components/DashboardLayout";
+import BackendEnvironmentBoundary from "@/components/BackendEnvironmentBoundary";
 
 const inter = localFont({
   src: "./fonts/InterVariable.woff2",
@@ -57,9 +56,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         />
       </head>
       <body className="min-h-full bg-canvas text-[var(--text-primary)]">
-        <AuthProvider>
-          <DashboardLayout>{children}</DashboardLayout>
-        </AuthProvider>
+        <BackendEnvironmentBoundary>{children}</BackendEnvironmentBoundary>
       </body>
     </html>
   );

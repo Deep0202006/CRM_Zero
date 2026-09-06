@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { loadCallHistoryWithOptionalMetrics, type CallHistoryDependencies } from "@/app/api/call-logs/history/route";
+import { loadCallHistoryWithOptionalMetrics, type CallHistoryDependencies } from "@/app/api/call-logs/history/service";
 import { mergeConfirmedAndPendingCalls } from "../callLogs/repository";
 import type { LocalCallLog } from "../db";
 

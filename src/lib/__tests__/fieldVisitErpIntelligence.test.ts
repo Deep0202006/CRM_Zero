@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { buildErpIntelligenceExportRows } from "@/app/api/admin/export-visits/route";
+import { buildErpIntelligenceExportRows } from "@/app/api/admin/export-visits/exportRows";
 
 const read = (relative: string) => fs.readFileSync(path.join(process.cwd(), relative), "utf8");
 
