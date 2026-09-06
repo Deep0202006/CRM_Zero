@@ -14,6 +14,7 @@ const reviewedServiceRolePaths = new Set([
   "scripts/quality/invariants.mjs",
   "scripts/quality/repository-safety.mjs",
   "scripts/receivables-db/run-integration.sh",
+  "playwright.isolation.config.ts",
   "src/app/api/admin/attendance/route.ts",
   "src/app/api/admin/create-user/route.ts",
   "src/app/api/admin/delete-user/route.ts",
@@ -41,6 +42,9 @@ const reviewedServiceRolePaths = new Set([
   "src/app/api/pipeline/server.ts",
   "src/app/api/team-kpi/route.ts",
   "src/lib/__tests__/attendanceWriteReadClosure.test.ts",
+  "src/lib/__tests__/backendEnvironment.test.ts",
+  "src/lib/__tests__/backendIsolationContract.test.ts",
+  "src/lib/__tests__/serverBackendEnvironment.test.ts",
   "src/lib/__tests__/currentErpBaseline.test.ts",
   "src/lib/__tests__/distributorMaster/payments.test.ts",
   "src/lib/__tests__/distributorMaster/receivables.test.ts",
@@ -55,6 +59,7 @@ const reviewedServiceRolePaths = new Set([
   "src/lib/__tests__/teamKpiApiContract.test.ts",
   "src/lib/__tests__/teamKpiMigration027.test.ts",
   "src/lib/receivables/server.ts",
+  "src/lib/serverBackendEnvironment.ts",
   "src/lib/teamChat/server.ts",
 ]);
 const reviewedServiceRoleReasons = new Map([...reviewedServiceRolePaths].map((path) => [path,
@@ -71,6 +76,7 @@ const reviewedDiagnosticPaths = new Set([
   "scripts/pipeline-db/verify-037.sql",
 ]);
 const reviewedSyntheticCredentialPaths = new Set([
+  "playwright.isolation.config.ts",
   "src/lib/__tests__/attendanceWriteReadClosure.test.ts",
 ]);
 
