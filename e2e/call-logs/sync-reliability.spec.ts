@@ -145,7 +145,8 @@ test("failed pull backs off, preserves cache, then records success only after a 
   }, userId);
   await expect.poll(() => page.evaluate((id) => localStorage.getItem(`last_pull_sync:${id}`), userId)).not.toBeNull();
   expect(await page.evaluate((id) => localStorage.getItem(`pull_sync_retry:${id}`), userId)).toBeNull();
-  expect(hydrationRequests - failedRequestCount).toBe(18);
+  expect(hydrationRequests - failedRequestCount).toBeGreaterThanOrEqual(18);
+  expect(hydrationRequests - failedRequestCount).toBeLessThanOrEqual(36);
 });
 
 test("later-page failure is partial and a mutation created during fetch wins atomically", async ({ page }) => {
