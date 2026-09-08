@@ -7,6 +7,7 @@
     "owner": ["mapping-owner-pre", "mapping-owner-post"],
     "full-regression": ["control-postgres-matrix", "control-e2e-matrix"],
     "domain": [
+      "ui-foundation-unit", "ui-foundation-e2e",
       "auth-unit", "attendance-unit", "attendance-e2e", "attendance-postgres", "calls-unit", "call-owner-e2e",
       "field-visits-unit", "field-visits-e2e", "field-visits-postgres", "mapping-unit", "mapping-e2e", "mapping-postgres",
       "pipeline-unit", "pipeline-e2e", "pipeline-postgres", "team-kpi-unit", "distributor-unit", "distributor-e2e",
@@ -23,6 +24,23 @@
     "handover": ["package.json", "package-lock.json"]
   },
   "proofs": [
+    {
+      "id": "ui-foundation-unit",
+      "kind": "unit",
+      "domains": ["ui-foundation"],
+      "effects": ["UI", "ANALYTICS"],
+      "runner": "jest",
+      "paths": ["src/lib/__tests__/visualIntelligence.test.ts", "src/lib/__tests__/visualIntelligenceV2.test.ts", "src/lib/__tests__/teamKpiPageContract.test.ts"]
+    },
+    {
+      "id": "ui-foundation-e2e",
+      "kind": "e2e",
+      "domains": ["ui-foundation"],
+      "effects": ["UI", "ANALYTICS"],
+      "runner": "playwright",
+      "paths": ["e2e/visual-intelligence"],
+      "commands": [{ "file": "npx", "args": ["playwright", "test", "e2e/visual-intelligence", "--workers=1", "--retries=0", "--trace=retain-on-failure"] }]
+    },
     {
       "id": "auth-unit",
       "kind": "unit",

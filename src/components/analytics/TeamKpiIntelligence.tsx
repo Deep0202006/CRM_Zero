@@ -1,40 +1,15 @@
 "use client";
 
-import type { AnalyticsMetric, TeamKpiAnalyticsRow } from "@/lib/analytics/viewModels";
+import type { TeamKpiAnalyticsRow } from "@/lib/analytics/viewModels";
 import { AnalyticsBoundary, AnalyticsPanel } from "./AnalyticsPanel";
-import { EmployeeContributionBars as ContributionRing, EmployeeTeamComparison as KpiRadarProfile } from "./CompositionCharts";
-import { IndependentMetricBars } from "./MetricOrbit";
+import { EmployeeContributionBars, EmployeeTeamComparison } from "./CompositionCharts";
 
-export default function TeamKpiIntelligence({ rows, pulse }: { rows: TeamKpiAnalyticsRow[]; pulse: AnalyticsMetric[] }) {
-  return (
-    <AnalyticsBoundary>
-      <section className="analytics-shell" aria-label="Team intelligence visualizations">
-        <AnalyticsPanel
-          eyebrow="Team pulse · Today"
-          title="Work by type"
-          description="Independent same-day confirmed work counts. Unlike work types are not combined into a score. No historical trend is implied."
-          labelledBy="team-kpi-pulse"
-          className="xl:col-span-2"
-        >
-          <IndependentMetricBars metrics={pulse} valueLabel="Recorded work" />
-        </AnalyticsPanel>
-        <AnalyticsPanel
-          eyebrow="Contribution"
-          title="Employee contribution"
-          description="Select a real KPI dimension to compare exact same-unit employee values. This is not a productivity rank."
-          labelledBy="team-kpi-contribution"
-        >
-          <ContributionRing rows={rows} />
-        </AnalyticsPanel>
-        <AnalyticsPanel
-          eyebrow="Employee comparison"
-          title="Employee vs team average"
-          description="Grouped raw values compare one employee with the team average for each KPI dimension. This is not a normalized score."
-          labelledBy="team-kpi-comparison"
-        >
-          <KpiRadarProfile rows={rows} />
-        </AnalyticsPanel>
-      </section>
-    </AnalyticsBoundary>
-  );
+export default function TeamKpiIntelligence({ rows, comparison = false, comparisonAvailable = true }: { rows: TeamKpiAnalyticsRow[]; comparison?: boolean; comparisonAvailable?: boolean }) {
+  return <AnalyticsBoundary>
+    {comparison ? <AnalyticsPanel title="Employee vs team average" description="Optional descriptive reference using the full supplied cohort, including the selected employee." labelledBy="team-kpi-comparison">
+      {comparisonAvailable ? <EmployeeTeamComparison rows={rows} /> : <p role="status" className="text-sm text-[var(--text-secondary)]">Comparison unavailable while sources are incomplete or the report could not refresh.</p>}
+    </AnalyticsPanel> : <AnalyticsPanel title="Employee contribution" description="Select one confirmed work type to compare exact employee values. No historical trend is implied." labelledBy="team-kpi-contribution" coverage="Today · Asia/Kolkata · Supplied report participants. Unlike work types are not combined into a score.">
+      <EmployeeContributionBars rows={rows} />
+    </AnalyticsPanel>}
+  </AnalyticsBoundary>;
 }

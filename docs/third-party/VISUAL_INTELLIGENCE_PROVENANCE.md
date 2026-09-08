@@ -1,6 +1,52 @@
 # Visual Intelligence Component Provenance
 
-Reviewed 2026-09-03. Local files are maintained through ordinary code review; no automatic upstream updates are enabled.
+Reviewed 2026-09-08. Local files are maintained through ordinary code review; no automatic upstream updates are enabled.
+
+## UI Foundation V3
+
+Pinned source: [shadcn-ui/ui@5c7072da672b0048bc6771e3204063a2537df91a](https://github.com/shadcn-ui/ui/tree/5c7072da672b0048bc6771e3204063a2537df91a/apps/v4/registry/new-york-v4).
+All paths below are relative to `apps/v4/registry/new-york-v4/`.
+
+| Exact source | Local destination / use | Adaptation |
+|---|---|---|
+| `ui/tabs.tsx` | `src/components/ui/Tabs.tsx` | Official Radix composition, existing teal tokens, 44px controls, controlled page consumers. |
+| `ui/chart.tsx` | `src/components/analytics/Chart.tsx` | Official responsive owner, existing import boundary, deterministic sizes, safe unique IDs and CSS keys/colors, `data-theme` selectors, legacy color aliases, value-only formatter, explicit unavailable value, en-IN grouping and legend fallback. |
+| `ui/sheet.tsx` | `src/components/ui/Sheet.tsx` | Official Dialog composition, existing overlay/layer tokens, full-width mobile, scrollable content, 44px close control; no animation dependency. |
+| `ui/card.tsx` | `src/components/ui/Card.tsx` | Action/Footer composition only; existing variants and h3 semantics retained. |
+| `blocks/dashboard-01/components/section-cards.tsx` | `src/components/ui/MetricCard.tsx` structure reference | Real typed metrics, Lucide icons, existing tokens; no demo trends or Tabler dependency. |
+| `charts/chart-bar-horizontal.tsx` | Horizontal comparison reference | Full semantic labels, numeric axes and exact values; no demo data or trend. |
+| `charts/chart-pie-donut-text.tsx` | Outcome / ERP composition reference | Existing exact center totals, hover behavior, accessible category values, bars above six nonzero categories. |
+| `charts/chart-area-interactive.tsx` | Reviewed for subsequent history packet only | No source copied into the runtime, no fabricated dates or history. |
+
+Exact added dependencies: `radix-ui@1.6.7`, `class-variance-authority@0.7.1`, `clsx@2.1.1`, `tailwind-merge@3.6.0`.
+Availability and React 19 compatibility verified from the npm registry on 2026-09-08. Installed one package per operation using `--save-exact --ignore-scripts --registry=https://registry.npmjs.org`.
+Existing Recharts, Lucide, React and Next versions are retained. `cn` is a local utility, not an installed package.
+
+### Copied source license
+
+MIT License
+
+Copyright (c) 2023 shadcn
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+## Earlier composition references
 
 | Upstream | Component/pattern reviewed | License | Local adaptation |
 |---|---|---|---|

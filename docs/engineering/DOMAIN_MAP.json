@@ -1,6 +1,7 @@
 {
   "schemaVersion": 2,
   "canonicalDomainProofRefs": {
+    "ui-foundation": ["ui-foundation-unit", "ui-foundation-e2e"],
     "platform-handover": ["supabase-handover-readiness"],
     "auth": ["auth-unit"],
     "attendance": ["attendance-unit"],
@@ -23,6 +24,21 @@
     "engineering-control": ["kernel-control-unit"]
   },
   "domains": [
+    {
+      "id": "ui-foundation",
+      "aliases": ["UI Foundation", "chart presentation"],
+      "riskFloor": "R3",
+      "surfacePaths": ["src/components/ui", "src/components/analytics", "src/design-system"],
+      "codeRoots": ["src/components/ui", "src/components/analytics"],
+      "pathPatterns": ["components.json", "src/lib/utils.ts", "src/app/globals.css", "e2e/visual-intelligence/**", "src/lib/__tests__/visualIntelligence*.test.ts", "src/lib/__tests__/teamKpiPageContract.test.ts", "artifacts/visual-review/ui-foundation-before/**", "artifacts/visual-review/ui-foundation-after/**"],
+      "serverBoundaries": [],
+      "contractPaths": ["docs/contracts/visual-intelligence.md"],
+      "authorityRefs": [],
+      "capabilityRefs": [],
+      "lessonRefs": ["HONEST_VISUALIZATION"],
+      "criticalTests": ["e2e/visual-intelligence", "src/lib/__tests__/visualIntelligence.test.ts", "src/lib/__tests__/visualIntelligenceV2.test.ts"],
+      "mustNotWriteAuthorityRefs": []
+    },
     {
       "id": "platform-handover",
       "aliases": [

@@ -24,7 +24,7 @@ import {
 import { ReceivablesCreateModal } from "@/components/receivables/ReceivablesCreateModal";
 import { ReceivablesImportModal } from "@/components/receivables/ReceivablesImportModal";
 import { ChartContainer, ChartTooltipContent } from "@/components/analytics/Chart";
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, Tooltip, XAxis, YAxis } from "recharts";
 interface AdminSummary {
   total_outstanding: string;
   followups_due_today: number;
@@ -377,7 +377,7 @@ export default function AdminPaymentsPage() {
           <section className="surface-panel p-4">
             <h2 className="section-title">Collectible aging</h2>
             <p className="mt-1 text-xs text-[var(--text-muted)]">Ordered authoritative outstanding balances. Disputed is reported separately because it can overlap aging.</p>
-            <ChartContainer config={{ amount: { label: "Outstanding", color: "var(--brand-500)" } }} className="mt-3 h-[280px]"><ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 720, height: 280 }}><BarChart data={agingChart} layout="vertical" margin={{ top: 8, right: 24, bottom: 8, left: 18 }}><CartesianGrid horizontal={false} stroke="var(--border-subtle)" /><XAxis type="number" axisLine={false} tickLine={false} tickFormatter={(value) => formatInr(String(value))} /><YAxis type="category" dataKey="bucket" width={86} axisLine={false} tickLine={false} /><Tooltip content={<ChartTooltipContent valueFormatter={(value) => formatInr(String(value))} />} /><Bar dataKey="amount" fill="var(--brand-500)" radius={[0, 5, 5, 0]} isAnimationActive={false} /></BarChart></ResponsiveContainer></ChartContainer>
+            <ChartContainer config={{ amount: { label: "Outstanding", color: "var(--brand-500)" } }} className="mt-3 h-[280px]" initialDimension={{ width: 720, height: 280 }}><BarChart data={agingChart} layout="vertical" margin={{ top: 8, right: 24, bottom: 8, left: 18 }}><CartesianGrid horizontal={false} stroke="var(--border-subtle)" /><XAxis type="number" axisLine={false} tickLine={false} tickFormatter={(value) => formatInr(String(value))} /><YAxis type="category" dataKey="bucket" width={86} axisLine={false} tickLine={false} /><Tooltip content={<ChartTooltipContent valueFormatter={(value) => formatInr(String(value))} />} /><Bar dataKey="amount" fill="var(--brand-500)" radius={[0, 5, 5, 0]} isAnimationActive={false} /></BarChart></ChartContainer>
             {summary.disputed_outstanding && (
               <p className="mt-3 text-xs">
                 Disputed balances are included and separately identifiable:{" "}
@@ -442,7 +442,7 @@ export default function AdminPaymentsPage() {
             ))}
           </div>
           <p className="mt-4 text-[11px] text-[var(--text-muted)]">Urgency distribution for the {renewals.rows.length} reminders already loaded on this bounded card.</p>
-          <ChartContainer config={{ count: { label: "Loaded renewals", color: "var(--status-warning)" } }} className="mt-2 h-[220px]"><ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 720, height: 220 }}><BarChart data={renewalChart} layout="vertical" margin={{ top: 8, right: 24, bottom: 8, left: 18 }}><CartesianGrid horizontal={false} stroke="var(--border-subtle)" /><XAxis type="number" allowDecimals={false} axisLine={false} tickLine={false} /><YAxis type="category" dataKey="label" width={84} axisLine={false} tickLine={false} /><Tooltip content={<ChartTooltipContent />} /><Bar dataKey="count" fill="var(--status-warning)" radius={[0, 5, 5, 0]} isAnimationActive={false} /></BarChart></ResponsiveContainer></ChartContainer>
+          <ChartContainer config={{ count: { label: "Loaded renewals", color: "var(--status-warning)" } }} className="mt-2 h-[220px]" initialDimension={{ width: 720, height: 220 }}><BarChart data={renewalChart} layout="vertical" margin={{ top: 8, right: 24, bottom: 8, left: 18 }}><CartesianGrid horizontal={false} stroke="var(--border-subtle)" /><XAxis type="number" allowDecimals={false} axisLine={false} tickLine={false} /><YAxis type="category" dataKey="label" width={84} axisLine={false} tickLine={false} /><Tooltip content={<ChartTooltipContent />} /><Bar dataKey="count" fill="var(--status-warning)" radius={[0, 5, 5, 0]} isAnimationActive={false} /></BarChart></ChartContainer>
         </section>
       )}
       <section className="surface-panel p-5">

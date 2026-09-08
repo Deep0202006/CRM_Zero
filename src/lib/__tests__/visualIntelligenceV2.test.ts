@@ -1,5 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { ChartContainer, ChartTooltipContent, ChartStyle } from "@/components/analytics/Chart";
+import { OutcomeDonut } from "@/components/analytics/CompositionCharts";
+import { ErpDistributionDonut } from "@/components/analytics/ErpDistributionDonut";
 import {
   buildCallReachComposition,
   buildDistributorMilestones,
@@ -12,6 +17,35 @@ import {
 const read = (relativePath: string) => fs.readFileSync(path.join(process.cwd(), relativePath), "utf8");
 
 describe("visual intelligence v2", () => {
+  it("renders missing tooltip values as unavailable, preserves zero and value-only formatting", () => {
+    const valueFormatter = jest.fn((value: string | number) => `formatted:${value}`);
+    const props = {
+      config: { amount: { label: "Exact amount", color: "var(--viz-primary)" } },
+      children: createElement("div", null, createElement(ChartTooltipContent, { active: true, hideLabel: true, valueFormatter, payload: [{ graphicalItemId: "zero", dataKey: "amount", name: "raw", value: 0 }, { graphicalItemId: "missing", dataKey: "amount", name: "raw", value: undefined }] })),
+    };
+    const html = renderToStaticMarkup(createElement(ChartContainer, props));
+    expect(html).toContain("Exact amount");
+    expect(html).toContain("formatted:0");
+    expect(html).toContain("Unavailable");
+    expect(valueFormatter).toHaveBeenCalledTimes(1);
+  });
+
+  it("withholds invalid category compositions rather than presenting misleading totals", () => {
+    const outcome = renderToStaticMarkup(createElement(OutcomeDonut, { total: 2, outcomes: [{ key: "unknown", label: "Unknown", value: 1, share: 0.5, color: "var(--viz-muted)" }] }));
+    expect(outcome).toContain("Outcome composition unavailable");
+    expect(outcome).not.toContain("Visit outcome values");
+    const erp = renderToStaticMarkup(createElement(ErpDistributionDonut, { title: "ERP", description: "Fixture", total: 2, totalLabel: "Businesses", categories: [{ erp_name: null, state: "not_captured", count: 1 }], reconciled: true, emptyTitle: "Empty", emptyDescription: "No records", labelledBy: "erp-test" }));
+    expect(erp).toContain("ERP footprint unavailable");
+    expect(erp).not.toContain("ERP values");
+  });
+
+  it("never inserts record-like keys or unsafe color markup into chart styles", () => {
+    const html = renderToStaticMarkup(createElement(ChartStyle, { id: "safe-chart", config: { 'bad}</style>': { color: "red" }, safe: { color: "red;</style><script>bad</script>" }, good: { theme: { light: "#123456", dark: "#abcdef" } } } }));
+    expect(html).not.toContain("<script>");
+    expect(html).not.toContain("bad");
+    expect(html).toContain('[data-theme="dark"]');
+    expect(html).toContain("--chart-good");
+  });
   const chartSources = [
     "src/components/analytics/Chart.tsx",
     "src/components/analytics/CompositionCharts.tsx",

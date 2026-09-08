@@ -8,14 +8,16 @@ export function AnalyticsPanel({
   title,
   description,
   action,
+  coverage,
   children,
   className = "",
   labelledBy,
 }: {
-  eyebrow: string;
+  eyebrow?: string;
   title: string;
   description: string;
   action?: ReactNode;
+  coverage?: ReactNode;
   children: ReactNode;
   className?: string;
   labelledBy: string;
@@ -24,13 +26,14 @@ export function AnalyticsPanel({
     <section className={`analytics-panel ${className}`} aria-labelledby={labelledBy}>
       <header className="analytics-panel__header">
         <div className="min-w-0">
-          <p className="section-kicker">{eyebrow}</p>
-          <h2 id={labelledBy} className="mt-1 text-[17px] font-semibold tracking-[-0.025em] text-[var(--text-primary)]">{title}</h2>
-          <p className="mt-1 max-w-2xl text-[12px] leading-5 text-[var(--text-muted)]">{description}</p>
+          {eyebrow && <p className="section-kicker">{eyebrow}</p>}
+          <h2 id={labelledBy} className="mt-1 text-[18px] leading-[26px] font-semibold text-[var(--text-primary)]">{title}</h2>
+          <p className="mt-1 max-w-2xl text-xs leading-[18px] text-[var(--text-secondary)]">{description}</p>
         </div>
         {action}
       </header>
       <div className="analytics-panel__body">{children}</div>
+      {coverage && <footer className="border-t border-[var(--border-subtle)] px-4 py-3 text-xs leading-[18px] text-[var(--text-secondary)] sm:px-6">{coverage}</footer>}
     </section>
   );
 }
