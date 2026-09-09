@@ -30,7 +30,7 @@
       "domains": ["ui-foundation"],
       "effects": ["UI", "ANALYTICS"],
       "runner": "jest",
-      "paths": ["src/lib/__tests__/visualIntelligence.test.ts", "src/lib/__tests__/visualIntelligenceV2.test.ts", "src/lib/__tests__/teamKpiPageContract.test.ts"]
+      "paths": ["src/lib/__tests__/visualIntelligence.test.ts", "src/lib/__tests__/visualIntelligenceV2.test.ts", "src/lib/__tests__/teamKpiPageContract.test.ts", "src/lib/__tests__/currentErpFootprint.test.ts"]
     },
     {
       "id": "ui-foundation-e2e",

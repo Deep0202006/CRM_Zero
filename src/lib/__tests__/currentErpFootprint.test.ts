@@ -1,6 +1,8 @@
 import fs from "fs";
 import path from "path";
-import { buildErpDonutModel, stableErpColor, type FieldVisitErpSegment } from "@/components/analytics/FieldVisitErpIntelligence";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import FieldVisitErpIntelligence, { buildErpDonutModel, stableErpColor, type FieldVisitErpSegment } from "@/components/analytics/FieldVisitErpIntelligence";
 
 const read = (relative: string) => fs.readFileSync(path.join(process.cwd(), relative), "utf8");
 const segment = (overrides: Partial<FieldVisitErpSegment> = {}): FieldVisitErpSegment => ({
@@ -42,9 +44,34 @@ describe("Current ERP footprint donuts", () => {
     expect(panel).toContain('<ErpFootprintDonut name="Distributor"');
     expect(shared).toContain("<PieChart accessibilityLayer>");
     expect(shared).toContain("rootTabIndex={0}");
-    expect(shared).toContain('className="sr-only"');
-    expect(shared).toContain("the donut is hidden instead of presenting misleading intelligence");
     expect(panel).toContain('totalLabel={name === "Retailer" ? "Retailers" : "Distributors"}');
     expect(panel).not.toContain(">Unique businesses</span>");
+  });
+
+  it.each([6, 7])("renders one exact accessible list per segment with %i nonzero categories", (count) => {
+    const categories = [
+      ...segment().categories,
+      ...Array.from({ length: count - 3 }, (_, index) => ({ erp_name: `ERP ${index}`, state: "erp" as const, count: 1, share_percent: 0 })),
+      { erp_name: "Zero ERP", state: "erp" as const, count: 0, share_percent: 0 },
+    ];
+    const value = segment({ categories, unique_businesses: count + 1, observed_count: count, erp_using_count: count - 1 });
+    const html = renderToStaticMarkup(createElement(FieldVisitErpIntelligence, { segments: { Retailer: value, Distributor: value } }));
+    const lists = [...html.matchAll(/<ul\b[^>]*aria-label="([^"]+)"[^>]*>([\s\S]*?)<\/ul>/g)];
+    expect(lists.map((list) => list[1])).toEqual(["Retailer ERP Footprint values", "Distributor ERP Footprint values"]);
+    for (const [, , list] of lists) {
+      const rows = [...list.matchAll(/<li\b[^>]*>([\s\S]*?)<\/li>/g)].map((row) => row[1].replace(/<[^>]+>/g, ""));
+      expect(rows).toHaveLength(categories.length);
+      for (const slice of buildErpDonutModel(value).slices) {
+        expect(rows.filter((row) => row.startsWith(`${slice.label}:${slice.count} of ${count + 1}`))).toHaveLength(1);
+      }
+    }
+    expect(html).not.toContain("ERP footprint unavailable");
+  });
+
+  it("withholds the rendered composition and summary for unreconciled source totals", () => {
+    const html = renderToStaticMarkup(createElement(FieldVisitErpIntelligence, { segments: { Retailer: segment({ unique_businesses: 5 }), Distributor: segment({ none_count: 2 }) } }));
+    expect(html.match(/ERP footprint unavailable/g)).toHaveLength(2);
+    expect(html).not.toContain("ERP Footprint values");
+    expect(html).not.toContain("recharts-surface");
   });
 });
