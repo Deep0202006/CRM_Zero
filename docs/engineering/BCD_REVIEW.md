@@ -71,9 +71,59 @@ paths and exact identities.
 
 ## Delivery acceptance (not complete)
 
+### Applied-query continuation and observed CI
+
+Owner publication was verified at `12801f15cbd87a87f3a67daf7cf78542b595c1ab`.
+CI run `34347750976` passed its planned unit step, then failed the handover
+proof because `scripts/bcd-db/schema.sql` matched the protected database-export
+filename guard. This is an internal fixture naming defect, not leaked production
+data or a missing Owner certificate. The fixture is now `synthetic-schema.sql`,
+with its exact runner/proof references updated. The handover guard is unchanged;
+its registered check passed locally after this correction. SQL/HTTP execution
+was skipped by that CI failure and remains required, pending the next head.
+
+Visits now uses an explicit native Apply form, a captured applied query/page,
+and a separate attempted request. Failed Apply from page2 retries page1 of the
+attempt, while Previous/Next continue the old applied query. Draft typing sends
+no request. Background visibility/realtime refresh cannot cancel a pending
+Apply or replace a failed request's Retry. Register, ERP and export work are
+cancelled on workspace unmount; the workspace is keyed by authenticated UUID.
+Export captures applied filters before awaiting, validates the session actor,
+and cannot trigger a download after unmount even if transport ignores abort.
+The default register range is seven IST business dates; legacy date mode remains
+explicitly separate. This does not yet replace the legacy server search/picker.
+
+Independent review identified the background-refresh and export races; both
+were corrected with browser regressions. The registered workspace browser proof
+passed locally with one worker on the built synthetic runtime (receipt
+`adcaac1942598a245f5e07a12c4749602ba54335d42b6b811be9f383e83f84c0`).
+Next build and the focused query/unit execution passed. The precommit unit
+receipt encountered the existing same-head immutability guard; it is not a new
+exact-head proof. No receipt was deleted or altered to bypass that guard.
+
+Rendered comparison: the preserved Packet A [mobile baseline](../../artifacts/visual-review/workspace-makeover/after/visits-390.png)
+and this correction's [desktop](../../artifacts/visual-review/workspace-makeover/pr114-applied-query/visits-1440.png),
+[mobile](../../artifacts/visual-review/workspace-makeover/pr114-applied-query/visits-390.png),
+[dark desktop](../../artifacts/visual-review/workspace-makeover/pr114-applied-query/visits-1440-dark.png)
+and [dark mobile](../../artifacts/visual-review/workspace-makeover/pr114-applied-query/visits-390-dark.png)
+were inspected. First records remain in the viewport at1440/390 without page
+overflow. These four-record captures prove this state correction only, not the
+busy31-day B–D visual acceptance. The raw legacy outcome label, mobile filter
+density, range chart and historical picker still need the full B integration.
+Baseline UI kept native form controls and existing primitives; the Ponytail
+advisory removed redundant mount resets now covered by the keyed workspace.
+
+Next B slice: reuse one parameterized literal per-field SQL predicate across
+events and the exact count/50-record register. Preserve text lead joins and
+legacy single-date semantics. Use an independent EXISTS-membership picker with
+25 rows plus sentinel and exact selected identity, including inactive former
+representatives. Remove the old directory-draining fallback; absent055 preserves
+bounded ordinary records but makes joined search explicitly unavailable. SQL
+plans and real HTTP assertions must pass before claiming those consumers ready.
+
 | Packet | Status |
 |---|---|
-| B Visits range, joined register search, historical picker, applied scope | Initial SQL/API slice only; integration and visual acceptance pending |
+| B Visits range, joined register search, historical picker, applied scope | Initial SQL/API and applied-query correction; full reader/picker/chart integration and busy visual acceptance pending |
 | C typed Team history and filtered Pipeline inspection/context | Pending implementation |
 | D self-scoped My Day history and lazy Admin task/target review | Pending implementation |
 | Physical PostgREST requests, rendered screenshots, exact final-head CI | Pending; no local SQL PASS claimed |

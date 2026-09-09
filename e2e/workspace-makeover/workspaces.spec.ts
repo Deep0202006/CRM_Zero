@@ -68,7 +68,9 @@ test("My Day view counts, linked work and keyboard context preserve real task id
 test("Visits retains applied page and selected UUID through failed filters; details do not fetch evidence", async ({ page }) => {
   const requests = await setup(page);
   let fail = false;
+  const registerRequests: URLSearchParams[] = [];
   await page.route("**/api/admin/visits?**", route => {
+    registerRequests.push(new URL(route.request().url()).searchParams);
     if (fail) return route.fulfill({ status: 503, json: { error: "Fixture refresh unavailable" } });
     const number = Number(new URL(route.request().url()).searchParams.get("page") || 1);
     return route.fulfill({ json: { visits: [visits[number - 1]], page: number, total: 2, has_more: number === 1, all_time_total: 127, today_total: 12, representatives: [] } });
@@ -83,6 +85,8 @@ test("Visits retains applied page and selected UUID through failed filters; deta
   await expect(rail).toContainText("Page 2");
   fail = true;
   await page.getByRole("textbox", { name: "Search visits", exact: true }).fill("no match");
+  expect(registerRequests).toHaveLength(2);
+  await page.getByRole("button", { name: "Apply filters", exact: true }).click();
   await expect(page.getByRole("alert").filter({ hasText: "Fixture refresh unavailable" })).toBeVisible();
   await expect(page.getByRole("region", { name: "Outcome composition" })).toContainText("Current bounded page 2");
   await expect(record).toBeVisible();
@@ -90,6 +94,70 @@ test("Visits retains applied page and selected UUID through failed filters; deta
   expect(requests.some(path => path.includes("/evidence"))).toBe(false);
   await rail.getByRole("button", { name: "Close", exact: true }).click();
   await expect(record).toBeFocused();
+  await page.getByRole("button", { name: "Retry request", exact: true }).click();
+  await expect.poll(() => registerRequests.length).toBe(4);
+  expect(registerRequests[2].get("page")).toBe("1");
+  expect(registerRequests[3].get("page")).toBe("1");
+  expect(registerRequests[3].get("search")).toBe("no match");
+  fail = false;
+  await page.getByRole("button", { name: "Previous", exact: true }).click();
+  await expect(page.getByRole("button", { name: leads[0].business_name, exact: true })).toBeVisible();
+  expect(registerRequests.at(-1)!.has("search")).toBe(false);
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await expect(record).toBeVisible();
+  expect(registerRequests.at(-1)!.get("page")).toBe("2");
+  expect(registerRequests.at(-1)!.has("search")).toBe(false);
+});
+
+test("Visits background refresh cannot replace a pending Apply", async ({ page }) => {
+  await setup(page);
+  const queries: URLSearchParams[] = [];
+  let release: (() => void) | undefined;
+  await page.route("**/api/admin/visits?**", async route => {
+    const query = new URL(route.request().url()).searchParams;
+    queries.push(query);
+    if (query.has("search")) await new Promise<void>(resolve => { release = resolve; });
+    await route.fulfill({ json: { visits: [visits[0]], page: 1, total: 1, has_more: false, representatives: [] } });
+  });
+  await page.goto("/admin/visits");
+  await expect(page.getByRole("button", { name: leads[0].business_name, exact: true })).toBeVisible();
+  await page.getByRole("textbox", { name: "Search visits", exact: true }).fill("Acme");
+  await page.getByRole("button", { name: "Apply filters", exact: true }).click();
+  await expect.poll(() => Boolean(release)).toBe(true);
+  await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+  release!();
+  await expect(page.getByRole("button", { name: "Apply filters", exact: true })).toBeEnabled();
+  await expect(page.getByText(/Applied:.*Search: Acme/)).toBeVisible();
+  expect(queries).toHaveLength(2);
+});
+
+test("Visits export captures applied filters and cannot download after workspace unmount", async ({ page }) => {
+  await setup(page);
+  await page.addInitScript(() => {
+    const original = window.fetch;
+    window.fetch = (input, init) => original(input, String(input).includes("/export-visits") ? { ...init, signal: undefined } : init);
+  });
+  let release: (() => void) | undefined;
+  let query: URLSearchParams | undefined;
+  let downloads = 0;
+  page.on("download", () => downloads++);
+  await page.route("**/api/admin/export-visits?**", async route => {
+    query = new URL(route.request().url()).searchParams;
+    await new Promise<void>(resolve => { release = resolve; });
+    await route.fulfill({ contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", body: "synthetic export" });
+  });
+  await page.goto("/admin/visits");
+  await expect(page.getByRole("button", { name: "Export to Excel" })).toBeEnabled();
+  await page.getByRole("textbox", { name: "Search visits", exact: true }).fill("unapplied draft");
+  await page.getByRole("button", { name: "Export to Excel" }).click();
+  await expect.poll(() => Boolean(release)).toBe(true);
+  expect(query!.has("search")).toBe(false);
+  await page.getByRole("link", { name: "My Day", exact: true }).first().click();
+  await expect(page).toHaveURL(/\/my-day$/);
+  const completed = page.waitForResponse(response => response.url().includes("/export-visits"));
+  release!(); await (await completed).finished();
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  expect(downloads).toBe(0);
 });
 
 test("Pipeline discards delayed A after B, close and timeout without extra snapshot requests", async ({ page }) => {

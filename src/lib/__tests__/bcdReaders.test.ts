@@ -4,6 +4,7 @@ import { aggregateVisitRange, parseVisitRange, readVisitEvents, type VisitEvent 
 import { boundedReportJson, createReportResource } from "../analytics/reportResource";
 import { createServerServiceClient } from "../serverBackendEnvironment";
 import { GET } from "@/app/api/admin/visits/analysis/route";
+import { initialVisitQuery, visitQueryKey, visitQueryParams } from "../fieldVisits/query";
 
 jest.mock("../serverBackendEnvironment", () => ({
   createServerServiceClient: jest.fn(),
@@ -19,6 +20,18 @@ const client = (fetch: typeof globalThis.fetch) => createClient("https://fixture
 });
 
 describe("B-D bounded read slice", () => {
+  it("keeps a captured query independent of draft edits and serializes legacy and range scopes distinctly", () => {
+    const applied = { ...initialVisitQuery(), dateFrom: "2026-09-01", dateTo: "2026-09-07", search: "Literal, (business)%" };
+    const draft = { ...applied, search: "new filter" };
+    expect(visitQueryParams(applied).get("search")).toBe("Literal, (business)%");
+    expect(visitQueryKey(draft)).not.toBe(visitQueryKey(applied));
+    expect(visitQueryParams(applied).has("representative")).toBe(false);
+    const legacy = visitQueryParams({ ...applied, date: "2026-09-05", representative: actor });
+    expect(legacy.get("date")).toBe("2026-09-05");
+    expect(legacy.has("date_from")).toBe(false);
+    expect(legacy.has("date_to")).toBe(false);
+    expect(legacy.get("representative")).toBe(actor);
+  });
   afterEach(() => { jest.restoreAllMocks(); jest.useRealTimers(); });
   const scopedBackend = (fetcher: typeof fetch) => {
     jest.spyOn(globalThis, "fetch").mockImplementation(fetcher);

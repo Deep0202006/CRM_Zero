@@ -1,4 +1,5 @@
--- Roles/grants only. The runner loads existing authoritative table definitions.
+-- Synthetic fixture roles/grants and assertions, never a database export.
+-- The runner loads existing authoritative table definitions.
 do $$ begin
   if not exists(select 1 from pg_roles where rolname='anon') then create role anon; end if;
   if not exists(select 1 from pg_roles where rolname='authenticated') then create role authenticated; end if;
