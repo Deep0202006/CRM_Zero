@@ -188,7 +188,7 @@ export default function ManagerKpiPage() {
         eyebrow="Performance intelligence"
         icon={<BarChart3 size={18} />}
         title="Team Intelligence"
-        description={reportMode === "history" ? "Retained employee observations · Asia/Kolkata. Historical coverage is uncertified." : `Today · ${todayDate} · Asia/Kolkata. Confirmed work from the current report.`}
+        description={activeTab === "Team" && reportMode === "history" ? "Retained employee observations · Asia/Kolkata. Historical coverage is uncertified." : `Today · ${todayDate} · Asia/Kolkata. Confirmed work from the current report.`}
         actions={
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row" hidden={reportMode !== "today" || activeTab !== "Team"}>
             <Button

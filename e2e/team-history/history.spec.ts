@@ -110,6 +110,9 @@ test("History reconciles scope, gaps, exact values, Sheet, keyboard and themes w
   await page.getByRole("button", { name: "Apply range", exact: true }).click();
   await expect(page.getByRole("alert").filter({ hasText: "Fixture source unavailable" })).toContainText("Previous applied report remains visible");
   await expect(page.getByRole("heading", { name: new RegExp(`${members[1].name} · ${addISTDateDays(today, -7)}`) })).toBeVisible();
+  await page.route("**/api/pipeline/inspection?**", route => route.fulfill({ status: 503, json: { message: "Outside the History fixture" } }));
+  await page.getByRole("tab", { name: /Pipeline funnel/ }).click();
+  await expect(page.getByText("Retained employee observations · Asia/Kolkata. Historical coverage is uncertified.", { exact: true })).not.toBeVisible();
   await testInfo.attach("history-observations", { body: JSON.stringify({ requests, warnings, fixture: "1235 bounded synthetic retained records; no production data" }, null, 2), contentType: "application/json" });
   if (capture) await writeFile(`${directory}/observations.json`, JSON.stringify({ fixture: "1235 bounded synthetic retained records; no production data", requests, warnings, themes: ["light", "dark"], widths: [1440, 390], checks: ["exact retained counts and unavailable gaps", "keyboard tooltip", "Sheet focus trap and return", "presentation causes no request", "employee selection retains reference cohort", "failed Apply retains prior applied scope"] }, null, 2));
 });
