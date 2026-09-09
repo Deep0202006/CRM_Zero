@@ -65,6 +65,9 @@ do $$ declare signature text; f record; a jsonb; b jsonb; expected jsonb; begin
     or ((a->'visit_ids')||(b->'visit_ids'))<>expected or a->>'has_more'<>'true' or b->>'has_more'<>'false' then raise exception 'REGISTER_PAGING_RECONCILIATION'; end if;
   a:=public.crm_visit_register_v1(null,null,null,null,null,'','2026-08-01');
   if a->>'total'<>'62' or a->>'legacy_date_mismatch_count'<>'1' then raise exception 'REGISTER_LEGACY_IST_BOUNDARY'; end if;
+  if public.crm_visit_matches_v1('1000-02-02','1000-01-31 18:10:00+00',md5('user1')::uuid,'Retailer','interested',array[]::text[],null,null,null,null,null,'','1000-02-01')
+    or not public.crm_visit_matches_v1('1000-02-02','1000-01-31 18:30:00+00',md5('user1')::uuid,'Retailer','interested',array[]::text[],null,null,null,null,null,'','1000-02-01')
+    or public.crm_visit_matches_v1('1000-02-02','1000-02-01 18:30:00+00',md5('user1')::uuid,'Retailer','interested',array[]::text[],null,null,null,null,null,'','1000-02-01') then raise exception 'REGISTER_LEGACY_FIXED_OFFSET_PARITY'; end if;
   a:=public.crm_visit_register_v1('2026-08-01','2026-08-01');
   if a->>'total'<>'61' or a->>'legacy_date_mismatch_count'<>'0' then raise exception 'REGISTER_CANONICAL_DATE'; end if;
   a:=public.crm_visit_register_v1('2026-08-01','2026-08-02',md5('user61')::uuid);

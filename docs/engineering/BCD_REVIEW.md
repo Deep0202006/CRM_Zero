@@ -171,6 +171,15 @@ four-record continuation captures, not full busy31-day visual acceptance.
 Ponytail review retained native controls and the existing request resource;
 no new library or generic data layer was introduced.
 
+At committed head `d6c4695a590580fcf573be5c6398d61aa3a6bb6f`, registered
+Visits unit, TypeScript, lint, workspace browser and Foundation browser proofs
+passed locally with clean-head receipts. The following SQL-only correction
+preserves the existing `getISTBusinessDayBounds` fixed+05:30 legacy interval
+even for old accepted dates; its new lower/upper-bound assertion remains CI-only.
+[PostgreSQL17 fixed-offset interval support](https://www.postgresql.org/docs/17/functions-datetime.html#FUNCTIONS-DATETIME-ZONECONVERT)
+was the only additional syntax research. Unchanged browser checks are not rerun
+for this SQL-only delta. Required exact-head GitHub CI is still pending.
+
 | Packet | Status |
 |---|---|
 | B Visits range, joined register search, historical picker, applied scope | Shared register/picker slice integrated; SQL/HTTP CI, full range-chart/representative analysis and busy visual acceptance pending |

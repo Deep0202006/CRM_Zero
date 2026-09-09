@@ -14,8 +14,9 @@ create function public.crm_visit_matches_v1(
 ) returns boolean language sql immutable security invoker as $$
   select
     (case when p_legacy_date is not null then
-      v_date = p_legacy_date or (v_check_in >= (p_legacy_date::timestamp at time zone 'Asia/Kolkata')
-        and v_check_in < ((p_legacy_date + 1)::timestamp at time zone 'Asia/Kolkata'))
+      -- Preserve getISTBusinessDayBounds' fixed +05:30 legacy contract even for old dates.
+      v_date = p_legacy_date or (v_check_in >= (p_legacy_date::timestamp at time zone interval '+05:30')
+        and v_check_in < ((p_legacy_date + 1)::timestamp at time zone interval '+05:30'))
       else (p_from is null or v_date >= p_from) and (p_to is null or v_date <= p_to) end)
     and (p_representative is null or v_user = p_representative)
     and (p_segment is null or v_segment = p_segment)
