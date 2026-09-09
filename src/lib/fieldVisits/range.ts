@@ -15,6 +15,31 @@ const scopeSchema = z.object({
   search: z.string().trim().max(160).default(""),
 }).strict();
 export type VisitRangeScope = z.infer<typeof scopeSchema>;
+const count = z.number().int().nonnegative().max(20000);
+export const visitRangeReportSchema = z.object({
+  kind: z.literal("visit-range-v1"), scope: scopeSchema,
+  generated_at: z.string().datetime({ offset: true }),
+  retained_source_read: z.literal("exhausted"), historical_coverage: z.literal("uncertified"),
+  consistency: z.literal("bounded-live-multi-request"),
+  retained_visit_count: count, daily: z.array(z.object({ date, count })).min(1).max(31),
+  outcomes: z.array(z.object({ outcome: z.enum([...FIELD_VISIT_OUTCOMES, "unknown"]), count })).max(8),
+  representatives: z.array(z.object({ user_id: visitUuid, count, name: z.string().max(10000).nullable().optional() })).max(200).nullable(),
+  representative_breakdown: z.enum(["exhausted", "unavailable-cardinality-limit"]), date_mismatch_count: count,
+}).superRefine((report, context) => {
+  const sum = (rows: Array<{ count: number }>) => rows.reduce((total, row) => total + row.count, 0);
+  if (report.scope.date_from > report.scope.date_to || report.daily[0].date !== report.scope.date_from
+    || report.daily.at(-1)!.date !== report.scope.date_to
+    || report.daily.some((row, index) => row.date !== addISTDateDays(report.scope.date_from, index))
+    || sum(report.daily) !== report.retained_visit_count || sum(report.outcomes) !== report.retained_visit_count
+    || new Set(report.outcomes.map(row => row.outcome)).size !== report.outcomes.length
+    || report.date_mismatch_count > report.retained_visit_count
+    || (report.representative_breakdown === "exhausted") !== (report.representatives !== null)
+    || (report.representatives && (sum(report.representatives) !== report.retained_visit_count
+      || new Set(report.representatives.map(row => row.user_id)).size !== report.representatives.length))) {
+    context.addIssue({ code: "custom", message: "VISIT_RANGE_RECONCILIATION" });
+  }
+});
+export type VisitRangeReport = z.infer<typeof visitRangeReportSchema>;
 const registerSchema = scopeSchema.omit({ date_from: true, date_to: true }).extend({
   date: date.optional(), date_from: date.optional(), date_to: date.optional(),
   page: z.coerce.number().int().min(1).max(400).default(1),

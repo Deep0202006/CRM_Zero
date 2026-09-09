@@ -2,6 +2,7 @@ import { expect, type Page } from "@playwright/test";
 import { addISTDateDays, getCurrentISTDate } from "../../src/lib/dateTime";
 import { buildTeamKpiReport } from "../../src/lib/teamKpi/aggregate";
 import { buildHistoryReport, parseHistoryScope } from "../../src/lib/teamKpi/history";
+import { aggregateVisitRange, parseVisitRange } from "../../src/lib/fieldVisits/range";
 
 export const actor = "91000000-0000-4000-a000-000000000001";
 export const employee = "92000000-0000-4000-a000-000000000001";
@@ -22,6 +23,10 @@ export async function setup(page: Page, empty = false) {
   await page.route("**/api/my-day/payment-followups", route => route.fulfill({ json: { reminders: [] } }));
   await page.route("**/api/my-day/receivables", route => route.fulfill({ json: { items: [], generated_at: new Date().toISOString() } }));
   await page.route("**/api/admin/visits?**", route => route.fulfill({ json: { visits: empty ? [] : visits, page: 1, has_more: false, total: empty ? 0 : visits.length, all_time_total: 127, today_total: 12, representatives: [{ user_id: actor, name: "Asha Mehta", email: "asha@example.test", is_active: true, capabilities: [], historical_only: false }], legacy_date_mismatch_count: 0 } }));
+  await page.route("**/api/admin/visits/analysis?**", route => {
+    const now = new Date().toISOString(), scope = parseVisitRange(new URL(route.request().url()).searchParams, now);
+    return route.fulfill({ json: { kind: "visit-range-v1", scope, generated_at: now, retained_source_read: "exhausted", historical_coverage: "uncertified", consistency: "bounded-live-multi-request", ...aggregateVisitRange(scope, empty ? [] : visits.filter(row => row.visit_date >= scope.date_from && row.visit_date <= scope.date_to && (!scope.representative || row.user_id === scope.representative) && (!scope.outcome || row.visit_outcome === scope.outcome) && (!scope.segment || row.segment_type === scope.segment))) } });
+  });
   await page.route("**/api/team-kpi**", route => { const params = new URL(route.request().url()).searchParams; const scope = parseHistoryScope(params, new Date().toISOString()); return route.fulfill({ json: scope ? buildHistoryReport({ scope, members: report.rows, calls: empty ? [] : calls, generatedAt: new Date().toISOString(), requests: 4 }) : report }); });
   await page.route("**/api/pipeline/leads?**", route => { const segment = new URL(route.request().url()).searchParams.get("segment") ?? "Retailer"; return route.fulfill({ json: { leads: empty ? [] : leads.map(lead => ({ ...lead, segment_type: segment })), recovery: { operations: [], safe_replay_targets: [] }, page: 1, pageSize: 50, total: empty ? 0 : leads.length, has_more: false } }); });
   await page.route("**/api/pipeline/leads/*/context", route => { const lead = leads.find(l => route.request().url().includes(l.lead_id))!; return route.fulfill({ json: { lead, stage_age_days: 3, transitions: [], next_task: { title: "Review exact lead documents", due_date: today }, overdue_tasks: [], recent_tasks: [], latest_call: null, recent_calls: [] } }); });

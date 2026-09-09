@@ -1,4 +1,13 @@
 import { addISTDateDays, getCurrentISTDate } from "@/lib/dateTime";
+import { getOutcomeLabel } from "./contract";
+
+export function adminVisitOutcomeLabel(outcome: string) {
+  if (outcome === "registered") return "New Registration";
+  const label = getOutcomeLabel(outcome);
+  if (label !== outcome) return label;
+  const words = outcome.trim().replace(/[_-]+/g, " ");
+  return words ? words[0].toUpperCase() + words.slice(1) : "Unknown outcome";
+}
 
 export type VisitQuery = { date: string; dateFrom: string; dateTo: string; search: string; representative: string; segment: string; outcome: string };
 export function initialVisitQuery(): VisitQuery {

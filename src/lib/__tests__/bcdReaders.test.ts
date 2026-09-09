@@ -1,12 +1,12 @@
 /** @jest-environment node */
 import { createClient } from "@supabase/supabase-js";
-import { aggregateVisitRange, parseVisitRange, parseVisitRegister, visitRegisterResultSchema, readVisitEvents, type VisitEvent } from "../fieldVisits/range";
+import { aggregateVisitRange, parseVisitRange, parseVisitRegister, visitRegisterResultSchema, visitRangeReportSchema, readVisitEvents, type VisitEvent } from "../fieldVisits/range";
 import { boundedReportJson, createReportResource } from "../analytics/reportResource";
 import { createServerServiceClient } from "../serverBackendEnvironment";
 import { GET } from "@/app/api/admin/visits/analysis/route";
 import { GET as registerGET } from "@/app/api/admin/visits/route";
 import { GET as pickerGET } from "@/app/api/admin/visits/representatives/route";
-import { initialVisitQuery, visitQueryKey, visitQueryParams } from "../fieldVisits/query";
+import { adminVisitOutcomeLabel, initialVisitQuery, visitQueryKey, visitQueryParams } from "../fieldVisits/query";
 
 jest.mock("../serverBackendEnvironment", () => ({
   createServerServiceClient: jest.fn(),
@@ -22,6 +22,20 @@ const client = (fetch: typeof globalThis.fetch) => createClient("https://fixture
 });
 
 describe("B-D bounded read slice", () => {
+  it("reconciles full-range daily, outcome and representative counts without accepting unavailable or truncated charts", () => {
+    const report = { kind: "visit-range-v1", scope: scope(), generated_at: "2026-09-09T06:00:00Z",
+      retained_source_read: "exhausted", historical_coverage: "uncertified", consistency: "bounded-live-multi-request",
+      ...aggregateVisitRange(scope(), [event(1), event(2)]) };
+    expect(visitRangeReportSchema.parse(report).daily).toEqual([{ date: "2026-09-07", count: 2 }, { date: "2026-09-08", count: 0 }]);
+    for (const change of [{ daily: report.daily.slice(0, 1) }, { retained_source_read: "unavailable" }, { retained_visit_count: 3 },
+      { representatives: [] }, { outcomes: [{ outcome: "interested", count: 1 }] }, { date_mismatch_count: 3 }]) {
+      expect(visitRangeReportSchema.safeParse({ ...report, ...change }).success).toBe(false);
+    }
+    expect(visitRangeReportSchema.safeParse({ ...report, representatives: null, representative_breakdown: "unavailable-cardinality-limit" }).success).toBe(true);
+    expect(adminVisitOutcomeLabel("legacy_unknown")).toBe("Legacy unknown");
+    expect(adminVisitOutcomeLabel("registered")).toBe("New Registration");
+    expect(adminVisitOutcomeLabel("payment_follow_up")).toBe("Payment follow-up");
+  });
   it("keeps a captured query independent of draft edits and serializes legacy and range scopes distinctly", () => {
     const applied = { ...initialVisitQuery(), dateFrom: "2026-09-01", dateTo: "2026-09-07", search: "Literal, (business)%" };
     const draft = { ...applied, search: "new filter" };
@@ -39,6 +53,26 @@ describe("B-D bounded read slice", () => {
     jest.spyOn(globalThis, "fetch").mockImplementation(fetcher);
     jest.mocked(createServerServiceClient).mockImplementation((options) => ({ ok: true, client: client(options!.fetch!) }));
   };
+  it("bounds representative labels within the same analysis resource and exposes capped names as unavailable", async () => {
+    for (const capped of [false, true]) {
+      let pages = 0;
+      const fetcher = jest.fn<ReturnType<typeof fetch>, Parameters<typeof fetch>>().mockImplementation(async input => {
+        const url = new URL(String(input));
+        if (url.pathname.endsWith("/auth/v1/user")) return Response.json({ id: actor });
+        if (url.pathname.endsWith("/users")) return url.searchParams.get("select") === "is_active" ? Response.json([{ is_active: true }]) : Response.json(capped ? [] : [{ user_id: actor, name: "Retained author" }], { headers: { "Content-Range": "0-0/1" } });
+        if (url.pathname.endsWith("/user_capabilities")) return Response.json([{ capability_code: "admin" }]);
+        if (url.pathname.endsWith("/rpc/crm_visit_events_v1")) return Response.json(pages++ ? [] : [event(1)]);
+        throw Error("Unexpected analysis request");
+      });
+      scopedBackend(fetcher);
+      const response = await GET(new Request("https://fixture.invalid/api?date_from=2026-09-07&date_to=2026-09-08", { headers: { Authorization: "Bearer synthetic" } }));
+      expect(response.status).toBe(200);
+      const body = await response.json();
+      expect(body.representatives).toEqual([{ user_id: actor, count: 1, name: capped ? null : "Retained author" }]);
+      expect(body.diagnostics).toMatchObject({ reader_http_requests: 3, authorization_db_http_requests: 2, auth_http_requests: 1 });
+      expect(visitRangeReportSchema.safeParse(body).success).toBe(true);
+    }
+  });
   it("rejects ambiguous register dates, invalid pagination and partial counts", () => {
     for (const query of ["date_from=2026-09-01", "date_from=2026-09-01&date_to=2026-09-07&date=2026-09-01", "page=401", "page=0", "page=1.5", "page=1&page=2", "employee=x"]) {
       expect(() => parseVisitRegister(new URLSearchParams(query), "2026-09-09T06:00:00Z")).toThrow();

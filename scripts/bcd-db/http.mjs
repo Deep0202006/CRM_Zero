@@ -190,7 +190,7 @@ try {
   // Exercise the production XLSX route/formatter against THIS disposable PostgREST.
   // Only Auth identity is synthetic; profile/capability and export reads use real HTTP.
   console.log(execFileSync(process.execPath, ['node_modules/jest/bin/jest.js', '--runInBand',
-    'src/lib/__tests__/bcdExport.test.ts', '--testNamePattern=real PostgREST'], {
+    'src/lib/__tests__/bcdExport.test.ts', 'src/lib/__tests__/retainedHistory.test.ts', '--testNamePattern=real PostgREST'], {
     env: { ...process.env, BCD_HTTP_FIXTURE_TOKEN: token }, encoding: 'utf8', timeout: 60000, maxBuffer: 2 * 1024 * 1024,
   }));
   result = { fixture: 'postgrest-v13.0.7', status: 'PASS', retained_rows: ids.length, reader_requests_including_empty_eof: requests,

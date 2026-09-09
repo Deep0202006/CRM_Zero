@@ -24,12 +24,21 @@ export async function GET(request: Request) {
     try { scope = parseVisitRange(new URL(request.url).searchParams, new Date().toISOString()); }
     catch { return Response.json({ code: "INVALID_VISIT_RANGE" }, { status: 400 }); }
     const rows = await readVisitEvents(backend.client, scope, resource);
+    const aggregate = aggregateVisitRange(scope, rows);
+    let names = new Map<string, string>();
+    if (aggregate.representatives?.length) {
+      const labels = await resource.read(backend.client.from("users").select("user_id,name", { count: "exact" }).in("user_id", aggregate.representatives.map(row => row.user_id)).limit(201));
+      if (!labels.error && labels.count !== null && labels.count <= 200 && labels.data?.length === labels.count) {
+        names = new Map(labels.data.filter(row => typeof row.name === "string" && row.name.length <= 10000).map(row => [row.user_id, row.name]));
+      }
+    }
     resource.check();
     return boundedReportJson({
       kind: "visit-range-v1", scope, generated_at: new Date().toISOString(),
       retained_source_read: "exhausted", historical_coverage: "uncertified",
       consistency: "bounded-live-multi-request", metric_attribution: "visit_id / immutable user_id / canonical visit_date",
-      ...aggregateVisitRange(scope, rows), diagnostics: resource.diagnostics,
+      ...aggregate, representatives: aggregate.representatives?.map(row => ({ ...row, name: names.get(row.user_id) ?? null })) ?? null,
+      diagnostics: resource.diagnostics,
     });
   } catch (error) {
     return Response.json({ kind: "visit-range-v1", scope: scope ?? null, generated_at: null,

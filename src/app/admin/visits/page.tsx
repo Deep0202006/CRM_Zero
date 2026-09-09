@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { Download } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
@@ -14,8 +14,8 @@ import { Button } from "@/components/ui/Button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/Tabs";
 import { getOutcomeLabel } from "@/lib/fieldVisits/contract";
 import { AnalyticsSkeleton } from "@/components/analytics/AnalyticsPanel";
-import { buildVisitAnalytics } from "@/lib/analytics/viewModels";
-import { initialVisitQuery, visitQueryKey, visitQueryParams, type VisitQuery } from "@/lib/fieldVisits/query";
+import { adminVisitOutcomeLabel as getAdminOutcomeLabel, initialVisitQuery, visitQueryKey, visitQueryParams, type VisitQuery } from "@/lib/fieldVisits/query";
+import { parseVisitRange, visitRangeReportSchema, type VisitRangeReport } from "@/lib/fieldVisits/range";
 import type { FieldVisitErpSegment } from "@/components/analytics/FieldVisitErpIntelligence";
 
 const VisitsIntelligence = dynamic(() => import("@/components/analytics/VisitsIntelligence"), {
@@ -31,11 +31,6 @@ interface AdminVisit extends LocalFieldVisit {
   confirmation_status?: string;
   users?: { name?: string | null; email?: string | null } | null;
   leads?: { business_name?: string | null; contact_person?: string | null; phone?: string | null } | null;
-}
-
-function getAdminOutcomeLabel(outcome: string): string {
-  const label = getOutcomeLabel(outcome);
-  return outcome === "registered" ? "New Registration" : label;
 }
 
 function getAdminOutcomeVariant(outcome: string): "success" | "brand" | "info" | "warning" | "danger" {
@@ -102,6 +97,9 @@ function AdminVisitsWorkspace() {
   const realtimeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [realtimeSubscribed, setRealtimeSubscribed] = useState(false);
   const [analyticsMode, setAnalyticsMode] = useState<"activity" | "erp">("activity");
+  const [workspaceView, setWorkspaceView] = useState("work");
+  const [analysis, setAnalysis] = useState<{ key: string; report: VisitRangeReport | null; error: string } | null>(null);
+  const [analysisRevision, setAnalysisRevision] = useState(0);
   const [manageCurrentErpOpen, setManageCurrentErpOpen] = useState(false);
   const [erpSegments, setErpSegments] = useState<Record<string, FieldVisitErpSegment> | null>(null);
   const [erpError, setErpError] = useState("");
@@ -185,7 +183,34 @@ function AdminVisitsWorkspace() {
     }
   };
 
-  const visitAnalytics = useMemo(() => buildVisitAnalytics(visits), [visits]);
+  // Only a committed scope or an explicit analysis refresh starts this report.
+  // Register pages, realtime and visibility refreshes never fan out into analysis.
+  useEffect(() => {
+    if (!hasLoaded || !actorId) return;
+    const query = appliedQuery.current;
+    const controller = new AbortController();
+    const load = async () => {
+      setAnalysis(null);
+      try {
+        if (query.date || !query.dateFrom || !query.dateTo) throw new Error("Range analysis requires canonical From and To dates, up to 31 days. Legacy date and all-date records remain available; their scope is not silently converted.");
+        const params = visitQueryParams(query);
+        const expected = parseVisitRange(params, new Date().toISOString());
+        const { data } = await supabase.auth.getSession();
+        if (controller.signal.aborted) return;
+        if (!data.session?.access_token || data.session.user.id !== actorId) throw new Error("Sign in again to load analysis.");
+        const response = await fetch(`/api/admin/visits/analysis?${params}`, { headers: { Authorization: `Bearer ${data.session.access_token}` }, cache: "no-store", signal: controller.signal });
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.code === "VISIT_READER_ACTIVATION_REQUIRED" ? "Range analysis requires reviewed reader activation. Existing records remain available." : "Range analysis unavailable. Retry analysis or narrow the range; record browsing remains available.");
+        const report = visitRangeReportSchema.parse(body);
+        if (JSON.stringify(report.scope) !== JSON.stringify(expected)) throw new Error("Analysis returned a different scope. Retry analysis.");
+        if (!controller.signal.aborted) setAnalysis({ key: appliedKey, report, error: "" });
+      } catch (error) {
+        if (!controller.signal.aborted) setAnalysis({ key: appliedKey, report: null, error: error instanceof Error ? error.message : "Analysis unavailable." });
+      }
+    };
+    void load();
+    return () => controller.abort();
+  }, [actorId, appliedKey, hasLoaded, analysisRevision]);
 
   const loadErpIntelligence = useCallback(async () => {
     if (!isAdmin || !actorId || erpRequest.current) return;
@@ -286,8 +311,10 @@ function AdminVisitsWorkspace() {
     <div className="app-page min-w-0 crm-workspace">
       <header className="workspace-heading"><div><h1>Visits overview</h1><p>Confirmed field records · India business dates</p></div><Button size="sm" variant="outline" title="Export the applied record filters" icon={<Download size={14} />} onClick={handleExport} isLoading={exporting} disabled={!hasLoaded || loading}>Export to Excel</Button></header>
       {exportError && <p role="alert" className="alert-panel alert-panel--danger">{exportError}</p>}
-      <form aria-label="Visit filters" className="space-y-2" onSubmit={(event) => { event.preventDefault(); void loadData(1, draftQuery); }}>
-        <div className="grid min-w-0 gap-3 text-xs text-[var(--text-secondary)] sm:grid-cols-3 [&_label]:grid [&_label]:min-w-0 [&_label]:gap-1"><label>Search visits<input aria-label="Search visits" className="field-control min-w-0" placeholder="Business, representative, or notes" value={search} onChange={(event) => setSearch(event.target.value)} /></label><label>Representative
+      <form aria-label="Visit filters" className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end" onSubmit={(event) => { event.preventDefault(); void loadData(1, draftQuery); }}>
+        <label className="grid min-w-0 gap-1 text-xs">Search visits<input aria-label="Search visits" className="field-control min-w-0" placeholder="Business, representative, or notes" value={search} maxLength={160} onChange={(event) => setSearch(event.target.value)} /></label>
+        <details className="order-3 sm:col-span-2"><summary className="min-h-11 cursor-pointer text-sm">Refine representative, outcome and dates</summary>
+        <div className="grid min-w-0 gap-3 text-xs text-[var(--text-secondary)] sm:grid-cols-2 [&_label]:grid [&_label]:min-w-0 [&_label]:gap-1"><label>Representative
         <select aria-label="Representative" className="field-control min-w-0" value={representative} onFocus={() => { if (!representativeLoaded && !representativeRequest.current && !representativeError) void loadRepresentatives(); }} onChange={(event) => setRepresentative(event.target.value)}>
           <option value="ALL">All representatives</option>
           {representative !== "ALL" && !representatives.some((user) => user.user_id === representative) && <option value={representative}>Selected identity · {representative}</option>}
@@ -302,15 +329,18 @@ function AdminVisitsWorkspace() {
         <select aria-label="Segment" className="field-control min-w-0" value={segment} onChange={(event) => setSegment(event.target.value)}>
           <option value="ALL">All segments</option><option value="Retailer">Retailer</option><option value="Distributor">Distributor</option>
         </select></label></div><div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="outline" onClick={() => setDate(getCurrentISTDate())}>Today · legacy</Button><Button type="button" size="sm" variant="outline" onClick={() => { setDate(""); setDateFrom(""); setDateTo(""); }}>All dates</Button></div></details>
+        </details>
         <div className="flex items-center gap-3"><Button size="sm" type="submit" disabled={loading}>Apply filters</Button>{hasLoaded && visitQueryKey(draftQuery) !== appliedKey && <p role="status" className="text-xs">Filters changed. Records still show the applied scope.</p>}</div>
       </form>
       {legacyMismatchCount > 0 && <div role="status" className="alert-panel alert-panel--warning">Included {legacyMismatchCount} confirmed visits whose stored date differs from their India check-in date.</div>}
       {errorMessage && <div role="alert" className="alert-panel alert-panel--danger">{errorMessage} {hasLoaded && <span>The last confirmed records and their applied scope remain visible.</span>} <Button size="sm" variant="outline" onClick={() => void loadData(attempted.current.page, attempted.current.query)}>Retry request</Button></div>}
       <p className="text-xs text-[var(--text-secondary)]" aria-live="polite">{hasLoaded ? `Applied: ${appliedScope} · Loaded page ${appliedPage} · ${visits.length} of ${matchedTotal} matching visits` : "Loading confirmed visits…"}{loading && hasLoaded ? " · Refreshing…" : ""}</p>
-      <div className="workspace-columns">
+      <Tabs value={workspaceView} onValueChange={setWorkspaceView} activationMode="manual" className="gap-3">
+      <TabsList aria-label="Visits workspace view" className="sm:hidden"><TabsTrigger value="work">Work</TabsTrigger><TabsTrigger value="analysis">Analysis</TabsTrigger></TabsList>
+      <TabsContent value="work" forceMount className="order-2 data-[state=inactive]:hidden sm:data-[state=inactive]:block"><div className="workspace-columns">
         <section className="workspace-register" data-workspace-register tabIndex={-1} aria-label="Confirmed visit history">
           <header className="flex items-center justify-between gap-3 border-b border-[var(--border-subtle)] px-4 py-2"><h2 className="text-base font-semibold">Visit register</h2><Button size="sm" variant="ghost" onClick={() => void loadData(appliedPage)}>Refresh</Button></header>
-          <ol className="divide-y divide-[var(--border-subtle)]">{visits.map((visit) => <li key={visit.visit_id} className="workspace-task-row" data-selected={selected?.visit.visit_id === visit.visit_id}>
+          <ol key={appliedPage} aria-label="Loaded Visit records" tabIndex={0} className="max-h-96 overflow-y-auto divide-y divide-[var(--border-subtle)]">{visits.map((visit) => <li key={visit.visit_id} className="workspace-task-row" data-selected={selected?.visit.visit_id === visit.visit_id}>
             <div className="min-w-0 flex-1"><button type="button" className="min-h-11 text-left text-sm font-semibold" aria-pressed={selected?.visit.visit_id === visit.visit_id} onClick={(event) => { visitTrigger.current = event.currentTarget; setSelected({ visit, scope: `${appliedScope} · Page ${appliedPage}` }); }}>{visit.leads?.business_name?.trim() || visit.lead_id?.trim() || "Unavailable business"}</button><p className="text-xs text-[var(--text-secondary)]">{visit.users?.name || "Unknown representative"} · {visit.segment_type} · {new Date(visit.check_in_time).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" })} IST</p></div>
             <Chip variant={getAdminOutcomeVariant(visit.visit_outcome)} size="sm">{getAdminOutcomeLabel(visit.visit_outcome)}</Chip>
           </li>)}</ol>
@@ -321,10 +351,13 @@ function AdminVisitsWorkspace() {
         <ContextRail open={Boolean(selected)} title={selected?.visit.leads?.business_name || selected?.visit.lead_id || "Visit detail"} description={selected ? `${selected.visit.segment_type} · ${getAdminOutcomeLabel(selected.visit.visit_outcome)}` : "Select a visit"} onClose={() => setSelected(null)} returnFocus={visitTrigger}>
           {selected && <VisitDetail key={selected.visit.visit_id} visit={selected.visit} scope={selected.scope} />}
         </ContextRail>
-      </div>
-      <Tabs value={analyticsMode} onValueChange={(value) => setAnalyticsMode(value as "activity" | "erp")} activationMode="manual">
-        <TabsList aria-label="Visit analytics"><TabsTrigger value="activity">Visit Activity</TabsTrigger><TabsTrigger value="erp">ERP Intelligence</TabsTrigger></TabsList>
-        <TabsContent value="activity">{analyticsMode === "activity" && hasLoaded && <VisitsIntelligence model={visitAnalytics} matchedTotal={matchedTotal} page={appliedPage} onOutcome={(key) => { setOutcome(key); void loadData(1, { ...appliedQuery.current, outcome: key }); }} />}</TabsContent>
+      </div></TabsContent>
+      <TabsContent value="analysis" forceMount className="order-1 data-[state=inactive]:hidden sm:data-[state=inactive]:block"><Tabs value={analyticsMode} onValueChange={(value) => setAnalyticsMode(value as "activity" | "erp")} activationMode="manual" className="gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-2"><TabsList aria-label="Visit analytics"><TabsTrigger value="activity">Visit Activity</TabsTrigger><TabsTrigger value="erp">ERP Intelligence</TabsTrigger></TabsList>
+          {analyticsMode === "activity" && <Button size="sm" variant="outline" disabled={!analysis || analysis.key !== appliedKey} onClick={() => setAnalysisRevision(value => value + 1)}>Refresh analysis</Button>}</div>
+        <TabsContent value="activity">{analyticsMode === "activity" && hasLoaded && <div className="space-y-3">
+          {!analysis || analysis.key !== appliedKey ? <AnalyticsSkeleton label="Loading full-range Visit activity" /> : analysis.report ? <VisitsIntelligence report={analysis.report} scope={appliedScope} matchedTotal={matchedTotal} onOutcome={(key) => { setOutcome(key); setWorkspaceView("work"); void loadData(1, { ...appliedQuery.current, outcome: key }); }} onRepresentative={(id) => { setRepresentative(id); setWorkspaceView("work"); void loadData(1, { ...appliedQuery.current, representative: id }); }} /> : <p role="status" className="alert-panel alert-panel--warning">{analysis.error}</p>}
+        </div>}</TabsContent>
       <TabsContent value="erp" className="order-3 space-y-4 sm:order-2">
         {analyticsMode === "erp" && <>
           <p className="text-sm leading-5 text-[var(--text-secondary)]">Current ERP footprint counts unique businesses across confirmed visits and Admin baselines. Visit filters above apply to the register and activity view, not this footprint.</p>
@@ -334,6 +367,7 @@ function AdminVisitsWorkspace() {
         </>}
       </TabsContent>
 
+      </Tabs></TabsContent>
       </Tabs>
       <details className="workspace-disclosure"><summary>Global visit context</summary><p className="text-xs">{appliedGlobalScope}. Totals exclude date and search filters. Unavailable counts are not zero.</p><dl className="workspace-counts"><div><dt>All-time visits</dt><dd>{hasLoaded ? allTimeTotal?.toLocaleString("en-IN") ?? "Unavailable" : "—"}</dd></div><div><dt>Visits today · India</dt><dd>{hasLoaded ? todayTotal?.toLocaleString("en-IN") ?? "Unavailable" : "—"}</dd></div></dl></details>
     </div>

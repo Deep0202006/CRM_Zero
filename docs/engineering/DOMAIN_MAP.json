@@ -457,6 +457,7 @@
       "pathPatterns": [
           "src/lib/__tests__/teamKpiApiContract.test.ts",
           "src/lib/__tests__/teamKpiHistory.test.ts",
+          "src/lib/__tests__/retainedHistory.test.ts",
           "e2e/team-history/**",
           "artifacts/visual-review/team-history-v1/**"
       ],

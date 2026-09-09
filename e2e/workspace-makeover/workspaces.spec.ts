@@ -1,6 +1,100 @@
 import { expect, test } from "@playwright/test";
 import { mkdir } from "node:fs/promises";
 import { leads, report, setup, tasks, today, visits } from "./fixtures";
+import { addISTDateDays } from "../../src/lib/dateTime";
+import { aggregateVisitRange, parseVisitRange } from "../../src/lib/fieldVisits/range";
+
+test("Visits full-range chart reconciles 31 busy dates without pager or refresh fanout", async ({ page }) => {
+  test.setTimeout(120_000);
+  const requests = await setup(page);
+  const rows = Array.from({ length: 80 }, (_, index) => ({ ...visits[index % visits.length],
+    visit_id: `95000000-0000-4000-a000-${String(index + 1).padStart(12, "0")}`,
+    visit_date: addISTDateDays(today, -(index % 31)),
+    check_in_time: `${addISTDateDays(today, -(index % 31))}T04:00:00Z`,
+    leads: { ...leads[index % leads.length], business_name: index ? `Retained business ${index} — Western Regional Pharmaceutical Distribution and Service Centre` : leads[0].business_name },
+    users: { name: "Asha Mehta — Western Region Field Operations and Service Coordination", email: "asha@example.test" },
+  }));
+  const matchedRows = (params: URLSearchParams) => rows.filter(row => row.visit_date >= params.get("date_from")! && row.visit_date <= params.get("date_to")!
+    && (!params.has("outcome") || row.visit_outcome === params.get("outcome"))
+    && (!params.has("representative") || row.user_id === params.get("representative"))
+    && (!params.has("segment") || row.segment_type === params.get("segment"))
+    && (!params.has("search") || [row.leads.business_name, row.users.name, row.visit_notes].some(value => value.toLowerCase().includes(params.get("search")!.toLowerCase()))));
+  await page.route("**/api/admin/visits?**", route => {
+    const params = new URL(route.request().url()).searchParams, number = Number(params.get("page") || 1);
+    const matched = matchedRows(params);
+    return route.fulfill({ json: { visits: matched.slice((number - 1) * 50, number * 50), total: matched.length, page: number, has_more: number * 50 < matched.length, all_time_total: null, today_total: null } });
+  });
+  await page.route("**/api/admin/visits/analysis?**", route => {
+    const now = new Date().toISOString(), scope = parseVisitRange(new URL(route.request().url()).searchParams, now);
+    const aggregate = aggregateVisitRange(scope, matchedRows(new URL(route.request().url()).searchParams));
+    return route.fulfill({ json: { kind: "visit-range-v1", scope, generated_at: now, retained_source_read: "exhausted", historical_coverage: "uncertified", consistency: "bounded-live-multi-request", ...aggregate, representatives: aggregate.representatives?.map(row => ({ ...row, name: rows[0].users.name })) } });
+  });
+  await page.setViewportSize({ width: 1440, height: 900 }); await page.goto("/admin/visits");
+  const activity = page.getByRole("region", { name: "Full-range Visit activity", exact: true });
+  await expect(activity).toBeVisible();
+  await page.getByText("Refine representative, outcome and dates", { exact: true }).click();
+  await page.getByText("Date and segment filters", { exact: true }).click();
+  await page.getByLabel("Date From", { exact: true }).fill(addISTDateDays(today, -30));
+  await page.getByRole("button", { name: "Apply filters", exact: true }).click();
+  await expect(activity).toContainText("80 retained Visit records · 31 IST business dates");
+  await page.getByText("Refine representative, outcome and dates", { exact: true }).click();
+  const analysisRequests = () => requests.filter(path => path.startsWith("/api/admin/visits/analysis?")).length;
+  expect(analysisRequests()).toBe(2);
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await expect(page.getByText(/Applied:.*Loaded page 2/)).toBeVisible();
+  await page.getByRole("button", { name: "Refresh", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Apply filters", exact: true })).toBeEnabled();
+  expect(analysisRequests()).toBe(2);
+  await page.getByRole("button", { name: "Previous", exact: true }).click();
+  await page.getByText("Exact daily chart data", { exact: true }).click();
+  const daily = activity.getByRole("table");
+  await expect(daily.locator("tbody tr")).toHaveCount(31);
+  expect((await daily.locator("tbody td").allTextContents()).reduce((sum, value) => sum + Number(value), 0)).toBe(80);
+  await page.getByText("Exact daily chart data", { exact: true }).click();
+  await expect(page.getByText("Legacy unknown", { exact: true }).first()).toBeVisible();
+  for (const theme of ["light", "dark"]) {
+    if (await page.evaluate(() => document.documentElement.dataset.theme) !== theme) await page.getByRole("button", { name: `Use ${theme} theme` }).click();
+    for (const width of [1440, 390]) {
+      await page.setViewportSize({ width, height: 900 }); await page.getByRole("main").evaluate(node => node.scrollTo(0, 0));
+      await expect(page.getByRole("button", { name: leads[0].business_name, exact: true })).toBeInViewport();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1)).toBe(true);
+      if (process.env.WORKSPACE_CAPTURE) {
+        const directory = `artifacts/visual-review/workspace-makeover/${process.env.WORKSPACE_CAPTURE}`;
+        await mkdir(directory, { recursive: true });
+        await page.screenshot({ path: `${directory}/visits-busy-${width}-${theme}.png`, animations: "disabled" });
+        if (width === 390) await page.getByRole("tab", { name: "Analysis", exact: true }).click();
+        await activity.scrollIntoViewIfNeeded();
+        await page.screenshot({ path: `${directory}/visits-range-${width}-${theme}.png`, animations: "disabled" });
+        if (width === 390) await page.getByRole("tab", { name: "Work", exact: true }).click();
+      }
+    }
+  }
+  await page.getByRole("tab", { name: "Analysis", exact: true }).click();
+  const refresh = page.getByRole("button", { name: "Refresh analysis", exact: true });
+  await refresh.focus(); await page.keyboard.press("Enter"); await expect(refresh).toBeEnabled();
+  expect(analysisRequests()).toBe(3);
+  await page.getByRole("button", { name: "Filter outcome: Follow-up", exact: true }).click();
+  await expect(page.getByText(/Applied:.*Follow-up.*Loaded page 1.*20 of 20/)).toBeVisible();
+  await page.getByRole("tab", { name: "Analysis", exact: true }).click();
+  await expect(activity).toContainText("20 retained Visit records");
+  expect(analysisRequests()).toBe(4);
+  await page.getByText("Representative context · retained Visit authors", { exact: true }).click();
+  await activity.getByRole("button", { name: `${rows[0].users.name} · 20 retained visits`, exact: true }).click();
+  await expect(page.getByText(new RegExp(`Applied:.*${rows[0].user_id}.*Loaded page 1`))).toBeVisible();
+  await page.getByRole("tab", { name: "Analysis", exact: true }).click();
+  await expect(activity).toContainText("20 retained Visit records");
+  expect(analysisRequests()).toBe(5);
+  for (const endpoint of ["/api/admin/visits?", "/api/admin/visits/analysis?"]) {
+    const params = new URL(`http://fixture.invalid${requests.filter(path => path.startsWith(endpoint)).at(-1)!}`).searchParams;
+    expect(params.get("representative")).toBe(rows[0].user_id); expect(params.get("outcome")).toBe("follow_up");
+    if (endpoint === "/api/admin/visits?") expect(params.get("page")).toBe("1");
+  }
+  await page.route("**/api/admin/visits/analysis?**", route => route.fulfill({ status: 503, json: { code: "VISIT_SOURCE_LIMIT" } }));
+  await refresh.click(); await expect(page.getByRole("status").filter({ hasText: "Range analysis unavailable" })).toBeVisible();
+  await expect(activity).toHaveCount(0);
+  await page.getByRole("tab", { name: "Work", exact: true }).click();
+  await expect(page.getByRole("button", { name: leads[0].business_name, exact: true })).toBeVisible();
+});
 
 for (const [name, path, record] of [["my-day", "/my-day", "Review the assigned client documents"], ["visits", "/admin/visits", "Acme Medical and General Stores"], ["team", "/manager/kpi", "Asha Mehta"], ["pipeline", "/onboarding", "Acme Medical and General Stores"]]) {
 test(`populated ${name} desktop and mobile review`, async ({ page }) => {
@@ -77,6 +171,7 @@ test("Visits representative search is lazy and independent of register paging, r
   await page.goto("/admin/visits");
   await expect(page.getByText("Acme Medical and General Stores",{exact:false}).first()).toBeVisible();
   expect(pickerRequests).toHaveLength(0);
+  await page.getByText("Refine representative, outcome and dates", { exact: true }).click();
   const selector=page.getByLabel("Representative",{exact:true});
   await selector.focus();
   await expect(selector.locator("option")).toHaveCount(2);
@@ -118,7 +213,7 @@ test("Visits retains applied page and selected UUID through failed filters; deta
   expect(registerRequests).toHaveLength(2);
   await page.getByRole("button", { name: "Apply filters", exact: true }).click();
   await expect(page.getByRole("alert").filter({ hasText: "Fixture refresh unavailable" })).toBeVisible();
-  await expect(page.getByRole("region", { name: "Outcome composition" })).toContainText("Current bounded page 2");
+  await expect(page.getByRole("region", { name: "Outcome composition" })).toContainText("Full applied range");
   await expect(record).toBeVisible();
   await expect(rail).toContainText("Page 2");
   expect(requests.some(path => path.includes("/evidence"))).toBe(false);

@@ -35,7 +35,7 @@
     {
       "id": "bcd-readers-postgres", "kind": "postgres", "domains": ["field-visits"],
       "effects": ["DATABASE", "AUTHORIZATION", "SECURITY"], "runner": "postgres-phased",
-      "paths": ["scripts/bcd-db/run-integration.sh", "src/lib/__tests__/bcdExport.test.ts", "src/app/api/admin/export-visits/exportRows.ts"],
+        "paths": ["scripts/bcd-db/run-integration.sh", "src/lib/__tests__/bcdExport.test.ts", "src/lib/__tests__/retainedHistory.test.ts", "src/lib/teamKpi/retainedHistoryServer.ts", "src/app/api/admin/export-visits/exportRows.ts"],
       "inputs": ["scripts/bcd-db/synthetic-schema.sql", "scripts/bcd-db/fixture.sql", "scripts/bcd-db/assertion.sql", "scripts/bcd-db/http.mjs", "scripts/bcd-db/process-lifecycle.mjs", "supabase/migrations/055_crm_bcd_readers.sql", "supabase/schema.sql", "supabase/migrations/019_field_visits.sql", "supabase/migrations/021_field_visits_hardening.sql", "supabase/migrations/022_field_visits_production_hardening.sql", "supabase/migrations/036_field_visit_evidence_lifecycle.sql", "supabase/migrations/044_field_visit_pincode.sql", "supabase/migrations/047_distributor_erp_partner_visibility.sql", "supabase/migrations/048_field_visit_erp_observation.sql", "src/lib/fieldVisits/export.ts", "src/app/api/admin/export-visits/route.ts"],
       "selectors": {"paths": ["supabase/migrations/055_crm_bcd_readers.sql", "scripts/bcd-db/**", "src/lib/fieldVisits/range.ts", "src/lib/fieldVisits/export.ts", "src/app/api/admin/export-visits/**", "src/lib/__tests__/bcdExport.test.ts"]},
       "databasePhases": {
@@ -197,7 +197,10 @@
           "supabase/migrations/054_creator_updates_billed_erp_payment.sql",
           "supabase/manual/precheck_054_creator_updates_billed_erp_payment.sql",
           "supabase/manual/verify_054_creator_updates_billed_erp_payment.sql",
-          "scripts/product-054-db/**"
+           "scripts/product-054-db/**",
+           "src/lib/teamKpi/retainedHistory.ts",
+           "src/lib/teamKpi/retainedHistoryServer.ts",
+           "src/lib/__tests__/retainedHistory.test.ts"
         ]
       }
     },
@@ -399,6 +402,7 @@
         "src/lib/__tests__/teamKpiContract.test.ts",
           "src/lib/__tests__/teamKpiWorkflowAttribution.test.ts",
           "src/lib/__tests__/teamKpiHistory.test.ts",
+          "src/lib/__tests__/retainedHistory.test.ts",
           "src/lib/__tests__/teamKpiApiContract.test.ts",
           "src/lib/__tests__/teamKpiLiveAggregation.test.ts"
       ]

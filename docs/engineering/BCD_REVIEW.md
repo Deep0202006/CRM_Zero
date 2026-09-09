@@ -241,3 +241,43 @@ database verification; it must not be declared manual-merge ready until every
 packet and required final-head check is complete. Final Owner activation
 instructions will identify the reviewed SQL and safe pre/postchecks. Production
 application remains Owner-only.
+
+## Current continuation after export CI
+
+Head `3bdd321537701ceaa0c89e0e75e1aeffe66bceac` passed all six required jobs in
+[run34367725887](https://github.com/Deep0202006/CRM_Zero/actions/runs/34367725887).
+The integrated SQL/HTTP/XLSX proof executed successfully, including lifecycle
+cleanup and actual exported IDs. Earlier pending statements above are historical
+checkpoints, not the current result for that head.
+
+The next source batch integrates the full-range Visits response, a31-date linear
+chart, exact daily table, outcome partition and immutable-author drilldown.
+Register pagination does not refetch analysis. Mobile defaults to Work and offers
+an explicit Analysis view; refinement controls collapse without losing scope.
+The first busy desktop render exposed excessive vertical spacing; the source was
+compacted. New busy captures and rendered acceptance are still pending.
+
+Team and personal history now select Calls, canonical Visits, or (Team only)
+current Mapping completion snapshots. A separate typed retained-count comparison
+keeps legacy complete-work claims unavailable. One cohort matrix supplies the
+chart, register and personal Sheet; employee selection does not change reference
+membership. My Day mounts its forced-self endpoint lazily, without Team/Pipeline
+readers. Current local typecheck and Team unit execution passed before the final
+adversarial additions; the next exact-head suite remains required.
+
+Architecture/data criticism confirmed that validated051/054 constraints already
+exclude malformed Completed attribution; no speculative anomaly scan was added.
+Returned contradictory live/snapshot IDs fail closed. The existing054 lifecycle
+database proof is now explicitly selected for these readers. Current-roster scope
+does not certify historical membership. A new real PostgREST test measures the
+200-identity Visit predicate and capped cursor requests; HTTP support is pending
+CI, not inferred from two-person transport mocks. Mapping index plans and the
+remaining native source HTTP evidence still require completion.
+
+Frontend criticism resolved a stale Calls-only heading and unbounded client
+History wait. A12-second client deadline now aborts and enables retry while
+preserving applied data. Browser regressions cover31-date reconciliation,
+own-period change, metric changes with an open rail, both themes/mobile, failed
+Apply, deadline recovery and lazy self requests. They are prepared, not yet
+executed for this batch. Pipeline correction and lazy Admin Review remain open.
+No B–D completion, final-head CI or Production activation is claimed.
