@@ -34,11 +34,11 @@ export function PageHeader({
             {eyebrow && <span>{eyebrow}</span>}
           </div>
         )}
-        <h1 className="max-w-4xl text-[26px] font-semibold leading-[1.15] tracking-[-0.035em] text-[var(--text-primary)] sm:text-[30px]">
+        <h1 className="max-w-4xl text-[30px] font-semibold leading-[36px] tracking-[-0.035em] text-[var(--text-primary)]">
           {title}
         </h1>
         {description && (
-          <p className="mt-2 max-w-3xl text-[13px] leading-6 text-[var(--text-muted)] sm:text-sm">
+          <p className="mt-2 max-w-3xl text-sm leading-5 text-[var(--text-secondary)]">
             {description}
           </p>
         )}

@@ -1,0 +1,5114 @@
+{
+  "fixture": "visual-intelligence-unfiltered",
+  "requests": [
+    "http://127.0.0.1:3111/api/admin/visits?page=1"
+  ],
+  "observations": [
+    {
+      "width": 1440,
+      "theme": "light",
+      "plotDimensions": [
+        {
+          "width": 340,
+          "height": 300
+        },
+        {
+          "width": 14,
+          "height": 14
+        },
+        {
+          "width": 14,
+          "height": 14
+        },
+        {
+          "width": 505,
+          "height": 300
+        }
+      ],
+      "scripts": [
+        "http://127.0.0.1:3111/_next/static/chunks/2uy92rdxf-tic.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0h03fs3xg6y48.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0tm-yyvg7o3gk.js",
+        "http://127.0.0.1:3111/_next/static/chunks/turbopack-19_zwyaa3yjdn.js",
+        "http://127.0.0.1:3111/_next/static/chunks/3-8nlyta_6g47.js",
+        "http://127.0.0.1:3111/_next/static/chunks/22vsj120knocq.js",
+        "http://127.0.0.1:3111/_next/static/chunks/08oxzh4amcr-f.js",
+        "http://127.0.0.1:3111/_next/static/chunks/3sepiehmyz5dz.js",
+        "http://127.0.0.1:3111/_next/static/chunks/13fo5bgwkt098.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2l45374321oho.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0uchmqsvckxly.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0cz1d0mv5g_q7.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1bkokfmprw6_2.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2t6z-kv3pdmtl.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1fme_yt5jje8r.js",
+        "http://127.0.0.1:3111/_next/static/chunks/13g4qheb99-3v.js",
+        "http://127.0.0.1:3111/_next/static/chunks/3t33iy2hjs64v.js",
+        "http://127.0.0.1:3111/_next/static/chunks/22hbz1ia5dv64.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1x-apx9-it-9j.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0qumnltrlv76d.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0h5dr51f4hxr9.js",
+        "http://127.0.0.1:3111/_next/static/chunks/165wnyz62w5a7.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2e3p_s_rtp-vt.js",
+        "http://127.0.0.1:3111/_next/static/chunks/3zgbr649b7wmj.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2nqfsknlj7s_7.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1sq4xho45q96v.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2w1kkcl55lc_s.js",
+        "http://127.0.0.1:3111/_next/static/chunks/21i_04b4aq51v.js",
+        "http://127.0.0.1:3111/_next/static/chunks/25p9xxiumwomx.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1y3rwn_cqrkd8.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1rcn06k21pgvr.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2eb1l9tbfdvit.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2789rsyelc_4a.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1dnae5ly68i1p.js",
+        "http://127.0.0.1:3111/_next/static/chunks/28-e_29xfm10g.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2ck0j9yq_j28f.js",
+        "http://127.0.0.1:3111/_next/static/chunks/10r65drugu2ac.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1ed1-y0d5mdy7.js",
+        "http://127.0.0.1:3111/_next/static/chunks/3w323uvtl232s.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1l4ytxw7uxhqr.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0-hrdv928u2ju.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0lsr-31w435aw.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1tly2q3cf35fh.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0zioh-56_3s5e.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2tv_wm9_m4x37.js"
+      ],
+      "resources": [
+        {
+          "name": "http://127.0.0.1:3111/_next/static/media/InterVariable-s.p.2c0y96ae70xfx.woff2",
+          "initiatorType": "link",
+          "transferSize": 352540,
+          "decodedBodySize": 352240
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/image?url=%2Flogo-icon.png&w=32&q=75",
+          "initiatorType": "link",
+          "transferSize": 1166,
+          "decodedBodySize": 866
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/3llskd72yp4o1.css",
+          "initiatorType": "link",
+          "transferSize": 16895,
+          "decodedBodySize": 89340
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2tv_wm9_m4x37.js",
+          "initiatorType": "link",
+          "transferSize": 9295,
+          "decodedBodySize": 29259
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2uy92rdxf-tic.js",
+          "initiatorType": "script",
+          "transferSize": 9480,
+          "decodedBodySize": 43940
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/0h03fs3xg6y48.js",
+          "initiatorType": "script",
+          "transferSize": 71274,
+          "decodedBodySize": 227303
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/turbopack-19_zwyaa3yjdn.js",
+          "initiatorType": "script",
+          "transferSize": 4449,
+          "decodedBodySize": 10580
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/0tm-yyvg7o3gk.js",
+          "initiatorType": "script",
+          "transferSize": 39307,
+          "decodedBodySize": 145546
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/3-8nlyta_6g47.js",
+          "initiatorType": "script",
+          "transferSize": 10278,
+          "decodedBodySize": 30139
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/08oxzh4amcr-f.js",
+          "initiatorType": "script",
+          "transferSize": 13178,
+          "decodedBodySize": 54645
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/22vsj120knocq.js",
+          "initiatorType": "script",
+          "transferSize": 55669,
+          "decodedBodySize": 215379
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/3sepiehmyz5dz.js",
+          "initiatorType": "script",
+          "transferSize": 8648,
+          "decodedBodySize": 26082
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/13fo5bgwkt098.js",
+          "initiatorType": "script",
+          "transferSize": 10286,
+          "decodedBodySize": 32487
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2l45374321oho.js",
+          "initiatorType": "script",
+          "transferSize": 41257,
+          "decodedBodySize": 147869
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/0uchmqsvckxly.js",
+          "initiatorType": "script",
+          "transferSize": 64895,
+          "decodedBodySize": 283403
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1bkokfmprw6_2.js",
+          "initiatorType": "link",
+          "transferSize": 20161,
+          "decodedBodySize": 52055
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2t6z-kv3pdmtl.js",
+          "initiatorType": "link",
+          "transferSize": 27405,
+          "decodedBodySize": 87850
+        },
+        {
+          "name": "http://127.0.0.1:54321/auth/v1/user",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/chat?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 567,
+          "decodedBodySize": 423
+        },
+        {
+          "name": "http://127.0.0.1:3111/payments/distributors?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 580,
+          "decodedBodySize": 503
+        },
+        {
+          "name": "http://127.0.0.1:3111/payments/renewals?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 577,
+          "decodedBodySize": 499
+        },
+        {
+          "name": "http://127.0.0.1:3111/payments?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 570,
+          "decodedBodySize": 427
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/user_capabilities?select=id%2Cuser_id%2Ccapability_code%2Cassigned_by%2Cassigned_at&user_id=eq.91000000-0000-4000-a000-000000000001",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:54321/auth/v1/user",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/call-logs?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 571,
+          "decodedBodySize": 428
+        },
+        {
+          "name": "http://127.0.0.1:3111/my-day?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 569,
+          "decodedBodySize": 425
+        },
+        {
+          "name": "http://127.0.0.1:3111/chat?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/chat?_rsc=OK4d_SHAcR8lmpna",
+          "initiatorType": "fetch",
+          "transferSize": 1549,
+          "decodedBodySize": 3142
+        },
+        {
+          "name": "http://127.0.0.1:3111/api/admin/visits?page=1",
+          "initiatorType": "fetch",
+          "transferSize": 1420,
+          "decodedBodySize": 1120
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/users?select=*&order=user_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/attendance?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 576,
+          "decodedBodySize": 498
+        },
+        {
+          "name": "http://127.0.0.1:3111/mappings?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 570,
+          "decodedBodySize": 427
+        },
+        {
+          "name": "http://127.0.0.1:3111/support?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 569,
+          "decodedBodySize": 426
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1fme_yt5jje8r.js",
+          "initiatorType": "script",
+          "transferSize": 13913,
+          "decodedBodySize": 47091
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/13g4qheb99-3v.js",
+          "initiatorType": "script",
+          "transferSize": 109942,
+          "decodedBodySize": 377991
+        },
+        {
+          "name": "http://127.0.0.1:3111/onboarding?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 571,
+          "decodedBodySize": 429
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/capabilities?select=*&order=code.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/visits?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 569,
+          "decodedBodySize": 425
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/distributors?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 586,
+          "decodedBodySize": 572
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/renewals?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 583,
+          "decodedBodySize": 568
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 576,
+          "decodedBodySize": 496
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/user_capabilities?select=*&order=id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/attendance?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/attendance?_rsc=YjoTl1DysOhhLtUC",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/attendance?_rsc=T5GjyhgwP7DzipE8",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/client_queries?select=*&order=query_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/attendance?_rsc=ubheO4MsUXxrpnK3",
+          "initiatorType": "fetch",
+          "transferSize": 828,
+          "decodedBodySize": 1405
+        },
+        {
+          "name": "http://127.0.0.1:3111/mappings?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/3t33iy2hjs64v.js",
+          "initiatorType": "script",
+          "transferSize": 10647,
+          "decodedBodySize": 33069
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/22hbz1ia5dv64.js",
+          "initiatorType": "script",
+          "transferSize": 10302,
+          "decodedBodySize": 30330
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1x-apx9-it-9j.js",
+          "initiatorType": "script",
+          "transferSize": 110384,
+          "decodedBodySize": 377991
+        },
+        {
+          "name": "http://127.0.0.1:3111/mappings?_rsc=cqiFz4Rm4mrAVZdu",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/mappings?_rsc=24y5SdhZyOsK2Kag",
+          "initiatorType": "fetch",
+          "transferSize": 845,
+          "decodedBodySize": 1532
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/mappings?select=*&order=mapping_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/support?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/support?_rsc=wYsYUlg5Is991m6F",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/mapping_requests?select=*&order=request_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/0qumnltrlv76d.js",
+          "initiatorType": "script",
+          "transferSize": 8791,
+          "decodedBodySize": 27105
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/0h5dr51f4hxr9.js",
+          "initiatorType": "script",
+          "transferSize": 42734,
+          "decodedBodySize": 222304
+        },
+        {
+          "name": "http://127.0.0.1:3111/support?_rsc=REBh4MP09ZqpZakF",
+          "initiatorType": "fetch",
+          "transferSize": 848,
+          "decodedBodySize": 1532
+        },
+        {
+          "name": "http://127.0.0.1:3111/onboarding?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/onboarding?_rsc=LG6JsKKvjYomSKwn",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/onboarding?_rsc=5_NuPMZKg1yYfp07",
+          "initiatorType": "fetch",
+          "transferSize": 808,
+          "decodedBodySize": 1278
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/165wnyz62w5a7.js",
+          "initiatorType": "script",
+          "transferSize": 7509,
+          "decodedBodySize": 22719
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2e3p_s_rtp-vt.js",
+          "initiatorType": "script",
+          "transferSize": 12224,
+          "decodedBodySize": 37423
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/3zgbr649b7wmj.js",
+          "initiatorType": "script",
+          "transferSize": 140225,
+          "decodedBodySize": 411638
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2nqfsknlj7s_7.js",
+          "initiatorType": "script",
+          "transferSize": 12055,
+          "decodedBodySize": 39033
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1sq4xho45q96v.js",
+          "initiatorType": "script",
+          "transferSize": 12353,
+          "decodedBodySize": 37644
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/task_templates?select=*&order=template_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/visits?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/visits?_rsc=etqth574-Plc18wE",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/visits?_rsc=1f6k87V1Tn1Sr1LP",
+          "initiatorType": "fetch",
+          "transferSize": 828,
+          "decodedBodySize": 1405
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/distributors?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2w1kkcl55lc_s.js",
+          "initiatorType": "script",
+          "transferSize": 8427,
+          "decodedBodySize": 23297
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/distributors?_rsc=ZQ_4rNPUbx7Q4DQ2",
+          "initiatorType": "fetch",
+          "transferSize": 743,
+          "decodedBodySize": 1113
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/tasks?select=task_id%2Cassigned_to%2Cassigned_by%2Ctitle%2Cdescription%2Cpriority%2Cstatus%2Csource%2Ctemplate_id%2Crelated_lead_id%2Cdue_date%2Cstarted_at%2Ccompleted_at%2Cproof_note%2Cproof_photo_url%2Ccreated_at%2Cis_active%2Ccancelled_at%2Ccancellation_reason&order=task_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/distributors?_rsc=2THIhSqKCjQS6H22",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/distributors?_rsc=SWi2gnzj__hrN0Mv",
+          "initiatorType": "fetch",
+          "transferSize": 899,
+          "decodedBodySize": 1826
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/renewals?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/21i_04b4aq51v.js",
+          "initiatorType": "script",
+          "transferSize": 3166,
+          "decodedBodySize": 6672
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/renewals?_rsc=_a85penpJ4vuPKbF",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/renewals?_rsc=QnNTNugh91XX41Gb",
+          "initiatorType": "fetch",
+          "transferSize": 750,
+          "decodedBodySize": 1156
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/task_status_history?select=*&order=id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/25p9xxiumwomx.js",
+          "initiatorType": "script",
+          "transferSize": 10132,
+          "decodedBodySize": 31492
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1y3rwn_cqrkd8.js",
+          "initiatorType": "script",
+          "transferSize": 11456,
+          "decodedBodySize": 39038
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1rcn06k21pgvr.js",
+          "initiatorType": "script",
+          "transferSize": 9508,
+          "decodedBodySize": 28339
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2eb1l9tbfdvit.js",
+          "initiatorType": "script",
+          "transferSize": 110358,
+          "decodedBodySize": 377991
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2789rsyelc_4a.js",
+          "initiatorType": "script",
+          "transferSize": 13577,
+          "decodedBodySize": 42315
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments?_rsc=nC2cevB0_gV9EnVL",
+          "initiatorType": "fetch",
+          "transferSize": 837,
+          "decodedBodySize": 1445
+        },
+        {
+          "name": "http://127.0.0.1:3111/chat?_rsc=WjHFnr-VbufSEUaX",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1dnae5ly68i1p.js",
+          "initiatorType": "script",
+          "transferSize": 7241,
+          "decodedBodySize": 20135
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/28-e_29xfm10g.js",
+          "initiatorType": "script",
+          "transferSize": 109928,
+          "decodedBodySize": 377991
+        },
+        {
+          "name": "http://127.0.0.1:3111/chat?_rsc=OzCnDomKDv65-A2y",
+          "initiatorType": "fetch",
+          "transferSize": 788,
+          "decodedBodySize": 1151
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/internal_tickets?select=*&order=ticket_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/call-logs?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2ck0j9yq_j28f.js",
+          "initiatorType": "script",
+          "transferSize": 12794,
+          "decodedBodySize": 43080
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/10r65drugu2ac.js",
+          "initiatorType": "script",
+          "transferSize": 109962,
+          "decodedBodySize": 377991
+        },
+        {
+          "name": "http://127.0.0.1:3111/call-logs?_rsc=kK41Tb-m_Wm5XQEn",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/call-logs?_rsc=kJ6JLN3Hbt2aQiQ6",
+          "initiatorType": "fetch",
+          "transferSize": 848,
+          "decodedBodySize": 1532
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1ed1-y0d5mdy7.js",
+          "initiatorType": "script",
+          "transferSize": 13727,
+          "decodedBodySize": 43211
+        },
+        {
+          "name": "http://127.0.0.1:3111/my-day?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/my-day?_rsc=-vqw-dIHgg2RSYov",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/attendance?select=attendance_id%2Cuser_id%2Cdate%2Cclock_in%2Cclock_out%2Clatitude%2Clongitude%2Cselfie_captured%2Cselfie_storage_path%2Cselfie_uploaded_at%2Cselfie_purged_at%2Cselfie_purge_state&order=attendance_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/3w323uvtl232s.js",
+          "initiatorType": "script",
+          "transferSize": 15303,
+          "decodedBodySize": 47101
+        },
+        {
+          "name": "http://127.0.0.1:3111/my-day?_rsc=ogbtZPLO52PqX8xz",
+          "initiatorType": "fetch",
+          "transferSize": 846,
+          "decodedBodySize": 1530
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/call_logs?select=*&order=log_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1l4ytxw7uxhqr.js",
+          "initiatorType": "script",
+          "transferSize": 12321,
+          "decodedBodySize": 43969
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/0-hrdv928u2ju.js",
+          "initiatorType": "script",
+          "transferSize": 19259,
+          "decodedBodySize": 58642
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/task_upload_batches?select=*&order=id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/allocated_targets?select=*&order=target_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/tasks?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 576,
+          "decodedBodySize": 495
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/kpi?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 575,
+          "decodedBodySize": 493
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/visits?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/visits?_rsc=7YNYP7uKzg9axXHy",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/field_visits?select=*&order=visit_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/visits?_rsc=ZAsxPvHgBKCfzeGn",
+          "initiatorType": "fetch",
+          "transferSize": 829,
+          "decodedBodySize": 1405
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/tasks?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/tasks?_rsc=BrZyA_UKN2AeFDBZ",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/tasks?_rsc=HDhqgmyl7p6RbJPc",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/lead_registration_checklist?select=*&order=checklist_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/lead_installation_details?select=*&order=installation_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/tasks?_rsc=FwdrVsoUpc5mY35n",
+          "initiatorType": "fetch",
+          "transferSize": 788,
+          "decodedBodySize": 1151
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/kpi?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/kpi?_rsc=Zg52I79H3E6axP5q",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/kpi?_rsc=F92Qh52TgTxX40Te",
+          "initiatorType": "fetch",
+          "transferSize": 826,
+          "decodedBodySize": 1405
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/lead_payment_details?select=*&order=payment_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/0lsr-31w435aw.js",
+          "initiatorType": "script",
+          "transferSize": 20218,
+          "decodedBodySize": 66289
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1tly2q3cf35fh.js",
+          "initiatorType": "script",
+          "transferSize": 24959,
+          "decodedBodySize": 83063
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/0zioh-56_3s5e.js",
+          "initiatorType": "script",
+          "transferSize": 109961,
+          "decodedBodySize": 377991
+        }
+      ]
+    },
+    {
+      "width": 768,
+      "theme": "light",
+      "plotDimensions": [
+        {
+          "width": 340,
+          "height": 300
+        },
+        {
+          "width": 14,
+          "height": 14
+        },
+        {
+          "width": 14,
+          "height": 14
+        },
+        {
+          "width": 414,
+          "height": 300
+        }
+      ],
+      "scripts": [
+        "http://127.0.0.1:3111/_next/static/chunks/2uy92rdxf-tic.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0h03fs3xg6y48.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0tm-yyvg7o3gk.js",
+        "http://127.0.0.1:3111/_next/static/chunks/turbopack-19_zwyaa3yjdn.js",
+        "http://127.0.0.1:3111/_next/static/chunks/3-8nlyta_6g47.js",
+        "http://127.0.0.1:3111/_next/static/chunks/22vsj120knocq.js",
+        "http://127.0.0.1:3111/_next/static/chunks/08oxzh4amcr-f.js",
+        "http://127.0.0.1:3111/_next/static/chunks/3sepiehmyz5dz.js",
+        "http://127.0.0.1:3111/_next/static/chunks/13fo5bgwkt098.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2l45374321oho.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0uchmqsvckxly.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0cz1d0mv5g_q7.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1bkokfmprw6_2.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2t6z-kv3pdmtl.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1fme_yt5jje8r.js",
+        "http://127.0.0.1:3111/_next/static/chunks/13g4qheb99-3v.js",
+        "http://127.0.0.1:3111/_next/static/chunks/3t33iy2hjs64v.js",
+        "http://127.0.0.1:3111/_next/static/chunks/22hbz1ia5dv64.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1x-apx9-it-9j.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0qumnltrlv76d.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0h5dr51f4hxr9.js",
+        "http://127.0.0.1:3111/_next/static/chunks/165wnyz62w5a7.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2e3p_s_rtp-vt.js",
+        "http://127.0.0.1:3111/_next/static/chunks/3zgbr649b7wmj.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2nqfsknlj7s_7.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1sq4xho45q96v.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2w1kkcl55lc_s.js",
+        "http://127.0.0.1:3111/_next/static/chunks/21i_04b4aq51v.js",
+        "http://127.0.0.1:3111/_next/static/chunks/25p9xxiumwomx.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1y3rwn_cqrkd8.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1rcn06k21pgvr.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2eb1l9tbfdvit.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2789rsyelc_4a.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1dnae5ly68i1p.js",
+        "http://127.0.0.1:3111/_next/static/chunks/28-e_29xfm10g.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2ck0j9yq_j28f.js",
+        "http://127.0.0.1:3111/_next/static/chunks/10r65drugu2ac.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1ed1-y0d5mdy7.js",
+        "http://127.0.0.1:3111/_next/static/chunks/3w323uvtl232s.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1l4ytxw7uxhqr.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0-hrdv928u2ju.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0lsr-31w435aw.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1tly2q3cf35fh.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0zioh-56_3s5e.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2tv_wm9_m4x37.js"
+      ],
+      "resources": [
+        {
+          "name": "http://127.0.0.1:3111/_next/static/media/InterVariable-s.p.2c0y96ae70xfx.woff2",
+          "initiatorType": "link",
+          "transferSize": 352540,
+          "decodedBodySize": 352240
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/image?url=%2Flogo-icon.png&w=32&q=75",
+          "initiatorType": "link",
+          "transferSize": 1166,
+          "decodedBodySize": 866
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/3llskd72yp4o1.css",
+          "initiatorType": "link",
+          "transferSize": 16895,
+          "decodedBodySize": 89340
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2tv_wm9_m4x37.js",
+          "initiatorType": "link",
+          "transferSize": 9295,
+          "decodedBodySize": 29259
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2uy92rdxf-tic.js",
+          "initiatorType": "script",
+          "transferSize": 9480,
+          "decodedBodySize": 43940
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/0h03fs3xg6y48.js",
+          "initiatorType": "script",
+          "transferSize": 71274,
+          "decodedBodySize": 227303
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/turbopack-19_zwyaa3yjdn.js",
+          "initiatorType": "script",
+          "transferSize": 4449,
+          "decodedBodySize": 10580
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/0tm-yyvg7o3gk.js",
+          "initiatorType": "script",
+          "transferSize": 39307,
+          "decodedBodySize": 145546
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/3-8nlyta_6g47.js",
+          "initiatorType": "script",
+          "transferSize": 10278,
+          "decodedBodySize": 30139
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/08oxzh4amcr-f.js",
+          "initiatorType": "script",
+          "transferSize": 13178,
+          "decodedBodySize": 54645
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/22vsj120knocq.js",
+          "initiatorType": "script",
+          "transferSize": 55669,
+          "decodedBodySize": 215379
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/3sepiehmyz5dz.js",
+          "initiatorType": "script",
+          "transferSize": 8648,
+          "decodedBodySize": 26082
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/13fo5bgwkt098.js",
+          "initiatorType": "script",
+          "transferSize": 10286,
+          "decodedBodySize": 32487
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2l45374321oho.js",
+          "initiatorType": "script",
+          "transferSize": 41257,
+          "decodedBodySize": 147869
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/0uchmqsvckxly.js",
+          "initiatorType": "script",
+          "transferSize": 64895,
+          "decodedBodySize": 283403
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1bkokfmprw6_2.js",
+          "initiatorType": "link",
+          "transferSize": 20161,
+          "decodedBodySize": 52055
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2t6z-kv3pdmtl.js",
+          "initiatorType": "link",
+          "transferSize": 27405,
+          "decodedBodySize": 87850
+        },
+        {
+          "name": "http://127.0.0.1:54321/auth/v1/user",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/chat?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 567,
+          "decodedBodySize": 423
+        },
+        {
+          "name": "http://127.0.0.1:3111/payments/distributors?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 580,
+          "decodedBodySize": 503
+        },
+        {
+          "name": "http://127.0.0.1:3111/payments/renewals?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 577,
+          "decodedBodySize": 499
+        },
+        {
+          "name": "http://127.0.0.1:3111/payments?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 570,
+          "decodedBodySize": 427
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/user_capabilities?select=id%2Cuser_id%2Ccapability_code%2Cassigned_by%2Cassigned_at&user_id=eq.91000000-0000-4000-a000-000000000001",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:54321/auth/v1/user",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/call-logs?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 571,
+          "decodedBodySize": 428
+        },
+        {
+          "name": "http://127.0.0.1:3111/my-day?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 569,
+          "decodedBodySize": 425
+        },
+        {
+          "name": "http://127.0.0.1:3111/chat?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/chat?_rsc=OK4d_SHAcR8lmpna",
+          "initiatorType": "fetch",
+          "transferSize": 1549,
+          "decodedBodySize": 3142
+        },
+        {
+          "name": "http://127.0.0.1:3111/api/admin/visits?page=1",
+          "initiatorType": "fetch",
+          "transferSize": 1420,
+          "decodedBodySize": 1120
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/users?select=*&order=user_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/attendance?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 576,
+          "decodedBodySize": 498
+        },
+        {
+          "name": "http://127.0.0.1:3111/mappings?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 570,
+          "decodedBodySize": 427
+        },
+        {
+          "name": "http://127.0.0.1:3111/support?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 569,
+          "decodedBodySize": 426
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1fme_yt5jje8r.js",
+          "initiatorType": "script",
+          "transferSize": 13913,
+          "decodedBodySize": 47091
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/13g4qheb99-3v.js",
+          "initiatorType": "script",
+          "transferSize": 109942,
+          "decodedBodySize": 377991
+        },
+        {
+          "name": "http://127.0.0.1:3111/onboarding?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 571,
+          "decodedBodySize": 429
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/capabilities?select=*&order=code.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/visits?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 569,
+          "decodedBodySize": 425
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/distributors?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 586,
+          "decodedBodySize": 572
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/renewals?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 583,
+          "decodedBodySize": 568
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 576,
+          "decodedBodySize": 496
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/user_capabilities?select=*&order=id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/attendance?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/attendance?_rsc=YjoTl1DysOhhLtUC",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/attendance?_rsc=T5GjyhgwP7DzipE8",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/client_queries?select=*&order=query_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/attendance?_rsc=ubheO4MsUXxrpnK3",
+          "initiatorType": "fetch",
+          "transferSize": 828,
+          "decodedBodySize": 1405
+        },
+        {
+          "name": "http://127.0.0.1:3111/mappings?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/3t33iy2hjs64v.js",
+          "initiatorType": "script",
+          "transferSize": 10647,
+          "decodedBodySize": 33069
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/22hbz1ia5dv64.js",
+          "initiatorType": "script",
+          "transferSize": 10302,
+          "decodedBodySize": 30330
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1x-apx9-it-9j.js",
+          "initiatorType": "script",
+          "transferSize": 110384,
+          "decodedBodySize": 377991
+        },
+        {
+          "name": "http://127.0.0.1:3111/mappings?_rsc=cqiFz4Rm4mrAVZdu",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/mappings?_rsc=24y5SdhZyOsK2Kag",
+          "initiatorType": "fetch",
+          "transferSize": 845,
+          "decodedBodySize": 1532
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/mappings?select=*&order=mapping_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/support?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/support?_rsc=wYsYUlg5Is991m6F",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/mapping_requests?select=*&order=request_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/0qumnltrlv76d.js",
+          "initiatorType": "script",
+          "transferSize": 8791,
+          "decodedBodySize": 27105
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/0h5dr51f4hxr9.js",
+          "initiatorType": "script",
+          "transferSize": 42734,
+          "decodedBodySize": 222304
+        },
+        {
+          "name": "http://127.0.0.1:3111/support?_rsc=REBh4MP09ZqpZakF",
+          "initiatorType": "fetch",
+          "transferSize": 848,
+          "decodedBodySize": 1532
+        },
+        {
+          "name": "http://127.0.0.1:3111/onboarding?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/onboarding?_rsc=LG6JsKKvjYomSKwn",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/onboarding?_rsc=5_NuPMZKg1yYfp07",
+          "initiatorType": "fetch",
+          "transferSize": 808,
+          "decodedBodySize": 1278
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/165wnyz62w5a7.js",
+          "initiatorType": "script",
+          "transferSize": 7509,
+          "decodedBodySize": 22719
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2e3p_s_rtp-vt.js",
+          "initiatorType": "script",
+          "transferSize": 12224,
+          "decodedBodySize": 37423
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/3zgbr649b7wmj.js",
+          "initiatorType": "script",
+          "transferSize": 140225,
+          "decodedBodySize": 411638
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2nqfsknlj7s_7.js",
+          "initiatorType": "script",
+          "transferSize": 12055,
+          "decodedBodySize": 39033
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1sq4xho45q96v.js",
+          "initiatorType": "script",
+          "transferSize": 12353,
+          "decodedBodySize": 37644
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/task_templates?select=*&order=template_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/visits?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/visits?_rsc=etqth574-Plc18wE",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/visits?_rsc=1f6k87V1Tn1Sr1LP",
+          "initiatorType": "fetch",
+          "transferSize": 828,
+          "decodedBodySize": 1405
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/distributors?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2w1kkcl55lc_s.js",
+          "initiatorType": "script",
+          "transferSize": 8427,
+          "decodedBodySize": 23297
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/distributors?_rsc=ZQ_4rNPUbx7Q4DQ2",
+          "initiatorType": "fetch",
+          "transferSize": 743,
+          "decodedBodySize": 1113
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/tasks?select=task_id%2Cassigned_to%2Cassigned_by%2Ctitle%2Cdescription%2Cpriority%2Cstatus%2Csource%2Ctemplate_id%2Crelated_lead_id%2Cdue_date%2Cstarted_at%2Ccompleted_at%2Cproof_note%2Cproof_photo_url%2Ccreated_at%2Cis_active%2Ccancelled_at%2Ccancellation_reason&order=task_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/distributors?_rsc=2THIhSqKCjQS6H22",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/distributors?_rsc=SWi2gnzj__hrN0Mv",
+          "initiatorType": "fetch",
+          "transferSize": 899,
+          "decodedBodySize": 1826
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/renewals?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/21i_04b4aq51v.js",
+          "initiatorType": "script",
+          "transferSize": 3166,
+          "decodedBodySize": 6672
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/renewals?_rsc=_a85penpJ4vuPKbF",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/renewals?_rsc=QnNTNugh91XX41Gb",
+          "initiatorType": "fetch",
+          "transferSize": 750,
+          "decodedBodySize": 1156
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/task_status_history?select=*&order=id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/25p9xxiumwomx.js",
+          "initiatorType": "script",
+          "transferSize": 10132,
+          "decodedBodySize": 31492
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1y3rwn_cqrkd8.js",
+          "initiatorType": "script",
+          "transferSize": 11456,
+          "decodedBodySize": 39038
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1rcn06k21pgvr.js",
+          "initiatorType": "script",
+          "transferSize": 9508,
+          "decodedBodySize": 28339
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2eb1l9tbfdvit.js",
+          "initiatorType": "script",
+          "transferSize": 110358,
+          "decodedBodySize": 377991
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2789rsyelc_4a.js",
+          "initiatorType": "script",
+          "transferSize": 13577,
+          "decodedBodySize": 42315
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments?_rsc=nC2cevB0_gV9EnVL",
+          "initiatorType": "fetch",
+          "transferSize": 837,
+          "decodedBodySize": 1445
+        },
+        {
+          "name": "http://127.0.0.1:3111/chat?_rsc=WjHFnr-VbufSEUaX",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1dnae5ly68i1p.js",
+          "initiatorType": "script",
+          "transferSize": 7241,
+          "decodedBodySize": 20135
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/28-e_29xfm10g.js",
+          "initiatorType": "script",
+          "transferSize": 109928,
+          "decodedBodySize": 377991
+        },
+        {
+          "name": "http://127.0.0.1:3111/chat?_rsc=OzCnDomKDv65-A2y",
+          "initiatorType": "fetch",
+          "transferSize": 788,
+          "decodedBodySize": 1151
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/internal_tickets?select=*&order=ticket_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/call-logs?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2ck0j9yq_j28f.js",
+          "initiatorType": "script",
+          "transferSize": 12794,
+          "decodedBodySize": 43080
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/10r65drugu2ac.js",
+          "initiatorType": "script",
+          "transferSize": 109962,
+          "decodedBodySize": 377991
+        },
+        {
+          "name": "http://127.0.0.1:3111/call-logs?_rsc=kK41Tb-m_Wm5XQEn",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/call-logs?_rsc=kJ6JLN3Hbt2aQiQ6",
+          "initiatorType": "fetch",
+          "transferSize": 848,
+          "decodedBodySize": 1532
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1ed1-y0d5mdy7.js",
+          "initiatorType": "script",
+          "transferSize": 13727,
+          "decodedBodySize": 43211
+        },
+        {
+          "name": "http://127.0.0.1:3111/my-day?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/my-day?_rsc=-vqw-dIHgg2RSYov",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/attendance?select=attendance_id%2Cuser_id%2Cdate%2Cclock_in%2Cclock_out%2Clatitude%2Clongitude%2Cselfie_captured%2Cselfie_storage_path%2Cselfie_uploaded_at%2Cselfie_purged_at%2Cselfie_purge_state&order=attendance_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/3w323uvtl232s.js",
+          "initiatorType": "script",
+          "transferSize": 15303,
+          "decodedBodySize": 47101
+        },
+        {
+          "name": "http://127.0.0.1:3111/my-day?_rsc=ogbtZPLO52PqX8xz",
+          "initiatorType": "fetch",
+          "transferSize": 846,
+          "decodedBodySize": 1530
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/call_logs?select=*&order=log_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1l4ytxw7uxhqr.js",
+          "initiatorType": "script",
+          "transferSize": 12321,
+          "decodedBodySize": 43969
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/0-hrdv928u2ju.js",
+          "initiatorType": "script",
+          "transferSize": 19259,
+          "decodedBodySize": 58642
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/task_upload_batches?select=*&order=id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/allocated_targets?select=*&order=target_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/tasks?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 576,
+          "decodedBodySize": 495
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/kpi?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 575,
+          "decodedBodySize": 493
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/visits?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/visits?_rsc=7YNYP7uKzg9axXHy",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/field_visits?select=*&order=visit_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/visits?_rsc=ZAsxPvHgBKCfzeGn",
+          "initiatorType": "fetch",
+          "transferSize": 829,
+          "decodedBodySize": 1405
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/tasks?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/tasks?_rsc=BrZyA_UKN2AeFDBZ",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/tasks?_rsc=HDhqgmyl7p6RbJPc",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/lead_registration_checklist?select=*&order=checklist_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/lead_installation_details?select=*&order=installation_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/tasks?_rsc=FwdrVsoUpc5mY35n",
+          "initiatorType": "fetch",
+          "transferSize": 788,
+          "decodedBodySize": 1151
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/kpi?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/kpi?_rsc=Zg52I79H3E6axP5q",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/kpi?_rsc=F92Qh52TgTxX40Te",
+          "initiatorType": "fetch",
+          "transferSize": 826,
+          "decodedBodySize": 1405
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/lead_payment_details?select=*&order=payment_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/0lsr-31w435aw.js",
+          "initiatorType": "script",
+          "transferSize": 20218,
+          "decodedBodySize": 66289
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1tly2q3cf35fh.js",
+          "initiatorType": "script",
+          "transferSize": 24959,
+          "decodedBodySize": 83063
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/0zioh-56_3s5e.js",
+          "initiatorType": "script",
+          "transferSize": 109961,
+          "decodedBodySize": 377991
+        }
+      ]
+    },
+    {
+      "width": 390,
+      "theme": "light",
+      "plotDimensions": [
+        {
+          "width": 328,
+          "height": 260
+        },
+        {
+          "width": 14,
+          "height": 14
+        },
+        {
+          "width": 14,
+          "height": 14
+        },
+        {
+          "width": 328,
+          "height": 260
+        }
+      ],
+      "scripts": [
+        "http://127.0.0.1:3111/_next/static/chunks/2uy92rdxf-tic.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0h03fs3xg6y48.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0tm-yyvg7o3gk.js",
+        "http://127.0.0.1:3111/_next/static/chunks/turbopack-19_zwyaa3yjdn.js",
+        "http://127.0.0.1:3111/_next/static/chunks/3-8nlyta_6g47.js",
+        "http://127.0.0.1:3111/_next/static/chunks/22vsj120knocq.js",
+        "http://127.0.0.1:3111/_next/static/chunks/08oxzh4amcr-f.js",
+        "http://127.0.0.1:3111/_next/static/chunks/3sepiehmyz5dz.js",
+        "http://127.0.0.1:3111/_next/static/chunks/13fo5bgwkt098.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2l45374321oho.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0uchmqsvckxly.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0cz1d0mv5g_q7.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1bkokfmprw6_2.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2t6z-kv3pdmtl.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1fme_yt5jje8r.js",
+        "http://127.0.0.1:3111/_next/static/chunks/13g4qheb99-3v.js",
+        "http://127.0.0.1:3111/_next/static/chunks/3t33iy2hjs64v.js",
+        "http://127.0.0.1:3111/_next/static/chunks/22hbz1ia5dv64.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1x-apx9-it-9j.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0qumnltrlv76d.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0h5dr51f4hxr9.js",
+        "http://127.0.0.1:3111/_next/static/chunks/165wnyz62w5a7.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2e3p_s_rtp-vt.js",
+        "http://127.0.0.1:3111/_next/static/chunks/3zgbr649b7wmj.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2nqfsknlj7s_7.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1sq4xho45q96v.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2w1kkcl55lc_s.js",
+        "http://127.0.0.1:3111/_next/static/chunks/21i_04b4aq51v.js",
+        "http://127.0.0.1:3111/_next/static/chunks/25p9xxiumwomx.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1y3rwn_cqrkd8.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1rcn06k21pgvr.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2eb1l9tbfdvit.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2789rsyelc_4a.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1dnae5ly68i1p.js",
+        "http://127.0.0.1:3111/_next/static/chunks/28-e_29xfm10g.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2ck0j9yq_j28f.js",
+        "http://127.0.0.1:3111/_next/static/chunks/10r65drugu2ac.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1ed1-y0d5mdy7.js",
+        "http://127.0.0.1:3111/_next/static/chunks/3w323uvtl232s.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1l4ytxw7uxhqr.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0-hrdv928u2ju.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0lsr-31w435aw.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1tly2q3cf35fh.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0zioh-56_3s5e.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2tv_wm9_m4x37.js"
+      ],
+      "resources": [
+        {
+          "name": "http://127.0.0.1:3111/_next/static/media/InterVariable-s.p.2c0y96ae70xfx.woff2",
+          "initiatorType": "link",
+          "transferSize": 352540,
+          "decodedBodySize": 352240
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/image?url=%2Flogo-icon.png&w=32&q=75",
+          "initiatorType": "link",
+          "transferSize": 1166,
+          "decodedBodySize": 866
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/3llskd72yp4o1.css",
+          "initiatorType": "link",
+          "transferSize": 16895,
+          "decodedBodySize": 89340
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2tv_wm9_m4x37.js",
+          "initiatorType": "link",
+          "transferSize": 9295,
+          "decodedBodySize": 29259
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2uy92rdxf-tic.js",
+          "initiatorType": "script",
+          "transferSize": 9480,
+          "decodedBodySize": 43940
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/0h03fs3xg6y48.js",
+          "initiatorType": "script",
+          "transferSize": 71274,
+          "decodedBodySize": 227303
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/turbopack-19_zwyaa3yjdn.js",
+          "initiatorType": "script",
+          "transferSize": 4449,
+          "decodedBodySize": 10580
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/0tm-yyvg7o3gk.js",
+          "initiatorType": "script",
+          "transferSize": 39307,
+          "decodedBodySize": 145546
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/3-8nlyta_6g47.js",
+          "initiatorType": "script",
+          "transferSize": 10278,
+          "decodedBodySize": 30139
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/08oxzh4amcr-f.js",
+          "initiatorType": "script",
+          "transferSize": 13178,
+          "decodedBodySize": 54645
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/22vsj120knocq.js",
+          "initiatorType": "script",
+          "transferSize": 55669,
+          "decodedBodySize": 215379
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/3sepiehmyz5dz.js",
+          "initiatorType": "script",
+          "transferSize": 8648,
+          "decodedBodySize": 26082
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/13fo5bgwkt098.js",
+          "initiatorType": "script",
+          "transferSize": 10286,
+          "decodedBodySize": 32487
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2l45374321oho.js",
+          "initiatorType": "script",
+          "transferSize": 41257,
+          "decodedBodySize": 147869
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/0uchmqsvckxly.js",
+          "initiatorType": "script",
+          "transferSize": 64895,
+          "decodedBodySize": 283403
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1bkokfmprw6_2.js",
+          "initiatorType": "link",
+          "transferSize": 20161,
+          "decodedBodySize": 52055
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2t6z-kv3pdmtl.js",
+          "initiatorType": "link",
+          "transferSize": 27405,
+          "decodedBodySize": 87850
+        },
+        {
+          "name": "http://127.0.0.1:54321/auth/v1/user",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/chat?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 567,
+          "decodedBodySize": 423
+        },
+        {
+          "name": "http://127.0.0.1:3111/payments/distributors?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 580,
+          "decodedBodySize": 503
+        },
+        {
+          "name": "http://127.0.0.1:3111/payments/renewals?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 577,
+          "decodedBodySize": 499
+        },
+        {
+          "name": "http://127.0.0.1:3111/payments?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 570,
+          "decodedBodySize": 427
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/user_capabilities?select=id%2Cuser_id%2Ccapability_code%2Cassigned_by%2Cassigned_at&user_id=eq.91000000-0000-4000-a000-000000000001",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:54321/auth/v1/user",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/call-logs?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 571,
+          "decodedBodySize": 428
+        },
+        {
+          "name": "http://127.0.0.1:3111/my-day?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 569,
+          "decodedBodySize": 425
+        },
+        {
+          "name": "http://127.0.0.1:3111/chat?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/chat?_rsc=OK4d_SHAcR8lmpna",
+          "initiatorType": "fetch",
+          "transferSize": 1549,
+          "decodedBodySize": 3142
+        },
+        {
+          "name": "http://127.0.0.1:3111/api/admin/visits?page=1",
+          "initiatorType": "fetch",
+          "transferSize": 1420,
+          "decodedBodySize": 1120
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/users?select=*&order=user_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/attendance?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 576,
+          "decodedBodySize": 498
+        },
+        {
+          "name": "http://127.0.0.1:3111/mappings?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 570,
+          "decodedBodySize": 427
+        },
+        {
+          "name": "http://127.0.0.1:3111/support?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 569,
+          "decodedBodySize": 426
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1fme_yt5jje8r.js",
+          "initiatorType": "script",
+          "transferSize": 13913,
+          "decodedBodySize": 47091
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/13g4qheb99-3v.js",
+          "initiatorType": "script",
+          "transferSize": 109942,
+          "decodedBodySize": 377991
+        },
+        {
+          "name": "http://127.0.0.1:3111/onboarding?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 571,
+          "decodedBodySize": 429
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/capabilities?select=*&order=code.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/visits?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 569,
+          "decodedBodySize": 425
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/distributors?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 586,
+          "decodedBodySize": 572
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/renewals?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 583,
+          "decodedBodySize": 568
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 576,
+          "decodedBodySize": 496
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/user_capabilities?select=*&order=id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/attendance?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/attendance?_rsc=YjoTl1DysOhhLtUC",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/attendance?_rsc=T5GjyhgwP7DzipE8",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/client_queries?select=*&order=query_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/attendance?_rsc=ubheO4MsUXxrpnK3",
+          "initiatorType": "fetch",
+          "transferSize": 828,
+          "decodedBodySize": 1405
+        },
+        {
+          "name": "http://127.0.0.1:3111/mappings?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/3t33iy2hjs64v.js",
+          "initiatorType": "script",
+          "transferSize": 10647,
+          "decodedBodySize": 33069
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/22hbz1ia5dv64.js",
+          "initiatorType": "script",
+          "transferSize": 10302,
+          "decodedBodySize": 30330
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1x-apx9-it-9j.js",
+          "initiatorType": "script",
+          "transferSize": 110384,
+          "decodedBodySize": 377991
+        },
+        {
+          "name": "http://127.0.0.1:3111/mappings?_rsc=cqiFz4Rm4mrAVZdu",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/mappings?_rsc=24y5SdhZyOsK2Kag",
+          "initiatorType": "fetch",
+          "transferSize": 845,
+          "decodedBodySize": 1532
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/mappings?select=*&order=mapping_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/support?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/support?_rsc=wYsYUlg5Is991m6F",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/mapping_requests?select=*&order=request_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/0qumnltrlv76d.js",
+          "initiatorType": "script",
+          "transferSize": 8791,
+          "decodedBodySize": 27105
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/0h5dr51f4hxr9.js",
+          "initiatorType": "script",
+          "transferSize": 42734,
+          "decodedBodySize": 222304
+        },
+        {
+          "name": "http://127.0.0.1:3111/support?_rsc=REBh4MP09ZqpZakF",
+          "initiatorType": "fetch",
+          "transferSize": 848,
+          "decodedBodySize": 1532
+        },
+        {
+          "name": "http://127.0.0.1:3111/onboarding?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/onboarding?_rsc=LG6JsKKvjYomSKwn",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/onboarding?_rsc=5_NuPMZKg1yYfp07",
+          "initiatorType": "fetch",
+          "transferSize": 808,
+          "decodedBodySize": 1278
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/165wnyz62w5a7.js",
+          "initiatorType": "script",
+          "transferSize": 7509,
+          "decodedBodySize": 22719
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2e3p_s_rtp-vt.js",
+          "initiatorType": "script",
+          "transferSize": 12224,
+          "decodedBodySize": 37423
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/3zgbr649b7wmj.js",
+          "initiatorType": "script",
+          "transferSize": 140225,
+          "decodedBodySize": 411638
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2nqfsknlj7s_7.js",
+          "initiatorType": "script",
+          "transferSize": 12055,
+          "decodedBodySize": 39033
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1sq4xho45q96v.js",
+          "initiatorType": "script",
+          "transferSize": 12353,
+          "decodedBodySize": 37644
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/task_templates?select=*&order=template_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/visits?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/visits?_rsc=etqth574-Plc18wE",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/visits?_rsc=1f6k87V1Tn1Sr1LP",
+          "initiatorType": "fetch",
+          "transferSize": 828,
+          "decodedBodySize": 1405
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/distributors?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2w1kkcl55lc_s.js",
+          "initiatorType": "script",
+          "transferSize": 8427,
+          "decodedBodySize": 23297
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/distributors?_rsc=ZQ_4rNPUbx7Q4DQ2",
+          "initiatorType": "fetch",
+          "transferSize": 743,
+          "decodedBodySize": 1113
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/tasks?select=task_id%2Cassigned_to%2Cassigned_by%2Ctitle%2Cdescription%2Cpriority%2Cstatus%2Csource%2Ctemplate_id%2Crelated_lead_id%2Cdue_date%2Cstarted_at%2Ccompleted_at%2Cproof_note%2Cproof_photo_url%2Ccreated_at%2Cis_active%2Ccancelled_at%2Ccancellation_reason&order=task_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/distributors?_rsc=2THIhSqKCjQS6H22",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/distributors?_rsc=SWi2gnzj__hrN0Mv",
+          "initiatorType": "fetch",
+          "transferSize": 899,
+          "decodedBodySize": 1826
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/renewals?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/21i_04b4aq51v.js",
+          "initiatorType": "script",
+          "transferSize": 3166,
+          "decodedBodySize": 6672
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/renewals?_rsc=_a85penpJ4vuPKbF",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/renewals?_rsc=QnNTNugh91XX41Gb",
+          "initiatorType": "fetch",
+          "transferSize": 750,
+          "decodedBodySize": 1156
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/task_status_history?select=*&order=id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/25p9xxiumwomx.js",
+          "initiatorType": "script",
+          "transferSize": 10132,
+          "decodedBodySize": 31492
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1y3rwn_cqrkd8.js",
+          "initiatorType": "script",
+          "transferSize": 11456,
+          "decodedBodySize": 39038
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1rcn06k21pgvr.js",
+          "initiatorType": "script",
+          "transferSize": 9508,
+          "decodedBodySize": 28339
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2eb1l9tbfdvit.js",
+          "initiatorType": "script",
+          "transferSize": 110358,
+          "decodedBodySize": 377991
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2789rsyelc_4a.js",
+          "initiatorType": "script",
+          "transferSize": 13577,
+          "decodedBodySize": 42315
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments?_rsc=nC2cevB0_gV9EnVL",
+          "initiatorType": "fetch",
+          "transferSize": 837,
+          "decodedBodySize": 1445
+        },
+        {
+          "name": "http://127.0.0.1:3111/chat?_rsc=WjHFnr-VbufSEUaX",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1dnae5ly68i1p.js",
+          "initiatorType": "script",
+          "transferSize": 7241,
+          "decodedBodySize": 20135
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/28-e_29xfm10g.js",
+          "initiatorType": "script",
+          "transferSize": 109928,
+          "decodedBodySize": 377991
+        },
+        {
+          "name": "http://127.0.0.1:3111/chat?_rsc=OzCnDomKDv65-A2y",
+          "initiatorType": "fetch",
+          "transferSize": 788,
+          "decodedBodySize": 1151
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/internal_tickets?select=*&order=ticket_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/call-logs?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2ck0j9yq_j28f.js",
+          "initiatorType": "script",
+          "transferSize": 12794,
+          "decodedBodySize": 43080
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/10r65drugu2ac.js",
+          "initiatorType": "script",
+          "transferSize": 109962,
+          "decodedBodySize": 377991
+        },
+        {
+          "name": "http://127.0.0.1:3111/call-logs?_rsc=kK41Tb-m_Wm5XQEn",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/call-logs?_rsc=kJ6JLN3Hbt2aQiQ6",
+          "initiatorType": "fetch",
+          "transferSize": 848,
+          "decodedBodySize": 1532
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1ed1-y0d5mdy7.js",
+          "initiatorType": "script",
+          "transferSize": 13727,
+          "decodedBodySize": 43211
+        },
+        {
+          "name": "http://127.0.0.1:3111/my-day?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/my-day?_rsc=-vqw-dIHgg2RSYov",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/attendance?select=attendance_id%2Cuser_id%2Cdate%2Cclock_in%2Cclock_out%2Clatitude%2Clongitude%2Cselfie_captured%2Cselfie_storage_path%2Cselfie_uploaded_at%2Cselfie_purged_at%2Cselfie_purge_state&order=attendance_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/3w323uvtl232s.js",
+          "initiatorType": "script",
+          "transferSize": 15303,
+          "decodedBodySize": 47101
+        },
+        {
+          "name": "http://127.0.0.1:3111/my-day?_rsc=ogbtZPLO52PqX8xz",
+          "initiatorType": "fetch",
+          "transferSize": 846,
+          "decodedBodySize": 1530
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/call_logs?select=*&order=log_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1l4ytxw7uxhqr.js",
+          "initiatorType": "script",
+          "transferSize": 12321,
+          "decodedBodySize": 43969
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/0-hrdv928u2ju.js",
+          "initiatorType": "script",
+          "transferSize": 19259,
+          "decodedBodySize": 58642
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/task_upload_batches?select=*&order=id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/allocated_targets?select=*&order=target_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/tasks?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 576,
+          "decodedBodySize": 495
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/kpi?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 575,
+          "decodedBodySize": 493
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/visits?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/visits?_rsc=7YNYP7uKzg9axXHy",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/field_visits?select=*&order=visit_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/visits?_rsc=ZAsxPvHgBKCfzeGn",
+          "initiatorType": "fetch",
+          "transferSize": 829,
+          "decodedBodySize": 1405
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/tasks?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/tasks?_rsc=BrZyA_UKN2AeFDBZ",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/tasks?_rsc=HDhqgmyl7p6RbJPc",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/lead_registration_checklist?select=*&order=checklist_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/lead_installation_details?select=*&order=installation_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/tasks?_rsc=FwdrVsoUpc5mY35n",
+          "initiatorType": "fetch",
+          "transferSize": 788,
+          "decodedBodySize": 1151
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/kpi?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/kpi?_rsc=Zg52I79H3E6axP5q",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/kpi?_rsc=F92Qh52TgTxX40Te",
+          "initiatorType": "fetch",
+          "transferSize": 826,
+          "decodedBodySize": 1405
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/lead_payment_details?select=*&order=payment_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/0lsr-31w435aw.js",
+          "initiatorType": "script",
+          "transferSize": 20218,
+          "decodedBodySize": 66289
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1tly2q3cf35fh.js",
+          "initiatorType": "script",
+          "transferSize": 24959,
+          "decodedBodySize": 83063
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/0zioh-56_3s5e.js",
+          "initiatorType": "script",
+          "transferSize": 109961,
+          "decodedBodySize": 377991
+        }
+      ]
+    },
+    {
+      "width": 1440,
+      "theme": "dark",
+      "plotDimensions": [
+        {
+          "width": 340,
+          "height": 300
+        },
+        {
+          "width": 14,
+          "height": 14
+        },
+        {
+          "width": 14,
+          "height": 14
+        },
+        {
+          "width": 505,
+          "height": 300
+        }
+      ],
+      "scripts": [
+        "http://127.0.0.1:3111/_next/static/chunks/2uy92rdxf-tic.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0h03fs3xg6y48.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0tm-yyvg7o3gk.js",
+        "http://127.0.0.1:3111/_next/static/chunks/turbopack-19_zwyaa3yjdn.js",
+        "http://127.0.0.1:3111/_next/static/chunks/3-8nlyta_6g47.js",
+        "http://127.0.0.1:3111/_next/static/chunks/22vsj120knocq.js",
+        "http://127.0.0.1:3111/_next/static/chunks/08oxzh4amcr-f.js",
+        "http://127.0.0.1:3111/_next/static/chunks/3sepiehmyz5dz.js",
+        "http://127.0.0.1:3111/_next/static/chunks/13fo5bgwkt098.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2l45374321oho.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0uchmqsvckxly.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0cz1d0mv5g_q7.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1bkokfmprw6_2.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2t6z-kv3pdmtl.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1fme_yt5jje8r.js",
+        "http://127.0.0.1:3111/_next/static/chunks/13g4qheb99-3v.js",
+        "http://127.0.0.1:3111/_next/static/chunks/3t33iy2hjs64v.js",
+        "http://127.0.0.1:3111/_next/static/chunks/22hbz1ia5dv64.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1x-apx9-it-9j.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0qumnltrlv76d.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0h5dr51f4hxr9.js",
+        "http://127.0.0.1:3111/_next/static/chunks/165wnyz62w5a7.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2e3p_s_rtp-vt.js",
+        "http://127.0.0.1:3111/_next/static/chunks/3zgbr649b7wmj.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2nqfsknlj7s_7.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1sq4xho45q96v.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2w1kkcl55lc_s.js",
+        "http://127.0.0.1:3111/_next/static/chunks/21i_04b4aq51v.js",
+        "http://127.0.0.1:3111/_next/static/chunks/25p9xxiumwomx.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1y3rwn_cqrkd8.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1rcn06k21pgvr.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2eb1l9tbfdvit.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2789rsyelc_4a.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1dnae5ly68i1p.js",
+        "http://127.0.0.1:3111/_next/static/chunks/28-e_29xfm10g.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2ck0j9yq_j28f.js",
+        "http://127.0.0.1:3111/_next/static/chunks/10r65drugu2ac.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1ed1-y0d5mdy7.js",
+        "http://127.0.0.1:3111/_next/static/chunks/3w323uvtl232s.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1l4ytxw7uxhqr.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0-hrdv928u2ju.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0lsr-31w435aw.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1tly2q3cf35fh.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0zioh-56_3s5e.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2tv_wm9_m4x37.js"
+      ],
+      "resources": [
+        {
+          "name": "http://127.0.0.1:3111/_next/static/media/InterVariable-s.p.2c0y96ae70xfx.woff2",
+          "initiatorType": "link",
+          "transferSize": 352540,
+          "decodedBodySize": 352240
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/image?url=%2Flogo-icon.png&w=32&q=75",
+          "initiatorType": "link",
+          "transferSize": 1166,
+          "decodedBodySize": 866
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/3llskd72yp4o1.css",
+          "initiatorType": "link",
+          "transferSize": 16895,
+          "decodedBodySize": 89340
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2tv_wm9_m4x37.js",
+          "initiatorType": "link",
+          "transferSize": 9295,
+          "decodedBodySize": 29259
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2uy92rdxf-tic.js",
+          "initiatorType": "script",
+          "transferSize": 9480,
+          "decodedBodySize": 43940
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/0h03fs3xg6y48.js",
+          "initiatorType": "script",
+          "transferSize": 71274,
+          "decodedBodySize": 227303
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/turbopack-19_zwyaa3yjdn.js",
+          "initiatorType": "script",
+          "transferSize": 4449,
+          "decodedBodySize": 10580
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/0tm-yyvg7o3gk.js",
+          "initiatorType": "script",
+          "transferSize": 39307,
+          "decodedBodySize": 145546
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/3-8nlyta_6g47.js",
+          "initiatorType": "script",
+          "transferSize": 10278,
+          "decodedBodySize": 30139
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/08oxzh4amcr-f.js",
+          "initiatorType": "script",
+          "transferSize": 13178,
+          "decodedBodySize": 54645
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/22vsj120knocq.js",
+          "initiatorType": "script",
+          "transferSize": 55669,
+          "decodedBodySize": 215379
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/3sepiehmyz5dz.js",
+          "initiatorType": "script",
+          "transferSize": 8648,
+          "decodedBodySize": 26082
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/13fo5bgwkt098.js",
+          "initiatorType": "script",
+          "transferSize": 10286,
+          "decodedBodySize": 32487
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2l45374321oho.js",
+          "initiatorType": "script",
+          "transferSize": 41257,
+          "decodedBodySize": 147869
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/0uchmqsvckxly.js",
+          "initiatorType": "script",
+          "transferSize": 64895,
+          "decodedBodySize": 283403
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1bkokfmprw6_2.js",
+          "initiatorType": "link",
+          "transferSize": 20161,
+          "decodedBodySize": 52055
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2t6z-kv3pdmtl.js",
+          "initiatorType": "link",
+          "transferSize": 27405,
+          "decodedBodySize": 87850
+        },
+        {
+          "name": "http://127.0.0.1:54321/auth/v1/user",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/chat?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 567,
+          "decodedBodySize": 423
+        },
+        {
+          "name": "http://127.0.0.1:3111/payments/distributors?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 580,
+          "decodedBodySize": 503
+        },
+        {
+          "name": "http://127.0.0.1:3111/payments/renewals?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 577,
+          "decodedBodySize": 499
+        },
+        {
+          "name": "http://127.0.0.1:3111/payments?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 570,
+          "decodedBodySize": 427
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/user_capabilities?select=id%2Cuser_id%2Ccapability_code%2Cassigned_by%2Cassigned_at&user_id=eq.91000000-0000-4000-a000-000000000001",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:54321/auth/v1/user",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/call-logs?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 571,
+          "decodedBodySize": 428
+        },
+        {
+          "name": "http://127.0.0.1:3111/my-day?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 569,
+          "decodedBodySize": 425
+        },
+        {
+          "name": "http://127.0.0.1:3111/chat?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/chat?_rsc=OK4d_SHAcR8lmpna",
+          "initiatorType": "fetch",
+          "transferSize": 1549,
+          "decodedBodySize": 3142
+        },
+        {
+          "name": "http://127.0.0.1:3111/api/admin/visits?page=1",
+          "initiatorType": "fetch",
+          "transferSize": 1420,
+          "decodedBodySize": 1120
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/users?select=*&order=user_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/attendance?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 576,
+          "decodedBodySize": 498
+        },
+        {
+          "name": "http://127.0.0.1:3111/mappings?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 570,
+          "decodedBodySize": 427
+        },
+        {
+          "name": "http://127.0.0.1:3111/support?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 569,
+          "decodedBodySize": 426
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1fme_yt5jje8r.js",
+          "initiatorType": "script",
+          "transferSize": 13913,
+          "decodedBodySize": 47091
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/13g4qheb99-3v.js",
+          "initiatorType": "script",
+          "transferSize": 109942,
+          "decodedBodySize": 377991
+        },
+        {
+          "name": "http://127.0.0.1:3111/onboarding?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 571,
+          "decodedBodySize": 429
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/capabilities?select=*&order=code.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/visits?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 569,
+          "decodedBodySize": 425
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/distributors?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 586,
+          "decodedBodySize": 572
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/renewals?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 583,
+          "decodedBodySize": 568
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 576,
+          "decodedBodySize": 496
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/user_capabilities?select=*&order=id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/attendance?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/attendance?_rsc=YjoTl1DysOhhLtUC",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/attendance?_rsc=T5GjyhgwP7DzipE8",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/client_queries?select=*&order=query_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/attendance?_rsc=ubheO4MsUXxrpnK3",
+          "initiatorType": "fetch",
+          "transferSize": 828,
+          "decodedBodySize": 1405
+        },
+        {
+          "name": "http://127.0.0.1:3111/mappings?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/3t33iy2hjs64v.js",
+          "initiatorType": "script",
+          "transferSize": 10647,
+          "decodedBodySize": 33069
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/22hbz1ia5dv64.js",
+          "initiatorType": "script",
+          "transferSize": 10302,
+          "decodedBodySize": 30330
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1x-apx9-it-9j.js",
+          "initiatorType": "script",
+          "transferSize": 110384,
+          "decodedBodySize": 377991
+        },
+        {
+          "name": "http://127.0.0.1:3111/mappings?_rsc=cqiFz4Rm4mrAVZdu",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/mappings?_rsc=24y5SdhZyOsK2Kag",
+          "initiatorType": "fetch",
+          "transferSize": 845,
+          "decodedBodySize": 1532
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/mappings?select=*&order=mapping_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/support?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/support?_rsc=wYsYUlg5Is991m6F",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/mapping_requests?select=*&order=request_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/0qumnltrlv76d.js",
+          "initiatorType": "script",
+          "transferSize": 8791,
+          "decodedBodySize": 27105
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/0h5dr51f4hxr9.js",
+          "initiatorType": "script",
+          "transferSize": 42734,
+          "decodedBodySize": 222304
+        },
+        {
+          "name": "http://127.0.0.1:3111/support?_rsc=REBh4MP09ZqpZakF",
+          "initiatorType": "fetch",
+          "transferSize": 848,
+          "decodedBodySize": 1532
+        },
+        {
+          "name": "http://127.0.0.1:3111/onboarding?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/onboarding?_rsc=LG6JsKKvjYomSKwn",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/onboarding?_rsc=5_NuPMZKg1yYfp07",
+          "initiatorType": "fetch",
+          "transferSize": 808,
+          "decodedBodySize": 1278
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/165wnyz62w5a7.js",
+          "initiatorType": "script",
+          "transferSize": 7509,
+          "decodedBodySize": 22719
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2e3p_s_rtp-vt.js",
+          "initiatorType": "script",
+          "transferSize": 12224,
+          "decodedBodySize": 37423
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/3zgbr649b7wmj.js",
+          "initiatorType": "script",
+          "transferSize": 140225,
+          "decodedBodySize": 411638
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2nqfsknlj7s_7.js",
+          "initiatorType": "script",
+          "transferSize": 12055,
+          "decodedBodySize": 39033
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1sq4xho45q96v.js",
+          "initiatorType": "script",
+          "transferSize": 12353,
+          "decodedBodySize": 37644
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/task_templates?select=*&order=template_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/visits?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/visits?_rsc=etqth574-Plc18wE",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/visits?_rsc=1f6k87V1Tn1Sr1LP",
+          "initiatorType": "fetch",
+          "transferSize": 828,
+          "decodedBodySize": 1405
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/distributors?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2w1kkcl55lc_s.js",
+          "initiatorType": "script",
+          "transferSize": 8427,
+          "decodedBodySize": 23297
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/distributors?_rsc=ZQ_4rNPUbx7Q4DQ2",
+          "initiatorType": "fetch",
+          "transferSize": 743,
+          "decodedBodySize": 1113
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/tasks?select=task_id%2Cassigned_to%2Cassigned_by%2Ctitle%2Cdescription%2Cpriority%2Cstatus%2Csource%2Ctemplate_id%2Crelated_lead_id%2Cdue_date%2Cstarted_at%2Ccompleted_at%2Cproof_note%2Cproof_photo_url%2Ccreated_at%2Cis_active%2Ccancelled_at%2Ccancellation_reason&order=task_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/distributors?_rsc=2THIhSqKCjQS6H22",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/distributors?_rsc=SWi2gnzj__hrN0Mv",
+          "initiatorType": "fetch",
+          "transferSize": 899,
+          "decodedBodySize": 1826
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/renewals?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/21i_04b4aq51v.js",
+          "initiatorType": "script",
+          "transferSize": 3166,
+          "decodedBodySize": 6672
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/renewals?_rsc=_a85penpJ4vuPKbF",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/renewals?_rsc=QnNTNugh91XX41Gb",
+          "initiatorType": "fetch",
+          "transferSize": 750,
+          "decodedBodySize": 1156
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/task_status_history?select=*&order=id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/25p9xxiumwomx.js",
+          "initiatorType": "script",
+          "transferSize": 10132,
+          "decodedBodySize": 31492
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1y3rwn_cqrkd8.js",
+          "initiatorType": "script",
+          "transferSize": 11456,
+          "decodedBodySize": 39038
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1rcn06k21pgvr.js",
+          "initiatorType": "script",
+          "transferSize": 9508,
+          "decodedBodySize": 28339
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2eb1l9tbfdvit.js",
+          "initiatorType": "script",
+          "transferSize": 110358,
+          "decodedBodySize": 377991
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2789rsyelc_4a.js",
+          "initiatorType": "script",
+          "transferSize": 13577,
+          "decodedBodySize": 42315
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments?_rsc=nC2cevB0_gV9EnVL",
+          "initiatorType": "fetch",
+          "transferSize": 837,
+          "decodedBodySize": 1445
+        },
+        {
+          "name": "http://127.0.0.1:3111/chat?_rsc=WjHFnr-VbufSEUaX",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1dnae5ly68i1p.js",
+          "initiatorType": "script",
+          "transferSize": 7241,
+          "decodedBodySize": 20135
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/28-e_29xfm10g.js",
+          "initiatorType": "script",
+          "transferSize": 109928,
+          "decodedBodySize": 377991
+        },
+        {
+          "name": "http://127.0.0.1:3111/chat?_rsc=OzCnDomKDv65-A2y",
+          "initiatorType": "fetch",
+          "transferSize": 788,
+          "decodedBodySize": 1151
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/internal_tickets?select=*&order=ticket_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/call-logs?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2ck0j9yq_j28f.js",
+          "initiatorType": "script",
+          "transferSize": 12794,
+          "decodedBodySize": 43080
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/10r65drugu2ac.js",
+          "initiatorType": "script",
+          "transferSize": 109962,
+          "decodedBodySize": 377991
+        },
+        {
+          "name": "http://127.0.0.1:3111/call-logs?_rsc=kK41Tb-m_Wm5XQEn",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/call-logs?_rsc=kJ6JLN3Hbt2aQiQ6",
+          "initiatorType": "fetch",
+          "transferSize": 848,
+          "decodedBodySize": 1532
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1ed1-y0d5mdy7.js",
+          "initiatorType": "script",
+          "transferSize": 13727,
+          "decodedBodySize": 43211
+        },
+        {
+          "name": "http://127.0.0.1:3111/my-day?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/my-day?_rsc=-vqw-dIHgg2RSYov",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/attendance?select=attendance_id%2Cuser_id%2Cdate%2Cclock_in%2Cclock_out%2Clatitude%2Clongitude%2Cselfie_captured%2Cselfie_storage_path%2Cselfie_uploaded_at%2Cselfie_purged_at%2Cselfie_purge_state&order=attendance_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/3w323uvtl232s.js",
+          "initiatorType": "script",
+          "transferSize": 15303,
+          "decodedBodySize": 47101
+        },
+        {
+          "name": "http://127.0.0.1:3111/my-day?_rsc=ogbtZPLO52PqX8xz",
+          "initiatorType": "fetch",
+          "transferSize": 846,
+          "decodedBodySize": 1530
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/call_logs?select=*&order=log_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1l4ytxw7uxhqr.js",
+          "initiatorType": "script",
+          "transferSize": 12321,
+          "decodedBodySize": 43969
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/0-hrdv928u2ju.js",
+          "initiatorType": "script",
+          "transferSize": 19259,
+          "decodedBodySize": 58642
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/task_upload_batches?select=*&order=id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/allocated_targets?select=*&order=target_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/tasks?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 576,
+          "decodedBodySize": 495
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/kpi?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 575,
+          "decodedBodySize": 493
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/visits?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/visits?_rsc=7YNYP7uKzg9axXHy",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/field_visits?select=*&order=visit_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/visits?_rsc=ZAsxPvHgBKCfzeGn",
+          "initiatorType": "fetch",
+          "transferSize": 829,
+          "decodedBodySize": 1405
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/tasks?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/tasks?_rsc=BrZyA_UKN2AeFDBZ",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/tasks?_rsc=HDhqgmyl7p6RbJPc",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/lead_registration_checklist?select=*&order=checklist_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/lead_installation_details?select=*&order=installation_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/tasks?_rsc=FwdrVsoUpc5mY35n",
+          "initiatorType": "fetch",
+          "transferSize": 788,
+          "decodedBodySize": 1151
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/kpi?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/kpi?_rsc=Zg52I79H3E6axP5q",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/kpi?_rsc=F92Qh52TgTxX40Te",
+          "initiatorType": "fetch",
+          "transferSize": 826,
+          "decodedBodySize": 1405
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/lead_payment_details?select=*&order=payment_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/0lsr-31w435aw.js",
+          "initiatorType": "script",
+          "transferSize": 20218,
+          "decodedBodySize": 66289
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1tly2q3cf35fh.js",
+          "initiatorType": "script",
+          "transferSize": 24959,
+          "decodedBodySize": 83063
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/0zioh-56_3s5e.js",
+          "initiatorType": "script",
+          "transferSize": 109961,
+          "decodedBodySize": 377991
+        }
+      ]
+    },
+    {
+      "width": 768,
+      "theme": "dark",
+      "plotDimensions": [
+        {
+          "width": 340,
+          "height": 300
+        },
+        {
+          "width": 14,
+          "height": 14
+        },
+        {
+          "width": 14,
+          "height": 14
+        },
+        {
+          "width": 414,
+          "height": 300
+        }
+      ],
+      "scripts": [
+        "http://127.0.0.1:3111/_next/static/chunks/2uy92rdxf-tic.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0h03fs3xg6y48.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0tm-yyvg7o3gk.js",
+        "http://127.0.0.1:3111/_next/static/chunks/turbopack-19_zwyaa3yjdn.js",
+        "http://127.0.0.1:3111/_next/static/chunks/3-8nlyta_6g47.js",
+        "http://127.0.0.1:3111/_next/static/chunks/22vsj120knocq.js",
+        "http://127.0.0.1:3111/_next/static/chunks/08oxzh4amcr-f.js",
+        "http://127.0.0.1:3111/_next/static/chunks/3sepiehmyz5dz.js",
+        "http://127.0.0.1:3111/_next/static/chunks/13fo5bgwkt098.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2l45374321oho.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0uchmqsvckxly.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0cz1d0mv5g_q7.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1bkokfmprw6_2.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2t6z-kv3pdmtl.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1fme_yt5jje8r.js",
+        "http://127.0.0.1:3111/_next/static/chunks/13g4qheb99-3v.js",
+        "http://127.0.0.1:3111/_next/static/chunks/3t33iy2hjs64v.js",
+        "http://127.0.0.1:3111/_next/static/chunks/22hbz1ia5dv64.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1x-apx9-it-9j.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0qumnltrlv76d.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0h5dr51f4hxr9.js",
+        "http://127.0.0.1:3111/_next/static/chunks/165wnyz62w5a7.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2e3p_s_rtp-vt.js",
+        "http://127.0.0.1:3111/_next/static/chunks/3zgbr649b7wmj.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2nqfsknlj7s_7.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1sq4xho45q96v.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2w1kkcl55lc_s.js",
+        "http://127.0.0.1:3111/_next/static/chunks/21i_04b4aq51v.js",
+        "http://127.0.0.1:3111/_next/static/chunks/25p9xxiumwomx.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1y3rwn_cqrkd8.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1rcn06k21pgvr.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2eb1l9tbfdvit.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2789rsyelc_4a.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1dnae5ly68i1p.js",
+        "http://127.0.0.1:3111/_next/static/chunks/28-e_29xfm10g.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2ck0j9yq_j28f.js",
+        "http://127.0.0.1:3111/_next/static/chunks/10r65drugu2ac.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1ed1-y0d5mdy7.js",
+        "http://127.0.0.1:3111/_next/static/chunks/3w323uvtl232s.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1l4ytxw7uxhqr.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0-hrdv928u2ju.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0lsr-31w435aw.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1tly2q3cf35fh.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0zioh-56_3s5e.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2tv_wm9_m4x37.js"
+      ],
+      "resources": [
+        {
+          "name": "http://127.0.0.1:3111/_next/static/media/InterVariable-s.p.2c0y96ae70xfx.woff2",
+          "initiatorType": "link",
+          "transferSize": 352540,
+          "decodedBodySize": 352240
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/image?url=%2Flogo-icon.png&w=32&q=75",
+          "initiatorType": "link",
+          "transferSize": 1166,
+          "decodedBodySize": 866
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/3llskd72yp4o1.css",
+          "initiatorType": "link",
+          "transferSize": 16895,
+          "decodedBodySize": 89340
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2tv_wm9_m4x37.js",
+          "initiatorType": "link",
+          "transferSize": 9295,
+          "decodedBodySize": 29259
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2uy92rdxf-tic.js",
+          "initiatorType": "script",
+          "transferSize": 9480,
+          "decodedBodySize": 43940
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/0h03fs3xg6y48.js",
+          "initiatorType": "script",
+          "transferSize": 71274,
+          "decodedBodySize": 227303
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/turbopack-19_zwyaa3yjdn.js",
+          "initiatorType": "script",
+          "transferSize": 4449,
+          "decodedBodySize": 10580
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/0tm-yyvg7o3gk.js",
+          "initiatorType": "script",
+          "transferSize": 39307,
+          "decodedBodySize": 145546
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/3-8nlyta_6g47.js",
+          "initiatorType": "script",
+          "transferSize": 10278,
+          "decodedBodySize": 30139
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/08oxzh4amcr-f.js",
+          "initiatorType": "script",
+          "transferSize": 13178,
+          "decodedBodySize": 54645
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/22vsj120knocq.js",
+          "initiatorType": "script",
+          "transferSize": 55669,
+          "decodedBodySize": 215379
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/3sepiehmyz5dz.js",
+          "initiatorType": "script",
+          "transferSize": 8648,
+          "decodedBodySize": 26082
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/13fo5bgwkt098.js",
+          "initiatorType": "script",
+          "transferSize": 10286,
+          "decodedBodySize": 32487
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2l45374321oho.js",
+          "initiatorType": "script",
+          "transferSize": 41257,
+          "decodedBodySize": 147869
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/0uchmqsvckxly.js",
+          "initiatorType": "script",
+          "transferSize": 64895,
+          "decodedBodySize": 283403
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1bkokfmprw6_2.js",
+          "initiatorType": "link",
+          "transferSize": 20161,
+          "decodedBodySize": 52055
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2t6z-kv3pdmtl.js",
+          "initiatorType": "link",
+          "transferSize": 27405,
+          "decodedBodySize": 87850
+        },
+        {
+          "name": "http://127.0.0.1:54321/auth/v1/user",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/chat?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 567,
+          "decodedBodySize": 423
+        },
+        {
+          "name": "http://127.0.0.1:3111/payments/distributors?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 580,
+          "decodedBodySize": 503
+        },
+        {
+          "name": "http://127.0.0.1:3111/payments/renewals?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 577,
+          "decodedBodySize": 499
+        },
+        {
+          "name": "http://127.0.0.1:3111/payments?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 570,
+          "decodedBodySize": 427
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/user_capabilities?select=id%2Cuser_id%2Ccapability_code%2Cassigned_by%2Cassigned_at&user_id=eq.91000000-0000-4000-a000-000000000001",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:54321/auth/v1/user",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/call-logs?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 571,
+          "decodedBodySize": 428
+        },
+        {
+          "name": "http://127.0.0.1:3111/my-day?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 569,
+          "decodedBodySize": 425
+        },
+        {
+          "name": "http://127.0.0.1:3111/chat?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/chat?_rsc=OK4d_SHAcR8lmpna",
+          "initiatorType": "fetch",
+          "transferSize": 1549,
+          "decodedBodySize": 3142
+        },
+        {
+          "name": "http://127.0.0.1:3111/api/admin/visits?page=1",
+          "initiatorType": "fetch",
+          "transferSize": 1420,
+          "decodedBodySize": 1120
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/users?select=*&order=user_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/attendance?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 576,
+          "decodedBodySize": 498
+        },
+        {
+          "name": "http://127.0.0.1:3111/mappings?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 570,
+          "decodedBodySize": 427
+        },
+        {
+          "name": "http://127.0.0.1:3111/support?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 569,
+          "decodedBodySize": 426
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1fme_yt5jje8r.js",
+          "initiatorType": "script",
+          "transferSize": 13913,
+          "decodedBodySize": 47091
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/13g4qheb99-3v.js",
+          "initiatorType": "script",
+          "transferSize": 109942,
+          "decodedBodySize": 377991
+        },
+        {
+          "name": "http://127.0.0.1:3111/onboarding?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 571,
+          "decodedBodySize": 429
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/capabilities?select=*&order=code.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/visits?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 569,
+          "decodedBodySize": 425
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/distributors?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 586,
+          "decodedBodySize": 572
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/renewals?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 583,
+          "decodedBodySize": 568
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 576,
+          "decodedBodySize": 496
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/user_capabilities?select=*&order=id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/attendance?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/attendance?_rsc=YjoTl1DysOhhLtUC",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/attendance?_rsc=T5GjyhgwP7DzipE8",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/client_queries?select=*&order=query_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/attendance?_rsc=ubheO4MsUXxrpnK3",
+          "initiatorType": "fetch",
+          "transferSize": 828,
+          "decodedBodySize": 1405
+        },
+        {
+          "name": "http://127.0.0.1:3111/mappings?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/3t33iy2hjs64v.js",
+          "initiatorType": "script",
+          "transferSize": 10647,
+          "decodedBodySize": 33069
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/22hbz1ia5dv64.js",
+          "initiatorType": "script",
+          "transferSize": 10302,
+          "decodedBodySize": 30330
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1x-apx9-it-9j.js",
+          "initiatorType": "script",
+          "transferSize": 110384,
+          "decodedBodySize": 377991
+        },
+        {
+          "name": "http://127.0.0.1:3111/mappings?_rsc=cqiFz4Rm4mrAVZdu",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/mappings?_rsc=24y5SdhZyOsK2Kag",
+          "initiatorType": "fetch",
+          "transferSize": 845,
+          "decodedBodySize": 1532
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/mappings?select=*&order=mapping_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/support?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/support?_rsc=wYsYUlg5Is991m6F",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/mapping_requests?select=*&order=request_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/0qumnltrlv76d.js",
+          "initiatorType": "script",
+          "transferSize": 8791,
+          "decodedBodySize": 27105
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/0h5dr51f4hxr9.js",
+          "initiatorType": "script",
+          "transferSize": 42734,
+          "decodedBodySize": 222304
+        },
+        {
+          "name": "http://127.0.0.1:3111/support?_rsc=REBh4MP09ZqpZakF",
+          "initiatorType": "fetch",
+          "transferSize": 848,
+          "decodedBodySize": 1532
+        },
+        {
+          "name": "http://127.0.0.1:3111/onboarding?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/onboarding?_rsc=LG6JsKKvjYomSKwn",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/onboarding?_rsc=5_NuPMZKg1yYfp07",
+          "initiatorType": "fetch",
+          "transferSize": 808,
+          "decodedBodySize": 1278
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/165wnyz62w5a7.js",
+          "initiatorType": "script",
+          "transferSize": 7509,
+          "decodedBodySize": 22719
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2e3p_s_rtp-vt.js",
+          "initiatorType": "script",
+          "transferSize": 12224,
+          "decodedBodySize": 37423
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/3zgbr649b7wmj.js",
+          "initiatorType": "script",
+          "transferSize": 140225,
+          "decodedBodySize": 411638
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2nqfsknlj7s_7.js",
+          "initiatorType": "script",
+          "transferSize": 12055,
+          "decodedBodySize": 39033
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1sq4xho45q96v.js",
+          "initiatorType": "script",
+          "transferSize": 12353,
+          "decodedBodySize": 37644
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/task_templates?select=*&order=template_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/visits?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/visits?_rsc=etqth574-Plc18wE",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/visits?_rsc=1f6k87V1Tn1Sr1LP",
+          "initiatorType": "fetch",
+          "transferSize": 828,
+          "decodedBodySize": 1405
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/distributors?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2w1kkcl55lc_s.js",
+          "initiatorType": "script",
+          "transferSize": 8427,
+          "decodedBodySize": 23297
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/distributors?_rsc=ZQ_4rNPUbx7Q4DQ2",
+          "initiatorType": "fetch",
+          "transferSize": 743,
+          "decodedBodySize": 1113
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/tasks?select=task_id%2Cassigned_to%2Cassigned_by%2Ctitle%2Cdescription%2Cpriority%2Cstatus%2Csource%2Ctemplate_id%2Crelated_lead_id%2Cdue_date%2Cstarted_at%2Ccompleted_at%2Cproof_note%2Cproof_photo_url%2Ccreated_at%2Cis_active%2Ccancelled_at%2Ccancellation_reason&order=task_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/distributors?_rsc=2THIhSqKCjQS6H22",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/distributors?_rsc=SWi2gnzj__hrN0Mv",
+          "initiatorType": "fetch",
+          "transferSize": 899,
+          "decodedBodySize": 1826
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/renewals?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/21i_04b4aq51v.js",
+          "initiatorType": "script",
+          "transferSize": 3166,
+          "decodedBodySize": 6672
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/renewals?_rsc=_a85penpJ4vuPKbF",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/renewals?_rsc=QnNTNugh91XX41Gb",
+          "initiatorType": "fetch",
+          "transferSize": 750,
+          "decodedBodySize": 1156
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/task_status_history?select=*&order=id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/25p9xxiumwomx.js",
+          "initiatorType": "script",
+          "transferSize": 10132,
+          "decodedBodySize": 31492
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1y3rwn_cqrkd8.js",
+          "initiatorType": "script",
+          "transferSize": 11456,
+          "decodedBodySize": 39038
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1rcn06k21pgvr.js",
+          "initiatorType": "script",
+          "transferSize": 9508,
+          "decodedBodySize": 28339
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2eb1l9tbfdvit.js",
+          "initiatorType": "script",
+          "transferSize": 110358,
+          "decodedBodySize": 377991
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2789rsyelc_4a.js",
+          "initiatorType": "script",
+          "transferSize": 13577,
+          "decodedBodySize": 42315
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments?_rsc=nC2cevB0_gV9EnVL",
+          "initiatorType": "fetch",
+          "transferSize": 837,
+          "decodedBodySize": 1445
+        },
+        {
+          "name": "http://127.0.0.1:3111/chat?_rsc=WjHFnr-VbufSEUaX",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1dnae5ly68i1p.js",
+          "initiatorType": "script",
+          "transferSize": 7241,
+          "decodedBodySize": 20135
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/28-e_29xfm10g.js",
+          "initiatorType": "script",
+          "transferSize": 109928,
+          "decodedBodySize": 377991
+        },
+        {
+          "name": "http://127.0.0.1:3111/chat?_rsc=OzCnDomKDv65-A2y",
+          "initiatorType": "fetch",
+          "transferSize": 788,
+          "decodedBodySize": 1151
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/internal_tickets?select=*&order=ticket_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/call-logs?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2ck0j9yq_j28f.js",
+          "initiatorType": "script",
+          "transferSize": 12794,
+          "decodedBodySize": 43080
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/10r65drugu2ac.js",
+          "initiatorType": "script",
+          "transferSize": 109962,
+          "decodedBodySize": 377991
+        },
+        {
+          "name": "http://127.0.0.1:3111/call-logs?_rsc=kK41Tb-m_Wm5XQEn",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/call-logs?_rsc=kJ6JLN3Hbt2aQiQ6",
+          "initiatorType": "fetch",
+          "transferSize": 848,
+          "decodedBodySize": 1532
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1ed1-y0d5mdy7.js",
+          "initiatorType": "script",
+          "transferSize": 13727,
+          "decodedBodySize": 43211
+        },
+        {
+          "name": "http://127.0.0.1:3111/my-day?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/my-day?_rsc=-vqw-dIHgg2RSYov",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/attendance?select=attendance_id%2Cuser_id%2Cdate%2Cclock_in%2Cclock_out%2Clatitude%2Clongitude%2Cselfie_captured%2Cselfie_storage_path%2Cselfie_uploaded_at%2Cselfie_purged_at%2Cselfie_purge_state&order=attendance_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/3w323uvtl232s.js",
+          "initiatorType": "script",
+          "transferSize": 15303,
+          "decodedBodySize": 47101
+        },
+        {
+          "name": "http://127.0.0.1:3111/my-day?_rsc=ogbtZPLO52PqX8xz",
+          "initiatorType": "fetch",
+          "transferSize": 846,
+          "decodedBodySize": 1530
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/call_logs?select=*&order=log_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1l4ytxw7uxhqr.js",
+          "initiatorType": "script",
+          "transferSize": 12321,
+          "decodedBodySize": 43969
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/0-hrdv928u2ju.js",
+          "initiatorType": "script",
+          "transferSize": 19259,
+          "decodedBodySize": 58642
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/task_upload_batches?select=*&order=id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/allocated_targets?select=*&order=target_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/tasks?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 576,
+          "decodedBodySize": 495
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/kpi?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 575,
+          "decodedBodySize": 493
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/visits?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/visits?_rsc=7YNYP7uKzg9axXHy",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/field_visits?select=*&order=visit_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/visits?_rsc=ZAsxPvHgBKCfzeGn",
+          "initiatorType": "fetch",
+          "transferSize": 829,
+          "decodedBodySize": 1405
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/tasks?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/tasks?_rsc=BrZyA_UKN2AeFDBZ",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/tasks?_rsc=HDhqgmyl7p6RbJPc",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/lead_registration_checklist?select=*&order=checklist_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/lead_installation_details?select=*&order=installation_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/tasks?_rsc=FwdrVsoUpc5mY35n",
+          "initiatorType": "fetch",
+          "transferSize": 788,
+          "decodedBodySize": 1151
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/kpi?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/kpi?_rsc=Zg52I79H3E6axP5q",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/kpi?_rsc=F92Qh52TgTxX40Te",
+          "initiatorType": "fetch",
+          "transferSize": 826,
+          "decodedBodySize": 1405
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/lead_payment_details?select=*&order=payment_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/0lsr-31w435aw.js",
+          "initiatorType": "script",
+          "transferSize": 20218,
+          "decodedBodySize": 66289
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1tly2q3cf35fh.js",
+          "initiatorType": "script",
+          "transferSize": 24959,
+          "decodedBodySize": 83063
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/0zioh-56_3s5e.js",
+          "initiatorType": "script",
+          "transferSize": 109961,
+          "decodedBodySize": 377991
+        }
+      ]
+    },
+    {
+      "width": 390,
+      "theme": "dark",
+      "plotDimensions": [
+        {
+          "width": 328,
+          "height": 260
+        },
+        {
+          "width": 14,
+          "height": 14
+        },
+        {
+          "width": 14,
+          "height": 14
+        },
+        {
+          "width": 328,
+          "height": 260
+        }
+      ],
+      "scripts": [
+        "http://127.0.0.1:3111/_next/static/chunks/2uy92rdxf-tic.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0h03fs3xg6y48.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0tm-yyvg7o3gk.js",
+        "http://127.0.0.1:3111/_next/static/chunks/turbopack-19_zwyaa3yjdn.js",
+        "http://127.0.0.1:3111/_next/static/chunks/3-8nlyta_6g47.js",
+        "http://127.0.0.1:3111/_next/static/chunks/22vsj120knocq.js",
+        "http://127.0.0.1:3111/_next/static/chunks/08oxzh4amcr-f.js",
+        "http://127.0.0.1:3111/_next/static/chunks/3sepiehmyz5dz.js",
+        "http://127.0.0.1:3111/_next/static/chunks/13fo5bgwkt098.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2l45374321oho.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0uchmqsvckxly.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0cz1d0mv5g_q7.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1bkokfmprw6_2.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2t6z-kv3pdmtl.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1fme_yt5jje8r.js",
+        "http://127.0.0.1:3111/_next/static/chunks/13g4qheb99-3v.js",
+        "http://127.0.0.1:3111/_next/static/chunks/3t33iy2hjs64v.js",
+        "http://127.0.0.1:3111/_next/static/chunks/22hbz1ia5dv64.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1x-apx9-it-9j.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0qumnltrlv76d.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0h5dr51f4hxr9.js",
+        "http://127.0.0.1:3111/_next/static/chunks/165wnyz62w5a7.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2e3p_s_rtp-vt.js",
+        "http://127.0.0.1:3111/_next/static/chunks/3zgbr649b7wmj.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2nqfsknlj7s_7.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1sq4xho45q96v.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2w1kkcl55lc_s.js",
+        "http://127.0.0.1:3111/_next/static/chunks/21i_04b4aq51v.js",
+        "http://127.0.0.1:3111/_next/static/chunks/25p9xxiumwomx.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1y3rwn_cqrkd8.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1rcn06k21pgvr.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2eb1l9tbfdvit.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2789rsyelc_4a.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1dnae5ly68i1p.js",
+        "http://127.0.0.1:3111/_next/static/chunks/28-e_29xfm10g.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2ck0j9yq_j28f.js",
+        "http://127.0.0.1:3111/_next/static/chunks/10r65drugu2ac.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1ed1-y0d5mdy7.js",
+        "http://127.0.0.1:3111/_next/static/chunks/3w323uvtl232s.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1l4ytxw7uxhqr.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0-hrdv928u2ju.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0lsr-31w435aw.js",
+        "http://127.0.0.1:3111/_next/static/chunks/1tly2q3cf35fh.js",
+        "http://127.0.0.1:3111/_next/static/chunks/0zioh-56_3s5e.js",
+        "http://127.0.0.1:3111/_next/static/chunks/2tv_wm9_m4x37.js"
+      ],
+      "resources": [
+        {
+          "name": "http://127.0.0.1:3111/_next/static/media/InterVariable-s.p.2c0y96ae70xfx.woff2",
+          "initiatorType": "link",
+          "transferSize": 352540,
+          "decodedBodySize": 352240
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/image?url=%2Flogo-icon.png&w=32&q=75",
+          "initiatorType": "link",
+          "transferSize": 1166,
+          "decodedBodySize": 866
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/3llskd72yp4o1.css",
+          "initiatorType": "link",
+          "transferSize": 16895,
+          "decodedBodySize": 89340
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2tv_wm9_m4x37.js",
+          "initiatorType": "link",
+          "transferSize": 9295,
+          "decodedBodySize": 29259
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2uy92rdxf-tic.js",
+          "initiatorType": "script",
+          "transferSize": 9480,
+          "decodedBodySize": 43940
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/0h03fs3xg6y48.js",
+          "initiatorType": "script",
+          "transferSize": 71274,
+          "decodedBodySize": 227303
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/turbopack-19_zwyaa3yjdn.js",
+          "initiatorType": "script",
+          "transferSize": 4449,
+          "decodedBodySize": 10580
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/0tm-yyvg7o3gk.js",
+          "initiatorType": "script",
+          "transferSize": 39307,
+          "decodedBodySize": 145546
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/3-8nlyta_6g47.js",
+          "initiatorType": "script",
+          "transferSize": 10278,
+          "decodedBodySize": 30139
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/08oxzh4amcr-f.js",
+          "initiatorType": "script",
+          "transferSize": 13178,
+          "decodedBodySize": 54645
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/22vsj120knocq.js",
+          "initiatorType": "script",
+          "transferSize": 55669,
+          "decodedBodySize": 215379
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/3sepiehmyz5dz.js",
+          "initiatorType": "script",
+          "transferSize": 8648,
+          "decodedBodySize": 26082
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/13fo5bgwkt098.js",
+          "initiatorType": "script",
+          "transferSize": 10286,
+          "decodedBodySize": 32487
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2l45374321oho.js",
+          "initiatorType": "script",
+          "transferSize": 41257,
+          "decodedBodySize": 147869
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/0uchmqsvckxly.js",
+          "initiatorType": "script",
+          "transferSize": 64895,
+          "decodedBodySize": 283403
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1bkokfmprw6_2.js",
+          "initiatorType": "link",
+          "transferSize": 20161,
+          "decodedBodySize": 52055
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2t6z-kv3pdmtl.js",
+          "initiatorType": "link",
+          "transferSize": 27405,
+          "decodedBodySize": 87850
+        },
+        {
+          "name": "http://127.0.0.1:54321/auth/v1/user",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/chat?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 567,
+          "decodedBodySize": 423
+        },
+        {
+          "name": "http://127.0.0.1:3111/payments/distributors?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 580,
+          "decodedBodySize": 503
+        },
+        {
+          "name": "http://127.0.0.1:3111/payments/renewals?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 577,
+          "decodedBodySize": 499
+        },
+        {
+          "name": "http://127.0.0.1:3111/payments?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 570,
+          "decodedBodySize": 427
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/user_capabilities?select=id%2Cuser_id%2Ccapability_code%2Cassigned_by%2Cassigned_at&user_id=eq.91000000-0000-4000-a000-000000000001",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:54321/auth/v1/user",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/call-logs?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 571,
+          "decodedBodySize": 428
+        },
+        {
+          "name": "http://127.0.0.1:3111/my-day?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 569,
+          "decodedBodySize": 425
+        },
+        {
+          "name": "http://127.0.0.1:3111/chat?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/chat?_rsc=OK4d_SHAcR8lmpna",
+          "initiatorType": "fetch",
+          "transferSize": 1549,
+          "decodedBodySize": 3142
+        },
+        {
+          "name": "http://127.0.0.1:3111/api/admin/visits?page=1",
+          "initiatorType": "fetch",
+          "transferSize": 1420,
+          "decodedBodySize": 1120
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/users?select=*&order=user_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/attendance?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 576,
+          "decodedBodySize": 498
+        },
+        {
+          "name": "http://127.0.0.1:3111/mappings?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 570,
+          "decodedBodySize": 427
+        },
+        {
+          "name": "http://127.0.0.1:3111/support?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 569,
+          "decodedBodySize": 426
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1fme_yt5jje8r.js",
+          "initiatorType": "script",
+          "transferSize": 13913,
+          "decodedBodySize": 47091
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/13g4qheb99-3v.js",
+          "initiatorType": "script",
+          "transferSize": 109942,
+          "decodedBodySize": 377991
+        },
+        {
+          "name": "http://127.0.0.1:3111/onboarding?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 571,
+          "decodedBodySize": 429
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/capabilities?select=*&order=code.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/visits?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 569,
+          "decodedBodySize": 425
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/distributors?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 586,
+          "decodedBodySize": 572
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/renewals?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 583,
+          "decodedBodySize": 568
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 576,
+          "decodedBodySize": 496
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/user_capabilities?select=*&order=id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/attendance?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/attendance?_rsc=YjoTl1DysOhhLtUC",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/attendance?_rsc=T5GjyhgwP7DzipE8",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/client_queries?select=*&order=query_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/attendance?_rsc=ubheO4MsUXxrpnK3",
+          "initiatorType": "fetch",
+          "transferSize": 828,
+          "decodedBodySize": 1405
+        },
+        {
+          "name": "http://127.0.0.1:3111/mappings?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/3t33iy2hjs64v.js",
+          "initiatorType": "script",
+          "transferSize": 10647,
+          "decodedBodySize": 33069
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/22hbz1ia5dv64.js",
+          "initiatorType": "script",
+          "transferSize": 10302,
+          "decodedBodySize": 30330
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1x-apx9-it-9j.js",
+          "initiatorType": "script",
+          "transferSize": 110384,
+          "decodedBodySize": 377991
+        },
+        {
+          "name": "http://127.0.0.1:3111/mappings?_rsc=cqiFz4Rm4mrAVZdu",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/mappings?_rsc=24y5SdhZyOsK2Kag",
+          "initiatorType": "fetch",
+          "transferSize": 845,
+          "decodedBodySize": 1532
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/mappings?select=*&order=mapping_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/support?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/support?_rsc=wYsYUlg5Is991m6F",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/mapping_requests?select=*&order=request_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/0qumnltrlv76d.js",
+          "initiatorType": "script",
+          "transferSize": 8791,
+          "decodedBodySize": 27105
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/0h5dr51f4hxr9.js",
+          "initiatorType": "script",
+          "transferSize": 42734,
+          "decodedBodySize": 222304
+        },
+        {
+          "name": "http://127.0.0.1:3111/support?_rsc=REBh4MP09ZqpZakF",
+          "initiatorType": "fetch",
+          "transferSize": 848,
+          "decodedBodySize": 1532
+        },
+        {
+          "name": "http://127.0.0.1:3111/onboarding?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/onboarding?_rsc=LG6JsKKvjYomSKwn",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/onboarding?_rsc=5_NuPMZKg1yYfp07",
+          "initiatorType": "fetch",
+          "transferSize": 808,
+          "decodedBodySize": 1278
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/165wnyz62w5a7.js",
+          "initiatorType": "script",
+          "transferSize": 7509,
+          "decodedBodySize": 22719
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2e3p_s_rtp-vt.js",
+          "initiatorType": "script",
+          "transferSize": 12224,
+          "decodedBodySize": 37423
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/3zgbr649b7wmj.js",
+          "initiatorType": "script",
+          "transferSize": 140225,
+          "decodedBodySize": 411638
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2nqfsknlj7s_7.js",
+          "initiatorType": "script",
+          "transferSize": 12055,
+          "decodedBodySize": 39033
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1sq4xho45q96v.js",
+          "initiatorType": "script",
+          "transferSize": 12353,
+          "decodedBodySize": 37644
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/task_templates?select=*&order=template_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/visits?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/visits?_rsc=etqth574-Plc18wE",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/visits?_rsc=1f6k87V1Tn1Sr1LP",
+          "initiatorType": "fetch",
+          "transferSize": 828,
+          "decodedBodySize": 1405
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/distributors?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2w1kkcl55lc_s.js",
+          "initiatorType": "script",
+          "transferSize": 8427,
+          "decodedBodySize": 23297
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/distributors?_rsc=ZQ_4rNPUbx7Q4DQ2",
+          "initiatorType": "fetch",
+          "transferSize": 743,
+          "decodedBodySize": 1113
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/tasks?select=task_id%2Cassigned_to%2Cassigned_by%2Ctitle%2Cdescription%2Cpriority%2Cstatus%2Csource%2Ctemplate_id%2Crelated_lead_id%2Cdue_date%2Cstarted_at%2Ccompleted_at%2Cproof_note%2Cproof_photo_url%2Ccreated_at%2Cis_active%2Ccancelled_at%2Ccancellation_reason&order=task_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/distributors?_rsc=2THIhSqKCjQS6H22",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/distributors?_rsc=SWi2gnzj__hrN0Mv",
+          "initiatorType": "fetch",
+          "transferSize": 899,
+          "decodedBodySize": 1826
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/renewals?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/21i_04b4aq51v.js",
+          "initiatorType": "script",
+          "transferSize": 3166,
+          "decodedBodySize": 6672
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/renewals?_rsc=_a85penpJ4vuPKbF",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments/renewals?_rsc=QnNTNugh91XX41Gb",
+          "initiatorType": "fetch",
+          "transferSize": 750,
+          "decodedBodySize": 1156
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/task_status_history?select=*&order=id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/25p9xxiumwomx.js",
+          "initiatorType": "script",
+          "transferSize": 10132,
+          "decodedBodySize": 31492
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1y3rwn_cqrkd8.js",
+          "initiatorType": "script",
+          "transferSize": 11456,
+          "decodedBodySize": 39038
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1rcn06k21pgvr.js",
+          "initiatorType": "script",
+          "transferSize": 9508,
+          "decodedBodySize": 28339
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2eb1l9tbfdvit.js",
+          "initiatorType": "script",
+          "transferSize": 110358,
+          "decodedBodySize": 377991
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2789rsyelc_4a.js",
+          "initiatorType": "script",
+          "transferSize": 13577,
+          "decodedBodySize": 42315
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/payments?_rsc=nC2cevB0_gV9EnVL",
+          "initiatorType": "fetch",
+          "transferSize": 837,
+          "decodedBodySize": 1445
+        },
+        {
+          "name": "http://127.0.0.1:3111/chat?_rsc=WjHFnr-VbufSEUaX",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1dnae5ly68i1p.js",
+          "initiatorType": "script",
+          "transferSize": 7241,
+          "decodedBodySize": 20135
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/28-e_29xfm10g.js",
+          "initiatorType": "script",
+          "transferSize": 109928,
+          "decodedBodySize": 377991
+        },
+        {
+          "name": "http://127.0.0.1:3111/chat?_rsc=OzCnDomKDv65-A2y",
+          "initiatorType": "fetch",
+          "transferSize": 788,
+          "decodedBodySize": 1151
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/internal_tickets?select=*&order=ticket_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/call-logs?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/2ck0j9yq_j28f.js",
+          "initiatorType": "script",
+          "transferSize": 12794,
+          "decodedBodySize": 43080
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/10r65drugu2ac.js",
+          "initiatorType": "script",
+          "transferSize": 109962,
+          "decodedBodySize": 377991
+        },
+        {
+          "name": "http://127.0.0.1:3111/call-logs?_rsc=kK41Tb-m_Wm5XQEn",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/call-logs?_rsc=kJ6JLN3Hbt2aQiQ6",
+          "initiatorType": "fetch",
+          "transferSize": 848,
+          "decodedBodySize": 1532
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1ed1-y0d5mdy7.js",
+          "initiatorType": "script",
+          "transferSize": 13727,
+          "decodedBodySize": 43211
+        },
+        {
+          "name": "http://127.0.0.1:3111/my-day?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/my-day?_rsc=-vqw-dIHgg2RSYov",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/attendance?select=attendance_id%2Cuser_id%2Cdate%2Cclock_in%2Cclock_out%2Clatitude%2Clongitude%2Cselfie_captured%2Cselfie_storage_path%2Cselfie_uploaded_at%2Cselfie_purged_at%2Cselfie_purge_state&order=attendance_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/3w323uvtl232s.js",
+          "initiatorType": "script",
+          "transferSize": 15303,
+          "decodedBodySize": 47101
+        },
+        {
+          "name": "http://127.0.0.1:3111/my-day?_rsc=ogbtZPLO52PqX8xz",
+          "initiatorType": "fetch",
+          "transferSize": 846,
+          "decodedBodySize": 1530
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/call_logs?select=*&order=log_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1l4ytxw7uxhqr.js",
+          "initiatorType": "script",
+          "transferSize": 12321,
+          "decodedBodySize": 43969
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/0-hrdv928u2ju.js",
+          "initiatorType": "script",
+          "transferSize": 19259,
+          "decodedBodySize": 58642
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/task_upload_batches?select=*&order=id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/allocated_targets?select=*&order=target_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/tasks?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 576,
+          "decodedBodySize": 495
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/kpi?_rsc=jr6Nlx2xGmu3FCFu",
+          "initiatorType": "fetch",
+          "transferSize": 575,
+          "decodedBodySize": 493
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/visits?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/visits?_rsc=7YNYP7uKzg9axXHy",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/field_visits?select=*&order=visit_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/admin/visits?_rsc=ZAsxPvHgBKCfzeGn",
+          "initiatorType": "fetch",
+          "transferSize": 829,
+          "decodedBodySize": 1405
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/tasks?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/tasks?_rsc=BrZyA_UKN2AeFDBZ",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/tasks?_rsc=HDhqgmyl7p6RbJPc",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/lead_registration_checklist?select=*&order=checklist_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/lead_installation_details?select=*&order=installation_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/tasks?_rsc=FwdrVsoUpc5mY35n",
+          "initiatorType": "fetch",
+          "transferSize": 788,
+          "decodedBodySize": 1151
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/kpi?_rsc=AOtD6U1aK4K5I5Om",
+          "initiatorType": "fetch",
+          "transferSize": 1044,
+          "decodedBodySize": 1840
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/kpi?_rsc=Zg52I79H3E6axP5q",
+          "initiatorType": "fetch",
+          "transferSize": 590,
+          "decodedBodySize": 524
+        },
+        {
+          "name": "http://127.0.0.1:3111/manager/kpi?_rsc=F92Qh52TgTxX40Te",
+          "initiatorType": "fetch",
+          "transferSize": 826,
+          "decodedBodySize": 1405
+        },
+        {
+          "name": "http://127.0.0.1:54321/rest/v1/lead_payment_details?select=*&order=payment_id.asc&offset=0&limit=1000",
+          "initiatorType": "fetch",
+          "transferSize": 0,
+          "decodedBodySize": 0
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/0lsr-31w435aw.js",
+          "initiatorType": "script",
+          "transferSize": 20218,
+          "decodedBodySize": 66289
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/1tly2q3cf35fh.js",
+          "initiatorType": "script",
+          "transferSize": 24959,
+          "decodedBodySize": 83063
+        },
+        {
+          "name": "http://127.0.0.1:3111/_next/static/chunks/0zioh-56_3s5e.js",
+          "initiatorType": "script",
+          "transferSize": 109961,
+          "decodedBodySize": 377991
+        }
+      ]
+    }
+  ]
+}

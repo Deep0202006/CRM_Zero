@@ -10,25 +10,25 @@ export default function VisitsIntelligence({ model, matchedTotal, page }: { mode
     <AnalyticsBoundary>
       <section className="analytics-shell" aria-label="Field activity intelligence">
         <AnalyticsPanel
-          eyebrow="Field activity intelligence"
           title="Outcome composition"
-          description={`${scope}. Every loaded visit is represented exactly once, including historical unknown outcomes.`}
+          description="Every loaded visit is represented once, including unknown historical outcomes."
+          coverage={scope}
           labelledBy="visits-outcome-donut"
         >
           <OutcomeDonut outcomes={model.outcomes} total={model.representedTotal} />
         </AnalyticsPanel>
         <AnalyticsPanel
-          eyebrow="Activity flow"
           title="Loaded visit rhythm"
-          description={`${scope}. Series use the shared Asia/Kolkata business-date authority.`}
+          description="Daily retailer, distributor and other visits from this page, using India check-in dates."
+          coverage={`${scope}. Loaded dates only; not a complete period trend.`}
           labelledBy="visits-activity-flow"
         >
           <ActivityFlow points={model.activity} />
         </AnalyticsPanel>
         <AnalyticsPanel
-          eyebrow="Field mix"
           title="Retailer and distributor mix"
-          description={`Segment composition for ${scope.toLowerCase()}.`}
+          description="Mutually exclusive business segments from the loaded records."
+          coverage={scope}
           labelledBy="visits-field-mix"
           className="xl:col-span-2"
         >

@@ -1,9 +1,75 @@
 import { expect, test, type Page } from "@playwright/test";
 import { getCurrentISTDate } from "../../src/lib/dateTime";
+import { mkdir, writeFile } from "node:fs/promises";
 
 const adminId = "91000000-0000-4000-a000-000000000001";
 const employeeId = "92000000-0000-4000-a000-000000000001";
 const today = getCurrentISTDate();
+const foundationPhase = process.env.UI_FOUNDATION_PHASE;
+const chartWarnings = new WeakMap<Page, string[]>();
+
+test.beforeEach(async ({ page }) => {
+  const warnings: string[] = [];
+  chartWarnings.set(page, warnings);
+  page.on("console", message => {
+    if (/width\(-?\d+\).*height\(-?\d+\)|width.*height.*greater than 0|ResponsiveContainer.*nested/i.test(message.text())) warnings.push(message.text());
+  });
+});
+
+test.afterEach(async ({ page }) => {
+  if (foundationPhase !== "before") expect(chartWarnings.get(page), "Chart sizing warnings").toEqual([]);
+});
+
+async function captureFoundation(page: Page, name: string, requests: () => unknown) {
+  if (!foundationPhase) return;
+  const directory = `artifacts/visual-review/ui-foundation-${foundationPhase}`;
+  await mkdir(directory, { recursive: true });
+  const observations: unknown[] = [];
+  for (const theme of ["light", "dark"] as const) {
+    if (await page.evaluate(() => document.documentElement.dataset.theme) !== theme) {
+      await page.getByRole("button", { name: `Use ${theme} theme` }).click();
+    }
+    for (const width of [1440, 768, 390]) {
+      await page.setViewportSize({ width, height: 900 });
+      await expect(page.locator("svg.recharts-surface").first()).toBeVisible();
+      await page.evaluate(() => document.fonts.ready);
+      await expect.poll(() => page.locator("span.tabular-nums[aria-label]").evaluateAll(nodes => nodes.every(node => node.textContent?.trim() === node.getAttribute("aria-label")))).toBe(true);
+      if (foundationPhase === "after") {
+        await expect.poll(() => page.getByRole("tab", { selected: true }).evaluate(node => getComputedStyle(node).color)).toBe(theme === "dark" ? "rgb(66, 184, 164)" : "rgb(9, 86, 79)");
+        const contrasts = await page.locator(".ui-foundation .metric-card__label, .ui-foundation [data-state=active][role=tab], .ui-foundation .segmented-control button[aria-pressed=true], .ui-foundation .analytics-panel__header p").evaluateAll(nodes => nodes.map(node => {
+          const channels = (color: string) => (color.match(/[\d.]+/g) ?? []).map(Number);
+          const luminance = (color: string) => channels(color).slice(0, 3).reduce((sum, value, index) => { const s = value / 255; return sum + (s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4) * [0.2126, 0.7152, 0.0722][index]; }, 0);
+          let ancestor: Element | null = node;
+          while (ancestor && channels(getComputedStyle(ancestor).backgroundColor)[3] === 0) ancestor = ancestor.parentElement;
+          const foreground = getComputedStyle(node).color;
+          const background = getComputedStyle(ancestor ?? document.body).backgroundColor;
+          const a = luminance(foreground), b = luminance(background);
+          return { text: node.textContent, foreground, background, ratio: (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05) };
+        }));
+        expect(contrasts.filter(sample => sample.ratio < 4.5), `${name} ${theme} essential small text`).toEqual([]);
+        observations.push({ width, theme, contrasts });
+      }
+      await page.screenshot({ path: `${directory}/${name}-${width}-${theme}.png`, fullPage: true, animations: "disabled" });
+      if (foundationPhase === "after" && ((width === 390 && theme === "light") || (width === 1440 && theme === "dark"))) {
+        await page.locator(".analytics-panel").first().evaluate(node => node.scrollIntoView({ block: "start", behavior: "instant" }));
+        await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+        await page.screenshot({ path: `${directory}/${name}-${width}-${theme}-charts.png`, animations: "disabled" });
+        await page.getByRole("heading", { name: name === "team-kpi" ? "Team KPI register" : "Confirmed visit history", exact: true }).evaluate(node => node.scrollIntoView({ block: "start", behavior: "instant" }));
+        await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+        await page.screenshot({ path: `${directory}/${name}-${width}-${theme}-register.png`, animations: "disabled" });
+        await page.getByRole("heading", { level: 1 }).scrollIntoViewIfNeeded();
+      }
+      observations.push(await page.evaluate(({ width, theme }) => ({
+        width, theme,
+        plotDimensions: Array.from(document.querySelectorAll("svg.recharts-surface")).map(node => ({ width: node.getBoundingClientRect().width, height: node.getBoundingClientRect().height })),
+        scripts: Array.from(document.scripts).map(script => script.src).filter(Boolean),
+        resources: performance.getEntriesByType("resource").map(entry => { const resource = entry as PerformanceResourceTiming; return { name: resource.name, initiatorType: resource.initiatorType, transferSize: resource.transferSize, decodedBodySize: resource.decodedBodySize }; }),
+      }), { width, theme }));
+    }
+  }
+  await writeFile(`${directory}/${name}-observations.json`, JSON.stringify({ fixture: "visual-intelligence-unfiltered", requests: requests(), observations }, null, 2));
+  await page.getByRole("button", { name: "Use light theme" }).click();
+}
 
 function token(id: string) {
   const encode = (value: unknown) => Buffer.from(JSON.stringify(value)).toString("base64url");
@@ -43,6 +109,10 @@ async function expectResponsiveAnalytics(page: Page, heading: string, reviewName
     await expect(page.getByRole("heading", { name: heading })).toBeVisible();
     const dimensions = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth }));
     expect(dimensions.scroll, `horizontal overflow at ${width}px`).toBeLessThanOrEqual(dimensions.client + 1);
+    await expect.poll(() => page.locator("svg.recharts-surface").evaluateAll(nodes => nodes.filter(node => node.getClientRects().length > 0).every(node => {
+      const bounds = node.getBoundingClientRect();
+      return bounds.width > 0 && bounds.height > 0;
+    }))).toBe(true);
     if (process.env.VISUAL_REVIEW && width === 375) await page.screenshot({ path: `artifacts/visual-review/${reviewName}-mobile.png`, fullPage: true });
   }
   expect(await page.locator("[data-chart-height='stable']").first().evaluate(node => node.getBoundingClientRect().height)).toBeGreaterThanOrEqual(220);
@@ -71,21 +141,197 @@ test("My Day analytics reuses existing data paths and remains operational at eve
   expect(parseFloat(await page.locator(".analytics-panel").first().evaluate(node => getComputedStyle(node).animationDuration))).toBeLessThanOrEqual(0.00001);
 });
 
+test("UI Foundation employee Sheet preserves identity through refresh without a detail request", async ({ page }) => {
+  test.skip(foundationPhase === "before", "The baseline predates the employee Sheet");
+  await mockPlatform(page);
+  const longName = "Field Employee With A Long Name That Must Remain Fully Available";
+  const row = (user_id: string, name: string, calls_made: number) => ({ user_id, name, role: "Field", capabilities: ["field_ret"], calls_made, followup_calls: 0, queries_handled: 0, mappings_completed: 0, tasks_completed: 0, total_completed_work: calls_made, latest_activity_time: null, attendance_status: "Absent" });
+  let rows = [row(adminId, "Visual Admin", 1), row(employeeId, longName, 0)];
+  const pendingResponses: Array<() => void> = [];
+  let delay = false;
+  let fail = false;
+  const requests: string[] = [];
+  page.on("request", request => { if (new URL(request.url()).pathname.startsWith("/api/")) requests.push(new URL(request.url()).pathname); });
+  await page.route("**/api/team-kpi", async route => {
+    if (delay) await new Promise<void>(resolve => { pendingResponses.push(resolve); });
+    if (fail) return route.fulfill({ status: 503, json: { message: "Synthetic refresh unavailable" } });
+    return route.fulfill({ json: { target_date: today, generated_at: `${today}T06:00:00Z`, source: "server-aggregation", warnings: [], rows,
+      totals: { team_members: rows.length, calls_made: rows.reduce((sum, item) => sum + item.calls_made, 0), followup_calls: 0, queries_handled: 0, mappings_completed: 0, tasks_completed: 0, total_completed_work: rows.reduce((sum, item) => sum + item.calls_made, 0) } } });
+  });
+  await seedAdmin(page);
+  await page.goto("/manager/kpi");
+  const employee = page.getByRole("button", { name: longName, exact: true });
+  await employee.click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByRole("heading", { name: longName, exact: true })).toBeVisible();
+  await expect(dialog).toContainText("Absent");
+  await expect(dialog).toContainText(today);
+  await expect(dialog).toContainText("No work recorded");
+  expect(requests).toEqual(["/api/team-kpi"]);
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await expect(employee).toBeFocused();
+
+  // Hold the normal Refresh response, then inspect while the existing request is pending.
+  delay = true;
+  await page.getByRole("button", { name: "Refresh", exact: true }).first().click();
+  await expect.poll(() => pendingResponses.length).toBe(1);
+  await employee.click();
+  rows = [...rows].reverse();
+  pendingResponses.shift()!();
+  await expect(dialog.getByText("Refreshing. The last confirmed report remains visible.", { exact: true })).toHaveCount(0);
+  await expect(dialog.getByRole("heading", { name: longName, exact: true })).toBeVisible();
+  expect(requests).toHaveLength(2);
+  await page.keyboard.press("Escape");
+
+  fail = true;
+  await page.getByRole("button", { name: "Refresh", exact: true }).first().click();
+  await expect.poll(() => pendingResponses.length).toBe(1);
+  await employee.click();
+  pendingResponses.shift()!();
+  await expect(dialog).toContainText(/last confirmed|stale|refresh.*fail|unavailable/i);
+  await expect(dialog.getByRole("heading", { name: longName, exact: true })).toBeVisible();
+  await page.keyboard.press("Escape");
+
+  fail = false;
+  await page.getByRole("button", { name: "Refresh", exact: true }).first().click();
+  await expect.poll(() => pendingResponses.length).toBe(1);
+  await employee.click();
+  rows = rows.filter(item => item.user_id !== employeeId);
+  pendingResponses.shift()!();
+  await expect(dialog.getByRole("heading", { name: "Employee unavailable", exact: true })).toBeVisible();
+  await expect(dialog).not.toContainText("Visual Admin");
+  expect(requests).toEqual(Array(4).fill("/api/team-kpi"));
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+});
+
+test("UI Foundation ERP manual activation caches success and retries a network failure exactly once", async ({ page }) => {
+  test.skip(foundationPhase === "before", "The baseline predates accessible manual Tabs");
+  await mockPlatform(page);
+  let visitRequests = 0;
+  let erpRequests = 0;
+  const pendingResponses: Array<() => void> = [];
+  await page.route(url => url.pathname === "/api/admin/visits", route => {
+    visitRequests += 1;
+    return route.fulfill({ json: { visits: [], page: 1, page_size: 50, total: 0, all_time_total: 0, today_total: 0, has_more: false, representatives: [] } });
+  });
+  await page.route("**/api/admin/visits/erp-analytics", async route => {
+    erpRequests += 1;
+    if (erpRequests === 1) return route.abort("failed");
+    await new Promise<void>(resolve => { pendingResponses.push(resolve); });
+    return route.fulfill({ json: { segments: { Retailer: { unique_businesses: 6, observed_count: 5, erp_using_count: 5, none_count: 0, not_captured_count: 1, coverage_percent: 100 * 5 / 6, categories: ["Long Accounting ERP Name", "ERP B", "ERP C", "ERP D", "ERP E", "Not captured"].map((erp_name, index) => ({ erp_name, state: index === 5 ? "not_captured" : "erp", count: 1, share_percent: 100 / 6 })) }, Distributor: { unique_businesses: 7, observed_count: 6, erp_using_count: 6, none_count: 0, not_captured_count: 1, coverage_percent: 100 * 6 / 7, categories: ["ERP A", "ERP B", "ERP C", "ERP D", "ERP E", "ERP F", "Not captured"].map((erp_name, index) => ({ erp_name, state: index === 6 ? "not_captured" : "erp", count: 1, share_percent: 100 / 7 })) } } } });
+  });
+  await seedAdmin(page);
+  await page.goto("/admin/visits");
+  const activity = page.getByRole("tab", { name: "Visit Activity" });
+  const erp = page.getByRole("tab", { name: "ERP Intelligence" });
+  await activity.focus();
+  await page.keyboard.press("End");
+  await expect(erp).toBeFocused();
+  await expect(activity).toHaveAttribute("aria-selected", "true");
+  expect(erpRequests).toBe(0);
+  await page.keyboard.press("Home");
+  await expect(activity).toBeFocused();
+  await page.keyboard.press("ArrowRight");
+  await expect(erp).toBeFocused();
+  expect(erpRequests).toBe(0);
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("alert").filter({ hasText: "ERP intelligence" })).toContainText(/unavailable|failed/i);
+  expect(erpRequests).toBe(1);
+  await activity.click();
+  await erp.click();
+  await expect(page.getByRole("alert").filter({ hasText: "ERP intelligence" })).toBeVisible();
+  expect(erpRequests).toBe(1);
+  await page.getByRole("button", { name: "Retry", exact: true }).click();
+  await expect.poll(() => pendingResponses.length).toBe(1);
+  await activity.click();
+  await erp.click();
+  expect(erpRequests).toBe(2);
+  pendingResponses.shift()!();
+  await expect(page.getByRole("heading", { name: "Retailer ERP Footprint" })).toBeVisible();
+  await activity.click();
+  await erp.click();
+  await expect(page.getByRole("heading", { name: "Retailer ERP Footprint" })).toBeVisible();
+  expect(erpRequests).toBe(2);
+  expect(visitRequests).toBe(1);
+  const retailerFootprint = page.getByRole("region", { name: "Retailer ERP Footprint", exact: true });
+  const distributorFootprint = page.getByRole("region", { name: "Distributor ERP Footprint", exact: true });
+  await expect(retailerFootprint.locator(".recharts-pie")).toBeVisible();
+  await expect(retailerFootprint.getByRole("listitem")).toHaveCount(6);
+  await expect(distributorFootprint.locator(".recharts-bar")).toBeVisible();
+  await expect(distributorFootprint.getByRole("listitem")).toHaveCount(7);
+  await expect(distributorFootprint.getByRole("list")).toContainText("Not captured (unknown):1");
+  await page.setViewportSize({ width: 320, height: 844 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await expect(page.locator("svg.recharts-surface").first()).toBeVisible();
+  await page.getByRole("button", { name: "Use dark theme" }).click();
+  expect(await page.evaluate(() => document.documentElement.classList.contains("dark"))).toBe(false);
+  const resolved = await page.locator(".analytics-panel").first().evaluate(node => ({ foreground: getComputedStyle(node).color, background: getComputedStyle(node).backgroundColor }));
+  expect(resolved.foreground).not.toBe(resolved.background);
+  expect(resolved.foreground).toMatch(/^rgb/);
+  const pie = page.locator(".recharts-pie").first();
+  await pie.scrollIntoViewIfNeeded();
+  const pieBounds = await pie.boundingBox();
+  await page.mouse.move(pieBounds!.x + pieBounds!.width * 0.85, pieBounds!.y + pieBounds!.height * 0.3);
+  const tooltip = page.locator(".recharts-tooltip-wrapper:visible").first();
+  await expect(tooltip).toContainText("Long Accounting ERP Name");
+  const colors = await tooltip.locator(":scope > *").first().evaluate(node => ({ color: getComputedStyle(node).color, background: getComputedStyle(node).backgroundColor }));
+  expect(colors.color).not.toBe(colors.background);
+  expect(colors.background).not.toBe("rgba(0, 0, 0, 0)");
+});
+
+test("UI Foundation six-category donut and seven-category bars retain the exact seven visits", async ({ page }) => {
+  test.skip(foundationPhase === "before", "The baseline does not expose the shared semantic values list");
+  await mockPlatform(page);
+  const requestPages: string[] = [];
+  await page.route(url => url.pathname === "/api/admin/visits", route => {
+    const currentPage = Number(new URL(route.request().url()).searchParams.get("page"));
+    requestPages.push(String(currentPage));
+    const outcomes = currentPage === 1
+      ? ["registered", "installed", "installed", "interested", "follow_up", "payment_follow_up", "legacy_unknown"]
+      : ["registered", "installed", "interested", "follow_up", "payment_follow_up", "payment_done", "legacy_unknown"];
+    const visits = outcomes.map((visit_outcome, index) => ({ visit_id: `93000000-0000-4000-a000-${String(index + 1).padStart(12, "0")}`, user_id: employeeId, lead_id: `94000000-0000-4000-a000-${String(index + 1).padStart(12, "0")}`, visit_date: today, check_in_time: `${today}T04:00:00Z`, address: "Synthetic Pune fixture", visit_outcome, person_met: "Owner", segment_type: index === 6 ? "Historical" : "Retailer", selfie_status: "PURGED", users: { name: "Field Employee" }, leads: { business_name: `Fixture business ${index + 1}` } }));
+    return route.fulfill({ json: { visits, page: currentPage, page_size: 50, total: 14, all_time_total: 14, today_total: 14, has_more: currentPage === 1, representatives: [] } });
+  });
+  await seedAdmin(page);
+  await page.goto("/admin/visits");
+  const composition = page.getByRole("region", { name: "Outcome composition", exact: true });
+  await expect(composition.locator(".recharts-pie")).toBeVisible();
+  const values = composition.getByRole("list", { name: "Visit outcome values" });
+  await expect(values).toHaveCount(1);
+  await expect(values).toContainText("Other / historical");
+  await expect(values).toContainText("Installed");
+  await expect(composition.getByText("Loaded visits", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await expect(composition.locator(".recharts-pie")).toHaveCount(0);
+  await expect(composition.locator(".recharts-bar")).toBeVisible();
+  await expect(values).toHaveCount(1);
+  await expect(values).toContainText("Other / historical");
+  await expect(values).toContainText("Payment done");
+  const counts = await values.getByRole("listitem").allTextContents();
+  const valuesOnly = counts.map(text => Number(text.match(/:\s*([\d,]+)/)?.[1]?.replaceAll(",", "")));
+  expect(valuesOnly).toEqual([1, 1, 1, 1, 1, 1, 0, 1]);
+  expect(valuesOnly.reduce((sum, value) => sum + value, 0)).toBe(7);
+  expect(requestPages).toEqual(["1", "2"]);
+});
+
 test("Team Intelligence preserves exact contribution totals with one initial KPI request and keyboard controls", async ({ page }) => {
   await mockPlatform(page);
   let requests = 0;
+  let partial = false;
   await page.route("**/api/team-kpi", route => {
     requests += 1;
     return route.fulfill({ json: {
       target_date: today,
-      generated_at: new Date().toISOString(),
+      generated_at: `${today}T06:00:00Z`,
       rows: [
-        { user_id: adminId, name: "Visual Admin", role: "Admin", capabilities: ["admin"], calls_made: 8, followup_calls: 1, queries_handled: 4, mappings_completed: 2, tasks_completed: 3, total_completed_work: 17, latest_activity_time: new Date().toISOString(), attendance_status: "Present" },
-        { user_id: employeeId, name: "Field Employee", role: "Field", capabilities: ["field_ret"], calls_made: 2, followup_calls: 0, queries_handled: 1, mappings_completed: 1, tasks_completed: 2, total_completed_work: 6, latest_activity_time: new Date().toISOString(), attendance_status: "Present" },
+        { user_id: adminId, name: "Visual Admin", role: "Admin", capabilities: ["admin"], calls_made: 8, followup_calls: 1, queries_handled: 4, mappings_completed: 2, tasks_completed: 3, total_completed_work: 17, latest_activity_time: `${today}T05:00:00Z`, attendance_status: "Present" },
+        { user_id: employeeId, name: "Field Employee", role: "Field", capabilities: ["field_ret"], calls_made: 2, followup_calls: 0, queries_handled: 1, mappings_completed: 1, tasks_completed: 2, total_completed_work: 6, latest_activity_time: `${today}T04:00:00Z`, attendance_status: "Present" },
       ],
       totals: { team_members: 2, calls_made: 10, followup_calls: 1, queries_handled: 5, mappings_completed: 3, tasks_completed: 5, total_completed_work: 23 },
       source: "server-aggregation",
-      warnings: [],
+      warnings: partial ? [{ source: "tasks", message: "Synthetic task-source coverage warning" }] : [],
     } });
   });
   const inspectionRequests: string[] = [];
@@ -96,14 +342,30 @@ test("Team Intelligence preserves exact contribution totals with one initial KPI
   });
   await seedAdmin(page);
   await page.goto("/manager/kpi");
-  await expect(page.getByRole("heading", { name: "Work by type" })).toBeVisible();
+  if (foundationPhase === "before") await expect(page.getByRole("heading", { name: "Work by type" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Employee contribution" })).toBeVisible();
   expect(requests).toBe(1);
+  expect(inspectionRequests).toHaveLength(0);
+  await captureFoundation(page, "team-kpi", () => ({ teamKpi: requests, pipeline: inspectionRequests.length }));
+  if (foundationPhase === "before") return;
+  for (const [label, value] of [["Calls today", "10"], ["Tasks completed", "5"], ["Mappings completed", "3"], ["Queries resolved", "5"]]) {
+    await expect(page.locator("article.metric-card").filter({ hasText: label }).locator(".metric-card__value")).toHaveText(value);
+  }
+  const register = page.getByRole("region", { name: "Team KPI register", exact: true }).last();
+  await expect(register.locator("tbody tr").first()).toContainText("Field Employee");
+  await page.getByLabel("Sort by").selectOption("calls_made");
+  await expect(register.locator("tbody tr").first()).toContainText("Visual Admin");
+  await page.getByRole("button", { name: "Show employee reference" }).click();
+  await expect(page.getByRole("region", { name: "Employee vs team average" })).toContainText("including the selected employee");
+  partial = true;
+  await page.getByRole("button", { name: "Refresh", exact: true }).first().click();
+  await expect(page.getByRole("region", { name: "Employee vs team average" })).toContainText("Comparison unavailable");
+  await expect(page.getByText(/Some KPI sources need attention/)).toContainText("Synthetic task-source coverage warning");
   await page.getByRole("button", { name: "Client queries" }).focus();
   await page.keyboard.press("Enter");
-  expect(requests).toBe(1);
-  await expectResponsiveAnalytics(page, "Work by type", "team-kpi");
-  await page.getByRole("button", { name: /Pipeline funnel/ }).click();
+  expect(requests).toBe(2);
+  await expectResponsiveAnalytics(page, "Employee contribution", "team-kpi");
+  await page.getByRole("tab", { name: /Pipeline funnel/ }).click();
   await expect(page.getByRole("heading", { name: "Canonical stage order" })).toBeVisible();
   await page.getByLabel("Recent change").check();
   await expect.poll(() => inspectionRequests.length).toBe(2);
@@ -119,7 +381,7 @@ test("Team Intelligence preserves exact contribution totals with one initial KPI
 test("Visits visual composition reconciles the bounded page and closes with server filters", async ({ page }) => {
   await mockPlatform(page);
   const requestUrls: string[] = [];
-  await page.route("**/api/admin/visits**", route => {
+  await page.route(url => url.pathname === "/api/admin/visits", route => {
     const url = new URL(route.request().url());
     requestUrls.push(url.toString());
     const retailerOnly = url.searchParams.get("segment") === "Retailer";
@@ -135,6 +397,8 @@ test("Visits visual composition reconciles the bounded page and closes with serv
   await expect(page.getByText("Loaded visits", { exact: true })).toBeVisible();
   await expect(page.getByText("2", { exact: true }).first()).toBeVisible();
   expect(requestUrls).toHaveLength(1);
+  await captureFoundation(page, "visits", () => requestUrls);
+  if (foundationPhase === "before") return;
   await page.getByRole("button", { name: "Retailer", exact: true }).click();
   await expect.poll(() => requestUrls.length).toBe(2);
   expect(new URL(requestUrls.at(-1)!).searchParams.get("segment")).toBe("Retailer");

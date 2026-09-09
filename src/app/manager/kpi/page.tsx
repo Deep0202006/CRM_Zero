@@ -13,7 +13,6 @@ import {
 } from "@/lib/teamKpi/contract";
 import { getCurrentISTDate, IST_TIMEZONE } from "@/lib/dateTime";
 import {
-  Activity,
   AlertCircle,
   BarChart3,
   CheckCircle2,
@@ -25,7 +24,8 @@ import {
   ShieldAlert,
   Users,
 } from "lucide-react";
-import FunnelTab from "./FunnelTab";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
+import { EmployeeDetailSheet } from "@/components/analytics/EmployeeDetailSheet";
 import { Chip } from "@/components/ui/Chip";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { MetricCard } from "@/components/ui/MetricCard";
@@ -33,7 +33,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
 import { AnalyticsSkeleton } from "@/components/analytics/AnalyticsPanel";
 import { NumberTicker } from "@/components/analytics/NumberTicker";
-import type { AnalyticsMetric } from "@/lib/analytics/viewModels";
+const FunnelTab = dynamic(() => import("./FunnelTab"), { ssr: false, loading: () => <AnalyticsSkeleton label="Loading pipeline funnel" /> });
 
 const TeamKpiIntelligence = dynamic(() => import("@/components/analytics/TeamKpiIntelligence"), {
   ssr: false,
@@ -66,6 +66,10 @@ export default function ManagerKpiPage() {
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"Team" | "Funnel">("Team");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const employeeTrigger = useRef<HTMLButtonElement | null>(null);
+  const [showComparison, setShowComparison] = useState(false);
+  const [sort, setSort] = useState<"name" | "calls_made" | "tasks_completed" | "mappings_completed" | "queries_handled">("name");
   const requestSequence = useRef(0);
   const realtimeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -156,24 +160,19 @@ export default function ManagerKpiPage() {
     };
   }, [currentUser, isAdmin, loadTeamKpi]);
 
-  const rows = report?.rows ?? [];
+  const rows = [...(report?.rows ?? [])].sort((a, b) => (sort === "name" ? 0 : b[sort] - a[sort]) || a.name.localeCompare(b.name, "en-IN") || a.user_id.localeCompare(b.user_id));
   const totals = report?.totals ?? EMPTY_TEAM_KPI_TOTALS;
   const visibleReportMatchesDate = report?.target_date === todayDate;
-  const pulseMetrics: AnalyticsMetric[] = [
-    { key: "calls", label: "Calls", value: totals.calls_made, color: "var(--viz-info)" },
-    { key: "queries", label: "Client queries", value: totals.queries_handled, color: "var(--viz-success)" },
-    { key: "mappings", label: "Mappings", value: totals.mappings_completed, color: "var(--viz-warning)" },
-    { key: "tasks", label: "Tasks done", value: totals.tasks_completed, color: "var(--viz-primary)" },
-  ];
 
-  if (!isAuthLoading && currentUser && !isAdmin) {
+
+  if (!isAuthLoading && !isAdmin) {
     return (
       <section className="access-state" aria-labelledby="team-kpi-access-title">
         <span className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-[var(--radius-lg)] bg-[var(--status-danger-soft)] text-[var(--status-danger)]">
           <ShieldAlert size={22} />
         </span>
         <h1 id="team-kpi-access-title" className="text-lg font-semibold">Team KPI is restricted</h1>
-        <p className="mx-auto mt-2 max-w-sm text-[13px] leading-5 text-[var(--text-muted)]">
+        <p className="mx-auto mt-2 max-w-sm text-[13px] leading-5 text-[var(--text-secondary)]">
           Only administrators can review confirmed work completed across the full team.
         </p>
       </section>
@@ -181,12 +180,12 @@ export default function ManagerKpiPage() {
   }
 
   return (
-    <div className="app-page">
+    <div className="app-page ui-foundation">
       <PageHeader
         eyebrow="Performance intelligence"
         icon={<BarChart3 size={18} />}
         title="Team Intelligence"
-        description="Review confirmed daily work across client calls, resolved queries, completed mappings, and completed tasks."
+        description={`Today · ${todayDate} · Asia/Kolkata. Confirmed work from the current report.`}
         actions={
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
             <Button
@@ -203,23 +202,18 @@ export default function ManagerKpiPage() {
         }
       />
 
-      <div className="segmented-control w-fit" aria-label="Performance report view">
-        <button type="button" aria-pressed={activeTab === "Team"} onClick={() => setActiveTab("Team")}>
-          <span className="flex items-center gap-2"><Users size={14} /> Team execution</span>
-        </button>
-        <button type="button" aria-pressed={activeTab === "Funnel"} onClick={() => setActiveTab("Funnel")}>
-          <span className="flex items-center gap-2"><Layers size={14} /> Pipeline funnel</span>
-        </button>
-      </div>
-
-      {activeTab === "Team" ? (
-        <>
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "Team" | "Funnel")} activationMode="manual">
+        <TabsList aria-label="Performance report view">
+          <TabsTrigger value="Team"><Users size={16} />Team execution</TabsTrigger>
+          <TabsTrigger value="Funnel"><Layers size={16} />Pipeline funnel</TabsTrigger>
+        </TabsList>
+        <TabsContent value="Team" className="space-y-6">
           {warning && (
             <div className="alert-panel alert-panel--warning" role="status">
               <AlertCircle size={16} className="mt-0.5 shrink-0" />
               <div className="min-w-0 flex-1">
                 <p>{warning}</p>
-                <p className="mt-1 text-[11px] opacity-80">Available confirmed metrics remain visible below.</p>
+                <p className="mt-1 text-xs opacity-80">Available confirmed metrics remain visible below.</p>
               </div>
               <Button size="sm" variant="outline" onClick={() => void loadTeamKpi(true)}>Refresh</Button>
             </div>
@@ -230,28 +224,30 @@ export default function ManagerKpiPage() {
               <AlertCircle size={16} className="mt-0.5 shrink-0" />
               <div className="min-w-0 flex-1">
                 <p>{error}</p>
-                {report && <p className="mt-1 text-[11px] opacity-80">The last confirmed report remains visible below.</p>}
+                {report && <p className="mt-1 text-xs opacity-80">The last confirmed report remains visible below.</p>}
               </div>
               <Button size="sm" variant="outline" onClick={() => void loadTeamKpi(false)}>Retry</Button>
             </div>
           )}
 
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-7">
-            <MetricCard label="Team members" value={report ? <NumberTicker value={totals.team_members} /> : "—"} icon={<Users size={17} />} tone="neutral" note="Active people included" />
-            <MetricCard label="Unique completed work" value={report ? <NumberTicker value={totals.total_completed_work} /> : "—"} icon={<Activity size={17} />} tone="brand" note="Linked follow-up call and task count once here" />
-            <MetricCard label="Calls today" value={report ? <NumberTicker value={totals.calls_made} /> : "—"} icon={<PhoneCall size={17} />} tone="info" note="Real call records" />
-            <MetricCard label="Follow-up calls" value={report ? <NumberTicker value={totals.followup_calls} /> : "—"} icon={<PhoneCall size={17} />} tone="info" note="Included in Calls today" />
-            <MetricCard label="Client queries" value={report ? <NumberTicker value={totals.queries_handled} /> : "—"} icon={<MessageSquare size={17} />} tone="success" note="Resolved today" />
-            <MetricCard label="Mappings" value={report ? <NumberTicker value={totals.mappings_completed} /> : "—"} icon={<Link2 size={17} />} tone="warning" note="Completed today" />
-            <MetricCard label="Tasks done" value={report ? <NumberTicker value={totals.tasks_completed} /> : "—"} icon={<CheckCircle2 size={17} />} tone="success" note="Tasks and allocated targets" />
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <MetricCard label="Calls today" value={report ? <NumberTicker value={totals.calls_made} /> : "—"} icon={<PhoneCall size={17} />} tone="neutral" note="Confirmed call records" />
+            <MetricCard label="Tasks completed" value={report ? <NumberTicker value={totals.tasks_completed} /> : "—"} icon={<CheckCircle2 size={17} />} tone="neutral" note="Includes allocated targets" />
+            <MetricCard label="Mappings completed" value={report ? <NumberTicker value={totals.mappings_completed} /> : "—"} icon={<Link2 size={17} />} tone="neutral" note="Completed today" />
+            <MetricCard label="Queries resolved" value={report ? <NumberTicker value={totals.queries_handled} /> : "—"} icon={<MessageSquare size={17} />} tone="neutral" note="Resolved today" />
           </div>
+          <dl className="flex flex-wrap gap-x-6 gap-y-3 text-sm">
+            <div><dt className="text-[var(--text-secondary)]">Team members</dt><dd className="font-semibold">{report ? totals.team_members.toLocaleString("en-IN") : "—"}</dd></div>
+            <div><dt className="text-[var(--text-secondary)]">Follow-up calls · subset of Calls</dt><dd className="font-semibold">{report ? totals.followup_calls.toLocaleString("en-IN") : "—"}</dd></div>
+            <div><dt className="text-[var(--text-secondary)]">Unique completed work · linked call/task counted once</dt><dd className="font-semibold">{report ? totals.total_completed_work.toLocaleString("en-IN") : "—"}</dd></div>
+          </dl>
 
           {loading || !visibleReportMatchesDate ? (
             <section className="surface-panel grid min-h-[360px] place-items-center">
-              <p className="text-[13px] font-medium text-[var(--text-muted)]">Loading confirmed Team KPI data…</p>
+              <p className="text-sm font-medium text-[var(--text-secondary)]">{error && !loading ? "Confirmed Team KPI data is unavailable. Retry the report above." : "Loading confirmed Team KPI data…"}</p>
             </section>
           ) : rows.length > 0 ? (
-            <TeamKpiIntelligence rows={rows} pulse={pulseMetrics} />
+            <TeamKpiIntelligence rows={rows} />
           ) : (
             <section className="surface-panel p-5">
               <EmptyState icon={<Users size={21} />} title="No active team members found" description="Check that active users and capability assignments exist in Supabase." />
@@ -261,16 +257,20 @@ export default function ManagerKpiPage() {
           <section className="data-table-shell" aria-labelledby="kpi-table-title">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-subtle)] px-5 py-4">
               <div>
-                <p className="section-kicker">Detailed scorecard</p>
-                <h2 id="kpi-table-title" className="mt-1 section-title">Team KPI register</h2>
+                <p className="section-kicker">Confirmed employee records</p>
+                <h2 id="kpi-table-title" tabIndex={-1} className="mt-1 section-title">Team KPI register</h2>
                 {report && (
-                  <p className="mt-1 text-[11px] text-[var(--text-muted)]">
+                  <p className="mt-1 text-xs text-[var(--text-secondary)]">
                     Last refreshed {formatActivityTime(report.generated_at)} IST
                     {refreshing ? " · Refreshing…" : ""}
                   </p>
                 )}
               </div>
-              <Chip variant="neutral" size="sm">{todayDate} · Asia/Kolkata</Chip>
+              <label className="flex items-center gap-2 text-sm">Sort by
+                <select className="field-control" value={sort} onChange={(event) => setSort(event.target.value as typeof sort)}>
+                  <option value="name">Name (A–Z)</option><option value="calls_made">Calls today (highest first)</option><option value="tasks_completed">Tasks completed (highest first)</option><option value="mappings_completed">Mappings completed (highest first)</option><option value="queries_handled">Queries resolved (highest first)</option>
+                </select>
+              </label>
             </div>
 
             {!loading && rows.length === 0 ? (
@@ -278,7 +278,7 @@ export default function ManagerKpiPage() {
                 <EmptyState icon={<BarChart3 size={21} />} title="No KPI rows available" description={error || `No active team members are available for ${todayDate}.`} />
               </div>
             ) : (
-              <div className="overflow-x-auto" data-allow-overflow="horizontal">
+              <div className="max-h-[640px] overflow-auto" role="region" aria-label="Team KPI register" tabIndex={0} data-allow-overflow="horizontal">
                 <table className="min-w-[940px]">
                   <thead>
                     <tr>
@@ -298,10 +298,10 @@ export default function ManagerKpiPage() {
                     {rows.map((row: TeamKpiRow) => (
                       <tr key={row.user_id}>
                         <td>
-                          <p className="max-w-[220px] break-words font-semibold text-[var(--text-primary)]">{row.name}</p>
+                          <button type="button" className="min-h-11 max-w-[220px] whitespace-normal break-words text-left font-semibold text-[var(--brand-700)] dark:text-[var(--brand-500)] underline underline-offset-4" onClick={(event) => { employeeTrigger.current = event.currentTarget; setSelectedId(row.user_id); }}>{row.name}</button>
                         </td>
                         <td>
-                          <span className="block max-w-[220px] whitespace-normal break-words text-[12px] font-medium leading-5 text-[var(--text-muted)]">{row.role}</span>
+                          <span className="block max-w-[220px] whitespace-normal break-words text-[12px] font-medium leading-5 text-[var(--text-secondary)]">{row.role}</span>
                         </td>
                         <td><Chip variant={row.attendance_status === "Present" ? "success" : "danger"} size="sm" dot>{row.attendance_status}</Chip></td>
                         <td className="font-semibold tabular-nums text-[var(--text-primary)]">{row.total_completed_work}</td>
@@ -310,7 +310,7 @@ export default function ManagerKpiPage() {
                         <td className="font-semibold tabular-nums text-[var(--text-primary)]">{row.queries_handled}</td>
                         <td className="font-semibold tabular-nums text-[var(--text-primary)]">{row.mappings_completed}</td>
                         <td className="font-semibold tabular-nums text-[var(--text-primary)]">{row.tasks_completed}</td>
-                        <td className="whitespace-nowrap text-[12px] text-[var(--text-muted)]">{formatActivityTime(row.latest_activity_time)}</td>
+                        <td className="whitespace-nowrap text-[12px] text-[var(--text-secondary)]">{formatActivityTime(row.latest_activity_time)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -318,8 +318,12 @@ export default function ManagerKpiPage() {
               </div>
             )}
           </section>
-        </>
-      ) : <FunnelTab />}
+        <Button variant="outline" aria-expanded={showComparison} onClick={() => setShowComparison((value) => !value)}>{showComparison ? "Hide" : "Show"} employee reference</Button>
+        {showComparison && report && <TeamKpiIntelligence rows={report.rows} comparison comparisonAvailable={!warning && !error && visibleReportMatchesDate} />}
+        </TabsContent>
+        <TabsContent value="Funnel">{activeTab === "Funnel" && <FunnelTab />}</TabsContent>
+      </Tabs>
+      {report && isAdmin && <EmployeeDetailSheet report={report} selectedId={selectedId} onClose={() => setSelectedId(null)} returnFocus={employeeTrigger} refreshing={refreshing} error={error} />}
     </div>
   );
 }

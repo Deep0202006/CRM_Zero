@@ -48,8 +48,8 @@ describe("Team KPI page data path", () => {
 
   it("keeps visual intelligence prop-only and truthful", () => {
     const component = fs.readFileSync(path.join(process.cwd(), "src/components/analytics/TeamKpiIntelligence.tsx"), "utf8");
-    expect(component).toContain("ContributionRing");
-    expect(component).toContain("KpiRadarProfile");
+    expect(component).toContain("EmployeeContributionBars");
+    expect(component).toContain("EmployeeTeamComparison");
     expect(component).toContain("No historical trend is implied");
     expect(component).not.toMatch(/fetch\(|supabase|setInterval|\.from\(/);
   });
