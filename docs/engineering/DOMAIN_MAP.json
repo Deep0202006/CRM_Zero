@@ -160,6 +160,7 @@
       ],
       "pathPatterns": [
         "src/components/admin/**",
+        "scripts/bcd-db/fixture.sql",
         "src/lib/__tests__/productionConsistencyGuards.test.ts",
         "src/lib/__tests__/retiredEmployeeIdentityErasurePolicy.test.ts",
         "src/lib/__tests__/userRetirementArtifacts.test.ts",
@@ -180,6 +181,7 @@
       ],
       "authorityRefs": [
         "employee_identity",
+        "employee_public_profile",
         "retired_employee_identity_erasure_operation"
       ],
       "capabilityRefs": [
@@ -303,6 +305,10 @@
         "src/components/visits"
       ],
       "pathPatterns": [
+        "supabase/migrations/055_crm_bcd_readers.sql",
+        "scripts/bcd-db/**",
+        "src/lib/analytics/reportResource.ts",
+        "src/lib/__tests__/bcdReaders.test.ts",
         "src/lib/__tests__/fieldVisitErpClosure.test.ts",
         "src/lib/__tests__/fieldVisitPincodeClosure.test.ts",
         "src/lib/__tests__/fieldVisitRecoveryCompatibility.test.ts"
@@ -387,6 +393,7 @@
     },
     {
       "id": "pipeline",
+      "pathPatterns": ["scripts/bcd-db/fixture.sql"],
       "aliases": [
         "pipeline"
       ],

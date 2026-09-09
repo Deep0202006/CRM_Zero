@@ -1,0 +1,14 @@
+insert into public.users(user_id,name,email,is_active)
+select md5('user'||g)::uuid, 'Matching representative '||g, 'rep'||g||'@example.invalid', g<>61 from generate_series(1,61) g;
+insert into public.leads(lead_id,business_name,contact_person,phone,segment_type)
+select md5('lead'||g)::uuid, 'Matching business '||g, 'Contact '||g, '555'||g, 'Retailer'::lead_segment from generate_series(1,61) g;
+insert into public.field_visits(visit_id,user_id,lead_id,visit_date,check_in_time,visit_outcome,segment_type,visit_notes,person_met,address)
+select md5('visit'||g)::uuid, md5('user'||g)::uuid, (md5('lead'||g)::uuid)::text,
+  date '2026-08-01', timestamptz '2026-08-01 04:00:00+00', 'interested', 'Retailer', null, null, null
+from generate_series(1,61) g;
+insert into public.field_visits(visit_id,user_id,lead_id,visit_date,check_in_time,visit_outcome,segment_type,visit_notes,person_met,address) values
+  (md5('legacy')::uuid,md5('user61')::uuid,'not-a-uuid','2026-08-02','2026-08-01 18:29:59+00','legacy-unknown','Retailer','legacy searchable',null,null);
+-- More than one full SQL page, with deterministic ties on the business date.
+insert into public.field_visits(visit_id,user_id,lead_id,visit_date,check_in_time,visit_outcome,segment_type,visit_notes,person_met,address)
+select md5('bulk'||g)::uuid, md5('user1')::uuid, 'legacy-bulk', '2026-08-03', '2026-08-03 04:00:00+00',
+  'follow_up','Retailer',null,null,null from generate_series(1,1001) g;

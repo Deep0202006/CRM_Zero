@@ -69,6 +69,20 @@
       ]
     },
     {
+      "id": "employee_public_profile",
+      "authority": "public.users profile fields",
+      "identity": ["user_id"],
+      "writeSelectors": [
+        { "schema": "public", "resource": "users", "columns": ["name", "email", "is_active"], "operationKinds": ["insert", "upsert", "update"] }
+      ],
+      "owns": ["employee display name", "public profile email or username", "account active state"],
+      "mustNotOwn": ["Auth login identity or credentials", "capability assignments", "employee deletion"],
+      "notes": [
+        "Registers existing create-user/update-user profile ownership; grants no new application or production operation.",
+        "Public profile email is not authoritative Auth login email."
+      ]
+    },
+    {
       "id": "retired_employee_identity_erasure_operation",
       "kind": "ONE_TIME_OWNER_OPERATION",
       "authority": "docs/contracts/IDENTITY_ERASURE.md exact-UUID Owner operation",
@@ -196,6 +210,10 @@
       "id": "field_visit_erp_observation",
       "status": "PRODUCTION_CERTIFIED",
       "authority": "public.field_visits(erp_usage_state, erp_id)",
+      "writeSelectors": [
+        { "schema": "public", "resource": "field_visits", "column": "erp_usage_state" },
+        { "schema": "public", "resource": "field_visits", "column": "erp_id" }
+      ],
       "identity": ["visit_id"],
       "owns": ["ERP observed during that exact Field Visit"],
       "writer": "service-only public.confirm_field_visit_erp_v1 transaction",
