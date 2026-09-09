@@ -16,7 +16,7 @@ All paths below are relative to `apps/v4/registry/new-york-v4/`.
 | `blocks/dashboard-01/components/section-cards.tsx` | `src/components/ui/MetricCard.tsx` structure reference | Real typed metrics, Lucide icons, existing tokens; no demo trends or Tabler dependency. |
 | `charts/chart-bar-horizontal.tsx` | Horizontal comparison reference | Full semantic labels, numeric axes and exact values; no demo data or trend. |
 | `charts/chart-pie-donut-text.tsx` | Outcome / ERP composition reference | Existing exact center totals, hover behavior, accessible category values, bars above six nonzero categories. |
-| `charts/chart-area-interactive.tsx` | Reviewed for subsequent history packet only | No source copied into the runtime, no fabricated dates or history. |
+| `charts/chart-area-interactive.tsx` | `src/components/analytics/TeamHistory.tsx`, reviewed 2026-09-09 | Pinned interactive-area composition adapted to one selected typed metric, linear interpolation, disconnected gaps, fixed 320px panel, exact table and native date/select controls. No demo records, stacked unlike measures, smooth trajectory, new dependency or trend claim. Existing Chart and MIT notice retained. |
 
 Exact added dependencies: `radix-ui@1.6.7`, `class-variance-authority@0.7.1`, `clsx@2.1.1`, `tailwind-merge@3.6.0`.
 Availability and React 19 compatibility verified from the npm registry on 2026-09-08. Installed one package per operation using `--save-exact --ignore-scripts --registry=https://registry.npmjs.org`.
