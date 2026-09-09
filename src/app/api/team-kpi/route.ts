@@ -4,6 +4,8 @@ import { getCurrentISTDate } from "@/lib/dateTime";
 import { backendUnavailableResponse, createServerAnonClient, createServerServiceClient } from "@/lib/serverBackendEnvironment";
 import { parseTeamKpiResponse } from "@/lib/teamKpi/contract";
 import { loadTeamKpiServerReport, TeamKpiServerError } from "@/lib/teamKpi/serverReport";
+import { HistoryRequestError, parseHistoryScope } from "@/lib/teamKpi/history";
+import { loadTeamKpiHistory } from "@/lib/teamKpi/historyServer";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -34,11 +36,15 @@ export async function GET(request: NextRequest) {
     const { data, error } = await userClient.auth.getUser(token);
     if (error || !data.user) return jsonError(401, "AUTHENTICATION_REQUIRED", "Your session has expired. Sign in again.");
     if (!(await isAdmin(service, data.user.id))) return jsonError(403, "ADMIN_REQUIRED", "Administrator access is required for Team KPI.");
+    const generatedAt = new Date().toISOString();
+    const historyScope = parseHistoryScope(request.nextUrl.searchParams, generatedAt);
+    if (historyScope) return NextResponse.json(await loadTeamKpiHistory(service, historyScope, generatedAt), { headers: { "Cache-Control": "no-store, max-age=0", "X-Team-KPI-Source": "bounded-retained-history" } });
     const targetDate = getCurrentISTDate();
     const report = parseTeamKpiResponse(await loadTeamKpiServerReport(service, targetDate));
     if (!report.totals.team_members) return jsonError(503, "TEAM_KPI_NO_ACTIVE_USERS", "Team KPI could not find active users.");
     return NextResponse.json(report, { headers: { "Cache-Control": "no-store, max-age=0", "X-Team-KPI-Source": "canonical-service-aggregation" } });
   } catch (error) {
+    if (error instanceof HistoryRequestError) return jsonError(error.status, error.code, error.message);
     if (error instanceof TeamKpiServerError) return jsonError(error.status, error.code, error.message);
     console.error("Canonical Team KPI failed", error);
     return jsonError(500, "TEAM_KPI_SERVER_ERROR", "Team KPI could not load confirmed work data.");

@@ -34,6 +34,7 @@ import { Button } from "@/components/ui/Button";
 import { AnalyticsSkeleton } from "@/components/analytics/AnalyticsPanel";
 import { NumberTicker } from "@/components/analytics/NumberTicker";
 const FunnelTab = dynamic(() => import("./FunnelTab"), { ssr: false, loading: () => <AnalyticsSkeleton label="Loading pipeline funnel" /> });
+const TeamHistory = dynamic(() => import("@/components/analytics/TeamHistory"), { ssr: false, loading: () => <AnalyticsSkeleton label="Loading retained history" /> });
 
 const TeamKpiIntelligence = dynamic(() => import("@/components/analytics/TeamKpiIntelligence"), {
   ssr: false,
@@ -66,6 +67,7 @@ export default function ManagerKpiPage() {
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"Team" | "Funnel">("Team");
+  const [reportMode, setReportMode] = useState<"today" | "history">("today");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const employeeTrigger = useRef<HTMLButtonElement | null>(null);
   const [showComparison, setShowComparison] = useState(false);
@@ -74,7 +76,7 @@ export default function ManagerKpiPage() {
   const realtimeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadTeamKpi = useCallback(async (background = false) => {
-    if (!currentUser || !isAdmin) return;
+    if (!currentUser || !isAdmin || activeTab !== "Team" || reportMode !== "today") return;
 
     const requestId = ++requestSequence.current;
     if (background) setRefreshing(true);
@@ -129,15 +131,16 @@ export default function ManagerKpiPage() {
         setRefreshing(false);
       }
     }
-  }, [currentUser, isAdmin, todayDate]);
+  }, [currentUser, isAdmin, todayDate, activeTab, reportMode]);
 
   useEffect(() => {
     if (isAuthLoading || !currentUser || !isAdmin) return;
     void loadTeamKpi(false);
+    return () => { requestSequence.current += 1; };
   }, [currentUser, isAdmin, isAuthLoading, loadTeamKpi]);
 
   useEffect(() => {
-    if (!currentUser || !isAdmin || !isSupabaseConfigured) return;
+    if (!currentUser || !isAdmin || !isSupabaseConfigured || activeTab !== "Team" || reportMode !== "today") return;
 
     const scheduleRefresh = () => {
       if (realtimeTimer.current) clearTimeout(realtimeTimer.current);
@@ -158,7 +161,7 @@ export default function ManagerKpiPage() {
       if (realtimeTimer.current) clearTimeout(realtimeTimer.current);
       void supabase.removeChannel(channel);
     };
-  }, [currentUser, isAdmin, loadTeamKpi]);
+  }, [currentUser, isAdmin, loadTeamKpi, activeTab, reportMode]);
 
   const rows = [...(report?.rows ?? [])].sort((a, b) => (sort === "name" ? 0 : b[sort] - a[sort]) || a.name.localeCompare(b.name, "en-IN") || a.user_id.localeCompare(b.user_id));
   const totals = report?.totals ?? EMPTY_TEAM_KPI_TOTALS;
@@ -185,9 +188,9 @@ export default function ManagerKpiPage() {
         eyebrow="Performance intelligence"
         icon={<BarChart3 size={18} />}
         title="Team Intelligence"
-        description={`Today · ${todayDate} · Asia/Kolkata. Confirmed work from the current report.`}
+        description={activeTab === "Team" && reportMode === "history" ? "Retained employee observations · Asia/Kolkata. Historical coverage is uncertified." : `Today · ${todayDate} · Asia/Kolkata. Confirmed work from the current report.`}
         actions={
-          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row" hidden={reportMode !== "today" || activeTab !== "Team"}>
             <Button
               type="button"
               size="sm"
@@ -208,6 +211,10 @@ export default function ManagerKpiPage() {
           <TabsTrigger value="Funnel"><Layers size={16} />Pipeline funnel</TabsTrigger>
         </TabsList>
         <TabsContent value="Team" className="space-y-6">
+          <Tabs value={reportMode} onValueChange={(value) => { setReportMode(value as "today" | "history"); setSelectedId(null); }} activationMode="manual">
+            <TabsList aria-label="Team reporting period"><TabsTrigger value="today">Today</TabsTrigger><TabsTrigger value="history">Employee history</TabsTrigger></TabsList>
+            <TabsContent value="history">{reportMode === "history" && activeTab === "Team" && isAdmin && currentUser && <TeamHistory key={currentUser.user_id} />}</TabsContent>
+          <TabsContent value="today" className="space-y-6">
           {warning && (
             <div className="alert-panel alert-panel--warning" role="status">
               <AlertCircle size={16} className="mt-0.5 shrink-0" />
@@ -320,10 +327,12 @@ export default function ManagerKpiPage() {
           </section>
         <Button variant="outline" aria-expanded={showComparison} onClick={() => setShowComparison((value) => !value)}>{showComparison ? "Hide" : "Show"} employee reference</Button>
         {showComparison && report && <TeamKpiIntelligence rows={report.rows} comparison comparisonAvailable={!warning && !error && visibleReportMatchesDate} />}
+          </TabsContent>
+          </Tabs>
         </TabsContent>
         <TabsContent value="Funnel">{activeTab === "Funnel" && <FunnelTab />}</TabsContent>
       </Tabs>
-      {report && isAdmin && <EmployeeDetailSheet report={report} selectedId={selectedId} onClose={() => setSelectedId(null)} returnFocus={employeeTrigger} refreshing={refreshing} error={error} />}
+      {report && isAdmin && reportMode === "today" && activeTab === "Team" && <EmployeeDetailSheet report={report} selectedId={selectedId} onClose={() => setSelectedId(null)} returnFocus={employeeTrigger} refreshing={refreshing} error={error} />}
     </div>
   );
 }

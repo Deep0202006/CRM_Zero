@@ -24,6 +24,11 @@ function isActive(value: KpiUserRecord["is_active"]): boolean {
 function humanize(code: string): string { return code.split("_").filter(Boolean).map((part) => part[0].toUpperCase() + part.slice(1)).join(" "); }
 export function isSyntheticCallOutcome(outcome: string | null): boolean { return isSyntheticAuditCall({ outcome }); }
 
+export function getTeamKpiParticipants(users: KpiUserRecord[], assignments: KpiUserCapabilityRecord[]) {
+  const external = new Set(assignments.filter((item) => item.capability_code === "erp_partner_viewer").map((item) => item.user_id));
+  return [...new Map(users.filter((user) => isActive(user.is_active) && user.name.trim().toLowerCase() !== "zerodataadmin" && !external.has(user.user_id)).map((user) => [user.user_id, user])).values()];
+}
+
 export function buildTeamKpiReport(input: BuildTeamKpiReportInput): TeamKpiResponse {
   const codesByUser = new Map<string, string[]>();
   for (const assignment of input.userCapabilities) {
@@ -31,11 +36,7 @@ export function buildTeamKpiReport(input: BuildTeamKpiReportInput): TeamKpiRespo
     if (!codes.includes(assignment.capability_code)) codes.push(assignment.capability_code);
     codesByUser.set(assignment.user_id, codes);
   }
-  const activeUsers = [...new Map(input.users.filter((user) =>
-    isActive(user.is_active) &&
-    user.name.trim().toLowerCase() !== "zerodataadmin" &&
-    !codesByUser.get(user.user_id)?.includes("erp_partner_viewer"),
-  ).map((user) => [user.user_id, user])).values()];
+  const activeUsers = getTeamKpiParticipants(input.users, input.userCapabilities);
   const metrics = getCanonicalDailyTeamMetrics({
     userIds: activeUsers.map((user) => user.user_id), calls: input.calls, tasks: input.tasks, taskHistory: input.taskHistory,
     queries: input.clientQueries, mappings: input.mappings, targets: input.allocatedTargets,

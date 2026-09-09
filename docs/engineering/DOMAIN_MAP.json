@@ -9,7 +9,7 @@
     "field-visits": ["field-visits-unit"],
     "mappings": ["mapping-unit"],
     "pipeline": ["pipeline-unit"],
-    "team-kpi": ["team-kpi-unit"],
+    "team-kpi": ["team-kpi-unit", "team-history-e2e"],
     "distributor-status": ["distributor-unit"],
     "receivables": ["receivables-unit"],
     "erp": ["erp-unit"],
@@ -444,7 +444,10 @@
         "src/lib/analytics/viewModels.ts"
       ],
       "pathPatterns": [
-        "src/lib/__tests__/teamKpiApiContract.test.ts"
+          "src/lib/__tests__/teamKpiApiContract.test.ts",
+          "src/lib/__tests__/teamKpiHistory.test.ts",
+          "e2e/team-history/**",
+          "artifacts/visual-review/team-history-v1/**"
       ],
       "serverBoundaries": [
         "src/app/api/team-kpi/route.ts"

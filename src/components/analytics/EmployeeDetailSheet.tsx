@@ -2,25 +2,49 @@
 
 import type { RefObject } from "react";
 import type { TeamKpiResponse } from "@/lib/teamKpi/contract";
+import { HISTORY_METRICS, type HistoryMetric, type HistoryReport } from "@/lib/teamKpi/history";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/Sheet";
 
-export function EmployeeDetailSheet({ report, selectedId, onClose, returnFocus, refreshing, error }: {
-  report: TeamKpiResponse;
+export function EmployeeDetailSheet({ report, history, metric = "calls_made", selectedId, onClose, returnFocus, refreshing, error }: {
+  report?: TeamKpiResponse;
+  history?: HistoryReport;
+  metric?: HistoryMetric;
   selectedId: string | null;
   onClose: () => void;
   returnFocus: RefObject<HTMLButtonElement | null>;
   refreshing: boolean;
   error: string | null;
 }) {
-  const row = report.rows.find((item) => item.user_id === selectedId);
+  const row = report?.rows.find((item) => item.user_id === selectedId);
+  const historical = history?.employees.find((item) => item.user_id === selectedId);
+  const employee = historical ?? row;
   const time = (value: string) => new Date(value).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" });
   return <Sheet open={selectedId !== null} onOpenChange={(open) => { if (!open) onClose(); }}>
     <SheetContent onCloseAutoFocus={(event) => { event.preventDefault(); if (returnFocus.current?.isConnected) returnFocus.current.focus(); else document.getElementById("kpi-table-title")?.focus(); }}>
       <SheetHeader className="pr-14 sm:p-6 sm:pr-16">
-        <SheetTitle className="break-words text-lg leading-[26px]">{row?.name ?? "Employee unavailable"}</SheetTitle>
-        <SheetDescription>{row?.role ?? "This employee is no longer available in the current report. Close this detail and choose a current employee."}</SheetDescription>
+        <SheetTitle className="break-words text-lg leading-[26px]">{employee?.name ?? "Employee unavailable"}</SheetTitle>
+        <SheetDescription>{employee?.role ?? "This employee is no longer available in the current report. Close this detail and choose a current employee."}</SheetDescription>
       </SheetHeader>
       <div className="space-y-4 px-4 pb-6 text-sm sm:px-6">
+        {history && <>
+          <p>Applied range: <strong>{history.scope.from} to {history.scope.to}</strong> · Asia/Kolkata</p>
+          <p className="text-xs text-[var(--text-secondary)]">Last refreshed: {time(history.generated_at)} IST</p>
+          {refreshing && <p role="status">Refreshing. The previous applied scope remains visible.</p>}
+          {error && <p role="alert">{error} Showing the previous applied scope.</p>}
+          <h3 className="font-semibold">{HISTORY_METRICS[metric].label}</h3>
+          <p>{HISTORY_METRICS[metric].reason}</p>
+          {historical && <dl className="grid grid-cols-[minmax(0,1fr)_auto] gap-3">
+            <dt>Selected-period retained calls</dt><dd>{metric === "calls_made" ? historical.retained_calls?.toLocaleString("en-IN") ?? "Unavailable" : "Unavailable"}</dd>
+            <dt>Own previous-period retained calls ({history.scope.previous_from} to {history.scope.previous_to})</dt><dd>{metric === "calls_made" ? historical.previous_retained_calls?.toLocaleString("en-IN") ?? "Unavailable" : "Unavailable"}</dd>
+            <dt>Own period change</dt><dd>Unavailable</dd>
+          </dl>}
+          <p>Periods are not certified comparable{history.coverage.partial_today ? "; today has only elapsed coverage" : ""}. No absolute or percentage change is claimed.</p>
+          <p>{history.coverage.reason}</p>
+          <p>Reference: {history.cohort.count} current internal roster members, including this employee. Not historical membership or a productivity ranking.</p>
+          <p>Latest retained call in this range: {historical?.latest_activity_time ? `${time(historical.latest_activity_time)} IST` : "Unavailable"}</p>
+          <p className="text-xs text-[var(--text-secondary)]">Historical tasks, allocated targets, mappings, queries, follow-up subsets and unique completed work are withheld where event meaning or attribution cannot be established.</p>
+        </>}
+        {report && <>
         <p>Report date: <strong>{report.target_date}</strong> · Asia/Kolkata · Today only</p>
         <p className="text-xs text-[var(--text-secondary)]">Last confirmed refresh: {time(report.generated_at)} IST</p>
         {refreshing && <p role="status">Refreshing. The last confirmed report remains visible.</p>}
@@ -38,6 +62,7 @@ export function EmployeeDetailSheet({ report, selectedId, onClose, returnFocus, 
           </dl>
           <p>Latest activity: {row.latest_activity_time ? `${time(row.latest_activity_time)} IST` : "No work recorded"}</p>
           <p className="text-xs leading-[18px] text-[var(--text-secondary)]">Tasks completed includes allocated targets. Follow-up calls are a subset of Calls. Linked follow-up call/task pairs count once in daily unique completed work. These are distinct recorded work types, not a productivity score.</p>
+        </>}
         </>}
       </div>
     </SheetContent>

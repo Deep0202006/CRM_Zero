@@ -10,7 +10,7 @@
       "ui-foundation-unit", "ui-foundation-e2e",
       "auth-unit", "attendance-unit", "attendance-e2e", "attendance-postgres", "calls-unit", "call-owner-e2e",
       "field-visits-unit", "field-visits-e2e", "field-visits-postgres", "mapping-unit", "mapping-e2e", "mapping-postgres",
-      "pipeline-unit", "pipeline-e2e", "pipeline-postgres", "team-kpi-unit", "distributor-unit", "distributor-e2e",
+      "pipeline-unit", "pipeline-e2e", "pipeline-postgres", "team-kpi-unit", "team-history-e2e", "distributor-unit", "distributor-e2e",
       "distributor-postgres", "receivables-unit", "receivables-e2e", "receivables-postgres", "erp-unit", "erp-postgres",
       "imports-unit", "imports-postgres", "followups-unit", "queries-unit", "task-allocation-unit", "kernel-typecheck",
       "kernel-lint", "kernel-unit-build", "supabase-handover-readiness"
@@ -351,7 +351,16 @@
       ]
     },
     {
-      "id": "team-kpi-unit",
+        "id": "team-history-e2e",
+        "kind": "e2e",
+        "domains": ["team-kpi"],
+        "effects": ["UI", "API", "ANALYTICS"],
+        "runner": "playwright",
+        "paths": ["e2e/team-history"],
+        "commands": [{ "file": "npx", "args": ["playwright", "test", "e2e/team-history", "--workers=1", "--retries=0", "--trace=retain-on-failure"] }]
+      },
+      {
+        "id": "team-kpi-unit",
       "kind": "unit",
       "domains": [
         "team-kpi"
@@ -364,7 +373,10 @@
       "runner": "jest",
       "paths": [
         "src/lib/__tests__/teamKpiContract.test.ts",
-        "src/lib/__tests__/teamKpiWorkflowAttribution.test.ts"
+          "src/lib/__tests__/teamKpiWorkflowAttribution.test.ts",
+          "src/lib/__tests__/teamKpiHistory.test.ts",
+          "src/lib/__tests__/teamKpiApiContract.test.ts",
+          "src/lib/__tests__/teamKpiLiveAggregation.test.ts"
       ]
     },
     {
