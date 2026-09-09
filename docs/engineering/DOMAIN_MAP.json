@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "canonicalDomainProofRefs": {
-    "ui-foundation": ["ui-foundation-unit", "ui-foundation-e2e"],
+    "ui-foundation": ["ui-foundation-unit", "ui-foundation-e2e", "workspace-makeover-e2e"],
     "platform-handover": ["supabase-handover-readiness"],
     "auth": ["auth-unit"],
     "attendance": ["attendance-unit"],
@@ -28,9 +28,9 @@
       "id": "ui-foundation",
       "aliases": ["UI Foundation", "chart presentation"],
       "riskFloor": "R3",
-      "surfacePaths": ["src/components/ui", "src/components/analytics", "src/design-system"],
+      "surfacePaths": ["src/components/ui", "src/components/analytics", "src/components/workspace", "src/design-system"],
       "codeRoots": ["src/components/ui", "src/components/analytics"],
-      "pathPatterns": ["components.json", "src/lib/utils.ts", "src/app/globals.css", "e2e/visual-intelligence/**", "src/lib/__tests__/visualIntelligence*.test.ts", "src/lib/__tests__/teamKpiPageContract.test.ts", "src/lib/__tests__/currentErpFootprint.test.ts", "artifacts/visual-review/ui-foundation-before/**", "artifacts/visual-review/ui-foundation-after/**"],
+      "pathPatterns": ["e2e/workspace-makeover/**", "artifacts/visual-review/workspace-makeover/**", "src/lib/__tests__/coreReliabilityRelease.test.ts", "src/lib/__tests__/workspaceMakeover.test.ts", "src/lib/__tests__/myDayConsumption.test.ts", "components.json", "src/lib/utils.ts", "src/app/globals.css", "e2e/visual-intelligence/**", "src/lib/__tests__/visualIntelligence*.test.ts", "src/lib/__tests__/teamKpiPageContract.test.ts", "src/lib/__tests__/currentErpFootprint.test.ts", "artifacts/visual-review/ui-foundation-before/**", "artifacts/visual-review/ui-foundation-after/**"],
       "serverBoundaries": [],
       "contractPaths": ["docs/contracts/visual-intelligence.md"],
       "authorityRefs": [],
@@ -160,6 +160,7 @@
       ],
       "pathPatterns": [
         "src/components/admin/**",
+        "src/lib/__tests__/productionConsistencyGuards.test.ts",
         "src/lib/__tests__/retiredEmployeeIdentityErasurePolicy.test.ts",
         "src/lib/__tests__/userRetirementArtifacts.test.ts",
         "docs/operations/ravi-prince-retirement.md",
@@ -935,6 +936,8 @@
       ],
       "surfacePaths": [
         "src/app/my-day",
+        "src/lib/taskEngine.ts",
+        "src/lib/__tests__/myDayConsumption.test.ts",
         "src/app/api/my-day"
       ],
       "codeRoots": [

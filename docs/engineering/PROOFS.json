@@ -7,7 +7,7 @@
     "owner": ["mapping-owner-pre", "mapping-owner-post"],
     "full-regression": ["control-postgres-matrix", "control-e2e-matrix"],
     "domain": [
-      "ui-foundation-unit", "ui-foundation-e2e",
+      "ui-foundation-unit", "ui-foundation-e2e", "workspace-makeover-e2e",
       "auth-unit", "attendance-unit", "attendance-e2e", "attendance-postgres", "calls-unit", "call-owner-e2e",
       "field-visits-unit", "field-visits-e2e", "field-visits-postgres", "mapping-unit", "mapping-e2e", "mapping-postgres",
       "pipeline-unit", "pipeline-e2e", "pipeline-postgres", "team-kpi-unit", "team-history-e2e", "distributor-unit", "distributor-e2e",
@@ -24,13 +24,14 @@
     "handover": ["package.json", "package-lock.json"]
   },
   "proofs": [
+    { "id": "workspace-makeover-e2e", "kind": "e2e", "domains": ["ui-foundation"], "effects": ["UI", "ANALYTICS"], "runner": "playwright", "paths": ["e2e/workspace-makeover"], "commands": [{ "file": "npx", "args": ["playwright", "test", "e2e/workspace-makeover", "--workers=1", "--retries=0", "--trace=retain-on-failure"] }] },
     {
       "id": "ui-foundation-unit",
       "kind": "unit",
       "domains": ["ui-foundation"],
       "effects": ["UI", "ANALYTICS"],
       "runner": "jest",
-      "paths": ["src/lib/__tests__/visualIntelligence.test.ts", "src/lib/__tests__/visualIntelligenceV2.test.ts", "src/lib/__tests__/teamKpiPageContract.test.ts", "src/lib/__tests__/currentErpFootprint.test.ts"]
+      "paths": ["src/lib/__tests__/coreReliabilityRelease.test.ts", "src/lib/__tests__/workspaceMakeover.test.ts", "src/lib/__tests__/myDayConsumption.test.ts", "src/lib/__tests__/visualIntelligence.test.ts", "src/lib/__tests__/visualIntelligenceV2.test.ts", "src/lib/__tests__/teamKpiPageContract.test.ts", "src/lib/__tests__/currentErpFootprint.test.ts"]
     },
     {
       "id": "ui-foundation-e2e",
@@ -644,6 +645,7 @@
     {
       "id": "supabase-handover-readiness",
       "kind": "handover",
+      "selectors": { "paths": ["src/lib/__tests__/productionConsistencyGuards.test.ts"] },
       "domains": [
         "platform-handover"
       ],

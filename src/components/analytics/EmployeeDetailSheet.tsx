@@ -3,7 +3,7 @@
 import type { RefObject } from "react";
 import type { TeamKpiResponse } from "@/lib/teamKpi/contract";
 import { HISTORY_METRICS, type HistoryMetric, type HistoryReport } from "@/lib/teamKpi/history";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/Sheet";
+import { ContextRail } from "@/components/workspace/ContextRail";
 
 export function EmployeeDetailSheet({ report, history, metric = "calls_made", selectedId, onClose, returnFocus, refreshing, error }: {
   report?: TeamKpiResponse;
@@ -19,13 +19,8 @@ export function EmployeeDetailSheet({ report, history, metric = "calls_made", se
   const historical = history?.employees.find((item) => item.user_id === selectedId);
   const employee = historical ?? row;
   const time = (value: string) => new Date(value).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" });
-  return <Sheet open={selectedId !== null} onOpenChange={(open) => { if (!open) onClose(); }}>
-    <SheetContent onCloseAutoFocus={(event) => { event.preventDefault(); if (returnFocus.current?.isConnected) returnFocus.current.focus(); else document.getElementById("kpi-table-title")?.focus(); }}>
-      <SheetHeader className="pr-14 sm:p-6 sm:pr-16">
-        <SheetTitle className="break-words text-lg leading-[26px]">{employee?.name ?? "Employee unavailable"}</SheetTitle>
-        <SheetDescription>{employee?.role ?? "This employee is no longer available in the current report. Close this detail and choose a current employee."}</SheetDescription>
-      </SheetHeader>
-      <div className="space-y-4 px-4 pb-6 text-sm sm:px-6">
+  return <ContextRail open={selectedId !== null} title={employee?.name ?? "Employee unavailable"} description={employee?.role ?? "This employee is no longer available in the current report."} onClose={onClose} returnFocus={returnFocus}>
+      <div className="space-y-4">
         {history && <>
           <p>Applied range: <strong>{history.scope.from} to {history.scope.to}</strong> · Asia/Kolkata</p>
           <p className="text-xs text-[var(--text-secondary)]">Last refreshed: {time(history.generated_at)} IST</p>
@@ -65,6 +60,5 @@ export function EmployeeDetailSheet({ report, history, metric = "calls_made", se
         </>}
         </>}
       </div>
-    </SheetContent>
-  </Sheet>;
+  </ContextRail>;
 }

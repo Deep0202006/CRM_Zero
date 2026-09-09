@@ -120,7 +120,8 @@ async function selfHealCompletedFollowUps(userId: string): Promise<void> {
  */
 export async function getOrGenerateTodayTasks(
   userId: string,
-  userCapabilities: string[]
+  userCapabilities: string[],
+  options: { includeLater?: boolean } = {},
 ): Promise<LocalTask[]> {
   const today = getCurrentISTDate();
   await removeUnconfirmedInvalidTemplateFollowUps(userId);
@@ -178,6 +179,7 @@ export async function getOrGenerateTodayTasks(
     .and((t: LocalTask) => {
       if (t.due_date === today) return true; // everything for today
       if (t.due_date < today && t.status !== "Completed") return true; // incomplete past tasks
+      if (options.includeLater && t.due_date > today && t.status !== "Completed") return true;
       return false;
     })
     .toArray();
@@ -209,7 +211,7 @@ export function sortTasks(tasks: LocalTask[]): LocalTask[] {
   return [...tasks].sort((a, b) => {
     const p = PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
     if (p !== 0) return p;
-    return a.created_at.localeCompare(b.created_at);
+    return a.created_at.localeCompare(b.created_at) || a.task_id.localeCompare(b.task_id);
   });
 }
 

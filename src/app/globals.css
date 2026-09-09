@@ -575,6 +575,28 @@
   }
 }
 
+.crm-workspace { gap: 16px; }
+.workspace-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.workspace-heading h1 { font-size: 28px; line-height: 34px; font-weight: 600; }
+.workspace-heading p { margin-top: 4px; font-size: 12px; line-height: 18px; color: var(--text-secondary); }
+.workspace-columns { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; align-items: start; }
+.workspace-register, .workspace-context, .workspace-upcoming { min-width: 0; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--surface-primary); }
+.workspace-context { position: sticky; top: 16px; max-height: calc(100dvh - 100px); overflow-y: auto; }
+.workspace-upcoming { padding: 16px; }
+.workspace-upcoming h2 { font-size: 16px; line-height: 24px; font-weight: 600; }
+.workspace-task-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 16px; }
+.workspace-task-row[data-selected="true"] { background: var(--brand-50); }
+[data-theme="dark"] .workspace-task-row[data-selected="true"] { background: var(--surface-secondary); }
+.workspace-counts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; padding: 12px 0; }
+.workspace-counts dt { font-size: 12px; line-height: 18px; color: var(--text-secondary); }
+.workspace-counts dd { margin-top: 4px; font-size: 28px; line-height: 32px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.workspace-disclosure { border-top: 1px solid var(--border-subtle); padding-top: 8px; font-size: 14px; }
+.workspace-disclosure summary { cursor: pointer; padding: 12px 0; }
+.crm-workspace button, .crm-workspace input, .crm-workspace select, .crm-workspace summary { min-height: 44px; }
+.crm-workspace .data-table-shell { box-shadow: none; }
+@media (min-width: 1200px) { .workspace-columns:has(> .workspace-context, > .workspace-upcoming) { grid-template-columns: minmax(0, 1fr) 320px; } }
+@media (max-width: 767px) { .workspace-counts { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; } .workspace-task-row { gap: 8px; padding: 10px 12px; } }
+
 .ui-foundation button, .ui-foundation input, .ui-foundation select, .ui-foundation summary {
   min-height: 44px;
 }

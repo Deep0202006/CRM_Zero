@@ -2,19 +2,18 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import { Calendar, Download, MapPin, User } from "lucide-react";
+import { Download } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import type { LocalFieldVisit } from "@/lib/db";
 import { getCurrentISTDate } from "@/lib/dateTime";
 import { supabase } from "@/lib/supabaseClient";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { QueueList } from "@/components/QueueList";
-import { MetricCard } from "@/components/ui/MetricCard";
+import { ContextRail } from "@/components/workspace/ContextRail";
+import { Chip } from "@/components/ui/Chip";
 import { Button } from "@/components/ui/Button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/Tabs";
 import { getOutcomeLabel } from "@/lib/fieldVisits/contract";
 import { AnalyticsSkeleton } from "@/components/analytics/AnalyticsPanel";
-import { NumberTicker } from "@/components/analytics/NumberTicker";
 import { buildVisitAnalytics } from "@/lib/analytics/viewModels";
 import type { FieldVisitErpSegment } from "@/components/analytics/FieldVisitErpIntelligence";
 
@@ -53,11 +52,16 @@ function getAdminOutcomeVariant(outcome: string): "success" | "brand" | "info" |
 
 export default function AdminVisitsPage() {
   const { isAdmin } = useAuth();
+  const [selected, setSelected] = useState<{ visit: AdminVisit; scope: string } | null>(null);
+  const visitTrigger = useRef<HTMLButtonElement | null>(null);
+  const [appliedScope, setAppliedScope] = useState("No applied scope yet");
+  const [appliedGlobalScope, setAppliedGlobalScope] = useState("");
   const [visits, setVisits] = useState<AdminVisit[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasLoaded, setHasLoaded] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [page, setPage] = useState(1);
+  const [appliedPage, setAppliedPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [allTimeTotal, setAllTimeTotal] = useState(0);
   const [todayTotal, setTodayTotal] = useState(0);
@@ -106,7 +110,10 @@ export default function AdminVisitsPage() {
       if (!response.ok) throw new Error(typeof result.error === "string" ? result.error : "Unable to load field visits");
       if (sequence !== requestSequence.current) return;
       setVisits(result.visits ?? []);
+      setAppliedScope(`${date || `${dateFrom || "All dates"} to ${dateTo || "present"}`} · ${representative === "ALL" ? "All representatives" : (result.representatives as typeof representatives | undefined)?.find((row) => row.user_id === representative)?.name || representative} · ${segment} segments · ${outcome === "ALL" ? "All outcomes" : getAdminOutcomeLabel(outcome)}${search.trim() ? ` · Search: ${search.trim()}` : ""}`);
+      setAppliedGlobalScope(`${representative === "ALL" ? "All representatives" : representative} · ${segment} segments · ${outcome === "ALL" ? "All outcomes" : getAdminOutcomeLabel(outcome)}`);
       setPage(result.page ?? targetPage);
+      setAppliedPage(result.page ?? targetPage);
       setHasMore(Boolean(result.has_more));
       setAllTimeTotal(result.all_time_total ?? 0);
       setTodayTotal(result.today_total ?? 0);
@@ -212,92 +219,43 @@ export default function AdminVisitsPage() {
   }
 
   return (
-    <div className="app-page min-w-0 ui-foundation">
-      <PageHeader
-        eyebrow="Field Activity Intelligence"
-        icon={<MapPin size={18} />}
-        title="Visits overview"
-        description="Review confirmed visits and inspect the records behind the loaded page."
-        actions={<Button size="sm" variant="outline" icon={<Download size={14} />} onClick={handleExport} isLoading={exporting}>Export to Excel</Button>}
-      />
-      <section aria-label="Visit totals and representative directory" className="space-y-3">
-        <div className="grid gap-4 sm:grid-cols-3">
-          <MetricCard label="All-time visits" value={hasLoaded ? <NumberTicker value={allTimeTotal} /> : "—"} icon={<MapPin size={17} />} note="Across all dates" />
-          <MetricCard label="Visits today" value={hasLoaded ? <NumberTicker value={todayTotal} /> : "—"} icon={<Calendar size={17} />} note="Today in India" />
-          <MetricCard label="Representatives" value={hasLoaded ? <NumberTicker value={representatives.length} /> : "—"} icon={<User size={17} />} note="Directory, including historical representatives" />
-        </div>
-        <p className="text-xs leading-[18px] text-[var(--text-secondary)]">Visit totals follow representative, segment and outcome filters, but not search or selected dates. The representative directory is a separate population.</p>
-      </section>
-      <section aria-label="Visit filters" className="space-y-4 [&_button]:min-h-11 [&_input]:min-h-11 [&_select]:min-h-11">
-      <div className="flex flex-wrap gap-2">
-        <Button size="sm" variant={date ? "outline" : "primary"} onClick={() => { setPage(1); setDate(""); }}>All visits</Button>
-        <Button size="sm" variant={date === getCurrentISTDate() ? "primary" : "outline"} onClick={() => { setPage(1); setDate(getCurrentISTDate()); }}>Today</Button>
-        <Button size="sm" variant={segment === "Retailer" ? "primary" : "outline"} onClick={() => { setPage(1); setSegment(segment === "Retailer" ? "ALL" : "Retailer"); }}>Retailer</Button>
-        <Button size="sm" variant={segment === "Distributor" ? "primary" : "outline"} onClick={() => { setPage(1); setSegment(segment === "Distributor" ? "ALL" : "Distributor"); }}>Distributor</Button>
-      </div>
-      <div className="grid min-w-0 gap-4 text-xs leading-[18px] text-[var(--text-secondary)] sm:grid-cols-2 xl:grid-cols-4 [&_label]:grid [&_label]:min-w-0 [&_label]:gap-1.5">
-        <label>Search visits<input aria-label="Search visits" className="field-control min-w-0" placeholder="Business, representative, or notes" value={search} onChange={(event) => { setPage(1); setSearch(event.target.value); }} /></label>
-        <label>Visit date<input aria-label="Visit date" type="date" className="field-control min-w-0" value={date} onChange={(event) => { setPage(1); setDate(event.target.value); }} /></label>
-        <label>From date<input aria-label="Date From" type="date" className="field-control min-w-0" value={dateFrom} onChange={(event) => { setPage(1); setDate(""); setDateFrom(event.target.value); }} /></label>
-        <label>To date<input aria-label="Date To" type="date" className="field-control min-w-0" value={dateTo} onChange={(event) => { setPage(1); setDate(""); setDateTo(event.target.value); }} /></label>
-        <label>Representative
+    <div className="app-page min-w-0 crm-workspace">
+      <header className="workspace-heading"><div><h1>Visits overview</h1><p>Confirmed field records · India check-in dates</p></div><Button size="sm" variant="outline" icon={<Download size={14} />} onClick={handleExport} isLoading={exporting}>Export to Excel</Button></header>
+      <section aria-label="Visit filters" className="space-y-2">
+        <div className="grid min-w-0 gap-3 text-xs text-[var(--text-secondary)] sm:grid-cols-3 [&_label]:grid [&_label]:min-w-0 [&_label]:gap-1"><label>Search visits<input aria-label="Search visits" className="field-control min-w-0" placeholder="Business, representative, or notes" value={search} onChange={(event) => { setPage(1); setSearch(event.target.value); }} /></label><label>Representative
         <select aria-label="Representative" className="field-control min-w-0" value={representative} onChange={(event) => { setPage(1); setRepresentative(event.target.value); }}>
           <option value="ALL">All representatives</option>
           {representatives.map((user) => <option key={user.user_id} value={user.user_id}>{user.name}{user.email ? ` (${user.email})` : ""}{user.is_active ? "" : " — inactive"}{user.historical_only ? " — historical" : ""}</option>)}
-        </select></label>
-        <label>Segment
-        <select aria-label="Segment" className="field-control min-w-0" value={segment} onChange={(event) => { setPage(1); setSegment(event.target.value); }}>
-          <option value="ALL">All segments</option><option value="Retailer">Retailer</option><option value="Distributor">Distributor</option>
-        </select></label>
-        <label>Outcome
+        </select></label><label>Outcome
         <select aria-label="Outcome" className="field-control min-w-0" value={outcome} onChange={(event) => { setPage(1); setOutcome(event.target.value); }}>
           <option value="ALL">All outcomes</option>
           {["registered", "installed", "interested", "follow_up", "payment_follow_up", "payment_done", "not_interested"].map((value) => <option key={value} value={value}>{getOutcomeLabel(value)}</option>)}
-        </select></label>
-      </div>
+        </select></label></div>
+        <details><summary className="cursor-pointer text-sm">Date and segment filters</summary><div className="grid min-w-0 gap-3 text-xs text-[var(--text-secondary)] sm:grid-cols-3 [&_label]:grid [&_label]:min-w-0 [&_label]:gap-1"><label>Visit date<input aria-label="Visit date" type="date" className="field-control min-w-0" value={date} onChange={(event) => { setPage(1); setDate(event.target.value); }} /></label><label>From date<input aria-label="Date From" type="date" className="field-control min-w-0" value={dateFrom} onChange={(event) => { setPage(1); setDate(""); setDateFrom(event.target.value); }} /></label><label>To date<input aria-label="Date To" type="date" className="field-control min-w-0" value={dateTo} onChange={(event) => { setPage(1); setDate(""); setDateTo(event.target.value); }} /></label><label>Segment
+        <select aria-label="Segment" className="field-control min-w-0" value={segment} onChange={(event) => { setPage(1); setSegment(event.target.value); }}>
+          <option value="ALL">All segments</option><option value="Retailer">Retailer</option><option value="Distributor">Distributor</option>
+        </select></label></div><div className="mt-2 flex gap-2"><Button size="sm" variant="outline" onClick={() => { setDate(getCurrentISTDate()); setPage(1); }}>Today</Button><Button size="sm" variant="outline" onClick={() => { setDate(""); setDateFrom(""); setDateTo(""); setPage(1); }}>All dates</Button></div></details>
       </section>
-      {legacyMismatchCount > 0 && <div role="status" className="alert-panel alert-panel--warning">Included {legacyMismatchCount} confirmed visit{legacyMismatchCount === 1 ? "" : "s"} whose stored date differs from the selected India check-in date.</div>}
-      {errorMessage && <div role="alert" className="alert-panel alert-panel--danger">{errorMessage} {hasLoaded && <span>The last confirmed records remain visible.</span>} <Button size="sm" variant="outline" onClick={() => void loadData(page)}>Refresh</Button></div>}
-      <p className="text-sm leading-5 text-[var(--text-secondary)]" aria-live="polite">{hasLoaded ? `Loaded page ${page} · ${visits.length.toLocaleString("en-IN")} of ${matchedTotal.toLocaleString("en-IN")} matching visits` : "Loading confirmed visits…"}{loading && hasLoaded ? " · Refreshing…" : ""}</p>
+      {legacyMismatchCount > 0 && <div role="status" className="alert-panel alert-panel--warning">Included {legacyMismatchCount} confirmed visits whose stored date differs from their India check-in date.</div>}
+      {errorMessage && <div role="alert" className="alert-panel alert-panel--danger">{errorMessage} {hasLoaded && <span>The last confirmed records and their applied scope remain visible.</span>} <Button size="sm" variant="outline" onClick={() => void loadData(page)}>Refresh</Button></div>}
+      <p className="text-xs text-[var(--text-secondary)]" aria-live="polite">{hasLoaded ? `Applied: ${appliedScope} · Loaded page ${appliedPage} · ${visits.length} of ${matchedTotal} matching visits` : "Loading confirmed visits…"}{loading && hasLoaded ? " · Refreshing…" : ""}</p>
+      <div className="workspace-columns">
+        <section className="workspace-register" data-workspace-register tabIndex={-1} aria-label="Confirmed visit history">
+          <header className="flex items-center justify-between gap-3 border-b border-[var(--border-subtle)] px-4 py-2"><h2 className="text-base font-semibold">Visit register</h2><Button size="sm" variant="ghost" onClick={() => void loadData(page)}>Refresh</Button></header>
+          <ol className="divide-y divide-[var(--border-subtle)]">{visits.map((visit) => <li key={visit.visit_id} className="workspace-task-row" data-selected={selected?.visit.visit_id === visit.visit_id}>
+            <div className="min-w-0 flex-1"><button type="button" className="min-h-11 text-left text-sm font-semibold" aria-pressed={selected?.visit.visit_id === visit.visit_id} onClick={(event) => { visitTrigger.current = event.currentTarget; setSelected({ visit, scope: `${appliedScope} · Page ${appliedPage}` }); }}>{visit.leads?.business_name?.trim() || visit.lead_id?.trim() || "Unavailable business"}</button><p className="text-xs text-[var(--text-secondary)]">{visit.users?.name || "Unknown representative"} · {visit.segment_type} · {new Date(visit.check_in_time).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" })} IST</p></div>
+            <Chip variant={getAdminOutcomeVariant(visit.visit_outcome)} size="sm">{getAdminOutcomeLabel(visit.visit_outcome)}</Chip>
+          </li>)}</ol>
+          {!visits.length && <div className="p-4 text-sm"><p>{loading ? "Loading visits…" : "No confirmed visits match these filters."}</p><Button size="sm" variant="outline" onClick={() => { setDate(""); setDateFrom(""); setDateTo(""); setSearch(""); setRepresentative("ALL"); setSegment("ALL"); setOutcome("ALL"); }}>Clear filters</Button></div>}
+          <footer className="flex items-center justify-between border-t border-[var(--border-subtle)] p-3"><span className="text-xs">Loaded page {appliedPage}</span><div className="flex gap-2"><Button size="sm" variant="outline" disabled={page <= 1 || loading} onClick={() => void loadData(page - 1)}>Previous</Button><Button size="sm" variant="outline" disabled={!hasMore || loading} onClick={() => void loadData(page + 1)}>Next</Button></div></footer>
+        </section>
+        <ContextRail open={Boolean(selected)} title={selected?.visit.leads?.business_name || selected?.visit.lead_id || "Visit detail"} description={selected ? `${selected.visit.segment_type} · ${getAdminOutcomeLabel(selected.visit.visit_outcome)}` : "Select a visit"} onClose={() => setSelected(null)} returnFocus={visitTrigger}>
+          {selected && <VisitDetail key={selected.visit.visit_id} visit={selected.visit} scope={selected.scope} />}
+        </ContextRail>
+      </div>
       <Tabs value={analyticsMode} onValueChange={(value) => setAnalyticsMode(value as "activity" | "erp")} activationMode="manual">
-      <TabsList aria-label="Visit analytics" className="max-w-full">
-        <TabsTrigger value="activity">Visit Activity</TabsTrigger>
-        <TabsTrigger value="erp">ERP Intelligence</TabsTrigger>
-      </TabsList>
-      <div className="order-2 min-w-0 sm:order-3">
-      <QueueList
-        title="Confirmed visit history"
-        items={visits.map((visit) => {
-          const confirmationText = visit.selfie_status === "PURGED" ? "Selfie captured · Expired after 5-day retention" : visit.selfie_status === "AVAILABLE" ? "Selfie available" : "Evidence pending";
-          return {
-            id: visit.visit_id,
-            primaryNode: (
-              <div className="min-w-0 whitespace-normal break-words">
-                <p className="break-words text-[13px] font-semibold leading-snug text-[var(--text-primary)]">{visit.leads?.business_name?.trim() || visit.lead_id?.trim() || "Unavailable business"} <span className="font-normal text-[var(--text-secondary)]">({visit.segment_type})</span></p>
-                <p className="mt-1 break-all text-xs leading-[18px] text-[var(--text-secondary)]">Rep · {visit.users?.name || "Unknown"} · {visit.users?.email || "Unavailable"}</p>
-                <p className="mt-1 text-[12px] text-[var(--text-secondary)]">Person met: {visit.person_met || "Unavailable"}{visit.follow_up_date ? ` · Follow-up: ${visit.follow_up_date}` : ""} · {confirmationText}</p>
-                <p className="mt-1 text-[12px] text-[var(--text-secondary)]">ERP: {visit.erp_usage_state === "erp" ? visit.erp_name || "Not captured" : visit.erp_usage_state === "none" ? "None" : "Not captured"}</p>
-                <p className="mt-2 whitespace-pre-wrap break-words text-[13px] font-medium leading-5 text-[var(--text-primary)]"><strong>{visit.segment_type === "Retailer" ? "Area" : "Address"}:</strong> {visit.address?.trim() || "Legacy visit — address was not captured"}</p>
-                <details className="mt-2 rounded border border-[var(--border-subtle)] p-3 text-[12px] leading-5 text-[var(--text-secondary)]"><summary className="cursor-pointer font-semibold">Visit detail</summary><p><strong>Pincode:</strong> {visit.pincode?.trim() || "—"}</p><p><strong>GPS:</strong> {visit.check_in_lat != null && visit.check_in_lng != null ? `${visit.check_in_lat}, ${visit.check_in_lng}` : "Not captured"}</p><p><strong>Sync:</strong> {visit.sync_status || "Confirmed"}</p><p><strong>Follow-up:</strong> {visit.follow_up_date || "None"}</p><p className="whitespace-pre-wrap"><strong>Notes:</strong> {visit.visit_notes || "None"}</p>{visit.check_in_lat != null && visit.check_in_lng != null && <a target="_blank" rel="noreferrer" className="text-[var(--brand-700)] underline" href={`https://www.google.com/maps?q=${visit.check_in_lat},${visit.check_in_lng}`}>Open Location</a>}</details>
-              </div>
-            ),
-            statusText: getAdminOutcomeLabel(visit.visit_outcome),
-            statusVariant: getAdminOutcomeVariant(visit.visit_outcome),
-            timestamp: new Date(visit.check_in_time).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }),
-            actions: visit.selfie_status === "AVAILABLE" ? <EvidenceButton visitId={visit.visit_id} /> : visit.selfie_status === "PURGED" ? <span className="text-xs text-[var(--text-muted)]">Selfie expired after 5-day retention</span> : undefined,
-          };
-        })}
-        emptyMessage={loading ? "Loading visits…" : "No confirmed visits match these filters."}
-        onRefresh={() => void loadData(page)}
-      />
-      <div className="mt-4 flex flex-wrap justify-center gap-2 [&_button]:min-h-11">
-        <Button variant="outline" disabled={page <= 1 || loading} onClick={() => void loadData(page - 1)}>Previous</Button>
-        <Button variant="outline" disabled={!hasMore || loading} onClick={() => void loadData(page + 1)}>Next</Button>
-      </div>
-      </div>
-      <TabsContent value="activity" className="order-3 sm:order-2">
-        {analyticsMode === "activity" && (loading ? <AnalyticsSkeleton label="Loading field activity intelligence" /> : !errorMessage ? <VisitsIntelligence model={visitAnalytics} matchedTotal={matchedTotal} page={page} /> : null)}
-      </TabsContent>
+        <TabsList aria-label="Visit analytics"><TabsTrigger value="activity">Visit Activity</TabsTrigger><TabsTrigger value="erp">ERP Intelligence</TabsTrigger></TabsList>
+        <TabsContent value="activity">{analyticsMode === "activity" && hasLoaded && <VisitsIntelligence model={visitAnalytics} matchedTotal={matchedTotal} page={appliedPage} onOutcome={(key) => { setOutcome(key); setPage(1); }} />}</TabsContent>
       <TabsContent value="erp" className="order-3 space-y-4 sm:order-2">
         {analyticsMode === "erp" && <>
           <p className="text-sm leading-5 text-[var(--text-secondary)]">Current ERP footprint counts unique businesses across confirmed visits and Admin baselines. Visit filters above apply to the register and activity view, not this footprint.</p>
@@ -306,28 +264,49 @@ export default function AdminVisitsPage() {
           {manageCurrentErpOpen && <CurrentErpBaselineEditor onSaved={() => { setErpSegments(null); setErpError(""); void loadErpIntelligence(); }} />}
         </>}
       </TabsContent>
+
       </Tabs>
+      <details className="workspace-disclosure"><summary>Global visit context and representative directory</summary><p className="text-xs">{appliedGlobalScope}. Totals exclude date and search filters. The directory is a separate population, including historical representatives.</p><dl className="workspace-counts"><div><dt>All-time visits</dt><dd>{hasLoaded ? allTimeTotal.toLocaleString("en-IN") : "—"}</dd></div><div><dt>Visits today · India</dt><dd>{hasLoaded ? todayTotal.toLocaleString("en-IN") : "—"}</dd></div><div><dt>Representative directory</dt><dd>{hasLoaded ? representatives.length : "—"}</dd></div></dl></details>
     </div>
   );
 }
 
+function VisitDetail({ visit, scope }: { visit: AdminVisit; scope: string }) {
+  return <>
+    <p className="text-xs text-[var(--text-secondary)]">Selected record snapshot from: {scope}. Changing register filters does not change this selection.</p>
+    <dl className="space-y-3">
+      <div><dt>Representative</dt><dd>{visit.users?.name || "Unknown"} · {visit.users?.email || "Email unavailable"}</dd></div>
+      <div><dt>Person met</dt><dd>{visit.person_met || "Unavailable"}</dd></div>
+      <div><dt>{visit.segment_type === "Retailer" ? "Area" : "Address"}</dt><dd className="whitespace-pre-wrap">{visit.address?.trim() || "Legacy visit — address was not captured"}</dd></div>
+      <div><dt>Pincode</dt><dd>{visit.pincode?.trim() || "Not captured"}</dd></div>
+      <div><dt>ERP at visit</dt><dd>{visit.erp_usage_state === "erp" ? visit.erp_name || "Not captured" : visit.erp_usage_state === "none" ? "None" : "Not captured"}</dd></div>
+      <div><dt>Follow-up date</dt><dd>{visit.follow_up_date || "None recorded"}</dd></div>
+      <div><dt>Notes</dt><dd className="whitespace-pre-wrap">{visit.visit_notes || "None recorded"}</dd></div>
+      <div><dt>Sync</dt><dd>{visit.sync_status || "Confirmed"}</dd></div>
+      <div><dt>GPS</dt><dd>{visit.check_in_lat != null && visit.check_in_lng != null ? <a target="_blank" rel="noreferrer" className="underline" href={`https://www.google.com/maps?q=${visit.check_in_lat},${visit.check_in_lng}`}>{visit.check_in_lat}, {visit.check_in_lng} · Open Location</a> : "Not captured"}</dd></div>
+    </dl>
+    {visit.selfie_status === "AVAILABLE" ? <EvidenceButton visitId={visit.visit_id} /> : <p>{visit.selfie_status === "PURGED" ? "Selfie captured · Expired after 5-day retention" : "Evidence pending"}</p>}
+  </>;
+}
+
 function EvidenceButton({ visitId }: { visitId: string }) {
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const openEvidence = async () => {
-    setLoading(true);
+    setLoading(true); setError("");
     try {
       const { data } = await supabase.auth.getSession();
       const token = data.session?.access_token;
-      if (!token) return;
+      if (!token) throw new Error("Sign in again to view evidence.");
       const response = await fetch(`/api/admin/visits/evidence?visit_id=${encodeURIComponent(visitId)}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!response.ok) return;
+      if (!response.ok) throw new Error("Evidence is unavailable. Please retry.");
       const result = await response.json();
       window.open(result.url, "_blank", "noopener,noreferrer");
-    } finally {
+    } catch (reason) { setError(reason instanceof Error ? reason.message : "Evidence could not be opened."); } finally {
       setLoading(false);
     }
   };
-  return <Button size="sm" variant="outline" isLoading={loading} onClick={openEvidence}>View Selfie</Button>;
+  return <div><Button size="sm" variant="outline" isLoading={loading} onClick={openEvidence}>View Selfie</Button>{error && <p role="alert">{error}</p>}</div>;
 }

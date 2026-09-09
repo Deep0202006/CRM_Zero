@@ -4,6 +4,8 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { assertDeepInventoryBudget, assertRedacted, classifyBudget, compareManifests, evaluateOwnerGate, migrationBoundary, requiredCapabilities, sha256, sourceIdentity, supabaseArgv, validateMigrationBoundary } from './lib.mjs';
 import { makeEngineeringTemp, removeEngineeringTemp } from '../engineering/managed-paths.mjs';
+import { compileImpact } from '../engineering/impact.mjs';
+import { compileProofPlan } from '../engineering/proof-plan.mjs';
 
 const root = process.cwd();
 const read = (path) => readFileSync(resolve(root, path), 'utf8');
@@ -99,7 +101,11 @@ const handoverProof = proofs.find(({ id }) => id === 'supabase-handover-readines
 assert.equal(handoverDomain.riskFloor, 'R3');
 assert.ok(handoverDomain.proofRefs.includes('supabase-handover-readiness'));
 assert.equal(handoverCapability.status, 'ACTIVE');
-assert.deepEqual(handoverProof, { id: 'supabase-handover-readiness', kind: 'handover', domains: ['platform-handover'], effects: ['PLATFORM','DATABASE','AUTHORIZATION','SECURITY','STORAGE','REALTIME','CONFIGURATION'], runner: 'node', paths: ['scripts/handover/check.mjs'] });
+assert.deepEqual(handoverProof, { id: 'supabase-handover-readiness', kind: 'handover', selectors: { paths: ['src/lib/__tests__/productionConsistencyGuards.test.ts'] }, domains: ['platform-handover'], effects: ['PLATFORM','DATABASE','AUTHORIZATION','SECURITY','STORAGE','REALTIME','CONFIGURATION'], runner: 'node', paths: ['scripts/handover/check.mjs'] });
+const guardOnlyImpact = compileImpact({ entries: [{ status: 'M', path: 'src/lib/__tests__/productionConsistencyGuards.test.ts' }], patch: '' });
+const guardOnlyPlan = compileProofPlan({ impact: guardOnlyImpact });
+assert.ok(guardOnlyPlan.requiredProofs.includes('supabase-handover-readiness'));
+assert.ok(guardOnlyPlan.requiredProofs.includes('auth-unit'));
 
 const fingerprint = sha256('certified');
 const base = { manifestVersion: 2, capabilities, edgeFunctionCount: 0, vaultSecretCount: 0, snapshotConsistency: { state: 'SNAPSHOT_BOUND', snapshotId: fingerprint, dumpArtifactSha256: fingerprint }, semantic: { application: { tables: [{ table: 'x' }] }, types: [1], constraints: [], indexes: [], views: [], functions: [], triggers: [], policies: [], privileges: {} }, realtime: { applicationPublicationTables: ['x'] }, deepData: { public: { x: { fingerprint } }, auth: { userUuidSet: fingerprint, identitySet: fingerprint, credentialSet: fingerprint } }, storage: { bucketConfiguration: [], fullIntegrity: { status: 'CERTIFIED', bulkCopyStatus: 'CERTIFIED', finalDeltaStatus: 'CERTIFIED', expectedObjectCount: 1, verifiedObjectCount: 1, expectedBytes: 1, verifiedBytes: 1, mismatchCount: 0, aggregateFingerprint: fingerprint } }, businessInvariants: { x: 1 }, inventory: { database: { bytes: 1 }, cron: [{ jobid: 1, jobname: 'nightly', schedule: '0 1 * * *', active: true, commandHash: fingerprint, classification: 'NORMAL' }], extensions: [{ extension: 'pg_cron', version: '1.6' }], managedHooks: { authUsersApplicationTriggers: [{ trigger: 'app_auth', enabled: 'O', definitionHash: fingerprint }] } } };

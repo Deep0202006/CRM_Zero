@@ -122,6 +122,7 @@ describe("self-scheduled follow-up contract", () => {
     const myDay = fs.readFileSync(path.join(process.cwd(), "src/app/my-day/page.tsx"), "utf8");
     expect(myDay).not.toContain("Acme Corp");
     expect(myDay).not.toContain("Global Tech");
-    expect(myDay).toContain("Weekly intelligence unavailable");
+    expect(myDay).not.toContain("Weekly intelligence");
+    expect(myDay).not.toContain("weeklyDigest");
   });
 });

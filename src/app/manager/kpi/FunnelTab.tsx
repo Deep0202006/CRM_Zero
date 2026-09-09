@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Activity, AlertTriangle, Clock, Filter, Layers, Route } from "lucide-react";
-import { Bar, BarChart, CartesianGrid, Cell, Legend, Tooltip, XAxis, YAxis } from "recharts";
-import { ChartContainer, ChartLegendContent, ChartTooltipContent } from "@/components/analytics/Chart";
+import { AlertTriangle } from "lucide-react";
+import { Line, LineChart, CartesianGrid, Tooltip, XAxis, YAxis } from "recharts";
+import { ChartContainer, ChartTooltipContent } from "@/components/analytics/Chart";
 import { Chip } from "@/components/ui/Chip";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
 import { supabase } from "@/lib/supabaseClient";
 
 type Segment = "All" | "Retailer" | "Distributor";
@@ -36,8 +37,10 @@ export default function FunnelTab() {
   const [overdue, setOverdue] = useState(false);
   const [recentChange, setRecentChange] = useState(false);
   const [historyWindow, setHistoryWindow] = useState<"weeks" | "months">("weeks");
-  const [historyMetric, setHistoryMetric] = useState<"activity" | "direction">("activity");
-  const [sourceMetric, setSourceMetric] = useState<"rate" | "converted">("rate");
+  const [historyMetric, setHistoryMetric] = useState<keyof Omit<HistoryPoint, "period">>("new_leads");
+  const [appliedSegment, setAppliedSegment] = useState<Segment>("All");
+  const [appliedList, setAppliedList] = useState("");
+  const [retry, setRetry] = useState(0);
   const [inspection, setInspection] = useState<Inspection | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -48,6 +51,7 @@ export default function FunnelTab() {
       setLoading(true); setError("");
       try {
         const { data } = await supabase.auth.getSession();
+        if (controller.signal.aborted) return;
         if (!data.session?.access_token) throw new Error("Sign in again.");
         const query = new URLSearchParams();
         if (segment !== "All") query.set("segment", segment);
@@ -60,12 +64,15 @@ export default function FunnelTab() {
         if (recentChange) query.set("recentChange", "true");
         const response = await fetch(`/api/pipeline/inspection?${query}`, { headers: { Authorization: `Bearer ${data.session.access_token}` }, cache: "no-store", signal: controller.signal });
         if (!response.ok) throw new Error("Pipeline inspection is unavailable.");
-        setInspection(await response.json() as Inspection);
-      } catch (reason) { if ((reason as Error).name !== "AbortError") setError(reason instanceof Error ? reason.message : "Pipeline inspection is unavailable."); }
+        const result = await response.json() as Inspection;
+        if (controller.signal.aborted) return;
+        setInspection(result); setAppliedSegment(segment);
+        setAppliedList([stage || "All stages", owner ? `Owner ${result.owner_options.find((item) => item.user_id === owner)?.name || owner}` : "All owners", source || "All sources", search ? `Search: ${search}` : "", stale ? "Stale" : "", overdue ? "Overdue task" : "", recentChange ? "Recent change" : ""].filter(Boolean).join(" · "));
+      } catch (reason) { if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : "Pipeline inspection is unavailable."); }
       finally { if (!controller.signal.aborted) setLoading(false); }
     })();
     return () => controller.abort();
-  }, [segment, stage, owner, source, search, stale, overdue, recentChange]);
+  }, [segment, stage, owner, source, search, stale, overdue, recentChange, retry]);
 
   const stages = inspection?.stages ?? [];
   const sources = useMemo(() => (inspection?.sources ?? []).filter((row) => row.reconciled), [inspection]);
@@ -74,50 +81,42 @@ export default function FunnelTab() {
   const history = inspection?.history[historyWindow] ?? [];
   const needsAttention = inspection?.leads.filter((lead) => lead.attention_reasons.length).length ?? 0;
 
-  if (loading && !inspection) return <section className="surface-panel grid min-h-[360px] place-items-center"><p className="text-[13px] font-medium text-[var(--text-muted)]">Loading pipeline inspection…</p></section>;
-  if (error || !inspection) return <section className="surface-panel p-5"><EmptyState icon={<AlertTriangle size={20} />} title="Pipeline inspection unavailable" description={error || "Try again."} /></section>;
-
-  return <div className="page-stack" aria-busy={loading}>
-    <form className="surface-toolbar flex-wrap" onSubmit={(event) => { event.preventDefault(); setSearch(searchDraft.trim()); }}>
-      <div className="flex items-center gap-2 text-[12px] font-semibold text-[var(--text-secondary)]"><Filter size={15} /> Server filters</div>
+  const metricLabels = { new_leads: "New leads", successes: "Terminal successes", movements: "Confirmed movements", advanced: "Advanced", regressed: "Regressed" };
+  return <div className="space-y-4" aria-busy={loading}>
+    <div className="flex flex-wrap items-center justify-between gap-3">
       <div className="segmented-control" aria-label="Pipeline segment filter">{(["All", "Retailer", "Distributor"] as const).map((value) => <button key={value} type="button" aria-pressed={segment === value} onClick={() => setSegment(value)}>{value}</button>)}</div>
-      <select className="field-control min-w-40" aria-label="Owner" value={owner} onChange={(event) => setOwner(event.target.value)}><option value="">All owners</option>{inspection.owner_options.map((item) => <option key={item.user_id} value={item.user_id}>{item.name}</option>)}</select>
-      <select className="field-control min-w-40" aria-label="Lead source" value={source} onChange={(event) => setSource(event.target.value)}><option value="">All sources</option>{sources.map((item) => <option key={item.source} value={item.source}>{item.source}</option>)}</select>
-      <Input aria-label="Search pipeline" value={searchDraft} onChange={(event) => setSearchDraft(event.target.value)} placeholder="Lead, person, phone or area" />
-      <button className="btn-secondary" type="submit">Search</button>
+      <Button size="sm" variant="outline" disabled={loading} onClick={() => setRetry((value) => value + 1)}>Refresh inspection</Button>
+    </div>
+    {error && <p role="alert" className="alert-panel alert-panel--danger">{error} {inspection && "Previous applied report remains visible."}</p>}
+    {loading && <p role="status" className="text-sm">Loading pipeline inspection…</p>}
+    {inspection ? <>
+      <p className="text-xs text-[var(--text-secondary)]">Applied analytics: {appliedSegment} segments · Refreshed {new Date(inspection.scope.generated_at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST. List filters do not filter these analytics.</p>
+      <section aria-label="Current stage occupancy" className="flex gap-2 overflow-x-auto pb-1">{stages.map((row) => <div key={row.stage} className="shrink-0 border-l-2 px-3 py-2" style={{ borderColor: STAGE_COLORS[row.stage] || "var(--viz-muted)" }}><p className="text-xs text-[var(--text-secondary)]">{row.stage}</p><p className="text-lg font-semibold tabular-nums">{row.count.toLocaleString("en-IN")}</p></div>)}</section>
+      <div className="flex flex-col gap-4">
+        <section className="space-y-3" aria-labelledby="pipeline-inspection-title">
+          <form className="space-y-2" onSubmit={(event) => { event.preventDefault(); setSearch(searchDraft.trim()); }}>
+            <div className="flex flex-wrap items-center gap-3"><h2 id="pipeline-inspection-title" className="text-base font-semibold">Inspection register</h2>      <Input aria-label="Search pipeline" value={searchDraft} onChange={(event) => setSearchDraft(event.target.value)} placeholder="Lead, person, phone or area" />
+      <Button variant="secondary" type="submit">Search</Button>
+</div>
+            <details><summary className="cursor-pointer text-sm">Inspection-list filters only</summary><div className="grid gap-3 sm:grid-cols-3"><label className="text-sm">Stage<select aria-label="Stage" className="field-control" value={stage} onChange={(event) => setStage(event.target.value)}><option value="">All stages</option>{stages.map((row) => <option key={row.stage} value={row.stage}>{row.stage}</option>)}</select></label>      <select className="field-control min-w-0" aria-label="Owner" value={owner} onChange={(event) => setOwner(event.target.value)}><option value="">All owners</option>{inspection.owner_options.map((item) => <option key={item.user_id} value={item.user_id}>{item.name}</option>)}</select>
+      <select className="field-control min-w-0" aria-label="Lead source" value={source} onChange={(event) => setSource(event.target.value)}><option value="">All sources</option>{sources.map((item) => <option key={item.source} value={item.source}>{item.source}</option>)}</select>
       {[{ label: "Stale", value: stale, set: setStale }, { label: "Overdue task", value: overdue, set: setOverdue }, { label: "Recent change", value: recentChange, set: setRecentChange }].map((item) => <label key={item.label} className="flex items-center gap-1.5 text-xs"><input type="checkbox" checked={item.value} onChange={(event) => item.set(event.target.checked)} />{item.label}</label>)}
-      <Chip variant="neutral" size="sm">{inspection.scope.matched_total} matching leads</Chip>
-    </form>
-
-    <div className="grid gap-4 md:grid-cols-3">
-      <Metric label="Visible pipeline" value={stages.reduce((sum, row) => sum + row.count, 0)} detail="Server-authoritative stage counts" icon={<Route size={18} />} />
-      <Metric label="Needs attention" value={needsAttention} detail={`Within this ${inspection.scope.page_size}-row inspection page`} icon={<AlertTriangle size={18} />} />
-      <Metric label="Velocity sample" value={`n=${inspection.historical_velocity.sample_n}`} detail={`${inspection.historical_velocity.coverage_pct}% of eligible completed intervals`} icon={<Clock size={18} />} />
-    </div>
-
-    <div className="grid gap-5 xl:grid-cols-2">
-      <ChartPanel kicker="Stage distribution" title="Canonical stage order" empty={!stages.length} emptyIcon={<Layers size={20} />}>
-        <ChartContainer config={{ count: { label: "Leads", color: "var(--viz-primary)" } }} className="h-[340px]" initialDimension={{ width: 620, height: 340 }}><BarChart data={stages} layout="vertical" margin={{ top: 8, right: 18, bottom: 8, left: 30 }} accessibilityLayer><CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--viz-grid)" /><XAxis type="number" allowDecimals={false} axisLine={false} tickLine={false} /><YAxis type="category" dataKey="stage" width={104} axisLine={false} tickLine={false} /><Tooltip content={<ChartTooltipContent />} /><Bar dataKey="count" radius={[0, 5, 5, 0]} isAnimationActive={false}>{stages.map((row) => <Cell key={row.stage} fill={STAGE_COLORS[row.stage]} className="cursor-pointer" onClick={() => setStage((current) => current === row.stage ? "" : row.stage)} />)}</Bar></BarChart></ChartContainer>
-      </ChartPanel>
-      <ChartPanel kicker="Current stage age" title="Average current age by stage" empty={!currentAge.length} emptyIcon={<Clock size={20} />}>
-        <ChartContainer config={{ average_days: { label: "Current age", color: "var(--viz-warning)" } }} className="h-[340px]" initialDimension={{ width: 620, height: 340 }}><BarChart data={currentAge} layout="vertical" accessibilityLayer><CartesianGrid horizontal={false} stroke="var(--viz-grid)" /><XAxis type="number" /><YAxis type="category" dataKey="stage" width={104} /><Tooltip content={<ChartTooltipContent valueFormatter={(value) => `${value} days`} />} /><Bar dataKey="average_days" fill="var(--viz-warning)" radius={[0, 5, 5, 0]} isAnimationActive={false} /></BarChart></ChartContainer>
-      </ChartPanel>
-      <ChartPanel kicker="Completed intervals" title="Historical stage velocity" empty={!velocity.length} emptyIcon={<Clock size={20} />}>
-        <ChartContainer config={{ p50_days: { label: "P50 days", color: "var(--viz-primary)" }, average_days: { label: "Average days", color: "var(--viz-info)" } }} className="h-[340px]" initialDimension={{ width: 620, height: 340 }}><BarChart data={velocity} layout="vertical" accessibilityLayer><CartesianGrid horizontal={false} stroke="var(--viz-grid)" /><XAxis type="number" /><YAxis type="category" dataKey="stage" width={104} /><Tooltip content={<ChartTooltipContent valueFormatter={(value) => `${value} days`} />} /><Legend content={<ChartLegendContent />} /><Bar dataKey="p50_days" fill="var(--viz-primary)" isAnimationActive={false} /><Bar dataKey="average_days" fill="var(--viz-info)" isAnimationActive={false} /></BarChart></ChartContainer>
-        <p className="mt-2 text-[10px] text-[var(--text-muted)]">Actual completed intervals · n={inspection.historical_velocity.sample_n} · coverage {inspection.historical_velocity.coverage_pct}%.</p>
-      </ChartPanel>
-      <ChartPanel kicker="Acquisition quality" title="Source conversion" empty={!sources.length} emptyIcon={<Activity size={20} />}>
-        <div className="segmented-control mb-3" aria-label="Source conversion metric"><button type="button" aria-pressed={sourceMetric === "rate"} onClick={() => setSourceMetric("rate")}>Rate %</button><button type="button" aria-pressed={sourceMetric === "converted"} onClick={() => setSourceMetric("converted")}>Converted</button></div>
-        <ChartContainer config={{ rate: { label: "Conversion rate", color: "var(--viz-success)" }, converted: { label: "Converted", color: "var(--viz-success)" } }} className="h-[340px]" initialDimension={{ width: 620, height: 340 }}><BarChart data={sources} layout="vertical" accessibilityLayer><CartesianGrid horizontal={false} stroke="var(--viz-grid)" /><XAxis type="number" domain={sourceMetric === "rate" ? [0, 100] : undefined} /><YAxis type="category" dataKey="source" width={112} /><Tooltip content={<ChartTooltipContent valueFormatter={(value) => sourceMetric === "rate" ? `${value}%` : Number(value).toLocaleString("en-IN")} />} /><Bar dataKey={sourceMetric} fill="var(--viz-success)" radius={[0, 5, 5, 0]} isAnimationActive={false} /></BarChart></ChartContainer>
-        <p className="mt-2 text-[10px] text-[var(--text-muted)]">{sources.map((row) => `${row.source}: ${row.converted}/${row.total}`).join(" · ")}</p>
-      </ChartPanel>
-    </div>
-
-    <section className="surface-panel overflow-hidden" aria-labelledby="sales-history-title"><div className="flex flex-wrap items-center justify-between gap-3 border-b p-5"><div><p className="section-kicker">Real dated authority</p><h2 id="sales-history-title" className="mt-1 section-title">Sales review history</h2><p className="mt-1 text-[11px] text-[var(--text-muted)]">{inspection.history.coverage} Leads n={inspection.history.lead_sample_n}; transitions n={inspection.history.transition_sample_n}.</p></div><div className="flex flex-wrap gap-2"><div className="segmented-control" aria-label="History metric"><button type="button" aria-pressed={historyMetric === "activity"} onClick={() => setHistoryMetric("activity")}>Activity</button><button type="button" aria-pressed={historyMetric === "direction"} onClick={() => setHistoryMetric("direction")}>Direction</button></div><div className="segmented-control" aria-label="History window"><button type="button" aria-pressed={historyWindow === "weeks"} onClick={() => setHistoryWindow("weeks")}>12 weeks</button><button type="button" aria-pressed={historyWindow === "months"} onClick={() => setHistoryWindow("months")}>12 months</button></div></div></div><div className="p-4"><ChartContainer config={{ new_leads: { label: "New leads", color: "var(--viz-primary)" }, successes: { label: "Terminal successes", color: "var(--viz-success)" }, movements: { label: "Confirmed movements", color: "var(--viz-info)" }, advanced: { label: "Advanced", color: "var(--viz-success)" }, regressed: { label: "Regressed", color: "var(--viz-danger)" } }} className="h-[300px]" initialDimension={{ width: 820, height: 300 }}><BarChart data={history} accessibilityLayer><CartesianGrid vertical={false} stroke="var(--viz-grid)" /><XAxis dataKey="period" /><YAxis allowDecimals={false} /><Tooltip content={<ChartTooltipContent />} /><Legend content={<ChartLegendContent />} />{historyMetric === "activity" ? <><Bar dataKey="new_leads" fill="var(--viz-primary)" isAnimationActive={false} /><Bar dataKey="successes" fill="var(--viz-success)" isAnimationActive={false} /><Bar dataKey="movements" fill="var(--viz-info)" isAnimationActive={false} /></> : <><Bar dataKey="advanced" fill="var(--viz-success)" isAnimationActive={false} /><Bar dataKey="regressed" fill="var(--viz-danger)" isAnimationActive={false} /></>}</BarChart></ChartContainer></div></section>
-
-    <section className="data-table-shell" aria-labelledby="pipeline-inspection-title"><div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4"><div><p className="section-kicker">Exact operational context</p><h2 id="pipeline-inspection-title" className="mt-1 section-title">Pipeline inspection {stage ? `· ${stage}` : ""}</h2></div>{stage && <button type="button" className="btn-secondary" onClick={() => setStage("")}>Clear stage</button>}</div>{inspection.leads.length ? <div className="overflow-x-auto"><table className="min-w-[980px]"><thead><tr><th>Lead</th><th>Owner</th><th>Stage</th><th>Stage age</th><th>Reasons</th><th>Next task</th><th>Recent call</th></tr></thead><tbody>{inspection.leads.map((lead) => <tr key={lead.lead_id}><td><p className="font-semibold">{lead.business_name}</p><p className="text-[11px] text-[var(--text-muted)]">{lead.segment_type}</p></td><td>{lead.owner_name}</td><td><Chip variant={lead.attention_reasons.length ? "warning" : "neutral"} size="sm">{lead.status}</Chip></td><td>{lead.stage_age_days} days</td><td><div className="flex max-w-64 flex-wrap gap-1">{lead.attention_reasons.map((reason) => <Chip key={reason.code} variant={reason.code.includes("OVERDUE") || reason.code === "REGRESSED" ? "danger" : "neutral"} size="sm">{reason.text}</Chip>)}</div></td><td>{lead.next_task?.title ?? "—"}<small className="block">{lead.next_task?.due_date}</small></td><td>{lead.recent_call?.outcome ?? "—"}<small className="block">{lead.recent_call?.timestamp ? new Date(lead.recent_call.timestamp).toLocaleDateString("en-IN") : ""}</small></td></tr>)}</tbody></table></div> : <div className="p-5"><EmptyState compact icon={<Layers size={20} />} title="No matching leads" description="No leads match the authoritative server filters." /></div>}</section>
+</div></details>
+          </form>
+          <p className="text-xs text-[var(--text-secondary)]">Applied list: {appliedList} · {inspection.scope.matched_total} matches · {inspection.leads.length} of maximum {inspection.scope.page_size} loaded · {needsAttention} loaded records need attention.</p>
+          <section className="workspace-register" data-workspace-register tabIndex={-1} aria-label="Pipeline inspection records"><ol className="divide-y divide-[var(--border-subtle)]">{inspection.leads.map((lead) => <li key={lead.lead_id} className="workspace-task-row"><div className="min-w-0 flex-1"><p className="text-sm font-semibold">{lead.business_name}</p><p className="text-xs text-[var(--text-secondary)]">{lead.owner_name} · {lead.segment_type} · Current stage age {lead.stage_age_days} days</p><p className="text-xs">{lead.attention_reasons.map((reason) => reason.text).join(" · ") || "No attention reason in the retained context"}</p><details><summary className="cursor-pointer text-xs">Linked work</summary><p className="text-sm">Next task: {lead.next_task?.title || "None in context"} {lead.next_task?.due_date}</p><p className="text-sm">Latest call: {lead.recent_call?.outcome || "None in context"} {lead.recent_call?.timestamp ? new Date(lead.recent_call.timestamp).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }) + " IST" : ""}</p></details></div><Chip variant={lead.attention_reasons.length ? "warning" : "neutral"} size="sm">{lead.status}</Chip></li>)}</ol>{!inspection.leads.length && <EmptyState title="No matching leads" description="Change the inspection-list filters; segment analytics remain separate." />}</section>
+        </section>
+        <section className="space-y-2 border-t border-[var(--border-subtle)] pt-3" aria-labelledby="sales-history-title">
+          <div className="flex flex-wrap items-center justify-between gap-3"><h2 id="sales-history-title" className="text-base font-semibold">Pipeline event history</h2><div className="flex flex-wrap gap-3"><label className="flex items-center gap-2 text-sm">Event<select className="field-control" value={historyMetric} onChange={(event) => setHistoryMetric(event.target.value as typeof historyMetric)}>{Object.entries(metricLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label><div className="segmented-control" aria-label="History window"><button type="button" aria-pressed={historyWindow === "weeks"} onClick={() => setHistoryWindow("weeks")}>12 weeks</button><button type="button" aria-pressed={historyWindow === "months"} onClick={() => setHistoryWindow("months")}>12 months</button></div></div></div>
+          <p className="text-xs text-[var(--text-secondary)]">{inspection.history.coverage} Leads n={inspection.history.lead_sample_n}; transitions n={inspection.history.transition_sample_n}.{(inspection.history.lead_sample_limited || inspection.history.transition_sample_limited) && " Bounded sample; not complete activity coverage."}</p>
+          {history.length ? <ChartContainer config={{ [historyMetric]: { label: metricLabels[historyMetric], color: "var(--viz-primary)" } }} className="h-[220px]" initialDimension={{ width: 820, height: 220 }}><LineChart data={history} accessibilityLayer margin={{ left: 0, right: 12, top: 8, bottom: 0 }}><CartesianGrid vertical={false} stroke="var(--viz-grid)" /><XAxis dataKey="period" minTickGap={25} tickLine={false} axisLine={false} /><YAxis allowDecimals={false} width={32} tickLine={false} axisLine={false} /><Tooltip content={<ChartTooltipContent />} /><Line dataKey={historyMetric} type="linear" connectNulls={false} stroke="var(--viz-primary)" strokeWidth={2} dot={{ r: 3 }} isAnimationActive={false} /></LineChart></ChartContainer> : <p className="p-4 text-sm">No retained event series available for this window.</p>}
+          <details className="workspace-disclosure"><summary>Exact {metricLabels[historyMetric].toLowerCase()} series</summary><div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Pipeline event data"><table className="w-full"><caption className="text-left">{appliedSegment} · {historyWindow} · {metricLabels[historyMetric]}</caption><thead><tr><th>Period</th><th>{metricLabels[historyMetric]}</th></tr></thead><tbody>{history.map((row) => <tr key={row.period}><th scope="row">{row.period}</th><td>{row[historyMetric].toLocaleString("en-IN")}</td></tr>)}</tbody></table></div></details>
+        </section>
+      </div>
+      <div className="grid gap-4 xl:grid-cols-2">
+        <section className="workspace-register p-4"><h2 className="text-base font-semibold">Completed stage intervals</h2><p className="text-xs text-[var(--text-secondary)]">P50 and mean duration in days · n={inspection.historical_velocity.sample_n} · {inspection.historical_velocity.coverage_n} eligible intervals · {inspection.historical_velocity.coverage_pct}% covered</p><div className="overflow-auto" tabIndex={0} role="region" aria-label="Completed interval duration"><table className="w-full"><thead><tr><th>Stage</th><th>P50 days</th><th>Mean days</th><th>Sample n</th></tr></thead><tbody>{velocity.map((row) => <tr key={row.stage}><th scope="row">{row.stage}</th><td>{row.p50_days}</td><td>{row.average_days}</td><td>{row.sample_n}</td></tr>)}</tbody></table></div>{!velocity.length && <p>No completed intervals in the retained sample.</p>}<details><summary className="cursor-pointer text-sm">Current stage age · not duration</summary><dl>{currentAge.map((row) => <div key={row.stage} className="flex justify-between gap-3 text-sm"><dt>{row.stage}</dt><dd>{row.average_days} mean days</dd></div>)}</dl></details></section>
+        <section className="workspace-register p-4"><h2 className="text-base font-semibold">Source conversion</h2><p className="text-xs text-[var(--text-secondary)]">Reconciled segment-wide source counts · Not filtered by inspection-list controls</p><div className="overflow-auto" tabIndex={0} role="region" aria-label="Source conversion data"><table className="w-full"><thead><tr><th>Source</th><th>Total</th><th>Converted</th><th>Rate</th></tr></thead><tbody>{sources.map((row) => <tr key={row.source}><th scope="row">{row.source}</th><td>{row.total.toLocaleString("en-IN")}</td><td>{row.converted.toLocaleString("en-IN")}</td><td>{row.total > 0 ? row.rate + "%" : "Unavailable"}</td></tr>)}</tbody></table></div>{!sources.length && <p>No reconciled source counts available.</p>}</section>
+      </div>
+    </> : !loading && <EmptyState icon={<AlertTriangle size={20} />} title="Pipeline inspection unavailable" description="Use Refresh inspection to retry." />}
   </div>;
 }
-
-function Metric({ label, value, detail, icon }: { label: string; value: string | number; detail: string; icon: React.ReactNode }) { return <div className="surface-panel p-5"><div className="flex items-start justify-between gap-4"><div><p className="section-kicker">{label}</p><p className="mt-2 text-3xl font-semibold tabular-nums">{value}</p><p className="mt-1 text-[12px] text-[var(--text-muted)]">{detail}</p></div><span className="grid h-10 w-10 place-items-center rounded-md bg-[var(--brand-50)] text-[var(--brand-700)]">{icon}</span></div></div>; }
-function ChartPanel({ kicker, title, empty, emptyIcon, children }: { kicker: string; title: string; empty: boolean; emptyIcon: React.ReactNode; children: React.ReactNode }) { return <section className="surface-panel overflow-hidden"><div className="border-b p-5"><p className="section-kicker">{kicker}</p><h2 className="mt-1 section-title">{title}</h2></div><div className="p-4">{empty ? <EmptyState compact icon={emptyIcon} title="No data" description="No authoritative records match this selection." /> : children}</div></section>; }

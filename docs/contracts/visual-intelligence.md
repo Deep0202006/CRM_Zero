@@ -4,7 +4,13 @@
 
 My Day, Team KPI, and Visits Overview render a shared presentation-only visual layer over data those pages already loaded. Recharts is the sole chart engine. Analytics components accept serializable view models through props and contain no Supabase client, fetch, Realtime, polling, Storage, or business mutation path.
 
-My Day shows independent work signals and task-urgency bars; unlike work types are never summed. Team KPI is Today-only: four typed primary cards, selected-metric employee contribution, a stable name-default register, an exact-ID read-only employee Sheet, and an optional full-cohort descriptive employee/team reference. Incomplete-source warnings or failed refresh suppress that derived reference. Pipeline uses canonical ordered stage counts, separate current-stage age and completed-stage velocity, source conversion, and real 12-period activity/direction history. Visits visualizations describe the current bounded page, reconcile every loaded outcome including historical unknowns, bucket real check-in timestamps with the shared Asia/Kolkata helper, and use a true 100% field-mix bar only when the partition reconciles. ERP composition adapts from donut to bars above six categories while preserving its unique-business reconciliation; field ERP coverage uses paired 0–100 bars. Calls, Distributor milestones, and Renewals reuse their existing authoritative page metrics with no chart-owned request.
+My Day is an actionable due-date agenda (Overdue / Today / Later / Done) with exact task identity, existing eligible actions and secondary typed daily counts. It consumes no Pipeline lead signals, export, converted-lead widget or weekly digest. Genuine assigned lead-linked tasks and payment-follow-up identity remain intact.
+
+Team KPI has compact Today counts and a name-default employee register. PR112 History retains observed call records, uncertified coverage, honest gaps and unavailable comparisons; unavailable historical measures live in a Data availability disclosure, not selectable empty charts. One linear historical series and its exact accessible daily table use the same applied report. Employee detail uses a non-modal wide context rail and the existing accessible narrow Sheet. Optional full-cohort descriptive references remain suppressed for incomplete sources or failed refresh.
+
+Operational Pipeline board/list use the same bounded snapshot and owner actions. Selected context is exact-UUID guarded across asynchronous reads, changes of selection, close, unmount and account changes, with a bounded retryable timeout. Admin Pipeline uses canonical stage occupancy, one selected 12-period event line, separate current-stage age and completed-interval P50/mean/sample tables, and reconciled source conversion. Segment-wide analytics and list-only filters are labeled separately.
+
+Visits puts the confirmed register first. The compact outcome strip partitions only the successful applied page, including explicit historical unknowns. Failed draft filters cannot relabel retained records. Selected detail retains its original record snapshot and scope. ERP composition still adapts from donut to bars above six categories and preserves unique-business reconciliation; field ERP coverage uses paired 0–100 bars. Calls, Distributor milestones and Renewals remain separate unchanged consumers.
 
 ## VISUAL TRUTH
 
@@ -18,12 +24,12 @@ Every visualization declares its source metric, filter scope, timezone, unit, de
 
 ## RESOURCE BUDGET
 
-- My Day: zero visualization requests; existing page data flow unchanged.
+- My Day: zero visualization requests; unnecessary owned-lead, transition, converted-lead and weekly-digest consumption removed. Existing task generation/deduplication/recovery and real Later task reads are reused.
 - Team KPI: one initial `/api/team-kpi` request; existing scoped Realtime signal; no polling.
 - Visits Overview: one initial bounded `/api/admin/visits` request; page size 50; evidence remains click-only; no polling.
 - Manager Pipeline: one bounded `/api/pipeline/inspection` request per explicit server-filter change; page size 50; no polling or chart-owned request.
 - Calls, Distributor Status, Renewals, and Field ERP: zero visualization requests; their existing metrics/read paths are unchanged.
-- Visualization database-query delta: zero.
+- Visualization database-query delta: zero. Removing unnecessary My Day consumption does not expand server readers.
 - Visualization writes, Storage reads, and Realtime channels: zero.
 
 ## PROVENANCE
