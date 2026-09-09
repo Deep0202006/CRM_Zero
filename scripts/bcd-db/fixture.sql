@@ -5,6 +5,8 @@ insert into public.users(user_id,name,email,is_active) values
   (md5('current-only')::uuid,'z'||repeat('😀',1000),'current-only@example.invalid',true),
   (md5('not-field')::uuid,'Not a field representative','not-field@example.invalid',true);
 insert into public.capabilities(code,label) values ('field_ret','Synthetic field retailer');
+insert into public.capabilities(code,label) values ('admin','Synthetic fixture admin');
+insert into public.user_capabilities(user_id,capability_code) values (md5('user1')::uuid,'admin');
 insert into public.user_capabilities(user_id,capability_code) values
   (md5('current-only')::uuid,'field_ret'),(md5('user1')::uuid,'field_ret');
 insert into public.leads(lead_id,business_name,contact_person,phone,segment_type)
@@ -26,6 +28,10 @@ insert into public.field_visits(visit_id,user_id,lead_id,visit_date,check_in_tim
 select md5('plan'||g)::uuid, md5('user'||(1+g%61))::uuid, (md5('lead'||(1+g%61))::uuid)::text,
   date '2026-01-01'+(g%180), timestamptz '2026-01-01 04:00:00+00'+(g%180)*interval '1 day',
   'interested','Retailer',null,null,null from generate_series(1,20000) g;
+insert into public.erp_systems(erp_id,erp_name,erp_key,created_by) values (md5('erp')::uuid,'Synthetic ERP','synthetic erp',md5('user1')::uuid);
+update public.field_visits set erp_usage_state='erp',erp_id=md5('erp')::uuid,visit_notes='Literal %_,(). exact' where visit_id=md5('bulk1')::uuid;
+update public.field_visits set erp_usage_state='none' where visit_id=md5('legacy')::uuid;
+update public.field_visits set erp_usage_state='erp',erp_id=md5('erp')::uuid where visit_id=md5('visit61')::uuid;
 analyze public.users;
 analyze public.leads;
 analyze public.field_visits;

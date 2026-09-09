@@ -52,6 +52,23 @@ for (const [name, marker, names, types, args] of [
   assert.deepEqual(JSON.parse(psql(`${command} execute bcd_inner(${args});`)), JSON.parse(psql(`select public.crm_visit_${name === 'register' ? 'register' : 'representatives'}_v1(${args});`)));
   console.log(JSON.stringify({ inner_query_plan: name, synthetic_source_rows: 21063, plan }));
 }
+const exportBlocks = [...migration.matchAll(/(with export_selected as[\s\S]*?) into result (from export_budget b;)/g)];
+assert.equal(exportBlocks.length, 1, 'Export plan must measure the actual bounded inner statement');
+const exportParameters = ['p_from','p_to','p_representative','p_segment','p_outcome','p_search','p_legacy_date','p_after_created','p_after_id'];
+const exportQuery = `${exportBlocks[0][1]} ${exportBlocks[0][2]}`;
+assert.deepEqual([...new Set(exportQuery.match(/\bp_\w+\b/g))].sort(), [...exportParameters].sort());
+const exportPrepare = `set search_path=pg_catalog,public; set statement_timeout='7s'; prepare bcd_export(date,date,uuid,text,text,text,date,timestamptz,uuid) as ${exportQuery.replace(/\bp_\w+\b/g, name => `$${exportParameters.indexOf(name)+1}`)}`;
+for (const [name, args] of [
+  ['all-team', "'2026-08-01','2026-08-03',null,null,null,'',null,null,null"],
+  ['representative', "'2026-08-01','2026-08-03',md5('user61')::uuid,null,null,'',null,null,null"],
+  ['literal-search', "'2026-08-01','2026-08-03',null,null,null,'Matching business',null,null,null"],
+]) {
+  const plan = JSON.parse(psql(`${exportPrepare} explain(analyze,buffers,format json) execute bcd_export(${args});`));
+  assert.notEqual(plan[0].Plan['Node Type'], 'Function Scan');
+  assert.equal(plan[0].Plan['Actual Rows'], 1);
+  assert.deepEqual(JSON.parse(psql(`${exportPrepare} execute bcd_export(${args});`)), JSON.parse(psql(`select public.crm_visit_export_v1(${args});`)));
+  console.log(JSON.stringify({ inner_query_plan: `export-${name}`, synthetic_source_rows: 21063, plan }));
+}
 const directory = mkdtempSync(join(tmpdir(), 'crm-bcd-http-'));
 let server;
 let observed;
@@ -104,7 +121,7 @@ try {
   };
   const scope = { p_from: '2026-08-01', p_to: '2026-08-03' };
   for (const authorization of ['', jwt('authenticated')]) assert.ok([401, 403].includes((await rpc(scope, authorization)).status));
-  for (const name of ['crm_visit_register_v1','crm_visit_representatives_v1']) {
+  for (const name of ['crm_visit_register_v1','crm_visit_representatives_v1','crm_visit_export_v1','crm_visit_export_erp_v1']) {
     for (const authorization of ['',jwt('authenticated')]) assert.ok([401,403].includes((await rpc({},authorization,name)).status));
   }
   const expected = execFileSync('psql', ['-X', '-A', '-t', '-v', 'ON_ERROR_STOP=1', '-c', "select visit_id from public.field_visits where visit_date between '2026-08-01' and '2026-08-03' order by visit_date,visit_id"], { encoding: 'utf8' }).trim().split(/\r?\n/);
@@ -170,6 +187,12 @@ try {
   assert.equal(timeout.data.code, '57014', JSON.stringify(timeout));
   const settings = execFileSync('psql', ['-X', '-A', '-t', '-c', "select array_to_string(proconfig,',') from pg_proc where oid='public.crm_visit_events_v1(date,date,uuid,text,text,text,date,uuid)'::regprocedure"], { encoding: 'utf8' });
   assert.match(settings, /statement_timeout=7s/);
+  // Exercise the production XLSX route/formatter against THIS disposable PostgREST.
+  // Only Auth identity is synthetic; profile/capability and export reads use real HTTP.
+  console.log(execFileSync(process.execPath, ['node_modules/jest/bin/jest.js', '--runInBand',
+    'src/lib/__tests__/bcdExport.test.ts', '--testNamePattern=real PostgREST'], {
+    env: { ...process.env, BCD_HTTP_FIXTURE_TOKEN: token }, encoding: 'utf8', timeout: 60000, maxBuffer: 2 * 1024 * 1024,
+  }));
   result = { fixture: 'postgrest-v13.0.7', status: 'PASS', retained_rows: ids.length, reader_requests_including_empty_eof: requests,
     received_bytes: bytes, peak_active_reads: 1, elapsed_ms: Math.round(performance.now() - started), http_cap: 100, timeout_hoisting: '57014' };
 } catch (error) {

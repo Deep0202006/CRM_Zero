@@ -257,12 +257,15 @@ function AdminVisitsWorkspace() {
       const token = sessionData.session?.access_token;
       if (!token || sessionData.session?.user.id !== actorId) throw new Error("Authentication required");
       const params = visitQueryParams(query);
-      if (params.has("representative")) { params.set("agent", params.get("representative")!); params.delete("representative"); }
       const response = await fetch(`/api/admin/export-visits?${params}`, {
         headers: { Authorization: `Bearer ${token}` }, signal: controller.signal,
       });
       if (controller.signal.aborted) return;
-      if (!response.ok) throw new Error("Export failed");
+      if (!response.ok) {
+        const failure = await response.json().catch(() => null);
+        if (controller.signal.aborted) return;
+        throw new Error(typeof failure?.error === "string" ? failure.error : "Export unavailable. Narrow the range and retry.");
+      }
       const blob = await response.blob();
       if (controller.signal.aborted) return;
       const downloadUrl = URL.createObjectURL(blob);

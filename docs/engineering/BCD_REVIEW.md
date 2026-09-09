@@ -180,6 +180,55 @@ even for old accepted dates; its new lower/upper-bound assertion remains CI-only
 was the only additional syntax research. Unchanged browser checks are not rerun
 for this SQL-only delta. Required exact-head GitHub CI is still pending.
 
+### Section0.3 lifecycle verification and export continuation
+
+Owner-published head `322725030148f1c5fc84c51bf04c0a46fe9803f7` passed
+[run34361458554](https://github.com/Deep0202006/CRM_Zero/actions/runs/34361458554).
+All six required jobs succeeded. Both `bcd-process-lifecycle-unit` and the complete
+`bcd-readers-postgres` command passed; PostgreSQL/E2E execution ran rather than
+NOT_REQUIRED accounting. Signal-aware close observation, bounded shutdown and
+post-cleanup PASS reporting resolve the former exit13 defect. This is exact-head
+CI evidence for that source, not acceptance of unfinished B–D features.
+
+The following export continuation replaces the punctuation sanitizer and50-ID
+lookups with the register's `crm_visit_matches_v1` predicate. The export RPC joins
+only the existing exported labels, preserves arbitrary legacy TEXT business IDs,
+and traverses500 rows by descending created_at/visit_id with microsecond cursors.
+Legacy single-date OR-check-in semantics stay separate from canonical ranges.
+Exports now require a date or a range of at most31 days; all-time register browsing
+remains available. A raw page/Excel-cell bound precedes SQL JSON aggregation.
+
+The entire export shares one24-reader budget plus1 Auth HTTP and2 authorization
+DB reads, with no retries or fresh enrichment budgets. The normal5000-row ceiling
+needs10 pages,1 EOF and1 ERP request (12 reader/15 total physical attempts).
+The maximum is27 physical attempts. Lower effective page limits may exhaust the
+budget sooner and fail explicitly. Source JSON is capped at4MiB, each page at1MiB,
+ERP at1MiB and the workbook at8MiB. The8-second shared deadline is checked before
+and after XLSX generation; synchronous generation cannot be preempted by a timer.
+Oversized cells, missing ERP, failed reads and exceeded limits return no workbook.
+
+ERP sheets still use048's all-time latest observed business interpretation, not
+049 current overrides or filtered-period totals. A bounded998-entry catalog/raw
+name precheck precedes calling the unchanged048 function; an exceeded catalog
+limit requires a separately reviewed export-capacity change, not hidden truncation.
+Both segment summaries must reconcile before formatting. The new Scope sheet
+labels this independent ERP scope without changing the existing data columns.
+
+| Source / definition | Consumer | Registered proof |
+|---|---|---|
+| Shared literal Visits predicate, legacy/range dates, exact UUIDs | Bounded export RPC → existing XLSX endpoint | `bcd-readers-postgres`: actual SQL and PostgREST-backed production formatter; decoded workbook IDs vs predicate |
+|048 latest observed ERP, unchanged counts/percentages | Existing Retailer/Distributor sheets plus explicit Scope sheet | ERP JSON equality, catalog/raw-name limits and reconciled formatter tests |
+| One scoped request/deadline budget,5000-row/size ceilings | Export reader and error response | `field-visits-unit`: EOF,5001, short-page cap, cancellation, identity/order/cell checks and post-serialization deadline |
+
+Independent criticism corrected the bare-PostgREST `/rest/v1` test-prefix mismatch
+and the fact that047 bounds trimmed ERP names, not raw surrounding whitespace.
+The adapter is test-only and preserves scoped fetch accounting. No production
+connection resolution, applied migration or Owner ledger changed. Ponytail review
+retained the installed XLSX formatter and shared report resource; no library or
+generic export framework was added. New SQL/HTTP export behavior remains pending
+its own exact-head CI. The existing screenshots are unchanged; full-range page
+integration, mobile/outcome finishing and C/D remain required.
+
 | Packet | Status |
 |---|---|
 | B Visits range, joined register search, historical picker, applied scope | Shared register/picker slice integrated; SQL/HTTP CI, full range-chart/representative analysis and busy visual acceptance pending |

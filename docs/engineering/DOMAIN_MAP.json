@@ -311,6 +311,7 @@
         "scripts/bcd-db/**",
         "src/lib/analytics/reportResource.ts",
         "src/lib/__tests__/bcdReaders.test.ts",
+        "src/lib/__tests__/bcdExport.test.ts",
         "src/lib/__tests__/fieldVisitErpClosure.test.ts",
         "src/lib/__tests__/fieldVisitPincodeClosure.test.ts",
         "src/lib/__tests__/fieldVisitRecoveryCompatibility.test.ts"
@@ -623,6 +624,7 @@
     },
     {
       "id": "erp",
+      "pathPatterns": ["scripts/bcd-db/fixture.sql", "scripts/bcd-db/assertion.sql", "src/lib/fieldVisits/export.ts"],
       "aliases": [
         "ERP"
       ],

@@ -1,3 +1,26 @@
+do $$ begin
+  if to_regclass('public.field_visits_erp_latest_business_idx') is null
+    or to_regprocedure('public.field_visit_erp_intelligence_v1()') is null
+    or not (select relrowsecurity from pg_class where oid='public.erp_systems'::regclass)
+    or exists(select 1 from (values ('pincode','text'),('selfie_storage_path','text'),('erp_id','uuid'),('erp_usage_state','text')) expected(name,type)
+      left join information_schema.columns c on c.table_schema='public' and c.table_name='field_visits' and c.column_name=expected.name
+      where c.data_type is distinct from expected.type) then raise exception 'EXPORT_TRACKED_SCHEMA_EXTRACTION'; end if;
+  if public.crm_visit_export_erp_v1() is distinct from public.field_visit_erp_intelligence_v1() then raise exception 'EXPORT_ERP_SEMANTICS'; end if;
+  begin
+    update public.erp_systems set erp_name=repeat(' ',10000)||'Synthetic ERP' where erp_id=md5('erp')::uuid;
+    perform public.crm_visit_export_erp_v1(); raise exception 'EXPORT_ERP_RAW_NAME_UNBOUNDED';
+  exception when program_limit_exceeded then null; end;
+  if jsonb_array_length(public.crm_visit_export_v1('2026-08-01','2026-08-02',null,null,null,'Matching business'))<>61 then raise exception 'EXPORT_JOINED_SEARCH'; end if;
+  if jsonb_array_length(public.crm_visit_export_v1('2026-08-03','2026-08-03',null,null,null,'%_,().'))<>1 then raise exception 'EXPORT_LITERAL_SEARCH'; end if;
+  begin perform public.crm_visit_export_v1(); raise exception 'EXPORT_UNBOUNDED_RANGE'; exception when invalid_parameter_value then null; end;
+  begin perform public.crm_visit_export_v1('2026-08-01','2026-09-01'); raise exception 'EXPORT_OVERSIZED_RANGE'; exception when invalid_parameter_value then null; end;
+  begin perform public.crm_visit_export_v1('2026-08-01','2026-08-02',p_after_created=>now()); raise exception 'EXPORT_PARTIAL_CURSOR'; exception when invalid_parameter_value then null; end;
+  begin
+    update public.field_visits set visit_notes=repeat('x',32768) where visit_id=md5('legacy')::uuid;
+    perform public.crm_visit_export_v1('2026-08-02','2026-08-02');
+    raise exception 'EXPORT_OVERSIZED_CELL_ACCEPTED';
+  exception when program_limit_exceeded then null; end;
+end $$;
 do $$ declare n integer; cursor_id uuid; begin
   if has_function_privilege('anon','public.crm_visit_events_v1(date,date,uuid,text,text,text,date,uuid)','EXECUTE')
      or has_function_privilege('authenticated','public.crm_visit_events_v1(date,date,uuid,text,text,text,date,uuid)','EXECUTE') then raise exception 'PUBLIC_EXECUTION_GRANTED'; end if;
@@ -51,7 +74,9 @@ do $$ declare signature text; f record; a jsonb; b jsonb; expected jsonb; begin
   foreach signature in array array[
     'public.crm_visit_events_v1(date,date,uuid,text,text,text,date,uuid)',
     'public.crm_visit_register_v1(date,date,uuid,text,text,text,date,integer)',
-    'public.crm_visit_representatives_v1(text,text,uuid,uuid)'
+    'public.crm_visit_representatives_v1(text,text,uuid,uuid)',
+    'public.crm_visit_export_v1(date,date,uuid,text,text,text,date,timestamptz,uuid)',
+    'public.crm_visit_export_erp_v1()'
   ] loop
     select * into strict f from pg_proc where oid=signature::regprocedure;
     if f.prosecdef or f.provolatile<>'s' or not (f.proconfig @> array['search_path=pg_catalog, public','statement_timeout=7s'])
