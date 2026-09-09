@@ -349,6 +349,18 @@
       "mustNotOwn": ["message history"]
     },
     {
+      "id": "application_capability_catalog",
+      "authority": "public.capabilities",
+      "identity": ["code"],
+      "writeSelectors": [
+        { "schema": "public", "resource": "capabilities", "columns": ["code", "label"], "operationKinds": ["insert"] }
+      ],
+      "owns": ["application capability codes and display labels"],
+      "writer": "reviewed schema seeds; disposable synthetic fixtures",
+      "mustNotOwn": ["employee capability assignments", "Auth login identity"],
+      "notes": ["Records existing supabase/schema.sql catalog ownership for the B-D synthetic current-field cohort fixture; grants no product or production write."]
+    },
+    {
       "id": "user_capability_assignment",
       "authority": "public.user_capabilities",
       "identity": ["user_id", "capability"],

@@ -20,7 +20,7 @@ const parameters = ['p_from', 'p_to', 'p_representative', 'p_segment', 'p_outcom
 const inner = selectBlocks[0][1];
 assert.deepEqual([...new Set(inner.match(/\bp_\w+\b/g))].sort(), [...parameters].sort());
 const prepared = inner.replace(/\bp_\w+\b/g, (name) => `$${parameters.indexOf(name) + 1}`);
-const prepare = `prepare bcd_plan(date,date,uuid,text,text,text,date,uuid) as ${prepared}`;
+const prepare = `set search_path=pg_catalog,public; set statement_timeout='7s'; prepare bcd_plan(date,date,uuid,text,text,text,date,uuid) as ${prepared}`;
 for (const [name, args] of [
   ['all-team', "'2026-08-01','2026-08-03',null,null,null,'',null,null"],
   ['representative', "'2026-08-01','2026-08-03',md5('user61')::uuid,null,null,'',null,null"],
@@ -36,6 +36,21 @@ const extractedIds = psql(`${prepare} execute bcd_plan(${smallArgs});`).split(/\
 assert.deepEqual(extractedIds, psql(`select visit_id from public.crm_visit_events_v1(${smallArgs});`).split(/\r?\n/));
 assert.equal(psql("select pg_get_function_result('public.crm_visit_events_v1(date,date,uuid,text,text,text,date,uuid)'::regprocedure)"),
   'TABLE(visit_id uuid, user_id uuid, visit_date date, check_in_time timestamp with time zone, visit_outcome text, segment_type text)');
+for (const [name, marker, names, types, args] of [
+  ['register', 'matched', ['p_from','p_to','p_representative','p_segment','p_outcome','p_search','p_legacy_date','p_page'], 'date,date,uuid,text,text,text,date,integer', "'2026-08-01','2026-08-02',null,null,null,'Matching representative',null,1"],
+  ['representative-picker', 'members', ['p_search','p_after_name','p_after_id','p_selected'], 'text,text,uuid,uuid', "'',null,null,md5('user61')::uuid"],
+]) {
+  const blocks = [...migration.matchAll(new RegExp(`(with ${marker} as[\\s\\S]*?) into result;`, 'g'))];
+  assert.equal(blocks.length, 1, `${name} must measure its actual tracked inner statement`);
+  const query = blocks[0][1];
+  assert.deepEqual([...new Set(query.match(/\bp_\w+\b/g))].sort(), [...names].sort());
+  const command = `set search_path=pg_catalog,public; set statement_timeout='7s'; prepare bcd_inner(${types}) as ${query.replace(/\bp_\w+\b/g, (key) => `$${names.indexOf(key)+1}`)};`;
+  const plan = JSON.parse(psql(`${command} explain(analyze,buffers,format json) execute bcd_inner(${args});`));
+  assert.notEqual(plan[0].Plan['Node Type'], 'Function Scan');
+  assert.equal(plan[0].Plan['Actual Rows'], 1);
+  assert.deepEqual(JSON.parse(psql(`${command} execute bcd_inner(${args});`)), JSON.parse(psql(`select public.crm_visit_${name === 'register' ? 'register' : 'representatives'}_v1(${args});`)));
+  console.log(JSON.stringify({ inner_query_plan: name, synthetic_source_rows: 21063, plan }));
+}
 const directory = mkdtempSync(join(tmpdir(), 'crm-bcd-http-'));
 let server;
 let logs = '';
@@ -84,6 +99,9 @@ try {
   };
   const scope = { p_from: '2026-08-01', p_to: '2026-08-03' };
   for (const authorization of ['', jwt('authenticated')]) assert.ok([401, 403].includes((await rpc(scope, authorization)).status));
+  for (const name of ['crm_visit_register_v1','crm_visit_representatives_v1']) {
+    for (const authorization of ['',jwt('authenticated')]) assert.ok([401,403].includes((await rpc({},authorization,name)).status));
+  }
   const expected = execFileSync('psql', ['-X', '-A', '-t', '-v', 'ON_ERROR_STOP=1', '-c', "select visit_id from public.field_visits where visit_date between '2026-08-01' and '2026-08-03' order by visit_date,visit_id"], { encoding: 'utf8' }).trim().split(/\r?\n/);
   const ids = []; let cursor = {}, requests = 0, bytes = 0, eof = false;
   const started = performance.now();
@@ -111,6 +129,38 @@ try {
   assert.equal((await rpc({ ...scope, p_after_date: '2026-07-31', p_after_id: ids[0] })).status, 400);
   for (const extra of [{ p_representative: 'invalid-uuid' }, { p_from: '2026-02-30' }]) assert.equal((await rpc({ ...scope, ...extra })).status, 400);
   assert.equal((await rpc({ ...scope, unknown_parameter: true })).status, 404);
+  const registerIds = []; let registerRequests = 0;
+  for (let page=1; page<=2; page++) {
+    const result = await rpc({p_from:'2026-08-01',p_to:'2026-08-02',p_search:'Matching representative',p_page:page},token,'crm_visit_register_v1');
+    registerRequests++;
+    assert.equal(result.status,200,JSON.stringify(result.data));
+    assert.equal(result.data.total,62); assert.equal(result.data.page,page);
+    assert.equal(result.data.visit_ids.length,page===1 ? 50 : 12);
+    assert.equal(result.data.has_more,page===1);
+    registerIds.push(...result.data.visit_ids);
+  }
+  assert.deepEqual(registerIds,psql("select visit_id from public.field_visits where visit_date between '2026-08-01' and '2026-08-02' order by created_at desc,visit_id desc").split(/\r?\n/));
+  const pickerIds=[]; let pickerCursor={},pickerRequests=0,pickerEof=false;
+  const selected=psql("select md5('user61')::uuid");
+  while(pickerRequests<4) {
+    const result=await rpc({...pickerCursor,p_selected:selected},token,'crm_visit_representatives_v1'); pickerRequests++;
+    assert.equal(result.status,200,JSON.stringify(result.data));
+    assert.ok(result.bytes<=65536); assert.ok(result.data.items.length<=25);
+    assert.equal(result.data.selected.user_id,selected); assert.equal(result.data.selected.is_active,false);
+    pickerIds.push(...result.data.items.map(row=>row.user_id));
+    const last=result.data.items.at(-1);
+    if(!result.data.has_more){pickerEof=true;break;}
+    assert.equal(result.data.items.length,25); assert.ok([...last.cursor_name].length<=1000);
+    pickerCursor={p_after_name:last.cursor_name,p_after_id:last.user_id};
+  }
+  assert.ok(pickerEof); assert.equal(pickerIds.length,62); assert.equal(new Set(pickerIds).size,62);
+  assert.ok(pickerIds.includes(psql("select md5('current-only')::uuid")));
+  assert.ok(!pickerIds.includes(psql("select md5('not-field')::uuid")));
+  const selectedOutside=await rpc({p_search:'current-only',p_selected:selected},token,'crm_visit_representatives_v1');
+  assert.equal(selectedOutside.data.items.length,1); assert.equal(selectedOutside.data.selected.user_id,selected);
+  const long=selectedOutside.data.items[0]; assert.equal([...long.name].length,1001); assert.equal([...long.cursor_name].length,1000);
+  assert.equal((await rpc({p_after_name:long.cursor_name,p_after_id:long.user_id},token,'crm_visit_representatives_v1')).status,200);
+  console.log(JSON.stringify({register_http_requests:registerRequests,register_exact_ids:registerIds.length,picker_http_requests:pickerRequests,picker_unique_members:pickerIds.length,http_cap:100}));
   const timeout = await rpc({}, token, 'crm_bcd_timeout_fixture');
   assert.equal(timeout.data.code, '57014', JSON.stringify(timeout));
   const settings = execFileSync('psql', ['-X', '-A', '-t', '-c', "select array_to_string(proconfig,',') from pg_proc where oid='public.crm_visit_events_v1(date,date,uuid,text,text,text,date,uuid)'::regprocedure"], { encoding: 'utf8' });

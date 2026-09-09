@@ -17,7 +17,7 @@ test(`populated ${name} desktop and mobile review`, async ({ page }) => {
       await expect(name === "team" ? page.getByRole("button", { name: record, exact: true }) : page.getByText(record, { exact: false }).first()).toBeInViewport();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1)).toBe(true);
       if (name === "pipeline") expect((await page.getByRole("searchbox").boundingBox())!.width).toBeGreaterThan(180);
-      if (process.env.WORKSPACE_CAPTURE) { const directory = `artifacts/visual-review/workspace-makeover/${process.env.WORKSPACE_CAPTURE}`; await mkdir(directory, { recursive: true }); await page.screenshot({ path: `${directory}/${name}-${width}${theme === "dark" ? "-dark" : ""}.png`, animations: "disabled" }); }
+      if (process.env.WORKSPACE_CAPTURE && (!process.env.WORKSPACE_CAPTURE_ONLY || process.env.WORKSPACE_CAPTURE_ONLY === name)) { const directory = `artifacts/visual-review/workspace-makeover/${process.env.WORKSPACE_CAPTURE}`; await mkdir(directory, { recursive: true }); await page.screenshot({ path: `${directory}/${name}-${width}${theme === "dark" ? "-dark" : ""}.png`, animations: "disabled" }); }
     }
     }
 });
@@ -34,7 +34,7 @@ test("populated Admin inspection review", async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.evaluate(() => window.scrollTo(0, 0));
     await expect(page.getByText("Acme Medical and General Stores", { exact: true })).toBeInViewport();
-    if (process.env.WORKSPACE_CAPTURE) await page.screenshot({ path: `artifacts/visual-review/workspace-makeover/${process.env.WORKSPACE_CAPTURE}/admin-pipeline-${width}.png`, animations: "disabled" });
+    if (process.env.WORKSPACE_CAPTURE && (!process.env.WORKSPACE_CAPTURE_ONLY || process.env.WORKSPACE_CAPTURE_ONLY === "admin-pipeline")) await page.screenshot({ path: `artifacts/visual-review/workspace-makeover/${process.env.WORKSPACE_CAPTURE}/admin-pipeline-${width}.png`, animations: "disabled" });
   }
 });
 
@@ -63,6 +63,36 @@ test("My Day view counts, linked work and keyboard context preserve real task id
   await page.keyboard.press("Escape"); await expect(trigger).toBeFocused();
   await expect(page.getByRole("button", { name: "Export pipeline" })).toHaveCount(0);
   expect(requests.some(path => path.startsWith("/api/pipeline"))).toBe(false);
+});
+
+test("Visits representative search is lazy and independent of register paging, retaining selection outside search", async ({ page }) => {
+  const requests = await setup(page);
+  const pickerRequests: URLSearchParams[]=[];
+  const current={user_id:"95000000-0000-4000-a000-000000000001",name:"Current field employee",email:"current@example.test",is_active:true,historical_only:false};
+  const former={user_id:"95000000-0000-4000-a000-000000000002",name:"Former field employee with a long retained identity",email:"former@example.test",is_active:false,historical_only:true};
+  await page.route(url=>url.pathname==="/api/admin/visits/representatives",route=>{
+    const params=new URL(route.request().url()).searchParams; pickerRequests.push(params);
+    return route.fulfill({json:{items:params.get("search") ? [former] : [current],selected:params.get("selected")===current.user_id ? current : null,next_cursor:null}});
+  });
+  await page.goto("/admin/visits");
+  await expect(page.getByText("Acme Medical and General Stores",{exact:false}).first()).toBeVisible();
+  expect(pickerRequests).toHaveLength(0);
+  const selector=page.getByLabel("Representative",{exact:true});
+  await selector.focus();
+  await expect(selector.locator("option")).toHaveCount(2);
+  await selector.selectOption(current.user_id);
+  await page.getByText("Find current or historical representatives",{exact:true}).click();
+  await page.getByLabel("Representative name or email").fill("Former");
+  expect(pickerRequests).toHaveLength(1);
+  await page.getByRole("button",{name:"Search representatives",exact:true}).click();
+  await expect(selector.locator("option")).toHaveCount(3);
+  await expect(selector).toHaveValue(current.user_id);
+  await expect(selector.locator(`option[value="${former.user_id}"]`)).toContainText("inactive — historical");
+  expect(requests.filter(path=>path.startsWith("/api/admin/visits?"))).toHaveLength(1);
+  await page.getByRole("button",{name:"Apply filters",exact:true}).click();
+  await expect.poll(()=>requests.filter(path=>path.startsWith("/api/admin/visits?")).length).toBe(2);
+  expect(pickerRequests).toHaveLength(2);
+  expect(pickerRequests[1].get("selected")).toBe(current.user_id);
 });
 
 test("Visits retains applied page and selected UUID through failed filters; details do not fetch evidence", async ({ page }) => {
@@ -158,6 +188,27 @@ test("Visits export captures applied filters and cannot download after workspace
   release!(); await (await completed).finished();
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   expect(downloads).toBe(0);
+});
+
+test("Visits evidence cannot open after its selected detail closes, even when transport ignores abort", async ({ page }) => {
+  await setup(page);
+  await page.addInitScript(() => { const original=window.fetch; window.fetch=(input,init)=>original(input,String(input).includes("/evidence?") ? {...init,signal:undefined} : init); });
+  let release: (()=>void) | undefined;
+  await page.route("**/api/admin/visits?**",route=>route.fulfill({json:{visits:[{...visits[0],selfie_status:"AVAILABLE"}],page:1,total:1,has_more:false,all_time_total:null,today_total:null}}));
+  await page.route("**/api/admin/visits/evidence?**",async route=>{ await new Promise<void>(resolve=>{release=resolve;}); await route.fulfill({json:{url:"https://fixture.invalid/synthetic-evidence"}}); });
+  await page.setViewportSize({width:1440,height:900});
+  await page.goto("/admin/visits");
+  await page.evaluate(()=>{ document.documentElement.dataset.evidenceOpens="0"; window.open=()=>{ document.documentElement.dataset.evidenceOpens=String(Number(document.documentElement.dataset.evidenceOpens)+1); return null; }; });
+  await page.getByRole("button",{name:leads[0].business_name,exact:true}).click();
+  await page.getByRole("button",{name:"View Selfie",exact:true}).click();
+  await expect.poll(()=>Boolean(release)).toBe(true);
+  await page.getByRole("complementary",{name:leads[0].business_name,exact:true}).getByRole("button",{name:"Close",exact:true}).click();
+  const completed=page.waitForResponse(response=>response.url().includes("/evidence?"));
+  release!(); await (await completed).finished();
+  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+  expect(await page.evaluate(()=>document.documentElement.dataset.evidenceOpens)).toBe("0");
+  await page.getByText("Global visit context",{exact:true}).click();
+  await expect(page.locator(".workspace-counts")).toContainText("Unavailable");
 });
 
 test("Pipeline discards delayed A after B, close and timeout without extra snapshot requests", async ({ page }) => {

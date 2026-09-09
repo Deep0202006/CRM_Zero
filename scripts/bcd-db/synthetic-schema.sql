@@ -6,7 +6,7 @@ do $$ begin
   if not exists(select 1 from pg_roles where rolname='service_role') then create role service_role nologin bypassrls; end if;
 end $$;
 grant usage on schema public to service_role;
-grant select on public.users, public.leads, public.field_visits to service_role;
+grant select on public.users, public.leads, public.field_visits, public.user_capabilities to service_role;
 
 -- Fail closed if a tracked definition/extraction changes or silently produces no SQL.
 do $$ begin

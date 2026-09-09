@@ -78,8 +78,8 @@ function AdminVisitsWorkspace() {
   const [exporting, setExporting] = useState(false);
   const [appliedPage, setAppliedPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
-  const [allTimeTotal, setAllTimeTotal] = useState(0);
-  const [todayTotal, setTodayTotal] = useState(0);
+  const [allTimeTotal, setAllTimeTotal] = useState<number | null>(null);
+  const [todayTotal, setTodayTotal] = useState<number | null>(null);
   const [matchedTotal, setMatchedTotal] = useState(0);
   const [legacyMismatchCount, setLegacyMismatchCount] = useState(0);
   const [date, setDate] = useState("");
@@ -90,7 +90,14 @@ function AdminVisitsWorkspace() {
   const [representative, setRepresentative] = useState("ALL");
   const [segment, setSegment] = useState("ALL");
   const [outcome, setOutcome] = useState("ALL");
-  const [representatives, setRepresentatives] = useState<Array<{ user_id: string; name: string; email: string; is_active: boolean; capabilities: string[]; historical_only: boolean }>>([]);
+  const [representatives, setRepresentatives] = useState<Array<{ user_id: string; name: string | null; email: string | null; is_active: boolean; historical_only: boolean }>>([]);
+  const [representativeSearch, setRepresentativeSearch] = useState("");
+  const [representativeError, setRepresentativeError] = useState("");
+  const [representativeLoading, setRepresentativeLoading] = useState(false);
+  const [representativeLoaded, setRepresentativeLoaded] = useState(false);
+  const [representativeCursor, setRepresentativeCursor] = useState<{ after_name: string; after_id: string } | null>(null);
+  const representativeQuery = useRef("");
+  const representativeRequest = useRef<AbortController | null>(null);
   const requestSequence = useRef(0);
   const realtimeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [realtimeSubscribed, setRealtimeSubscribed] = useState(false);
@@ -128,14 +135,13 @@ function AdminVisitsWorkspace() {
       appliedQuery.current = query;
       setAppliedKey(visitQueryKey(query));
       setVisits(result.visits ?? []);
-      setAppliedScope(`${date || `${dateFrom || "All dates"} to ${dateTo || "present"}`} · ${representative === "ALL" ? "All representatives" : (result.representatives as typeof representatives | undefined)?.find((row) => row.user_id === representative)?.name || representative} · ${segment} segments · ${outcome === "ALL" ? "All outcomes" : getAdminOutcomeLabel(outcome)}${search.trim() ? ` · Search: ${search.trim()}` : ""}`);
+      setAppliedScope(`${date || `${dateFrom || "All dates"} to ${dateTo || "present"}`} · ${representative === "ALL" ? "All representatives" : representative} · ${segment} segments · ${outcome === "ALL" ? "All outcomes" : getAdminOutcomeLabel(outcome)}${search.trim() ? ` · Search: ${search.trim()}` : ""}`);
       setAppliedGlobalScope(`${representative === "ALL" ? "All representatives" : representative} · ${segment} segments · ${outcome === "ALL" ? "All outcomes" : getAdminOutcomeLabel(outcome)}`);
       setAppliedPage(result.page ?? targetPage);
-      setHasMore(Boolean(result.has_more));
-      setAllTimeTotal(result.all_time_total ?? 0);
-      setTodayTotal(result.today_total ?? 0);
+      setHasMore(Boolean(result.has_more) && targetPage < 400);
+      setAllTimeTotal(result.all_time_total ?? null);
+      setTodayTotal(result.today_total ?? null);
       setMatchedTotal(result.total ?? 0);
-      setRepresentatives(result.representatives ?? []);
       setLegacyMismatchCount(result.legacy_date_mismatch_count ?? 0);
       setHasLoaded(true);
       failedRequest.current = false;
@@ -149,6 +155,35 @@ function AdminVisitsWorkspace() {
       if (registerRequest.current === controller) registerRequest.current = null;
     }
   }, [actorId, isAdmin]);
+
+  const loadRepresentatives = async (next = false) => {
+    representativeRequest.current?.abort();
+    const controller = new AbortController();
+    representativeRequest.current = controller;
+    setRepresentativeLoading(true); setRepresentativeError("");
+    const search = next ? representativeQuery.current : representativeSearch.trim();
+    try {
+      const { data } = await supabase.auth.getSession();
+      if (controller.signal.aborted) return;
+      if (!data.session?.access_token || data.session.user.id !== actorId) throw new Error("Authentication required.");
+      const params = new URLSearchParams({ search });
+      if (representative !== "ALL") params.set("selected", representative);
+      if (next && representativeCursor) { params.set("after_name", representativeCursor.after_name); params.set("after_id", representativeCursor.after_id); }
+      const response = await fetch(`/api/admin/visits/representatives?${params}`, { headers: { Authorization: `Bearer ${data.session.access_token}` }, cache: "no-store", signal: controller.signal });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.code === "VISIT_READER_ACTIVATION_REQUIRED" ? "Representative search requires reader activation. Existing records remain available." : "Representative search unavailable. Retry Search representatives.");
+      if (controller.signal.aborted) return;
+      const items = result.items as typeof representatives;
+      setRepresentatives(result.selected && !items.some((item) => item.user_id === result.selected.user_id) ? [result.selected, ...items] : items);
+      setRepresentativeCursor(result.next_cursor); representativeQuery.current = search;
+      setRepresentativeLoaded(true);
+    } catch (error) {
+      if (!controller.signal.aborted) setRepresentativeError(error instanceof Error ? error.message : "Representative search unavailable.");
+    } finally {
+      if (!controller.signal.aborted) setRepresentativeLoading(false);
+      if (representativeRequest.current === controller) representativeRequest.current = null;
+    }
+  };
 
   const visitAnalytics = useMemo(() => buildVisitAnalytics(visits), [visits]);
 
@@ -181,7 +216,7 @@ function AdminVisitsWorkspace() {
       if (!alive) return;
       void loadData(1, initialQuery);
     });
-    return () => { alive = false; ++requestSequence.current; registerRequest.current?.abort(); exportRequest.current?.abort(); erpRequest.current?.abort(); erpRequest.current = null; };
+    return () => { alive = false; ++requestSequence.current; registerRequest.current?.abort(); representativeRequest.current?.abort(); exportRequest.current?.abort(); erpRequest.current?.abort(); erpRequest.current = null; };
   }, [initialQuery, loadData]);
 
   useEffect(() => {
@@ -250,14 +285,16 @@ function AdminVisitsWorkspace() {
       {exportError && <p role="alert" className="alert-panel alert-panel--danger">{exportError}</p>}
       <form aria-label="Visit filters" className="space-y-2" onSubmit={(event) => { event.preventDefault(); void loadData(1, draftQuery); }}>
         <div className="grid min-w-0 gap-3 text-xs text-[var(--text-secondary)] sm:grid-cols-3 [&_label]:grid [&_label]:min-w-0 [&_label]:gap-1"><label>Search visits<input aria-label="Search visits" className="field-control min-w-0" placeholder="Business, representative, or notes" value={search} onChange={(event) => setSearch(event.target.value)} /></label><label>Representative
-        <select aria-label="Representative" className="field-control min-w-0" value={representative} onChange={(event) => setRepresentative(event.target.value)}>
+        <select aria-label="Representative" className="field-control min-w-0" value={representative} onFocus={() => { if (!representativeLoaded && !representativeRequest.current && !representativeError) void loadRepresentatives(); }} onChange={(event) => setRepresentative(event.target.value)}>
           <option value="ALL">All representatives</option>
-          {representatives.map((user) => <option key={user.user_id} value={user.user_id}>{user.name}{user.email ? ` (${user.email})` : ""}{user.is_active ? "" : " — inactive"}{user.historical_only ? " — historical" : ""}</option>)}
+          {representative !== "ALL" && !representatives.some((user) => user.user_id === representative) && <option value={representative}>Selected identity · {representative}</option>}
+          {representatives.map((user) => <option key={user.user_id} value={user.user_id}>{user.name || user.user_id}{user.email ? ` (${user.email})` : ""}{user.is_active ? "" : " — inactive"}{user.historical_only ? " — historical" : ""}</option>)}
         </select></label><label>Outcome
         <select aria-label="Outcome" className="field-control min-w-0" value={outcome} onChange={(event) => setOutcome(event.target.value)}>
           <option value="ALL">All outcomes</option>
           {["registered", "installed", "interested", "follow_up", "payment_follow_up", "payment_done", "not_interested"].map((value) => <option key={value} value={value}>{getOutcomeLabel(value)}</option>)}
         </select></label></div>
+        <details><summary className="cursor-pointer text-sm">Find current or historical representatives</summary><div className="flex flex-wrap items-end gap-2"><label className="grid min-w-0 gap-1 text-xs">Representative name or email<input className="field-control" value={representativeSearch} maxLength={160} onChange={(event) => setRepresentativeSearch(event.target.value)} /></label><Button type="button" size="sm" variant="outline" disabled={representativeLoading} onClick={() => void loadRepresentatives()}>Search representatives</Button><Button type="button" size="sm" variant="outline" disabled={!representativeCursor || representativeLoading} onClick={() => void loadRepresentatives(true)}>Next representatives</Button></div><p className="text-xs">25 options per search page, plus the selected person. Includes current field capabilities and retained visit authors, including inactive people. Choose a Representative above, then Apply filters.</p>{representativeLoading && <p role="status">Loading representative options…</p>}{representativeError && <p role="alert">{representativeError}</p>}</details>
         <details><summary className="cursor-pointer text-sm">Date and segment filters</summary><div className="grid min-w-0 gap-3 text-xs text-[var(--text-secondary)] sm:grid-cols-3 [&_label]:grid [&_label]:min-w-0 [&_label]:gap-1"><label>Legacy visit or check-in date<input aria-label="Visit date" type="date" className="field-control min-w-0" value={date} onChange={(event) => setDate(event.target.value)} /></label><label>From date<input aria-label="Date From" type="date" className="field-control min-w-0" value={dateFrom} onChange={(event) => { setDate(""); setDateFrom(event.target.value); }} /></label><label>To date<input aria-label="Date To" type="date" className="field-control min-w-0" value={dateTo} onChange={(event) => { setDate(""); setDateTo(event.target.value); }} /></label><label>Segment
         <select aria-label="Segment" className="field-control min-w-0" value={segment} onChange={(event) => setSegment(event.target.value)}>
           <option value="ALL">All segments</option><option value="Retailer">Retailer</option><option value="Distributor">Distributor</option>
@@ -276,6 +313,7 @@ function AdminVisitsWorkspace() {
           </li>)}</ol>
           {!visits.length && <div className="p-4 text-sm"><p>{loading ? "Loading visits…" : "No confirmed visits match these filters."}</p><Button size="sm" variant="outline" onClick={() => { const query = { date: "", dateFrom: "", dateTo: "", search: "", representative: "ALL", segment: "ALL", outcome: "ALL" }; setDate(""); setDateFrom(""); setDateTo(""); setSearch(""); setRepresentative("ALL"); setSegment("ALL"); setOutcome("ALL"); void loadData(1, query); }}>Clear filters</Button></div>}
           <footer className="flex items-center justify-between border-t border-[var(--border-subtle)] p-3"><span className="text-xs">Loaded page {appliedPage}</span><div className="flex gap-2"><Button size="sm" variant="outline" disabled={appliedPage <= 1 || loading} onClick={() => void loadData(appliedPage - 1)}>Previous</Button><Button size="sm" variant="outline" disabled={!hasMore || loading} onClick={() => void loadData(appliedPage + 1)}>Next</Button></div></footer>
+          {appliedPage === 400 && matchedTotal > 20000 && <p role="status" className="p-3 text-sm">Display limit reached. Narrow the date range or filters to inspect additional records.</p>}
         </section>
         <ContextRail open={Boolean(selected)} title={selected?.visit.leads?.business_name || selected?.visit.lead_id || "Visit detail"} description={selected ? `${selected.visit.segment_type} · ${getAdminOutcomeLabel(selected.visit.visit_outcome)}` : "Select a visit"} onClose={() => setSelected(null)} returnFocus={visitTrigger}>
           {selected && <VisitDetail key={selected.visit.visit_id} visit={selected.visit} scope={selected.scope} />}
@@ -294,7 +332,7 @@ function AdminVisitsWorkspace() {
       </TabsContent>
 
       </Tabs>
-      <details className="workspace-disclosure"><summary>Global visit context and representative directory</summary><p className="text-xs">{appliedGlobalScope}. Totals exclude date and search filters. The directory is a separate population, including historical representatives.</p><dl className="workspace-counts"><div><dt>All-time visits</dt><dd>{hasLoaded ? allTimeTotal.toLocaleString("en-IN") : "—"}</dd></div><div><dt>Visits today · India</dt><dd>{hasLoaded ? todayTotal.toLocaleString("en-IN") : "—"}</dd></div><div><dt>Representative directory</dt><dd>{hasLoaded ? representatives.length : "—"}</dd></div></dl></details>
+      <details className="workspace-disclosure"><summary>Global visit context</summary><p className="text-xs">{appliedGlobalScope}. Totals exclude date and search filters. Unavailable counts are not zero.</p><dl className="workspace-counts"><div><dt>All-time visits</dt><dd>{hasLoaded ? allTimeTotal?.toLocaleString("en-IN") ?? "Unavailable" : "—"}</dd></div><div><dt>Visits today · India</dt><dd>{hasLoaded ? todayTotal?.toLocaleString("en-IN") ?? "Unavailable" : "—"}</dd></div></dl></details>
     </div>
   );
 }
@@ -318,22 +356,30 @@ function VisitDetail({ visit, scope }: { visit: AdminVisit; scope: string }) {
 }
 
 function EvidenceButton({ visitId }: { visitId: string }) {
+  const { currentUser } = useAuth();
+  const request = useRef<AbortController | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  useEffect(() => () => request.current?.abort(), []);
   const openEvidence = async () => {
+    request.current?.abort();
+    const controller = new AbortController(); request.current = controller;
     setLoading(true); setError("");
     try {
       const { data } = await supabase.auth.getSession();
+      if (controller.signal.aborted) return;
       const token = data.session?.access_token;
-      if (!token) throw new Error("Sign in again to view evidence.");
+      if (!token || data.session?.user.id !== currentUser?.user_id) throw new Error("Sign in again to view evidence.");
       const response = await fetch(`/api/admin/visits/evidence?visit_id=${encodeURIComponent(visitId)}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${token}` }, signal: controller.signal,
       });
       if (!response.ok) throw new Error("Evidence is unavailable. Please retry.");
       const result = await response.json();
+      if (controller.signal.aborted) return;
       window.open(result.url, "_blank", "noopener,noreferrer");
-    } catch (reason) { setError(reason instanceof Error ? reason.message : "Evidence could not be opened."); } finally {
-      setLoading(false);
+    } catch (reason) { if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : "Evidence could not be opened."); } finally {
+      if (!controller.signal.aborted) setLoading(false);
+      if (request.current === controller) request.current = null;
     }
   };
   return <div><Button size="sm" variant="outline" isLoading={loading} onClick={openEvidence}>View Selfie</Button>{error && <p role="alert">{error}</p>}</div>;

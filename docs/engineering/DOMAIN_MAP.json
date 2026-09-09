@@ -182,6 +182,8 @@
       "authorityRefs": [
         "employee_identity",
         "employee_public_profile",
+        "application_capability_catalog",
+        "user_capability_assignment",
         "retired_employee_identity_erasure_operation"
       ],
       "capabilityRefs": [

@@ -1,9 +1,11 @@
 /** @jest-environment node */
 import { createClient } from "@supabase/supabase-js";
-import { aggregateVisitRange, parseVisitRange, readVisitEvents, type VisitEvent } from "../fieldVisits/range";
+import { aggregateVisitRange, parseVisitRange, parseVisitRegister, visitRegisterResultSchema, readVisitEvents, type VisitEvent } from "../fieldVisits/range";
 import { boundedReportJson, createReportResource } from "../analytics/reportResource";
 import { createServerServiceClient } from "../serverBackendEnvironment";
 import { GET } from "@/app/api/admin/visits/analysis/route";
+import { GET as registerGET } from "@/app/api/admin/visits/route";
+import { GET as pickerGET } from "@/app/api/admin/visits/representatives/route";
 import { initialVisitQuery, visitQueryKey, visitQueryParams } from "../fieldVisits/query";
 
 jest.mock("../serverBackendEnvironment", () => ({
@@ -37,6 +39,85 @@ describe("B-D bounded read slice", () => {
     jest.spyOn(globalThis, "fetch").mockImplementation(fetcher);
     jest.mocked(createServerServiceClient).mockImplementation((options) => ({ ok: true, client: client(options!.fetch!) }));
   };
+  it("rejects ambiguous register dates, invalid pagination and partial counts", () => {
+    for (const query of ["date_from=2026-09-01", "date_from=2026-09-01&date_to=2026-09-07&date=2026-09-01", "page=401", "page=0", "page=1.5", "page=1&page=2", "employee=x"]) {
+      expect(() => parseVisitRegister(new URLSearchParams(query), "2026-09-09T06:00:00Z")).toThrow();
+    }
+    expect(parseVisitRegister(new URLSearchParams("date=2026-09-08"), "2026-09-09T06:00:00Z").date).toBe("2026-09-08");
+    const result={visit_ids:[event(1).visit_id],total:1,page:1,page_size:50,has_more:false,page_limit:400,legacy_date_mismatch_count:0};
+    expect(visitRegisterResultSchema.safeParse(result).success).toBe(true);
+    for(const change of [{total:2},{has_more:true},{visit_ids:[event(1).visit_id,event(1).visit_id],total:2}]) expect(visitRegisterResultSchema.safeParse({...result,...change}).success).toBe(false);
+  });
+  it("keeps register and independent picker behind live active Admin checks", async () => {
+    for(const handler of [registerGET,pickerGET]) for(const [active,admin] of [[false,true],[true,false]]) {
+      const fetcher=jest.fn<ReturnType<typeof fetch>,Parameters<typeof fetch>>().mockImplementation(async(url)=>{
+        const path=new URL(String(url)).pathname;
+        if(path.endsWith('/auth/v1/user'))return Response.json({id:actor});
+        if(path.endsWith('/users'))return Response.json([{is_active:active}]);
+        if(path.endsWith('/user_capabilities'))return Response.json(admin ? [{capability_code:'admin'}] : [{capability_code:'task_assigner'}]);
+        throw Error('Unauthorized reader request');
+      });
+      scopedBackend(fetcher);
+      expect((await handler(new Request('https://fixture.invalid/api',{headers:{Authorization:'Bearer synthetic'}}))).status).toBe(403);
+      expect(fetcher).toHaveBeenCalledTimes(3);
+    }
+  });
+  it("reconciles bounded register enrichment and rejects a server-capped lead response", async () => {
+    for(const capped of [false,true]) {
+      const records=[1,2,3].map(n=>({...event(n),lead_id:event(n+10).visit_id,created_at:'2026-09-07T00:00:00Z'}));
+      const fetcher=jest.fn<ReturnType<typeof fetch>,Parameters<typeof fetch>>().mockImplementation(async(url,init)=>{
+        const parsed=new URL(String(url)),path=parsed.pathname;
+        if(path.endsWith('/auth/v1/user'))return Response.json({id:actor});
+        if(path.endsWith('/users'))return Response.json(parsed.searchParams.get('select')==='is_active' ? [{is_active:true}] : [{user_id:actor,name:'Field employee',email:'fixture@example.invalid'}]);
+        if(path.endsWith('/user_capabilities'))return Response.json([{capability_code:'admin'}]);
+        if(path.endsWith('/rpc/crm_visit_register_v1'))return Response.json({visit_ids:records.map(row=>row.visit_id),total:3,page:1,page_size:50,has_more:false,page_limit:400,legacy_date_mismatch_count:0});
+        if(path.endsWith('/field_visits'))return init?.method==='HEAD' ? new Response(null,{headers:{'Content-Range':'*/3'}}) : Response.json(records,{headers:{'Content-Range':'0-2/3'}});
+        if(path.endsWith('/leads'))return Response.json(records.slice(0,capped?2:3).map(row=>({lead_id:row.lead_id,business_name:'Business',contact_person:'Contact',phone:'555'})),{headers:{'Content-Range':capped?'0-1/3':'0-2/3'}});
+        throw Error('Unexpected register transport');
+      });
+      scopedBackend(fetcher);
+      const response=await registerGET(new Request('https://fixture.invalid/api?date_from=2026-09-07&date_to=2026-09-08',{headers:{Authorization:'Bearer synthetic'}}));
+      expect(response.status).toBe(capped?503:200);
+      const body=await response.json();
+      if(capped)expect(body.error).toBe('VISIT_IDENTITIES_UNAVAILABLE');
+      else {expect(body.visits).toHaveLength(3);expect(body.visits.every((row:{leads:unknown})=>row.leads)).toBe(true);expect(body.diagnostics).toMatchObject({auth_http_requests:1,authorization_db_http_requests:2,reader_http_requests:6});}
+    }
+  });
+  it("preserves unsearched records before activation without pretending joined search is complete", async () => {
+    const fetcher=jest.fn<ReturnType<typeof fetch>,Parameters<typeof fetch>>().mockImplementation(async(url)=>{
+      const path=new URL(String(url)).pathname;
+      if(path.endsWith('/auth/v1/user'))return Response.json({id:actor});
+      if(path.endsWith('/users'))return Response.json([{is_active:true}]);
+      if(path.endsWith('/user_capabilities'))return Response.json([{capability_code:'admin'}]);
+      if(path.endsWith('/rpc/crm_visit_register_v1'))return Response.json({code:'PGRST202',message:'not activated'},{status:404});
+      if(path.endsWith('/field_visits'))return Response.json([],{headers:{'Content-Range':'*/0'}});
+      throw Error('Unexpected activation fallback read');
+    });
+    scopedBackend(fetcher);
+    const request=(search='')=>new Request(`https://fixture.invalid/api?date_from=2026-09-07&date_to=2026-09-08${search}`,{headers:{Authorization:'Bearer synthetic'}});
+    const response=await registerGET(request());expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({reader_activation:'pending',visits:[],total:0});
+    const previous=fetcher.mock.calls.length;
+    expect((await registerGET(request('&search=Matching'))).status).toBe(503);
+    expect(fetcher.mock.calls.slice(previous).filter(([url])=>String(url).includes('/field_visits'))).toHaveLength(0);
+  });
+  it("accepts the exact bounded PostgreSQL Unicode cursor through picker input and output", async () => {
+    const cursor='z'+'😀'.repeat(999);
+    const fetcher=jest.fn<ReturnType<typeof fetch>,Parameters<typeof fetch>>().mockImplementation(async(url,init)=>{
+      const path=new URL(String(url)).pathname;
+      if(path.endsWith('/auth/v1/user'))return Response.json({id:actor});
+      if(path.endsWith('/users'))return Response.json([{is_active:true}]);
+      if(path.endsWith('/user_capabilities'))return Response.json([{capability_code:'admin'}]);
+      expect(JSON.parse(String(init?.body))).toMatchObject({p_after_name:cursor,p_after_id:actor});
+      return Response.json({items:[{user_id:event(1).visit_id,name:cursor+'😀',email:'unicode@example.invalid',is_active:true,historical_only:false,cursor_name:cursor}],selected:null,has_more:false});
+    });
+    scopedBackend(fetcher);
+    const params=new URLSearchParams({after_name:cursor,after_id:actor});
+    const response=await pickerGET(new Request(`https://fixture.invalid/api?${params}`,{headers:{Authorization:'Bearer synthetic'}}));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({items:[{cursor_name:cursor}],diagnostics:{auth_http_requests:1,authorization_db_http_requests:2,reader_http_requests:1}});
+    expect(fetcher).toHaveBeenCalledTimes(4);
+  });
   it("does no Auth transport work for an already-aborted request", async () => {
     const fetcher = jest.fn<ReturnType<typeof fetch>, Parameters<typeof fetch>>();
     scopedBackend(fetcher);

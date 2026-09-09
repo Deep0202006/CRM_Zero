@@ -10,7 +10,7 @@ production connection, production SQL application or merge is authorized.
 | Source / authority | Metric or scope | Consumer | Required proof |
 |---|---|---|---|
 | `field_visits.visit_id`, immutable `user_id`, canonical `visit_date` | Retained Visit count, daily/outcome/representative partition; check-in/date mismatch separately | Authorized `/api/admin/visits/analysis`; page integration pending | `field-visits-unit`, `bcd-readers-postgres`; rendered acceptance pending |
-| Existing `users` profile and `leads` business fields joined safely through text Visit lead reference | Literal per-field search, selected immutable representative | Same read predicate; register/picker integration pending | >50 matches, inactive identity, legacy non-UUID lead fixtures; CI pending |
+| Existing `users` profile and `leads` business fields joined safely through text Visit lead reference | Literal per-field search, selected immutable representative | Shared register/events predicate; independent lazy picker integrated | >50 matches, inactive identity, legacy non-UUID lead fixtures; CI pending |
 | Installed Supabase SDK transport | 24 reader calls, separate 2 authorization database calls, 8-second deadline, retry disabled, charged empty EOF | One report-local resource | Real SDK with controlled fetch responses; real PostgREST HTTP verification pending |
 | Existing create-user/update-user and employee directory tests | Public-profile name/email/active ownership is separate from Auth login identity | Registry reconciliation only | Impact and registered control proofs |
 
@@ -121,9 +121,59 @@ representatives. Remove the old directory-draining fallback; absent055 preserves
 bounded ordinary records but makes joined search explicitly unavailable. SQL
 plans and real HTTP assertions must pass before claiming those consumers ready.
 
+### Shared-reader continuation after verified Owner push
+
+PR114 head `ab7d4f60078a37017aaca6480e09c9e2454597fa` was verified remotely.
+Run [34350333124](https://github.com/Deep0202006/CRM_Zero/actions/runs/34350333124)
+passed preflight and unit-build. The disposable PostgreSQL runtime worked;
+existing Field Visits, Pipeline and Imports database proofs passed. B-D SQL
+failed its representative-search assertion:61 matching users own62 visits,
+including the legacy record. The corrected assertion checks both cardinalities
+and that exact legacy identity. HTTP/inner-plan execution was not reached.
+The browser job failed an older automatic-filter-request expectation. That
+regression now requires no draft request, followed by exactly one Apply request.
+Attestation/verify were skipped; this run is not a green delivery certificate.
+
+The shared scalar predicate now drives event reading and the atomic matched
+count/50-ID register query. Subsequent detail and identity enrichment remain
+bounded live reads, not a cross-request snapshot. Exact count checks reject
+server-truncated records and lead labels. Ordinary unsearched records remain
+available before055 activation; joined search explicitly requires activation.
+Register pages stop at400 with a narrowing instruction. The independent picker
+uses current field capability OR retained Visit membership,25 options plus a
+sentinel and an independently selected identity. Its one RPC is within its
+4-reader budget. Native controls load it on deliberate focus/search, not every
+register refresh. Nullable global counters remain unavailable, never zero.
+Closing selected evidence aborts pending work and prevents late window opening.
+
+Independent criticism resolved truncated identity enrichment and long-name
+cursor failures. SQL and TypeScript now agree on a1000-code-point normalized
+cursor prefix, with UUID tie-breaking; full visible names are retained subject
+to the64KiB response ceiling. The synthetic long name includes astral Unicode.
+Catalog assertions cover fixed caller search paths, stable/invoker flags and
+restricted grants. The HTTP harness now extracts the actual register/picker
+inner statements too, checks exact RPC agreement, and exercises actual JSON
+pagination/public-role denial. Those SQL/HTTP results remain pending CI.
+The fixture required registering existing capability-catalog ownership and
+linking the existing capability-assignment authority to Auth; no application
+capability writer, policy or certificate was changed.
+
+Local build/TypeScript and the registered workspace browser command passed.
+The existing same-head common-receipt immutability guard prevented replacing
+earlier receipts; canonical command results are preserved and are not claimed
+as final-head proof. A fresh committed head is required for delivery evidence.
+Actual [desktop](../../artifacts/visual-review/workspace-makeover/pr114-shared-readers/visits-1440.png),
+[mobile](../../artifacts/visual-review/workspace-makeover/pr114-shared-readers/visits-390.png),
+[dark desktop](../../artifacts/visual-review/workspace-makeover/pr114-shared-readers/visits-1440-dark.png)
+and [dark mobile](../../artifacts/visual-review/workspace-makeover/pr114-shared-readers/visits-390-dark.png)
+were inspected: first record visible and no horizontal page overflow. These are
+four-record continuation captures, not full busy31-day visual acceptance.
+Ponytail review retained native controls and the existing request resource;
+no new library or generic data layer was introduced.
+
 | Packet | Status |
 |---|---|
-| B Visits range, joined register search, historical picker, applied scope | Initial SQL/API and applied-query correction; full reader/picker/chart integration and busy visual acceptance pending |
+| B Visits range, joined register search, historical picker, applied scope | Shared register/picker slice integrated; SQL/HTTP CI, full range-chart/representative analysis and busy visual acceptance pending |
 | C typed Team history and filtered Pipeline inspection/context | Pending implementation |
 | D self-scoped My Day history and lazy Admin task/target review | Pending implementation |
 | Physical PostgREST requests, rendered screenshots, exact final-head CI | Pending; no local SQL PASS claimed |

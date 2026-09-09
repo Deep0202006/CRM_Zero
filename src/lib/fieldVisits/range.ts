@@ -5,14 +5,38 @@ import { ReportUnavailable, type ReportResource } from "@/lib/analytics/reportRe
 import { FIELD_VISIT_OUTCOMES } from "./contract";
 
 const date = z.string().refine(isValidISTDateKey);
+// PostgreSQL UUID is a 128-bit identity, not restricted to RFC version/variant bits.
+export const visitUuid = z.string().regex(/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i).transform((id) => id.toLowerCase());
 const scopeSchema = z.object({
   version: z.literal("1").default("1"), date_from: date, date_to: date,
-  representative: z.string().uuid().nullable().default(null),
+  representative: visitUuid.nullable().default(null),
   segment: z.enum(["Retailer", "Distributor"]).nullable().default(null),
   outcome: z.enum(FIELD_VISIT_OUTCOMES).nullable().default(null),
   search: z.string().trim().max(160).default(""),
 }).strict();
 export type VisitRangeScope = z.infer<typeof scopeSchema>;
+const registerSchema = scopeSchema.omit({ date_from: true, date_to: true }).extend({
+  date: date.optional(), date_from: date.optional(), date_to: date.optional(),
+  page: z.coerce.number().int().min(1).max(400).default(1),
+});
+export function parseVisitRegister(params: URLSearchParams, now: string) {
+  if ([...params.keys()].some((key) => params.getAll(key).length !== 1)) throw new Error("INVALID_VISIT_REGISTER_SCOPE");
+  const scope = registerSchema.parse(Object.fromEntries(params));
+  const today = getISTDateKey(now);
+  if (Boolean(scope.date_from) !== Boolean(scope.date_to) || (scope.date && (scope.date_from || scope.date_to))
+    || [scope.date, scope.date_from, scope.date_to].some((day) => day && (day < "1000-02-01" || day > today))
+    || (scope.date_from && scope.date_to && (scope.date_from > scope.date_to || scope.date_to > addISTDateDays(scope.date_from, 30)))) throw new Error("INVALID_VISIT_REGISTER_SCOPE");
+  return scope;
+}
+export const visitRegisterResultSchema = z.object({
+  visit_ids: z.array(visitUuid).max(50),
+  total: z.number().int().nonnegative().safe(), page: z.number().int().min(1).max(400),
+  page_size: z.literal(50), has_more: z.boolean(), page_limit: z.literal(400),
+  legacy_date_mismatch_count: z.number().int().nonnegative().safe(),
+}).superRefine((value, context) => {
+  if (new Set(value.visit_ids).size !== value.visit_ids.length || value.visit_ids.length !== Math.min(50, Math.max(0, value.total - (value.page - 1) * 50))
+    || value.has_more !== (value.page * 50 < value.total) || value.legacy_date_mismatch_count > value.total) context.addIssue({ code: "custom", message: "VISIT_REGISTER_RECONCILIATION" });
+});
 export function parseVisitRange(params: URLSearchParams, now: string): VisitRangeScope {
   if ([...params.keys()].some((key) => params.getAll(key).length !== 1)) throw new Error("INVALID_VISIT_RANGE");
   const today = getISTDateKey(now);
@@ -21,7 +45,7 @@ export function parseVisitRange(params: URLSearchParams, now: string): VisitRang
   if (scope.date_from < "1000-02-01" || scope.date_from > scope.date_to || scope.date_to > today || scope.date_to > addISTDateDays(scope.date_from, 30)) throw new Error("INVALID_VISIT_RANGE");
   return scope;
 }
-const eventSchema = z.object({ visit_id: z.string().uuid(), user_id: z.string().uuid(), visit_date: date, check_in_time: z.string().datetime({ offset: true }), visit_outcome: z.string().nullable(), segment_type: z.string().nullable() });
+const eventSchema = z.object({ visit_id: visitUuid, user_id: visitUuid, visit_date: date, check_in_time: z.string().datetime({ offset: true }), visit_outcome: z.string().nullable(), segment_type: z.string().nullable() });
 export type VisitEvent = z.infer<typeof eventSchema>;
 
 export async function readVisitEvents(client: SupabaseClient, scope: VisitRangeScope, resource: ReportResource) {

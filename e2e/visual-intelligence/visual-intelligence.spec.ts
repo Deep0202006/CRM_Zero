@@ -397,6 +397,8 @@ test("Visits visual composition reconciles the bounded page and closes with serv
   if (foundationPhase === "before") return;
   await page.getByText("Date and segment filters", { exact: true }).click();
   await page.getByLabel("Segment", { exact: true }).selectOption("Retailer");
+  expect(requestUrls).toHaveLength(1);
+  await page.getByRole("button", { name: "Apply filters", exact: true }).click();
   await expect.poll(() => requestUrls.length).toBe(2);
   expect(new URL(requestUrls.at(-1)!).searchParams.get("segment")).toBe("Retailer");
   await expect(page.getByText("Current bounded page 1 · 1 of 1 matching visits", { exact: false }).first()).toBeVisible();

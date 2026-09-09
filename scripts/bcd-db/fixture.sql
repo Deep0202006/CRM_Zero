@@ -1,5 +1,12 @@
 insert into public.users(user_id,name,email,is_active)
 select md5('user'||g)::uuid, 'Matching representative '||g, 'rep'||g||'@example.invalid', g<>61 from generate_series(1,61) g;
+-- Current capability without a Visit and a non-member must not be conflated.
+insert into public.users(user_id,name,email,is_active) values
+  (md5('current-only')::uuid,'z'||repeat('😀',1000),'current-only@example.invalid',true),
+  (md5('not-field')::uuid,'Not a field representative','not-field@example.invalid',true);
+insert into public.capabilities(code,label) values ('field_ret','Synthetic field retailer');
+insert into public.user_capabilities(user_id,capability_code) values
+  (md5('current-only')::uuid,'field_ret'),(md5('user1')::uuid,'field_ret');
 insert into public.leads(lead_id,business_name,contact_person,phone,segment_type)
 select md5('lead'||g)::uuid, 'Matching business '||g, 'Contact '||g, '555'||g, 'Retailer'::lead_segment from generate_series(1,61) g;
 insert into public.field_visits(visit_id,user_id,lead_id,visit_date,check_in_time,visit_outcome,segment_type,visit_notes,person_met,address)
