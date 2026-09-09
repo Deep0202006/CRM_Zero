@@ -38,6 +38,12 @@ const matrix = [
   expectPass("reviewed-bcd-http-fixture", {
     "scripts/bcd-db/http.mjs": readFileSync(resolve(import.meta.dirname, "../bcd-db/http.mjs"), "utf8"),
   }),
+  expectPass("reviewed-bcd-shell-fixture", {
+    "scripts/bcd-db/run-integration.sh": readFileSync(resolve(import.meta.dirname, "../bcd-db/run-integration.sh"), "utf8"),
+  }),
+  expectFailure("unreviewed-bcd-shell-neighbor", "SERVICE_ROLE_NOT_ALLOWLISTED", {
+    "scripts/bcd-db/unreviewed.sh": join('role="service_', 'role"\n'),
+  }),
   expectFailure("unreviewed-bcd-neighbor", "SERVICE_ROLE_NOT_ALLOWLISTED", {
     "scripts/bcd-db/unreviewed.mjs": join('const role = "service_', 'role";\n'),
   }),

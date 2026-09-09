@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-if [[ "${CRM_POSTGRES_SERVICE_DISPOSABLE:-}" != "1" || "${PGHOST:-}" != "127.0.0.1" || "${PGDATABASE:-}" != kernel_bcd_readers_postgres_* ]]; then
+if [[ "$(uname -s)" != "Linux" || "${GITHUB_ACTIONS:-}" != "true" || "${CRM_POSTGRES_SERVICE_DISPOSABLE:-}" != "1" || "${PGHOST:-}" != "127.0.0.1" || ! "${PGDATABASE:-}" =~ ^kernel_bcd_readers_postgres_[a-f0-9]{8}_0$ ]]; then
   echo "B-D fixtures require the registered disposable database" >&2; exit 86
 fi
 case "${1:-}" in

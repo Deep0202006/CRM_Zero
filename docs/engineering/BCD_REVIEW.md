@@ -220,7 +220,7 @@ labels this independent ERP scope without changing the existing data columns.
 |048 latest observed ERP, unchanged counts/percentages | Existing Retailer/Distributor sheets plus explicit Scope sheet | ERP JSON equality, catalog/raw-name limits and reconciled formatter tests |
 | One scoped request/deadline budget,5000-row/size ceilings | Export reader and error response | `field-visits-unit`: EOF,5001, short-page cap, cancellation, identity/order/cell checks and post-serialization deadline |
 
-Independent criticism corrected the bare-PostgREST `/rest/v1` test-prefix mismatch
+Independent criticism corrected the bare-PostgREST gateway REST-prefix mismatch
 and the fact that047 bounds trimmed ERP names, not raw surrounding whitespace.
 The adapter is test-only and preserves scoped fetch accounting. No production
 connection resolution, applied migration or Owner ledger changed. Ponytail review
