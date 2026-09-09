@@ -5,13 +5,14 @@ import { aggregateVisitRange, parseVisitRange, readVisitEvents } from "@/lib/fie
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
-  const backend = createServerServiceClient();
-  if (!backend.ok) return backendUnavailableResponse();
-  const authorization = request.headers.get("authorization") ?? "";
-  if (!authorization.startsWith("Bearer ")) return Response.json({ code: "AUTH_REQUIRED" }, { status: 401 });
   const resource = createReportResource(request.signal);
   let scope;
   try {
+    resource.check();
+    const backend = createServerServiceClient({ fetch: resource.fetch });
+    if (!backend.ok) return backendUnavailableResponse();
+    const authorization = request.headers.get("authorization") ?? "";
+    if (!authorization.startsWith("Bearer ")) return Response.json({ code: "AUTH_REQUIRED" }, { status: 401 });
     const { data, error } = await backend.client.auth.getUser(authorization.slice(7).trim());
     resource.check();
     if (error || !data.user) return Response.json({ code: "AUTH_REQUIRED" }, { status: 401 });

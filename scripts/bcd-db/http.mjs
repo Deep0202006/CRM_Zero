@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash, createHmac, randomBytes } from 'node:crypto';
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawn, execFileSync } from 'node:child_process';
@@ -12,6 +12,30 @@ assert.equal(process.env.GITHUB_ACTIONS, 'true');
 assert.equal(process.env.CRM_POSTGRES_SERVICE_DISPOSABLE, '1');
 assert.equal(process.env.PGHOST, '127.0.0.1');
 assert.match(process.env.PGDATABASE ?? '', /^kernel_bcd_readers_postgres_[a-f0-9]{8}_0$/);
+const psql = (sql) => execFileSync('psql', ['-X', '-A', '-t', '-q', '-v', 'ON_ERROR_STOP=1', '-c', sql], { encoding: 'utf8', timeout: 15000 }).trim();
+const migration = readFileSync('supabase/migrations/055_crm_bcd_readers.sql', 'utf8');
+const selectBlocks = [...migration.matchAll(/return query\s*(select[\s\S]*?limit 1000;)/gi)];
+assert.equal(selectBlocks.length, 1, 'Inner SELECT extraction must track exactly one real reader');
+const parameters = ['p_from', 'p_to', 'p_representative', 'p_segment', 'p_outcome', 'p_search', 'p_after_date', 'p_after_id'];
+const inner = selectBlocks[0][1];
+assert.deepEqual([...new Set(inner.match(/\bp_\w+\b/g))].sort(), [...parameters].sort());
+const prepared = inner.replace(/\bp_\w+\b/g, (name) => `$${parameters.indexOf(name) + 1}`);
+const prepare = `prepare bcd_plan(date,date,uuid,text,text,text,date,uuid) as ${prepared}`;
+for (const [name, args] of [
+  ['all-team', "'2026-08-01','2026-08-03',null,null,null,'',null,null"],
+  ['representative', "'2026-08-01','2026-08-03',md5('user61')::uuid,null,null,'',null,null"],
+  ['joined-literal-search', "'2026-08-01','2026-08-03',null,null,null,'Matching business 61',null,null"],
+]) {
+  const plan = JSON.parse(psql(`${prepare} explain (analyze,buffers,format json) execute bcd_plan(${args});`));
+  assert.notEqual(plan[0].Plan['Node Type'], 'Function Scan');
+  assert.ok(plan[0].Plan['Actual Rows'] <= 1000);
+  console.log(JSON.stringify({ inner_query_plan: name, synthetic_source_rows: 21063, plan }));
+}
+const smallArgs = "'2026-08-01','2026-08-02',null,null,null,'',null,null";
+const extractedIds = psql(`${prepare} execute bcd_plan(${smallArgs});`).split(/\r?\n/).map((line) => line.split('|')[0]);
+assert.deepEqual(extractedIds, psql(`select visit_id from public.crm_visit_events_v1(${smallArgs});`).split(/\r?\n/));
+assert.equal(psql("select pg_get_function_result('public.crm_visit_events_v1(date,date,uuid,text,text,text,date,uuid)'::regprocedure)"),
+  'TABLE(visit_id uuid, user_id uuid, visit_date date, check_in_time timestamp with time zone, visit_outcome text, segment_type text)');
 const directory = mkdtempSync(join(tmpdir(), 'crm-bcd-http-'));
 let server;
 let logs = '';
@@ -67,6 +91,13 @@ try {
     const result = await rpc({ ...scope, ...cursor }); requests++; bytes += result.bytes;
     assert.equal(result.status, 200, JSON.stringify(result.data));
     assert.ok(Array.isArray(result.data) && result.data.length <= 100);
+    for (const row of result.data) {
+      assert.deepEqual(Object.keys(row).sort(), ['visit_id','user_id','visit_date','check_in_time','visit_outcome','segment_type'].sort());
+      for (const key of ['visit_id','user_id']) assert.match(row[key], /^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/);
+      assert.match(row.visit_date, /^\d{4}-\d{2}-\d{2}$/);
+      assert.ok(Number.isFinite(Date.parse(row.check_in_time)) && /(?:Z|[+-]\d\d:\d\d)$/.test(row.check_in_time));
+      for (const key of ['visit_outcome','segment_type']) assert.ok(row[key] === null || typeof row[key] === 'string');
+    }
     if (!result.data.length) { eof = true; break; }
     ids.push(...result.data.map((row) => row.visit_id));
     const last = result.data.at(-1);
@@ -78,6 +109,8 @@ try {
   assert.equal(search.status, 200); assert.equal(search.data.length, 61);
   assert.equal((await rpc({ ...scope, p_search: 'legacy searchable' })).data.length, 1);
   assert.equal((await rpc({ ...scope, p_after_date: '2026-07-31', p_after_id: ids[0] })).status, 400);
+  for (const extra of [{ p_representative: 'invalid-uuid' }, { p_from: '2026-02-30' }]) assert.equal((await rpc({ ...scope, ...extra })).status, 400);
+  assert.equal((await rpc({ ...scope, unknown_parameter: true })).status, 404);
   const timeout = await rpc({}, token, 'crm_bcd_timeout_fixture');
   assert.equal(timeout.data.code, '57014', JSON.stringify(timeout));
   const settings = execFileSync('psql', ['-X', '-A', '-t', '-c', "select array_to_string(proconfig,',') from pg_proc where oid='public.crm_visit_events_v1(date,date,uuid,text,text,text,date,uuid)'::regprocedure"], { encoding: 'utf8' });

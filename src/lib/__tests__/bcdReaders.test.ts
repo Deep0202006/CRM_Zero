@@ -19,6 +19,35 @@ const client = (fetch: typeof globalThis.fetch) => createClient("https://fixture
 });
 
 describe("B-D bounded read slice", () => {
+  afterEach(() => { jest.restoreAllMocks(); jest.useRealTimers(); });
+  const scopedBackend = (fetcher: typeof fetch) => {
+    jest.spyOn(globalThis, "fetch").mockImplementation(fetcher);
+    jest.mocked(createServerServiceClient).mockImplementation((options) => ({ ok: true, client: client(options!.fetch!) }));
+  };
+  it("does no Auth transport work for an already-aborted request", async () => {
+    const fetcher = jest.fn<ReturnType<typeof fetch>, Parameters<typeof fetch>>();
+    scopedBackend(fetcher);
+    const incoming = new AbortController(); incoming.abort();
+    const response = await GET(new Request("https://fixture.invalid/api", { signal: incoming.signal, headers: { Authorization: "Bearer synthetic" } }));
+    expect(response.status).toBe(503);
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+  it("aborts delayed Auth at the shared deadline, schedules no DB work and clears timers", async () => {
+    jest.useFakeTimers();
+    let transportAborted = false;
+    const fetcher = jest.fn<ReturnType<typeof fetch>, Parameters<typeof fetch>>().mockImplementation((_url, init) => new Promise((_resolve, reject) => {
+      init!.signal!.addEventListener("abort", () => { transportAborted = true; reject(new DOMException("Aborted", "AbortError")); }, { once: true });
+    }));
+    scopedBackend(fetcher);
+    const pending = GET(new Request("https://fixture.invalid/api", { headers: { Authorization: "Bearer synthetic" } }));
+    await jest.advanceTimersByTimeAsync(8001);
+    const response = await pending;
+    expect(response.status).toBe(503);
+    expect(transportAborted).toBe(true);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(await response.json()).toMatchObject({ generated_at: null, diagnostics: { auth_http_requests: 1, authorization_db_http_requests: 0, reader_http_requests: 0 } });
+    expect(jest.getTimerCount()).toBe(0);
+  });
   it("keeps Preview unavailable and rejects missing credentials without report reads", async () => {
     jest.mocked(createServerServiceClient).mockReturnValue({ ok: false });
     expect((await GET(new Request("https://fixture.invalid/api"))).status).toBe(503);
@@ -36,11 +65,11 @@ describe("B-D bounded read slice", () => {
         if (path.endsWith("/user_capabilities")) return Response.json(admin ? [{ capability_code: "admin" }] : [{ capability_code: "task_assigner" }]);
         return Response.json([]);
       });
-      jest.mocked(createServerServiceClient).mockReturnValue({ ok: true, client: client(fetcher) });
+      scopedBackend(fetcher);
       const response = await GET(new Request("https://fixture.invalid/api?date_from=2026-09-07&date_to=2026-09-08", { headers: { Authorization: "Bearer synthetic-token" } }));
       expect(response.status).toBe(expected);
       expect(fetcher.mock.calls.filter(([url]) => String(url).includes("/rpc/")).length).toBe(admin && active ? 1 : 0);
-      if (expected === 200) expect(await response.json()).toMatchObject({ retained_source_read: "exhausted", historical_coverage: "uncertified", diagnostics: { reader_requests: 1, authorization_db_requests: 2 } });
+      if (expected === 200) expect(await response.json()).toMatchObject({ retained_source_read: "exhausted", historical_coverage: "uncertified", diagnostics: { reader_requests: 1, authorization_db_requests: 2, auth_http_requests: 1, authorization_db_http_requests: 2, reader_http_requests: 1 } });
     }
   });
   it("validates real bounded IST dates and rejects duplicate or unknown scope", () => {
@@ -76,10 +105,12 @@ describe("B-D bounded read slice", () => {
   it("disables the installed SDK retry on a physical 503 response", async () => {
     const fetcher = jest.fn<ReturnType<typeof fetch>, Parameters<typeof fetch>>().mockResolvedValue(Response.json({ message: "temporary", code: "XX000" }, { status: 503 }));
     const resource = createReportResource(new AbortController().signal);
+    jest.spyOn(globalThis, "fetch").mockImplementation(fetcher);
     try {
-      await expect(readVisitEvents(client(fetcher), scope(), resource)).rejects.toThrow("VISIT_SOURCE_UNAVAILABLE");
+      await expect(readVisitEvents(client(resource.fetch), scope(), resource)).rejects.toThrow("VISIT_SOURCE_UNAVAILABLE");
       expect(fetcher).toHaveBeenCalledTimes(1);
       expect(resource.diagnostics.reader_requests).toBe(1);
+      expect(resource.diagnostics.reader_http_requests).toBe(1);
     } finally { resource.finish(); }
   });
   it("does not publish a response or schedule another page after cancellation", async () => {
@@ -107,6 +138,18 @@ describe("B-D bounded read slice", () => {
       await expect(resource.read(client(fetcher).rpc("crm_visit_events_v1"))).rejects.toThrow("REPORT_REQUEST_LIMIT");
       expect(fetcher).toHaveBeenCalledTimes(1);
       expect(() => boundedReportJson({ value: "₹".repeat(20) }, 40)).toThrow("REPORT_PAYLOAD_LIMIT");
+    } finally { resource.finish(); }
+  });
+  it("consumes each physical allowance once and strips its internal header", async () => {
+    const fetcher = jest.spyOn(globalThis, "fetch").mockImplementation(async () => Response.json([]));
+    const resource = createReportResource(new AbortController().signal);
+    try {
+      await expect(resource.fetch("https://fixture.invalid/rest/v1/users")).rejects.toThrow("UNCHARGED_REPORT_HTTP_REQUEST");
+      await resource.read(client(resource.fetch).rpc("crm_visit_events_v1"));
+      expect(new Headers(fetcher.mock.calls[0][1]?.headers).has("x-zd-report-read")).toBe(false);
+      await expect(resource.fetch("https://fixture.invalid/rest/v1/users", { headers: { "x-zd-report-read": "reader:1" } })).rejects.toThrow("UNCHARGED_REPORT_HTTP_REQUEST");
+      expect(fetcher).toHaveBeenCalledTimes(1);
+      expect(resource.diagnostics.reader_http_requests).toBe(1);
     } finally { resource.finish(); }
   });
 });

@@ -29,6 +29,29 @@ is registered without granting deletion or authentication authority.
 
 ## Review findings carried forward
 
+PR114 correction batch: exact `http.mjs` safety registration, neighboring-path
+denial regression, conditional PostgreSQL 17.6 loopback service in the existing
+CI job, host-tool/readiness checks, and report-scoped Auth cancellation. Existing
+default backend clients and confirmation retry policy are unchanged. The scoped
+transport permits at most 1 Auth HTTP + 2 authorization DB HTTP + 24 report DB
+HTTP attempts (27 end-to-end). Every DB read receives a single-use allowance;
+SDK retries cannot obtain another physical attempt. Parsed-data accounting is
+named `decoded_data_bytes`, not wire bytes, and excludes Auth/error bodies.
+
+The CI SQL fixture now includes tracked019 indexes and catalog assertions for
+extracted columns, FK and RLS. Its 20,000 out-of-range plan-only records are
+separate from the 1,063-row HTTP range. The harness extracts the real inner
+SELECT, binds typed parameters, checks source/RPC agreement and records actual
+EXPLAIN ANALYZE BUFFERS plans for dates, representative and literal search.
+Plans and runtime results remain pending CI; no candidate index is justified
+merely by LIMIT. Historical outcome rows intentionally model pre-constraint
+data; this reduced read fixture is not proof of every production write rule.
+
+Production migrations remain Owner-manual in Supabase SQL Editor. Prepared,
+CI-tested, Owner-applied and Production-verified are separate states. The ledger
+is unchanged at54/54. The final complete migration/precheck/postcheck/hash packet
+must be ready before asking for any Owner production action.
+
 Architecture/data review: match search fields separately; preserve legacy text
 lead references; require actual service execution and public-role denial; prove
 pagination under an HTTP row cap. DDL statement timeout is **not** an RPC runtime

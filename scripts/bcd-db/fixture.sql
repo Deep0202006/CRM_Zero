@@ -12,3 +12,13 @@ insert into public.field_visits(visit_id,user_id,lead_id,visit_date,check_in_tim
 insert into public.field_visits(visit_id,user_id,lead_id,visit_date,check_in_time,visit_outcome,segment_type,visit_notes,person_met,address)
 select md5('bulk'||g)::uuid, md5('user1')::uuid, 'legacy-bulk', '2026-08-03', '2026-08-03 04:00:00+00',
   'follow_up','Retailer',null,null,null from generate_series(1,1001) g;
+
+-- Bounded plan-only population, outside the HTTP reconciliation interval.
+-- Legacy outcome rows intentionally model pre-constraint retained records.
+insert into public.field_visits(visit_id,user_id,lead_id,visit_date,check_in_time,visit_outcome,segment_type,visit_notes,person_met,address)
+select md5('plan'||g)::uuid, md5('user'||(1+g%61))::uuid, (md5('lead'||(1+g%61))::uuid)::text,
+  date '2026-01-01'+(g%180), timestamptz '2026-01-01 04:00:00+00'+(g%180)*interval '1 day',
+  'interested','Retailer',null,null,null from generate_series(1,20000) g;
+analyze public.users;
+analyze public.leads;
+analyze public.field_visits;

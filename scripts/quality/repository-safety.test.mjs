@@ -35,6 +35,12 @@ const expectPass = (name, files) => {
 };
 
 const matrix = [
+  expectPass("reviewed-bcd-http-fixture", {
+    "scripts/bcd-db/http.mjs": readFileSync(resolve(import.meta.dirname, "../bcd-db/http.mjs"), "utf8"),
+  }),
+  expectFailure("unreviewed-bcd-neighbor", "SERVICE_ROLE_NOT_ALLOWLISTED", {
+    "scripts/bcd-db/unreviewed.mjs": join('const role = "service_', 'role";\n'),
+  }),
   expectPass("codex-config-without-model-selection", {
     ".codex/config.toml": 'approval_policy = "on-request"\n',
   }),

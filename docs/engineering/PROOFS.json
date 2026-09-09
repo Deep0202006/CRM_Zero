@@ -28,7 +28,7 @@
       "id": "bcd-readers-postgres", "kind": "postgres", "domains": ["field-visits"],
       "effects": ["DATABASE", "AUTHORIZATION", "SECURITY"], "runner": "postgres-phased",
       "paths": ["scripts/bcd-db/run-integration.sh"],
-      "inputs": ["scripts/bcd-db/schema.sql", "scripts/bcd-db/fixture.sql", "scripts/bcd-db/assertion.sql", "scripts/bcd-db/http.mjs", "supabase/migrations/055_crm_bcd_readers.sql", "supabase/schema.sql", "supabase/migrations/021_field_visits_hardening.sql", "supabase/migrations/036_field_visit_evidence_lifecycle.sql"],
+      "inputs": ["scripts/bcd-db/schema.sql", "scripts/bcd-db/fixture.sql", "scripts/bcd-db/assertion.sql", "scripts/bcd-db/http.mjs", "supabase/migrations/055_crm_bcd_readers.sql", "supabase/schema.sql", "supabase/migrations/019_field_visits.sql", "supabase/migrations/021_field_visits_hardening.sql", "supabase/migrations/036_field_visit_evidence_lifecycle.sql"],
       "selectors": {"paths": ["supabase/migrations/055_crm_bcd_readers.sql", "scripts/bcd-db/**", "src/lib/fieldVisits/range.ts"]},
       "databasePhases": {
         "schema": [{"file": "bash", "args": ["scripts/bcd-db/run-integration.sh", "schema"]}],
@@ -69,6 +69,7 @@
       "selectors": { "effects": ["AUTHORIZATION", "SECURITY"], "global": true },
       "paths": [
         "src/lib/__tests__/productionConsistencyGuards.test.ts",
+        "src/lib/__tests__/serverBackendEnvironment.test.ts",
         "src/lib/__tests__/retiredEmployeeIdentityErasurePolicy.test.ts"
       ]
     },

@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 const reviewedServiceRolePaths = new Set([
   ".codex/config.toml",
   ".github/workflows/product-verification.yml",
+  "scripts/bcd-db/http.mjs",
   "scripts/distributor-status-db/run-integration.sh",
   "scripts/handover/check.mjs",
   "scripts/handover/lib.mjs",

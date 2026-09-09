@@ -37,7 +37,7 @@ export function createServerAnonClient(accessToken?: string): ServerClientResult
   };
 }
 
-export function createServerServiceClient(): ServerClientResult {
+export function createServerServiceClient(options?: { fetch?: typeof fetch }): ServerClientResult {
   const backend = getServerBackendEnvironment();
   if (backend.status !== "configured") return failure();
   if (backend.deployment !== "production") {
@@ -52,6 +52,7 @@ export function createServerServiceClient(): ServerClientResult {
   return {
     ok: true,
     client: createClient(backend.url, serviceRoleKey, {
+      ...(options?.fetch ? { global: { fetch: options.fetch } } : {}),
       auth: {
         persistSession: false,
         autoRefreshToken: false,
