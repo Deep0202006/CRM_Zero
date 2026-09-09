@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawn, execFileSync } from 'node:child_process';
 import { setTimeout as delay } from 'node:timers/promises';
+import { observeChild, cleanupFixture } from './process-lifecycle.mjs';
 
 // No download, installation or process startup is allowed on the Owner device.
 assert.equal(process.platform, 'linux');
@@ -53,6 +54,9 @@ for (const [name, marker, names, types, args] of [
 }
 const directory = mkdtempSync(join(tmpdir(), 'crm-bcd-http-'));
 let server;
+let observed;
+let primaryError;
+let result;
 let logs = '';
 try {
   // Official v13.0.7 release asset digest; fixture pin is not a production parity claim.
@@ -75,15 +79,16 @@ try {
     PGRST_DB_POOL: '1', PGRST_DB_POOL_AUTOMATIC_RECOVERY: 'false', PGRST_DB_HOISTED_TX_SETTINGS: 'statement_timeout',
     PGRST_JWT_SECRET: secret, PGRST_SERVER_HOST: '127.0.0.1', PGRST_SERVER_PORT: '3103',
   }, stdio: ['ignore', 'pipe', 'pipe'] });
+  observed = observeChild(server);
   server.stdout.on('data', (chunk) => { logs = (logs + chunk).slice(-16000); });
   server.stderr.on('data', (chunk) => { logs = (logs + chunk).slice(-16000); });
-  let startupError;
-  server.on('error', (error) => { startupError = error; });
   const origin = 'http://127.0.0.1:3103';
   let ready = false;
   for (let n = 0; n < 40; n++) {
-    if (startupError) throw startupError;
+    if (observed.state.error) throw observed.state.error;
+    assert.equal(observed.state.closed, false, logs);
     assert.equal(server.exitCode, null, logs);
+    assert.equal(server.signalCode, null, logs);
     try { const response = await fetch(origin, { signal: AbortSignal.timeout(500) }); ready = response.ok; } catch { /* bounded startup only */ }
     if (ready) break;
     await delay(250);
@@ -165,15 +170,11 @@ try {
   assert.equal(timeout.data.code, '57014', JSON.stringify(timeout));
   const settings = execFileSync('psql', ['-X', '-A', '-t', '-c', "select array_to_string(proconfig,',') from pg_proc where oid='public.crm_visit_events_v1(date,date,uuid,text,text,text,date,uuid)'::regprocedure"], { encoding: 'utf8' });
   assert.match(settings, /statement_timeout=7s/);
-  console.log(JSON.stringify({ fixture: 'postgrest-v13.0.7', status: 'PASS', retained_rows: ids.length, reader_requests_including_empty_eof: requests,
-    received_bytes: bytes, peak_active_reads: 1, elapsed_ms: Math.round(performance.now() - started), http_cap: 100, timeout_hoisting: '57014' }));
+  result = { fixture: 'postgrest-v13.0.7', status: 'PASS', retained_rows: ids.length, reader_requests_including_empty_eof: requests,
+    received_bytes: bytes, peak_active_reads: 1, elapsed_ms: Math.round(performance.now() - started), http_cap: 100, timeout_hoisting: '57014' };
 } catch (error) {
-  console.error(logs); throw error;
+  console.error(logs); primaryError = error;
 } finally {
-  if (server && server.exitCode === null) {
-    server.kill('SIGTERM');
-    await Promise.race([new Promise((resolve) => server.once('exit', resolve)), delay(2000)]);
-    if (server.exitCode === null) { server.kill('SIGKILL'); await new Promise((resolve) => server.once('exit', resolve)); }
-  }
-  rmSync(directory, { recursive: true, force: true });
+  await cleanupFixture(server, observed, () => rmSync(directory, { recursive: true, force: true }), primaryError);
 }
+console.log(JSON.stringify(result));

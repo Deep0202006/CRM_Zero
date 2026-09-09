@@ -9,7 +9,7 @@
     "domain": [
       "ui-foundation-unit", "ui-foundation-e2e", "workspace-makeover-e2e",
       "auth-unit", "attendance-unit", "attendance-e2e", "attendance-postgres", "calls-unit", "call-owner-e2e",
-      "field-visits-unit", "field-visits-e2e", "field-visits-postgres", "bcd-readers-postgres", "mapping-unit", "mapping-e2e", "mapping-postgres",
+      "field-visits-unit", "field-visits-e2e", "field-visits-postgres", "bcd-readers-postgres", "bcd-process-lifecycle-unit", "mapping-unit", "mapping-e2e", "mapping-postgres",
       "pipeline-unit", "pipeline-e2e", "pipeline-postgres", "team-kpi-unit", "team-history-e2e", "distributor-unit", "distributor-e2e",
       "distributor-postgres", "receivables-unit", "receivables-e2e", "receivables-postgres", "erp-unit", "erp-postgres",
       "imports-unit", "imports-postgres", "followups-unit", "queries-unit", "task-allocation-unit", "kernel-typecheck",
@@ -25,10 +25,18 @@
   },
   "proofs": [
     {
+      "id": "bcd-process-lifecycle-unit", "kind": "unit", "domains": ["field-visits"],
+      "effects": ["SECURITY"], "runner": "fixed-commands",
+      "paths": ["scripts/bcd-db/process-lifecycle.test.mjs"],
+      "inputs": ["scripts/bcd-db/process-lifecycle.mjs", "scripts/bcd-db/http.mjs"],
+      "selectors": {"paths": ["scripts/bcd-db/**"]},
+      "commands": [{"file": "node", "args": ["--test", "scripts/bcd-db/process-lifecycle.test.mjs"]}]
+    },
+    {
       "id": "bcd-readers-postgres", "kind": "postgres", "domains": ["field-visits"],
       "effects": ["DATABASE", "AUTHORIZATION", "SECURITY"], "runner": "postgres-phased",
       "paths": ["scripts/bcd-db/run-integration.sh"],
-      "inputs": ["scripts/bcd-db/synthetic-schema.sql", "scripts/bcd-db/fixture.sql", "scripts/bcd-db/assertion.sql", "scripts/bcd-db/http.mjs", "supabase/migrations/055_crm_bcd_readers.sql", "supabase/schema.sql", "supabase/migrations/019_field_visits.sql", "supabase/migrations/021_field_visits_hardening.sql", "supabase/migrations/036_field_visit_evidence_lifecycle.sql"],
+      "inputs": ["scripts/bcd-db/synthetic-schema.sql", "scripts/bcd-db/fixture.sql", "scripts/bcd-db/assertion.sql", "scripts/bcd-db/http.mjs", "scripts/bcd-db/process-lifecycle.mjs", "supabase/migrations/055_crm_bcd_readers.sql", "supabase/schema.sql", "supabase/migrations/019_field_visits.sql", "supabase/migrations/021_field_visits_hardening.sql", "supabase/migrations/036_field_visit_evidence_lifecycle.sql"],
       "selectors": {"paths": ["supabase/migrations/055_crm_bcd_readers.sql", "scripts/bcd-db/**", "src/lib/fieldVisits/range.ts"]},
       "databasePhases": {
         "schema": [{"file": "bash", "args": ["scripts/bcd-db/run-integration.sh", "schema"]}],
