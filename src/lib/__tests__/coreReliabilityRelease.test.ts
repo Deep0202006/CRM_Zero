@@ -79,7 +79,7 @@ describe("core reliability release contracts", () => {
     const calls = read("src/app/call-logs/page.tsx");
     const kpi = read("src/app/manager/kpi/page.tsx");
     const summary = read("src/app/api/my-day/daily-summary/route.ts");
-    expect(myDay).toContain('label="Calls today"');
+    expect(myDay).toContain("<dt>Calls today");
     expect(calls).toContain('label="Calls today"');
     expect(kpi).toContain("Calls today");
     expect(summary).toContain("confirmed_genuine_call_ids");

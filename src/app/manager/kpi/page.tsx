@@ -15,11 +15,6 @@ import { getCurrentISTDate, IST_TIMEZONE } from "@/lib/dateTime";
 import {
   AlertCircle,
   BarChart3,
-  CheckCircle2,
-  Layers,
-  Link2,
-  MessageSquare,
-  PhoneCall,
   RefreshCw,
   ShieldAlert,
   Users,
@@ -27,12 +22,9 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
 import { EmployeeDetailSheet } from "@/components/analytics/EmployeeDetailSheet";
 import { Chip } from "@/components/ui/Chip";
-import { PageHeader } from "@/components/ui/PageHeader";
-import { MetricCard } from "@/components/ui/MetricCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
 import { AnalyticsSkeleton } from "@/components/analytics/AnalyticsPanel";
-import { NumberTicker } from "@/components/analytics/NumberTicker";
 const FunnelTab = dynamic(() => import("./FunnelTab"), { ssr: false, loading: () => <AnalyticsSkeleton label="Loading pipeline funnel" /> });
 const TeamHistory = dynamic(() => import("@/components/analytics/TeamHistory"), { ssr: false, loading: () => <AnalyticsSkeleton label="Loading retained history" /> });
 
@@ -183,38 +175,12 @@ export default function ManagerKpiPage() {
   }
 
   return (
-    <div className="app-page ui-foundation">
-      <PageHeader
-        eyebrow="Performance intelligence"
-        icon={<BarChart3 size={18} />}
-        title="Team Intelligence"
-        description={activeTab === "Team" && reportMode === "history" ? "Retained employee observations · Asia/Kolkata. Historical coverage is uncertified." : `Today · ${todayDate} · Asia/Kolkata. Confirmed work from the current report.`}
-        actions={
-          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row" hidden={reportMode !== "today" || activeTab !== "Team"}>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => void loadTeamKpi(true)}
-              disabled={loading || refreshing || !isAdmin}
-              icon={<RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />}
-            >
-              Refresh
-            </Button>
-          </div>
-        }
-      />
-
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "Team" | "Funnel")} activationMode="manual">
-        <TabsList aria-label="Performance report view">
-          <TabsTrigger value="Team"><Users size={16} />Team execution</TabsTrigger>
-          <TabsTrigger value="Funnel"><Layers size={16} />Pipeline funnel</TabsTrigger>
-        </TabsList>
-        <TabsContent value="Team" className="space-y-6">
-          <Tabs value={reportMode} onValueChange={(value) => { setReportMode(value as "today" | "history"); setSelectedId(null); }} activationMode="manual">
-            <TabsList aria-label="Team reporting period"><TabsTrigger value="today">Today</TabsTrigger><TabsTrigger value="history">Employee history</TabsTrigger></TabsList>
-            <TabsContent value="history">{reportMode === "history" && activeTab === "Team" && isAdmin && currentUser && <TeamHistory key={currentUser.user_id} />}</TabsContent>
-          <TabsContent value="today" className="space-y-6">
+    <div className="app-page crm-workspace">
+      <header className="workspace-heading"><div><h1>Team KPI</h1><p>{activeTab === "Funnel" ? "Admin Pipeline inspection · Existing authorized report" : reportMode === "history" ? "Retained call records · Complete activity coverage unknown" : `Today · ${todayDate} · Asia/Kolkata`}</p></div>{reportMode === "today" && activeTab === "Team" && <Button size="sm" variant="outline" onClick={() => void loadTeamKpi(true)} disabled={loading || refreshing || !isAdmin} icon={<RefreshCw size={14} />}>Refresh</Button>}</header>
+      <Tabs value={activeTab === "Funnel" ? "Funnel" : reportMode} onValueChange={(value) => { setActiveTab(value === "Funnel" ? "Funnel" : "Team"); if (value !== "Funnel") setReportMode(value as "today" | "history"); setSelectedId(null); }} activationMode="manual">
+        <TabsList aria-label="Performance report view" className="max-w-full overflow-x-auto justify-start"><TabsTrigger value="today">Today</TabsTrigger><TabsTrigger value="history">Employee history</TabsTrigger><TabsTrigger value="Funnel">Pipeline inspection</TabsTrigger></TabsList>
+        <TabsContent value="history">{reportMode === "history" && activeTab === "Team" && isAdmin && currentUser && <TeamHistory key={currentUser.user_id} />}</TabsContent>
+        <TabsContent value="today" className="space-y-4">
           {warning && (
             <div className="alert-panel alert-panel--warning" role="status">
               <AlertCircle size={16} className="mt-0.5 shrink-0" />
@@ -237,35 +203,18 @@ export default function ManagerKpiPage() {
             </div>
           )}
 
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <MetricCard label="Calls today" value={report ? <NumberTicker value={totals.calls_made} /> : "—"} icon={<PhoneCall size={17} />} tone="neutral" note="Confirmed call records" />
-            <MetricCard label="Tasks completed" value={report ? <NumberTicker value={totals.tasks_completed} /> : "—"} icon={<CheckCircle2 size={17} />} tone="neutral" note="Includes allocated targets" />
-            <MetricCard label="Mappings completed" value={report ? <NumberTicker value={totals.mappings_completed} /> : "—"} icon={<Link2 size={17} />} tone="neutral" note="Completed today" />
-            <MetricCard label="Queries resolved" value={report ? <NumberTicker value={totals.queries_handled} /> : "—"} icon={<MessageSquare size={17} />} tone="neutral" note="Resolved today" />
-          </div>
-          <dl className="flex flex-wrap gap-x-6 gap-y-3 text-sm">
-            <div><dt className="text-[var(--text-secondary)]">Team members</dt><dd className="font-semibold">{report ? totals.team_members.toLocaleString("en-IN") : "—"}</dd></div>
-            <div><dt className="text-[var(--text-secondary)]">Follow-up calls · subset of Calls</dt><dd className="font-semibold">{report ? totals.followup_calls.toLocaleString("en-IN") : "—"}</dd></div>
-            <div><dt className="text-[var(--text-secondary)]">Unique completed work · linked call/task counted once</dt><dd className="font-semibold">{report ? totals.total_completed_work.toLocaleString("en-IN") : "—"}</dd></div>
+          <dl className="workspace-counts" aria-label="Today confirmed work">
+            {[["Calls today", totals.calls_made], ["Tasks completed · includes targets", totals.tasks_completed], ["Mappings completed", totals.mappings_completed], ["Queries resolved", totals.queries_handled]].map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{report ? Number(value).toLocaleString("en-IN") : "—"}</dd></div>)}
           </dl>
 
-          {loading || !visibleReportMatchesDate ? (
-            <section className="surface-panel grid min-h-[360px] place-items-center">
-              <p className="text-sm font-medium text-[var(--text-secondary)]">{error && !loading ? "Confirmed Team KPI data is unavailable. Retry the report above." : "Loading confirmed Team KPI data…"}</p>
-            </section>
-          ) : rows.length > 0 ? (
-            <TeamKpiIntelligence rows={rows} />
-          ) : (
-            <section className="surface-panel p-5">
-              <EmptyState icon={<Users size={21} />} title="No active team members found" description="Check that active users and capability assignments exist in Supabase." />
-            </section>
-          )}
-
+          {loading && <p role="status">Loading confirmed Team KPI data…</p>}
+          {!visibleReportMatchesDate && report && <p role="status">This retained report is from {report.target_date}; refresh for Today.</p>}
+          <div className="workspace-columns">
           <section className="data-table-shell" aria-labelledby="kpi-table-title">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-subtle)] px-5 py-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-subtle)] px-4 py-2">
               <div>
-                <p className="section-kicker">Confirmed employee records</p>
-                <h2 id="kpi-table-title" tabIndex={-1} className="mt-1 section-title">Team KPI register</h2>
+
+                <h2 id="kpi-table-title" data-workspace-register tabIndex={-1} className="mt-1 section-title">Team KPI register</h2>
                 {report && (
                   <p className="mt-1 text-xs text-[var(--text-secondary)]">
                     Last refreshed {formatActivityTime(report.generated_at)} IST
@@ -325,14 +274,19 @@ export default function ManagerKpiPage() {
               </div>
             )}
           </section>
+          {report && <EmployeeDetailSheet report={report} selectedId={selectedId} onClose={() => setSelectedId(null)} returnFocus={employeeTrigger} refreshing={refreshing} error={error} />}
+          </div>
+        <details className="workspace-disclosure"><summary>Additional daily counts · scope and deduplication</summary>          <dl className="flex flex-wrap gap-x-6 gap-y-3 text-sm">
+            <div><dt className="text-[var(--text-secondary)]">Team members</dt><dd className="font-semibold">{report ? totals.team_members.toLocaleString("en-IN") : "—"}</dd></div>
+            <div><dt className="text-[var(--text-secondary)]">Follow-up calls · subset of Calls</dt><dd className="font-semibold">{report ? totals.followup_calls.toLocaleString("en-IN") : "—"}</dd></div>
+            <div><dt className="text-[var(--text-secondary)]">Unique completed work · linked call/task counted once</dt><dd className="font-semibold">{report ? totals.total_completed_work.toLocaleString("en-IN") : "—"}</dd></div>
+          </dl>
+</details>
         <Button variant="outline" aria-expanded={showComparison} onClick={() => setShowComparison((value) => !value)}>{showComparison ? "Hide" : "Show"} employee reference</Button>
         {showComparison && report && <TeamKpiIntelligence rows={report.rows} comparison comparisonAvailable={!warning && !error && visibleReportMatchesDate} />}
-          </TabsContent>
-          </Tabs>
         </TabsContent>
         <TabsContent value="Funnel">{activeTab === "Funnel" && <FunnelTab />}</TabsContent>
       </Tabs>
-      {report && isAdmin && reportMode === "today" && activeTab === "Team" && <EmployeeDetailSheet report={report} selectedId={selectedId} onClose={() => setSelectedId(null)} returnFocus={employeeTrigger} refreshing={refreshing} error={error} />}
     </div>
   );
 }

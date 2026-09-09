@@ -1,0 +1,26 @@
+{
+  "fixture": "1235 bounded synthetic retained records; no production data",
+  "requests": [
+    "",
+    "?from=2026-09-02&to=2026-09-08",
+    "?from=2026-09-02&to=2026-09-08&employee=92000000-0000-4000-a000-000000000001",
+    "?from=2026-09-03&to=2026-09-08&employee=92000000-0000-4000-a000-000000000001"
+  ],
+  "warnings": [],
+  "themes": [
+    "light",
+    "dark"
+  ],
+  "widths": [
+    1440,
+    390
+  ],
+  "checks": [
+    "exact retained counts and unavailable gaps",
+    "keyboard tooltip",
+    "Sheet focus trap and return",
+    "presentation causes no request",
+    "employee selection retains reference cohort",
+    "failed Apply retains prior applied scope"
+  ]
+}

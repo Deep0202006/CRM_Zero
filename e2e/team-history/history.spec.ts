@@ -44,7 +44,7 @@ test("History reconciles scope, gaps, exact values, Sheet, keyboard and themes w
   });
   await page.goto("/manager/kpi");
   await expect(page.getByRole("heading", { name: "Team KPI register", exact: true })).toBeVisible();
-  const directory = "artifacts/visual-review/team-history-v1";
+  const directory = "artifacts/visual-review/workspace-makeover/history";
   if (capture) await mkdir(directory, { recursive: true });
   await page.setViewportSize({ width: 1440, height: 900 });
   if (capture) await page.screenshot({ path: `${directory}/today-entry-1440.png`, fullPage: true, animations: "disabled" });
@@ -54,13 +54,15 @@ test("History reconciles scope, gaps, exact values, Sheet, keyboard and themes w
   await expect(register).toBeVisible();
   await expect(register).toContainText("1,234");
   const daily = page.getByRole("region", { name: "History daily data", exact: true });
+  await page.getByText("Exact daily data · chart and previous retained records", { exact: true }).click();
   await expect(daily).toContainText("Gap / unavailable");
+  await page.getByText("Exact daily data · chart and previous retained records", { exact: true }).click();
   await expect(page.getByRole("heading", { name: /Whole current roster ·/ })).toBeVisible();
   const countBeforePresentation = requests.length;
-  await page.getByLabel("Selected metric").selectOption("tasks_completed");
-  await expect(page.getByText("Chart unavailable.", { exact: false })).toBeVisible();
-  await expect(register).not.toContainText("1,234");
-  await page.getByLabel("Selected metric").selectOption("calls_made");
+  await page.getByText("Data availability and comparison limits", { exact: true }).click();
+  await expect(page.getByText("Tasks completed · Unavailable", { exact: true })).toBeVisible();
+  await expect(register).toContainText("1,234");
+  await page.getByText("Data availability and comparison limits", { exact: true }).click();
   const chart = page.locator("svg.recharts-surface:visible");
   await expect(chart).toBeVisible();
   await expect(chart.locator(".recharts-area-dots")).toBeVisible();
@@ -75,7 +77,8 @@ test("History reconciles scope, gaps, exact values, Sheet, keyboard and themes w
       await page.setViewportSize({ width, height: 900 });
       expect(await chart.evaluate(node => { const rect = node.getBoundingClientRect(); return rect.width > 0 && rect.height > 0; })).toBe(true);
       expect(await chart.locator(".recharts-cartesian-axis-tick-value").first().evaluate(node => getComputedStyle(node).fill)).toBe(await page.locator("#history-chart-title + p").evaluate(node => getComputedStyle(node).color));
-      await page.getByRole("heading", { name: "Team Intelligence", exact: true }).scrollIntoViewIfNeeded();
+      await page.getByRole("heading", { name: "Team KPI", exact: true }).scrollIntoViewIfNeeded();
+      await expect(register.getByRole("button", { name: members[0].name, exact: true })).toBeInViewport({ ratio: 1 });
       if (capture) {
         await page.screenshot({ path: `${directory}/history-${width}-${theme}.png`, fullPage: true, animations: "disabled" });
         await page.getByRole("heading", { name: "Observed retained calls by IST date", exact: true }).evaluate(node => node.scrollIntoView({ block: "start", behavior: "instant" }));
@@ -85,14 +88,15 @@ test("History reconciles scope, gaps, exact values, Sheet, keyboard and themes w
       }
       const employee = register.getByRole("button", { name: members[1].name, exact: true });
       await employee.focus(); await page.keyboard.press("Enter");
-      const sheet = page.getByRole("dialog");
+      const sheet = width >= 1200 ? page.getByRole("complementary", { name: members[1].name, exact: true }) : page.getByRole("dialog");
       await expect(sheet).toContainText("1,234");
       await expect(sheet).toContainText("Own period change");
       await expect(sheet).toContainText("Periods are not certified comparable");
       await page.keyboard.press("Tab");
-      expect(await sheet.evaluate(node => node.contains(document.activeElement))).toBe(true);
+      if (width < 1200) expect(await sheet.evaluate(node => node.contains(document.activeElement))).toBe(true);
+      else { await page.getByRole("button", { name: "Apply range", exact: true }).focus(); expect(await sheet.evaluate(node => node.contains(document.activeElement))).toBe(false); }
       if (capture) await page.screenshot({ path: `${directory}/detail-${width}-${theme}.png`, animations: "disabled" });
-      await page.keyboard.press("Escape");
+      if (width >= 1200) await sheet.getByRole("button", { name: "Close", exact: true }).click(); else await page.keyboard.press("Escape");
       await expect(employee).toBeFocused();
     }
   }
@@ -111,8 +115,8 @@ test("History reconciles scope, gaps, exact values, Sheet, keyboard and themes w
   await expect(page.getByRole("alert").filter({ hasText: "Fixture source unavailable" })).toContainText("Previous applied report remains visible");
   await expect(page.getByRole("heading", { name: new RegExp(`${members[1].name} · ${addISTDateDays(today, -7)}`) })).toBeVisible();
   await page.route("**/api/pipeline/inspection?**", route => route.fulfill({ status: 503, json: { message: "Outside the History fixture" } }));
-  await page.getByRole("tab", { name: /Pipeline funnel/ }).click();
-  await expect(page.getByText("Retained employee observations · Asia/Kolkata. Historical coverage is uncertified.", { exact: true })).not.toBeVisible();
+  await page.getByRole("tab", { name: /Pipeline inspection/ }).click();
+  await expect(page.getByText("Retained call records · Complete activity coverage unknown", { exact: true })).not.toBeVisible();
   await testInfo.attach("history-observations", { body: JSON.stringify({ requests, warnings, fixture: "1235 bounded synthetic retained records; no production data" }, null, 2), contentType: "application/json" });
   if (capture) await writeFile(`${directory}/observations.json`, JSON.stringify({ fixture: "1235 bounded synthetic retained records; no production data", requests, warnings, themes: ["light", "dark"], widths: [1440, 390], checks: ["exact retained counts and unavailable gaps", "keyboard tooltip", "Sheet focus trap and return", "presentation causes no request", "employee selection retains reference cohort", "failed Apply retains prior applied scope"] }, null, 2));
 });

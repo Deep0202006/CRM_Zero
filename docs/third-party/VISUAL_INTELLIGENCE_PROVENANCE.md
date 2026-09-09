@@ -46,6 +46,25 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
+## Packet A workspace makeover · 2026-09-09
+
+Pinned free source: `tremorlabs/tremor@ca4d588f47820ff3d514d37fa4ee08a4222dec11`,
+`src/components/CategoryBar/CategoryBar.tsx`. Local destination:
+`src/components/analytics/CompositionStrip.tsx`, consumed by VisitsIntelligence
+for the exact loaded-page outcome partition. Changes: semantic theme tokens,
+integer/total reconciliation, exact visible accessible values, explicit empty
+state, and existing supported outcome-filter actions. Unused marker, tooltip
+and color-library machinery is omitted. No Tremor package or dependency added.
+
+The pinned repository tree contains LICENSE and no NOTICE file. Its complete
+Apache-2.0 license and included third-party notices are retained in
+`docs/third-party/TREMOR_LICENSE`. Sparkline and Tracker remain reference-only:
+there is no evidenced distinct consumer requiring copied source.
+
+The existing pinned shadcn Chart/Sheet/Tabs primitives remain unchanged. Team
+History now uses a compact 220px panel with the same linear/gap and exact-table
+semantics; desktop detail reuses its content in a non-modal context rail.
+
 ## Earlier composition references
 
 | Upstream | Component/pattern reviewed | License | Local adaptation |

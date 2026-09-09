@@ -103,10 +103,10 @@ async function mockPlatform(page: Page) {
   await page.route("http://127.0.0.1:54321/auth/v1/user", route => route.fulfill({ json: { id: adminId, aud: "authenticated", role: "authenticated", email: "admin@example.test", app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() } }));
 }
 
-async function expectResponsiveAnalytics(page: Page, heading: string, reviewName: string) {
+async function expectResponsiveAnalytics(page: Page, heading: string, reviewName: string, chartExpected = true) {
   for (const width of [320, 375, 768, 1024, 1280, 1440]) {
     await page.setViewportSize({ width, height: width < 768 ? 844 : 900 });
-    await expect(page.getByRole("heading", { name: heading })).toBeVisible();
+    await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();
     const dimensions = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth }));
     expect(dimensions.scroll, `horizontal overflow at ${width}px`).toBeLessThanOrEqual(dimensions.client + 1);
     await expect.poll(() => page.locator("svg.recharts-surface").evaluateAll(nodes => nodes.filter(node => node.getClientRects().length > 0).every(node => {
@@ -115,7 +115,7 @@ async function expectResponsiveAnalytics(page: Page, heading: string, reviewName
     }))).toBe(true);
     if (process.env.VISUAL_REVIEW && width === 375) await page.screenshot({ path: `artifacts/visual-review/${reviewName}-mobile.png`, fullPage: true });
   }
-  expect(await page.locator("[data-chart-height='stable']").first().evaluate(node => node.getBoundingClientRect().height)).toBeGreaterThanOrEqual(220);
+  if (chartExpected) expect(await page.locator("[data-chart-height='stable']").first().evaluate(node => node.getBoundingClientRect().height)).toBeGreaterThanOrEqual(220);
   await expect(page.locator("body")).not.toContainText(/NaN|Infinity/);
   if (process.env.VISUAL_REVIEW) await page.screenshot({ path: `artifacts/visual-review/${reviewName}-desktop.png`, fullPage: true });
 }
@@ -129,16 +129,15 @@ test("My Day analytics reuses existing data paths and remains operational at eve
   await page.route("**/api/my-day/receivables", route => route.fulfill({ json: { items: [], generated_at: new Date().toISOString() } }));
   await seedAdmin(page);
   await page.goto("/my-day");
-  await expect(page.getByRole("heading", { name: "Independent work signals" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Task urgency" })).toBeVisible();
-  await expect(page.getByRole("region", { name: "Focus queue" })).toContainText("Exact follow-up due today");
+  await expect(page.getByRole("region", { name: "Work agenda" })).toBeVisible();
+  await expect(page.getByText("Call Acme", { exact: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /Sync data/i })).toBeVisible();
   expect(new Set(businessRequests)).toEqual(new Set(["/api/my-day/daily-summary", "/api/my-day/payment-followups", "/api/my-day/receivables"]));
-  await expectResponsiveAnalytics(page, "Independent work signals", "my-day");
+  await expectResponsiveAnalytics(page, "My Day", "my-day", false);
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.reload();
-  await expect(page.getByRole("heading", { name: "Independent work signals" })).toBeVisible();
-  expect(parseFloat(await page.locator(".analytics-panel").first().evaluate(node => getComputedStyle(node).animationDuration))).toBeLessThanOrEqual(0.00001);
+  await expect(page.getByRole("region", { name: "Work agenda" })).toBeVisible();
+  expect(parseFloat(await page.locator(".workspace-register").first().evaluate(node => getComputedStyle(node).animationDuration))).toBeLessThanOrEqual(0.00001);
 });
 
 test("UI Foundation employee Sheet preserves identity through refresh without a detail request", async ({ page }) => {
@@ -160,6 +159,7 @@ test("UI Foundation employee Sheet preserves identity through refresh without a 
   });
   await seedAdmin(page);
   await page.goto("/manager/kpi");
+  await page.setViewportSize({ width: 390, height: 900 });
   const employee = page.getByRole("button", { name: longName, exact: true });
   await employee.click();
   const dialog = page.getByRole("dialog");
@@ -281,7 +281,7 @@ test("UI Foundation ERP manual activation caches success and retries a network f
   expect(colors.background).not.toBe("rgba(0, 0, 0, 0)");
 });
 
-test("UI Foundation six-category donut and seven-category bars retain the exact seven visits", async ({ page }) => {
+test("Visits strip retains exact seven records across six and seven categories", async ({ page }) => {
   test.skip(foundationPhase === "before", "The baseline does not expose the shared semantic values list");
   await mockPlatform(page);
   const requestPages: string[] = [];
@@ -297,21 +297,20 @@ test("UI Foundation six-category donut and seven-category bars retain the exact 
   await seedAdmin(page);
   await page.goto("/admin/visits");
   const composition = page.getByRole("region", { name: "Outcome composition", exact: true });
-  await expect(composition.locator(".recharts-pie")).toBeVisible();
-  const values = composition.getByRole("list", { name: "Visit outcome values" });
+  await expect(composition).toContainText("Current bounded page 1");
+  const values = composition.getByRole("list");
   await expect(values).toHaveCount(1);
   await expect(values).toContainText("Other / historical");
   await expect(values).toContainText("Installed");
-  await expect(composition.getByText("Loaded visits", { exact: true })).toBeVisible();
+  await expect(composition).toContainText("7 of 14 matching visits");
   await page.getByRole("button", { name: "Next", exact: true }).click();
-  await expect(composition.locator(".recharts-pie")).toHaveCount(0);
-  await expect(composition.locator(".recharts-bar")).toBeVisible();
+  await expect(composition).toContainText("Current bounded page 2");
   await expect(values).toHaveCount(1);
   await expect(values).toContainText("Other / historical");
   await expect(values).toContainText("Payment done");
   const counts = await values.getByRole("listitem").allTextContents();
-  const valuesOnly = counts.map(text => Number(text.match(/:\s*([\d,]+)/)?.[1]?.replaceAll(",", "")));
-  expect(valuesOnly).toEqual([1, 1, 1, 1, 1, 1, 0, 1]);
+  const valuesOnly = counts.map(text => Number(text.match(/·\s*([\d,]+)/)?.[1]?.replaceAll(",", "")));
+  expect(valuesOnly).toEqual([1, 1, 1, 1, 1, 1, 1]);
   expect(valuesOnly.reduce((sum, value) => sum + value, 0)).toBe(7);
   expect(requestPages).toEqual(["1", "2"]);
 });
@@ -343,13 +342,13 @@ test("Team Intelligence preserves exact contribution totals with one initial KPI
   await seedAdmin(page);
   await page.goto("/manager/kpi");
   if (foundationPhase === "before") await expect(page.getByRole("heading", { name: "Work by type" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Employee contribution" })).toBeVisible();
-  expect(requests).toBe(1);
+  await expect(page.getByRole("heading", { name: "Team KPI register", exact: true })).toBeVisible();
+  await expect.poll(() => requests).toBe(1);
   expect(inspectionRequests).toHaveLength(0);
   await captureFoundation(page, "team-kpi", () => ({ teamKpi: requests, pipeline: inspectionRequests.length }));
   if (foundationPhase === "before") return;
   for (const [label, value] of [["Calls today", "10"], ["Tasks completed", "5"], ["Mappings completed", "3"], ["Queries resolved", "5"]]) {
-    await expect(page.locator("article.metric-card").filter({ hasText: label }).locator(".metric-card__value")).toHaveText(value);
+    await expect(page.locator(".workspace-counts > div").filter({ hasText: label }).locator("dd")).toHaveText(value);
   }
   const register = page.getByRole("region", { name: "Team KPI register", exact: true }).last();
   await expect(register.locator("tbody tr").first()).toContainText("Field Employee");
@@ -357,24 +356,23 @@ test("Team Intelligence preserves exact contribution totals with one initial KPI
   await expect(register.locator("tbody tr").first()).toContainText("Visual Admin");
   await page.getByRole("button", { name: "Show employee reference" }).click();
   await expect(page.getByRole("region", { name: "Employee vs team average" })).toContainText("including the selected employee");
+  await expectResponsiveAnalytics(page, "Employee vs team average", "team-kpi");
   partial = true;
   await page.getByRole("button", { name: "Refresh", exact: true }).first().click();
   await expect(page.getByRole("region", { name: "Employee vs team average" })).toContainText("Comparison unavailable");
   await expect(page.getByText(/Some KPI sources need attention/)).toContainText("Synthetic task-source coverage warning");
-  await page.getByRole("button", { name: "Client queries" }).focus();
-  await page.keyboard.press("Enter");
   expect(requests).toBe(2);
-  await expectResponsiveAnalytics(page, "Employee contribution", "team-kpi");
-  await page.getByRole("tab", { name: /Pipeline funnel/ }).click();
-  await expect(page.getByRole("heading", { name: "Canonical stage order" })).toBeVisible();
+  await page.getByRole("tab", { name: /Pipeline inspection/ }).click();
+  await expect(page.getByRole("region", { name: "Current stage occupancy" })).toBeVisible();
+  await page.getByText("Inspection-list filters only", { exact: true }).click();
   await page.getByLabel("Recent change").check();
   await expect.poll(() => inspectionRequests.length).toBe(2);
   expect(new URL(inspectionRequests.at(-1)!).searchParams.get("recentChange")).toBe("true");
-  await page.getByRole("button", { name: "Direction" }).click();
-  await expect(page.getByRole("heading", { name: "Sales review history" })).toBeVisible();
+  await page.getByRole("combobox", { name: "Event", exact: true }).selectOption("regressed");
+  await expect(page.getByRole("heading", { name: "Pipeline event history" })).toBeVisible();
   await page.getByRole("button", { name: "Use dark theme" }).click();
   await expect.poll(() => page.evaluate(() => document.documentElement.dataset.theme)).toBe("dark");
-  await expect(page.locator("[data-chart-height='stable']").first()).toBeVisible();
+  await expect(page.locator("svg.recharts-surface").first()).toBeVisible();
   if (process.env.VISUAL_REVIEW) await page.screenshot({ path: "artifacts/visual-review/team-kpi-dark.png", fullPage: true });
 });
 
@@ -393,15 +391,14 @@ test("Visits visual composition reconciles the bounded page and closes with serv
   });
   await seedAdmin(page);
   await page.goto("/admin/visits");
-  await expect(page.getByRole("heading", { name: "Outcome composition" })).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByText("Loaded visits", { exact: true })).toBeVisible();
-  await expect(page.getByText("2", { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("region", { name: "Outcome composition" })).toContainText("2 of 2 matching visits", { timeout: 15_000 });
   expect(requestUrls).toHaveLength(1);
   await captureFoundation(page, "visits", () => requestUrls);
   if (foundationPhase === "before") return;
-  await page.getByRole("button", { name: "Retailer", exact: true }).click();
+  await page.getByText("Date and segment filters", { exact: true }).click();
+  await page.getByLabel("Segment", { exact: true }).selectOption("Retailer");
   await expect.poll(() => requestUrls.length).toBe(2);
   expect(new URL(requestUrls.at(-1)!).searchParams.get("segment")).toBe("Retailer");
   await expect(page.getByText("Current bounded page 1 · 1 of 1 matching visits", { exact: false }).first()).toBeVisible();
-  await expectResponsiveAnalytics(page, "Outcome composition", "visits");
+  await expectResponsiveAnalytics(page, "Visit register", "visits", false);
 });
