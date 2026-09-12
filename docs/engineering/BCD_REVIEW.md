@@ -354,3 +354,42 @@ The remaining release gate is latest-head proof completion, reviewed captures,
 and GitHub verification of the new manual packet. See
 [Owner activation packet](BCD_OWNER_MIGRATION.md). Keep PR114 draft until those
 results are reconciled; stop before Owner Production SQL and protected merge.
+
+### Final focused acceptance batch — 12 September 2026
+
+`9e8e0dd11eb6d5a35f1ba86c57c51fd17d169736`: all18 registered workspace
+browser tests and all7 registered Pipeline browser tests passed locally with
+one worker and no retries. The same runtime
+passed `kernel-unit-build` at `ccb1dec5`; the later delta changes only a test
+locator, not application source. Earlier Team history, UI unit, Field Visits
+unit and Pipeline unit receipts remain recorded at their executed heads.
+
+The final critic's remaining findings were resolved without new dependencies:
+the50-row Admin inspection register uses a native320px keyboard-scrollable
+region; desktop/mobile and light/dark captures show its chart after a short
+scroll. The browser verifies12 monthly selected-event values, no chart-specific
+request, filter-sensitive register counts and prior applied scope after failure.
+Review now has exercised own due-task navigation to Agenda and its existing
+offline completion action, with exact task UUID, actor, status history and
+durable queue assertions. A foreign task has no own-Agenda action; the Admin's
+existing assignment capability remains available. This is synthetic local
+recovery evidence, not server confirmation or a Production mutation.
+
+Capture inventory:44 final workspace captures plus8 Team history/detail
+captures; all are synthetic. Representative reviewed views:
+
+- [Visits mobile Work](../../artifacts/visual-review/workspace-makeover/pr114-final/visits-busy-390-dark.png)
+  and [full-range analysis](../../artifacts/visual-review/workspace-makeover/pr114-final/visits-range-1440-dark.png).
+- [Employee detail](../../artifacts/visual-review/workspace-makeover/pr114-history/detail-1440-light.png)
+  and [mobile history](../../artifacts/visual-review/workspace-makeover/pr114-history/history-390-light.png).
+- [Operational Pipeline](../../artifacts/visual-review/workspace-makeover/pr114-final/pipeline-390-dark.png),
+  [busy inspection](../../artifacts/visual-review/workspace-makeover/pr114-final/admin-pipeline-390.png)
+  and [inspection analysis](../../artifacts/visual-review/workspace-makeover/pr114-final/admin-pipeline-analysis-390-dark.png).
+- [My Day own history](../../artifacts/visual-review/workspace-makeover/pr114-final/my-day-history-390-dark.png)
+  and [Admin Review](../../artifacts/visual-review/workspace-makeover/pr114-final/review-390-dark.png).
+
+The inspected earlier checkpoint captures remain unchanged. GitHub main was
+rechecked at `9c5f851ba93ef14a9e5f294d4b83300d38a34462`; PR114 remains open/draft.
+The newer manual SQL checks and query-plan variants still require publication
+and exact-head GitHub CI. No Production application, ledger advance, live-user
+validation or manual-merge readiness is claimed from these local results.
