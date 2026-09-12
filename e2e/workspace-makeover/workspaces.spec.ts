@@ -289,7 +289,7 @@ test("populated Admin inspection review", async ({ page }) => {
       if (process.env.WORKSPACE_CAPTURE) await page.screenshot({ path: `artifacts/visual-review/workspace-makeover/${process.env.WORKSPACE_CAPTURE}/admin-pipeline-analysis-${width}-${theme}.png`, animations: "disabled" });
     }
   }
-  await page.getByLabel("Event", { exact: true }).selectOption("movements");
+  await page.getByRole("combobox", { name: "Event", exact: true }).selectOption("movements");
   await page.getByRole("button", { name: "12 months", exact: true }).click();
   await page.getByText("Exact confirmed movements series", { exact: true }).click();
   const table = page.getByRole("region", { name: "Pipeline event data", exact: true });
