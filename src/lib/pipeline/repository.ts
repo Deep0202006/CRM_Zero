@@ -84,6 +84,7 @@ export async function fetchPipelineSnapshot(segments: readonly PipelineSegment[]
     const response = await fetch(`/api/pipeline/leads?${query}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store", signal });
     if (!response.ok) throw new Error("Pipeline read failed");
     let body = await response.json() as { leads: PipelineLeadView[]; page: number; total: number; has_more: boolean; filters?: PipelineFilters; stages?: Array<{ stage: string; count: number }> | null; recovery?: { operations?: ConfirmedPipelineOperation[]; safe_replay_targets?: PipelineStage[] } };
+    signal?.throwIfAborted();
     const validate = () => {
       if (body.page !== page || !Number.isSafeInteger(body.total) || body.total < 0 || typeof body.has_more !== "boolean" || !Array.isArray(body.leads) || body.leads.length > 50
         || new Set(body.leads.map(lead => lead.lead_id)).size !== body.leads.length || body.leads.some(lead => lead.segment_type !== selectedSegment || !matches(lead))
@@ -92,6 +93,7 @@ export async function fetchPipelineSnapshot(segments: readonly PipelineSegment[]
     validate();
     let server = body.leads.filter((lead) => segments.includes(lead.segment_type));
     const recoveryLocalLeads = (await db.leads.bulkGet(server.map((lead) => lead.lead_id))).filter((lead): lead is LocalLead => Boolean(lead));
+    signal?.throwIfAborted();
     const recovery = await recoverOwnedLegacyPipelineStages({
       actorId, serverLeads: server, localLeads: recoveryLocalLeads, queue: local.queue,
       confirmedOperations: body.recovery?.operations ?? [], safeReplayTargets: body.recovery?.safe_replay_targets ?? [],
@@ -103,6 +105,7 @@ export async function fetchPipelineSnapshot(segments: readonly PipelineSegment[]
       validate();
       server = body.leads.filter((lead) => segments.includes(lead.segment_type));
     }
+    signal?.throwIfAborted();
     if (server.length) await db.leads.bulkPut(server);
     const currentQueue = await db.sync_queue.toArray();
     const pendingCreations = local.pendingCreations.filter(matches).filter(row => !server.some(confirmed => confirmed.lead_id === row.lead_id));

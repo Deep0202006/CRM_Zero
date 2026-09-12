@@ -77,7 +77,7 @@ test("Retailer omits Payment, Distributor retains it, and owner can act", async 
 test("Pipeline remains bounded and usable on mobile", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 }); await mock(page, other); await seed(page, other, "employee"); await page.goto("/onboarding");
   await expect(page.getByLabel(/Retailer pipeline board/)).toBeVisible();
-  await expect(page.getByText("Page 1 · showing 1 of 1")).toBeVisible();
+  await expect(page.getByText(/Applied:.*1 confirmed matches/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Next", exact: true })).toBeDisabled();
 });
 

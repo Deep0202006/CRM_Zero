@@ -82,8 +82,9 @@ export default function OnboardingPage() {
     return () => { actorGeneration.current += 1; refreshInFlight.current?.controller.abort(); };
   }, [currentUser?.user_id]);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (afterMutation = false) => {
     if (!currentUser) return;
+    if (afterMutation) { refreshInFlight.current?.controller.abort(); refreshInFlight.current = null; }
     if (typeof document !== "undefined" && document.visibilityState === "hidden") { hiddenRefreshPending.current = true; return; }
     const key = `${page}:${segmentTab}:${currentUser.user_id}:${filterKey}`;
     if (refreshInFlight.current?.key === key) return refreshInFlight.current.promise.catch(() => {});
@@ -109,9 +110,9 @@ export default function OnboardingPage() {
   }, [currentUser, page, segmentTab, segments, filters, filterKey]);
 
   useEffect(() => {
-    if (currentUser && navigator.onLine) void retryPendingPipelineTransitions(currentUser.user_id).then(refresh);
+    if (currentUser && navigator.onLine) void retryPendingPipelineTransitions(currentUser.user_id).then(results => refresh(results.some(result => result.status === "confirmed")));
     else void refresh();
-    const reconcile = () => { if (document.visibilityState === "hidden") { hiddenRefreshPending.current = true; return; } if (currentUser) void retryPendingPipelineTransitions(currentUser.user_id).then(refresh); };
+    const reconcile = () => { if (document.visibilityState === "hidden") { hiddenRefreshPending.current = true; return; } if (currentUser) void retryPendingPipelineTransitions(currentUser.user_id).then(results => refresh(results.some(result => result.status === "confirmed"))); };
     const visible = () => { if (document.visibilityState === "visible" && hiddenRefreshPending.current) { hiddenRefreshPending.current = false; reconcile(); } };
     window.addEventListener("online", reconcile); document.addEventListener("visibilitychange", visible);
     return () => { window.removeEventListener("online", reconcile); document.removeEventListener("visibilitychange", visible); };
@@ -194,7 +195,7 @@ export default function OnboardingPage() {
       }
       else if (result.status === "pending") setMessage({ tone: "success", text: `Move to ${target} is saved and pending confirmation.` });
       else setMessage({ tone: "danger", text: result.message });
-      await refresh();
+      await refresh(true);
     } catch { if (actor === actorGeneration.current) setMessage({ tone: "danger", text: "This stage move is not permitted." }); }
     finally { if (actor === actorGeneration.current) setTransitioning(null); }
   };
@@ -226,7 +227,7 @@ export default function OnboardingPage() {
     setNewLead({ business: "", contact: "", phone: "", area: "", source: "Cold Call", sourceOther: "" });
     setShowAddModal(false);
     setMessage({ tone: "success", text: result.status === "confirmed" ? "Lead created." : "Lead creation is saved and pending confirmation." });
-    await refresh();
+    await refresh(true);
   };
 
   const visibleLeads = leads;

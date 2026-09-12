@@ -412,6 +412,57 @@ test("Visits evidence cannot open after its selected detail closes, even when tr
   await expect(page.locator(".workspace-counts")).toContainText("Unavailable");
 });
 
+test("Pipeline confirmation invalidates an older snapshot and keeps exact context across the Sheet breakpoint", async ({ page }) => {
+  const requests = await setup(page);
+  await page.addInitScript(() => { const original = window.fetch; window.fetch = (input, init) => original(input, String(input).includes("/api/pipeline/leads?") ? { ...init, signal: undefined } : init); });
+  let current = { ...leads[0] }, reads = 0, contexts = 0, writes = 0;
+  let releaseOld: (() => void) | undefined, releaseContext: (() => void) | undefined;
+  await page.route("**/api/pipeline/leads?**", async route => {
+    const snapshot = { ...current }; reads++;
+    if (reads === 2) await new Promise<void>(resolve => { releaseOld = resolve; });
+    await route.fulfill({ json: { leads: [snapshot], total: 1, page: 1, has_more: false, stages: [{ stage: snapshot.status, count: 1 }], recovery: { operations: [], safe_replay_targets: [] } } });
+  });
+  await page.route("**/api/pipeline/leads/*/context", async route => {
+    contexts++; const snapshot = { ...current };
+    if (contexts === 2) await new Promise<void>(resolve => { releaseContext = resolve; });
+    await route.fulfill({ json: { lead: snapshot, stage_age_days: snapshot.status === "New" ? 9 : 0,
+      transitions: snapshot.status === "New" ? [] : [{ expected_stage: "New", target_stage: "Contacted", confirmed_at: new Date().toISOString() }],
+      next_task: { title: snapshot.status === "New" ? "Before confirmation" : "Post-confirmed context", due_date: today }, overdue_tasks: [], recent_tasks: [], latest_call: null, recent_calls: [] } });
+  });
+  await page.route("**/api/pipeline/transition", route => {
+    writes++; const command = route.request().postDataJSON();
+    expect(command).toMatchObject({ actor_id: actor, lead_id: leads[0].lead_id, expected_stage: "New", target_stage: "Contacted" });
+    current = { ...current, status: "Contacted" };
+    return route.fulfill({ json: { success: true, operation_id: command.operation_id, lead: current } });
+  });
+  await page.setViewportSize({ width: 1440, height: 900 }); await page.goto("/onboarding");
+  await page.getByRole("button", { name: "List", exact: true }).click();
+  const trigger = page.getByRole("region", { name: "Pipeline lead list" }).getByText(leads[0].business_name, { exact: true });
+  await trigger.click();
+  const rail = page.getByRole("complementary", { name: leads[0].business_name, exact: true });
+  await expect(rail).toContainText("Before confirmation");
+  await page.evaluate(() => window.dispatchEvent(new Event("online")));
+  await expect.poll(() => Boolean(releaseOld)).toBe(true);
+  await rail.getByRole("button", { name: "Move to Contacted", exact: true }).click();
+  await expect.poll(() => reads).toBe(3); await expect.poll(() => Boolean(releaseContext)).toBe(true);
+  await page.setViewportSize({ width: 390, height: 900 });
+  const sheet = page.getByRole("dialog", { name: leads[0].business_name, exact: true });
+  await expect(sheet.getByRole("button", { name: "Move to Interested", exact: true })).toBeVisible();
+  releaseContext!(); await expect(sheet).toContainText("Post-confirmed context");
+  const oldResponse = page.waitForResponse(response => response.url().includes("/api/pipeline/leads?"));
+  releaseOld!(); await (await oldResponse).finished();
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  await expect(sheet.getByRole("button", { name: "Move to Contacted", exact: true })).toHaveCount(0);
+  await expect(sheet).toContainText("Post-confirmed context");
+  const cachedStage = await page.evaluate(async id => {
+    const open = indexedDB.open("CRMDatabase"); const database = await new Promise<IDBDatabase>(resolve => { open.onsuccess = () => resolve(open.result); });
+    try { const get = database.transaction("leads").objectStore("leads").get(id); return await new Promise<string>(resolve => { get.onsuccess = () => resolve(get.result.status); }); } finally { database.close(); }
+  }, leads[0].lead_id);
+  expect(cachedStage).toBe("Contacted"); expect(writes).toBe(1); expect(contexts).toBe(2); expect(reads).toBe(3);
+  await page.keyboard.press("Escape"); await expect(trigger).toBeFocused();
+  expect(requests.some(path => path.startsWith("/api/team-kpi"))).toBe(false);
+});
+
 test("Pipeline discards delayed A after B, close and timeout without extra snapshot requests", async ({ page }) => {
   test.setTimeout(120_000);
   const requests = await setup(page);
