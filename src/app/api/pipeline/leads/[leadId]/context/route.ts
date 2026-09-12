@@ -16,9 +16,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ lead
   const { leadId } = await params;
   if (!isCallLeadId(leadId)) return Response.json({ code: "PIPELINE_INVALID_LEAD" }, { status: 400 });
 
-  const leadResult = await resource.read(context.service.from("leads").select("lead_id,business_name,contact_person,phone,segment_type,status,assigned_to,created_at,stage_entered_at,lead_source,area").eq("lead_id", leadId).maybeSingle());
+  const leadResult = await resource.read(context.service.from("leads").select("lead_id,business_name,contact_person,phone,segment_type,status,assigned_to,created_at,stage_entered_at,lead_source,area").eq("lead_id", leadId).limit(2));
   if (leadResult.error) return Response.json({ code: "PIPELINE_CONTEXT_FAILED" }, { status: 502 });
-  if (!leadResult.data) return Response.json({ code: "PIPELINE_LEAD_NOT_FOUND" }, { status: 404 });
+  if (!leadResult.data?.length) return Response.json({ code: "PIPELINE_LEAD_NOT_FOUND" }, { status: 404 });
+  const lead = leadResult.data[0];
+  if (leadResult.data.length !== 1 || lead.lead_id !== leadId) throw new Error("PIPELINE_LEAD_SCOPE");
 
   const capabilityResult = await resource.read(context.service.from("user_capabilities").select("capability_code").eq("user_id", context.userId).eq("capability_code", "admin").limit(1), true);
   if (capabilityResult.error) return Response.json({ code: "PIPELINE_CONTEXT_AUTHORIZATION_FAILED" }, { status: 503 });
@@ -36,7 +38,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ lead
   }
 
   const [ownerResult, tasksResult, callsResult, transitionsResult, nextTaskResult, overdueResult] = await Promise.all([
-    leadResult.data.assigned_to ? resource.read(context.service.from("users").select("user_id,name").eq("user_id", leadResult.data.assigned_to).maybeSingle()) : Promise.resolve({ data: null, error: null }),
+    lead.assigned_to ? resource.read(context.service.from("users").select("user_id,name").eq("user_id", lead.assigned_to).limit(2)) : Promise.resolve({ data: [], error: null }),
     resource.read(tasksQuery),
     resource.read(callsQuery),
     resource.read(context.service.from("pipeline_transition_operations").select("operation_id,actor_id,expected_stage,target_stage,confirmed_at,event_kind,reason").eq("lead_id", leadId).order("confirmed_at", { ascending: false }).order("operation_id", { ascending: false }).limit(20)),
@@ -48,8 +50,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ lead
   const tasks = (tasksResult.data ?? []).filter((task) => canReadLinkedWork(isAdmin, context.userId, task.assigned_to));
   const calls = (callsResult.data ?? []).filter((call) => canReadLinkedWork(isAdmin, context.userId, call.user_id));
   return boundedReportJson({
-    lead: { ...leadResult.data, owner_name: ownerResult.data?.name ?? "Unassigned" },
-    stage_age_days: Math.max(0, Math.floor((Date.now() - new Date(leadResult.data.stage_entered_at ?? leadResult.data.created_at).getTime()) / 86_400_000)),
+    lead: { ...lead, owner_name: ownerResult.data?.length === 1 && ownerResult.data[0].user_id === lead.assigned_to ? ownerResult.data[0].name : "Unassigned" },
+    stage_age_days: Math.max(0, Math.floor((Date.now() - new Date(lead.stage_entered_at ?? lead.created_at).getTime()) / 86_400_000)),
     transitions: transitionsResult.data ?? [],
     next_task: (nextTaskResult.data ?? []).find(task => canReadLinkedWork(isAdmin, context.userId, task.assigned_to)) ?? null,
     overdue_tasks: (overdueResult.data ?? []).filter(task => canReadLinkedWork(isAdmin, context.userId, task.assigned_to)),

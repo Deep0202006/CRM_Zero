@@ -18,7 +18,7 @@ export async function loadManagementReview(client: SupabaseClient, resource: Rep
           ? client.from("allocated_targets").select("target_id,assigned_to_user_id,target_name,target_username,city,is_completed,created_at").in("assigned_to_user_id", ids).eq("is_completed", false)
           : client.from("tasks").select("task_id,assigned_to,assigned_by,title,description,priority,status,source,template_id,related_lead_id,due_date,created_at,is_active").in("assigned_to", ids).eq("is_active", true);
         if (cursor) query = query.gt(key, cursor);
-        const result = await resource.read(query.order(key).limit(500));
+        const result = await resource.read<{ data: unknown[] | null; error: unknown }>(query.order(key).limit(500));
         if (result.error || !Array.isArray(result.data) || result.data.length > 500) throw new ReportUnavailable("Current source unavailable");
         bytes += new TextEncoder().encode(JSON.stringify(result.data)).byteLength;
         if (bytes > 2 * 1024 * 1024) throw new ReportUnavailable("Current source byte limit");

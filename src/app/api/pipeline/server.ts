@@ -29,9 +29,10 @@ export async function createPipelineServerContext(request: Request, resource?: R
   resource?.check();
   if (error || !authenticated.user) return null;
   const userId = authenticated.user.id;
-  const query = service.from("users").select("user_id,is_active").eq("user_id", userId).maybeSingle();
-  const { data: user } = await (resource ? resource.read(query, true) : query);
-  if (!user || !(user.is_active === true || user.is_active === 1)) return null;
+  const query = service.from("users").select("user_id,is_active").eq("user_id", userId).limit(2);
+  const { data: users, error: profileError } = await (resource ? resource.read(query, true) : query);
+  const user = users?.length === 1 ? users[0] : null;
+  if (profileError || !user || user.user_id !== userId || !(user.is_active === true || user.is_active === 1)) return null;
   return { userId, segments: ["Retailer", "Distributor"], userClient: auth, service };
 }
 
