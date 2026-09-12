@@ -70,6 +70,41 @@ test("Admin Review is lazy and reconciles current records, employee scope and re
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1)).toBe(true);
 });
 
+test("Review permits only own due-work navigation and preserves exact offline completion identity", async ({ page, context }) => {
+  await setup(page);
+  const own = { ...tasks[0], template_id: null } as ReviewTask;
+  const foreign = { ...own, task_id: "94000000-0000-4000-a000-000000000099", title: "Foreign due task", assigned_to: employee };
+  await page.route("**/api/team-kpi/review?**", route => route.fulfill({ json: buildManagementReview({ members: [{ user_id: actor, name: "Asha Mehta", role: "Field" }, { user_id: employee, name: "Nikhil Rao", role: "Field" }], employee: null, today, generatedAt: new Date().toISOString(), tasks: [own, foreign], targets: [], taskError: null, targetError: null }) }));
+  await page.setViewportSize({ width: 1440, height: 900 }); await page.goto("/manager/kpi");
+  await page.getByRole("tab", { name: "Review", exact: true }).click();
+  const review = page.getByRole("region", { name: "Admin current workload review" });
+  await review.getByRole("button", { name: /Foreign due task/ }).click();
+  const foreignRail = page.getByRole("complementary", { name: foreign.title, exact: true });
+  await expect(foreignRail.getByRole("link", { name: /Open your agenda/ })).toHaveCount(0);
+  await expect(foreignRail.getByRole("link", { name: "Open existing task assignment", exact: true })).toHaveAttribute("href", "/manager/tasks");
+  await foreignRail.getByRole("button", { name: "Close", exact: true }).click();
+  await review.getByRole("button", { name: new RegExp(own.title) }).click();
+  const rail = page.getByRole("complementary", { name: own.title, exact: true });
+  await expect(rail).toContainText(own.task_id);
+  await rail.getByRole("link", { name: /Open your agenda/ }).click();
+  await expect(page).toHaveURL(/\/my-day$/);
+  const agenda = page.getByRole("region", { name: "Work agenda", exact: true });
+  await agenda.getByRole("tab", { name: "Overdue 1", exact: true }).click();
+  const row = agenda.getByRole("listitem").filter({ has: page.getByRole("button", { name: own.title, exact: true }) });
+  await context.setOffline(true);
+  await row.getByRole("button", { name: "Done ✓", exact: true }).click();
+  await expect(page.getByText(`“${own.title}” was marked complete.`, { exact: true })).toBeVisible();
+  const retained = await page.evaluate(async taskId => {
+    const open = indexedDB.open("CRMDatabase"); const database = await new Promise<IDBDatabase>(resolve => { open.onsuccess = () => resolve(open.result); });
+    const read = (store: string) => new Promise<Record<string, unknown>[]>(resolve => { const request = database.transaction(store).objectStore(store).getAll(); request.onsuccess = () => resolve(request.result); });
+    try { return { task: (await read("tasks")).find(row => row.task_id === taskId), history: (await read("task_status_history")).filter(row => row.task_id === taskId), queue: await read("sync_queue") }; } finally { database.close(); }
+  }, own.task_id);
+  expect(retained.task).toMatchObject({ task_id: own.task_id, assigned_to: actor, status: "Completed" });
+  expect(retained.history).toEqual([expect.objectContaining({ task_id: own.task_id, changed_by: actor, old_status: "Pending", new_status: "Completed" })]);
+  expect(retained.queue.some(row => row.table_name === "tasks" && JSON.stringify(row).includes(own.task_id))).toBe(true);
+  await context.setOffline(false);
+});
+
 test("My Day history is lazy, self-only and reconciles retained dates without Pipeline consumption", async ({ page }) => {
   const requests = await setup(page);
   await page.route("**/api/my-day/history?**", route => {
@@ -225,17 +260,55 @@ test(`populated ${name} desktop and mobile review`, async ({ page }) => {
 
 test("populated Admin inspection review", async ({ page }) => {
   test.setTimeout(120_000);
-  await setup(page);
+  const requests = await setup(page);
+  const records = Array.from({ length: 50 }, (_, i) => ({ ...leads[i % 4], lead_id: `93000000-0000-4000-a000-${String(i + 100).padStart(12, "0")}`, business_name: `${leads[i % 4].business_name} ${i + 1}`, stage_age_days: 3, attention_reasons: [], next_task: null, recent_call: null }));
+  const series = (prefix: string, offset: number) => Array.from({ length: 12 }, (_, i) => ({ period: `${prefix}${i + 1}`, new_leads: i + offset, successes: i, movements: i + offset + 10, advanced: i, regressed: 0 }));
+  let failed = false;
+  await page.route("**/api/pipeline/inspection?**", route => {
+    if (failed) return route.fulfill({ status: 503, json: { message: "Synthetic inspection unavailable" } });
+    const search = new URL(route.request().url()).searchParams.get("search") || "";
+    const selected = records.filter(row => row.business_name.toLowerCase().includes(search.toLowerCase()));
+    return route.fulfill({ json: { scope: { page_size: 50, matched_total: selected.length, generated_at: new Date().toISOString() },
+      stages: ["New", "Contacted", "Interested", "Registration"].map(stage => ({ stage, count: selected.filter(row => row.status === stage).length })), sources: [], current_stage_age: [],
+      historical_velocity: { rows: [], sample_n: 0, coverage_n: 0, coverage_pct: 0 }, owner_options: [], leads: selected,
+      history: { weeks: series("W", 1), months: series("M", 20), lead_sample_n: 50, transition_sample_n: 100, coverage: "Retained segment event sample; historical completeness uncertified.", lead_sample_limited: false, transition_sample_limited: false } } });
+  });
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/manager/kpi");
   await page.getByRole("tab", { name: "Pipeline inspection" }).click();
-  await expect(page.getByText("Acme Medical and General Stores", { exact: false }).first()).toBeVisible({ timeout: 30_000 });
-  for (const width of [1440, 390]) {
-    await page.setViewportSize({ width, height: 900 });
-    await page.evaluate(() => window.scrollTo(0, 0));
-    await expect(page.getByText("Acme Medical and General Stores", { exact: true })).toBeInViewport();
-    if (process.env.WORKSPACE_CAPTURE && (!process.env.WORKSPACE_CAPTURE_ONLY || process.env.WORKSPACE_CAPTURE_ONLY === "admin-pipeline")) await page.screenshot({ path: `artifacts/visual-review/workspace-makeover/${process.env.WORKSPACE_CAPTURE}/admin-pipeline-${width}.png`, animations: "disabled" });
+  const register = page.getByRole("region", { name: "Pipeline inspection records", exact: true });
+  await expect(register.getByRole("listitem")).toHaveCount(50);
+  for (const theme of ["light", "dark"]) {
+    if (await page.evaluate(() => document.documentElement.dataset.theme) !== theme) await page.getByRole("button", { name: `Use ${theme} theme` }).click();
+    for (const width of [1440, 390]) {
+      await page.setViewportSize({ width, height: 900 }); await page.getByRole("main").evaluate(node => node.scrollTo(0, 0));
+      await expect(register.getByText(records[0].business_name, { exact: true })).toBeInViewport();
+      expect((await register.boundingBox())!.height).toBeLessThanOrEqual(321);
+      if (process.env.WORKSPACE_CAPTURE) await page.screenshot({ path: `artifacts/visual-review/workspace-makeover/${process.env.WORKSPACE_CAPTURE}/admin-pipeline-${width}${theme === "dark" ? "-dark" : ""}.png`, animations: "disabled" });
+      await page.getByRole("heading", { name: "Pipeline event history", exact: true }).scrollIntoViewIfNeeded();
+      if (process.env.WORKSPACE_CAPTURE) await page.screenshot({ path: `artifacts/visual-review/workspace-makeover/${process.env.WORKSPACE_CAPTURE}/admin-pipeline-analysis-${width}-${theme}.png`, animations: "disabled" });
+    }
   }
+  await page.getByLabel("Event", { exact: true }).selectOption("movements");
+  await page.getByRole("button", { name: "12 months", exact: true }).click();
+  await page.getByText("Exact confirmed movements series", { exact: true }).click();
+  const table = page.getByRole("region", { name: "Pipeline event data", exact: true });
+  await expect(table).toContainText("All · months · Confirmed movements");
+  await expect(table.getByRole("row")).toHaveCount(13);
+  await expect(table.getByRole("row", { name: "M1 30", exact: true })).toBeVisible();
+  expect(requests.filter(path => path.startsWith("/api/pipeline/inspection"))).toHaveLength(1);
+  await page.getByLabel("Search pipeline", { exact: true }).fill("Cedar");
+  await page.getByRole("button", { name: "Search", exact: true }).click();
+  await expect(register.getByRole("listitem")).toHaveCount(12);
+  await expect(page.getByText(/Applied list:.*Search: Cedar.*12 matches/)).toBeVisible();
+  await expect(table.getByRole("row", { name: "M1 30", exact: true })).toBeVisible();
+  failed = true;
+  await page.getByLabel("Search pipeline", { exact: true }).fill("Acme");
+  await page.getByRole("button", { name: "Search", exact: true }).click();
+  await expect(page.getByRole("alert").filter({ hasText: "Previous applied report remains visible" })).toBeVisible();
+  await expect(page.getByText(/Applied list:.*Search: Cedar.*12 matches/)).toBeVisible();
+  await expect(register.getByRole("listitem")).toHaveCount(12);
+  expect(requests.filter(path => path.startsWith("/api/pipeline/inspection"))).toHaveLength(3);
 });
 
 test("My Day view counts, linked work and keyboard context preserve real task identity", async ({ page }) => {
