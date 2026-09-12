@@ -437,7 +437,7 @@ test("Pipeline confirmation invalidates an older snapshot and keeps exact contex
   });
   await page.setViewportSize({ width: 1440, height: 900 }); await page.goto("/onboarding");
   await page.getByRole("button", { name: "List", exact: true }).click();
-  const trigger = page.getByRole("region", { name: "Pipeline lead list" }).getByText(leads[0].business_name, { exact: true });
+  const trigger = page.getByRole("region", { name: "Pipeline lead list" }).getByRole("button").filter({ has: page.getByText(leads[0].business_name, { exact: true }) });
   await trigger.click();
   const rail = page.getByRole("complementary", { name: leads[0].business_name, exact: true });
   await expect(rail).toContainText("Before confirmation");

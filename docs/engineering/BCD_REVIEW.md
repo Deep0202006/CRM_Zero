@@ -1,5 +1,8 @@
 # B–D continuation — implementation in progress
 
+Latest status is in **Final acceptance continuation** at the end. Earlier
+pending statements are preserved chronological checkpoints, not current claims.
+
 Task `20260909-cb00d222890d`; baseline PR113 merge
 `9c5f851ba93ef14a9e5f294d4b83300d38a34462`. The corrected Owner master
 requires CI-only disposable PostgreSQL verification. No local database software,
@@ -281,3 +284,73 @@ own-period change, metric changes with an open rail, both themes/mobile, failed
 Apply, deadline recovery and lazy self requests. They are prepared, not yet
 executed for this batch. Pipeline correction and lazy Admin Review remain open.
 No B–D completion, final-head CI or Production activation is claimed.
+
+## Final acceptance continuation
+
+Published `0cc5e29a3b09ca3e4306c80a9cd4b495b6b8c226` passed all six required
+checks in [run34696246803](https://github.com/Deep0202006/CRM_Zero/actions/runs/34696246803).
+That run includes genuine054 Mapping lifecycle fixtures and native Calls,
+Mapping and Visits PostgREST assertions. It does not certify subsequent changes.
+
+| Packet / source authority | Metric and consumer | Demonstrated proof / remaining gate |
+|---|---|---|
+| B: permanent `field_visits`, canonical `visit_date`, immutable author | Full-range retained count; daily/outcome/author partitions; authorized Visits page, register and actual XLSX export share filters | Published SQL/HTTP/export-ID proof; local31-date/80-record browser reconciliation and both themes. New manual-check CI pending. |
+| C: genuine Call UUID/actor/timestamp; canonical Visits; Mapping054 completer snapshot/time | One selected retained metric, own closed-period change, stable current cohort, chart/table/employee detail | Native HTTP asserts221 Calls/4 requests,101 Mapping snapshots/3,1063 Visits/12, each including empty EOF under cap100 and a200-identity predicate. Team browser31-date/table/Sheet/keyboard proof passed locally. |
+| C: confirmed Leads and canonical transition operations | Exact ordinary/inspection filters before count/page; independent event populations; compatible consecutive transition durations; on-demand authorized context | Published SQL/HTTP/unit proof. New ordinary/attention/native query plans and confirmed-mutation/held-snapshot browser regression require latest-head verification. |
+| D: verified actor's genuine Calls/Visits | Lazy My Day history, same retained chart/table contract; existing Agenda and future-due tasks remain independent | Local self-only browser proof:124 current/62 previous records across31 dates, two history requests, no Team/Pipeline reads. |
+| D: current active genuine Tasks and incomplete allocated targets | Lazy Admin Review, separate task due buckets/target totals, exact current-assignee detail, Missed read-only | Published live-Admin/scope/cap/partial/deadline transport tests; local Review browser selection, theme, Sheet/focus and failure-retention proof. |
+
+### Meaning, bounds and evidence limits
+
+- Historical completeness remains uncertified. Exhaustion describes retained
+  rows, not complete work or an atomic multi-request snapshot. Source failure or
+  cap returns unavailable totals; missing coverage is not zero.
+- Own-period changes apply only to comparable closed retained-record periods.
+  Partial Today and mutable Mapping snapshots have unavailable comparisons.
+  Prior zero allows an absolute difference, never a fabricated percentage.
+- Mapping reopen removes the current completion snapshot; recompletion uses
+  the tracked054 guard's new timestamp/actor. The new fixture tests lifecycle
+  triggers, not authenticated RLS; the separate full054/domain proofs remain.
+- Reports share an8second transport deadline and at most24 reader requests,
+  separately accounting for Auth and authorization DB calls. Native history
+  uses at most21 pages/20000 rows/4MiB per selected source. Review uses3 cohort
+  reads plus at most10×500 Task and10×500 target pages,2MiB per source; its
+  visible registers contain at most50 records each. Targets have no due bucket.
+- Analytical payloads are bounded at1MiB; the representative picker at64KiB.
+  Pipeline registers show at most50 rows. Its event populations are independently
+  bounded at2000 with sentinel/unavailability flags. Source SQL uses7second
+  statement settings, distinct from DDL and application deadlines.
+- No historical Task/target completion credit, query-resolution credit,
+  combined multi-day unique-work measure, reached-call or revenue metric is
+  invented. Current roster is descriptive scope, not historical membership.
+- Browser captures use bounded synthetic data, not Production. CI PASS and
+  platform deployment status do not establish Owner SQL application or live
+  product observation. Production gateway timeout hoisting remains unverified.
+
+### Rendered observations and specialist findings
+
+Final captures are under `artifacts/visual-review/workspace-makeover/pr114-final`
+and `pr114-history`. Earlier `pr114-shared-readers` and `pr114-applied-query`
+captures remain as before/checkpoint evidence. Review examined1440×900 and390px
+screens in both themes: Visits Work retains visible records while Analysis
+shows the same31-date population; Team/My Day chart values match their accessible
+tables; Review has a visible active tab, full-width employee selector and primary
+tasks in the first viewport. Detail uses one rail/Sheet tree and restores focus.
+
+SQL criticism added missing precheck column/type/role/privilege prerequisites,
+required baseline RLS/creator policies and exact index-key/direction checks.
+CI compares protected function, trigger, policy, constraint, index and RLS
+catalogs before/after055. Missing055 must fail postcheck; existing names must
+fail precheck. No applied ledger is changed.
+
+Independent workflow criticism found a pre-mutation same-key snapshot could
+overwrite a confirmed Pipeline stage. Mutation/replay refresh now supersedes
+the older request, and aborted responses are rejected before recovery/cache
+writes. The new browser case holds that response, confirms an assigned-owner
+transition, resizes with refreshed context pending, then checks exact stage,
+next action, cache and request counts after the stale response arrives.
+
+The remaining release gate is latest-head proof completion, reviewed captures,
+and GitHub verification of the new manual packet. See
+[Owner activation packet](BCD_OWNER_MIGRATION.md). Keep PR114 draft until those
+results are reconciled; stop before Owner Production SQL and protected merge.

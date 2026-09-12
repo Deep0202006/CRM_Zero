@@ -360,7 +360,8 @@
       "runner": "playwright",
       "paths": [
         "e2e/pipeline"
-      ]
+      ],
+      "selectors": { "paths": ["e2e/pipeline", "src/app/onboarding/page.tsx", "src/lib/pipeline/repository.ts"] }
     },
     {
       "id": "pipeline-postgres",
