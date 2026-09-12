@@ -309,6 +309,8 @@
       ],
       "pathPatterns": [
         "supabase/migrations/055_crm_bcd_readers.sql",
+        "supabase/manual/precheck_055_crm_bcd_readers.sql",
+        "supabase/manual/verify_055_crm_bcd_readers.sql",
         "scripts/bcd-db/**",
         "src/lib/analytics/reportResource.ts",
         "src/lib/__tests__/bcdReaders.test.ts",

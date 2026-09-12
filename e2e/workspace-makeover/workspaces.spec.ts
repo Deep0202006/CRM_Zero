@@ -4,6 +4,7 @@ import { actor, employee, leads, report, setup, tasks, today, visits } from "./f
 import { addISTDateDays } from "../../src/lib/dateTime";
 import { aggregateVisitRange, parseVisitRange } from "../../src/lib/fieldVisits/range";
 import { buildManagementReview, type ReviewTask } from "../../src/lib/teamKpi/review";
+import { buildHistoryReport, parseHistoryScope } from "../../src/lib/teamKpi/history";
 
 test("Admin Review is lazy and reconciles current records, employee scope and read-only Missed detail", async ({ page }) => {
   const requests = await setup(page);
@@ -24,12 +25,32 @@ test("Admin Review is lazy and reconciles current records, employee scope and re
   const review = page.getByRole("region", { name: "Admin current workload review" });
   await expect(review.getByRole("button", { name: /^Tasks/ })).toHaveText("Tasks · 4");
   const missed = review.getByRole("button", { name: /Missed regional service follow-up/ });
+  if (process.env.WORKSPACE_CAPTURE) {
+    const directory = `artifacts/visual-review/workspace-makeover/${process.env.WORKSPACE_CAPTURE}`;
+    await mkdir(directory, { recursive: true });
+    for (const theme of ["light", "dark"]) {
+      if (await page.evaluate(() => document.documentElement.dataset.theme) !== theme) await page.getByRole("button", { name: `Use ${theme} theme` }).click();
+      for (const width of [1440, 390]) {
+        await page.setViewportSize({ width, height: 900 }); await page.getByRole("main").evaluate(node => node.scrollTo(0, 0));
+        await expect(page.getByRole("tab", { name: "Review", exact: true })).toBeInViewport();
+        await expect(review.getByRole("button", { name: /Confirm the recorded visit/ })).toBeInViewport();
+        await page.screenshot({ path: `${directory}/review-${width}-${theme}.png`, animations: "disabled" });
+        await missed.click();
+        const detail = width >= 1200 ? page.getByRole("complementary", { name: "Missed regional service follow-up", exact: true }) : page.getByRole("dialog");
+        await expect(detail).toContainText("Missed is read-only");
+        await page.screenshot({ path: `${directory}/review-detail-${width}-${theme}.png`, animations: "disabled" });
+        if (width >= 1200) await detail.getByRole("button", { name: "Close", exact: true }).click(); else await page.keyboard.press("Escape");
+      }
+    }
+    await page.getByRole("button", { name: "Use light theme" }).click(); await page.setViewportSize({ width: 1440, height: 900 });
+  }
   await missed.click();
   const rail = page.getByRole("complementary", { name: "Missed regional service follow-up", exact: true });
   await expect(rail).toContainText("94000000-0000-4000-a000-000000000009");
   await expect(rail).toContainText("Missed is read-only");
   await expect(rail.getByRole("link", { name: /Open your agenda/ })).toHaveCount(0);
   await page.setViewportSize({ width: 390, height: 900 });
+  await expect(page.getByRole("tab", { name: "Review", exact: true })).toBeInViewport();
   const sheet = page.getByRole("dialog", { name: "Missed regional service follow-up", exact: true });
   await expect(sheet).toContainText("94000000-0000-4000-a000-000000000009");
   await page.keyboard.press("Escape"); await expect(missed).toBeFocused();
@@ -47,6 +68,46 @@ test("Admin Review is lazy and reconciles current records, employee scope and re
   expect(requests.filter(path => path.startsWith("/api/team-kpi/review"))).toHaveLength(3);
   await page.getByRole("button", { name: "Use dark theme" }).click();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1)).toBe(true);
+});
+
+test("My Day history is lazy, self-only and reconciles retained dates without Pipeline consumption", async ({ page }) => {
+  const requests = await setup(page);
+  await page.route("**/api/my-day/history?**", route => {
+    const generatedAt = new Date().toISOString(), params = new URL(route.request().url()).searchParams;
+    expect(params.has("employee")).toBe(false); expect(params.has("user_id")).toBe(false);
+    const scope = parseHistoryScope(params, generatedAt)!;
+    const calls = Array.from({ length: 124 }, (_, n) => ({ log_id: `self-current-${n}`, user_id: actor, timestamp: `${addISTDateDays(scope.from, n % scope.days)}T04:00:00Z`, outcome: "Contacted" }));
+    calls.push(...Array.from({ length: 62 }, (_, n) => ({ log_id: `self-prior-${n}`, user_id: actor, timestamp: `${addISTDateDays(scope.previous_from, n % scope.days)}T04:00:00Z`, outcome: "Contacted" })));
+    return route.fulfill({ json: buildHistoryReport({ scope, generatedAt, members: [{ user_id: actor, name: "Asha Mehta", role: "Self" }], calls, requests: 3, self: true }) });
+  });
+  await page.setViewportSize({ width: 1440, height: 900 }); await page.goto("/my-day");
+  await expect(page.getByRole("heading", { name: "Coming up", exact: true })).toBeVisible();
+  expect(requests.some(path => path.startsWith("/api/my-day/history"))).toBe(false);
+  await page.getByRole("tab", { name: "History", exact: true }).click();
+  await expect(page.getByRole("heading", { name: /Your confirmed records/ })).toBeVisible();
+  await page.getByLabel("From (IST)").fill(addISTDateDays(today, -31));
+  await page.getByRole("button", { name: "Apply range", exact: true }).click();
+  await expect(page.getByRole("heading", { name: new RegExp(`Your confirmed records.*${addISTDateDays(today, -31)}`) })).toBeVisible();
+  await page.getByText("Exact daily data · chart and previous retained records", { exact: true }).click();
+  const daily = page.getByRole("region", { name: "History daily data", exact: true });
+  await expect(daily.locator("tbody tr")).toHaveCount(31);
+  expect(await daily.locator("tbody tr td:first-of-type").allTextContents().then(values => values.reduce((sum, value) => sum + Number(value), 0))).toBe(124);
+  await page.getByText("Exact daily data · chart and previous retained records", { exact: true }).click();
+  await expect(page.getByRole("combobox", { name: "Employee scope" })).toHaveCount(0);
+  await expect(page.getByRole("combobox", { name: "Record type" }).locator('option[value="mappings_completed"]')).toHaveCount(0);
+  for (const theme of ["light", "dark"]) {
+    if (await page.evaluate(() => document.documentElement.dataset.theme) !== theme) await page.getByRole("button", { name: `Use ${theme} theme` }).click();
+    for (const width of [1440, 390]) {
+      await page.setViewportSize({ width, height: 900 }); await page.getByRole("main").evaluate(node => node.scrollTo(0, 0));
+      await expect(page.locator("svg.recharts-surface:visible")).toBeInViewport();
+      if (process.env.WORKSPACE_CAPTURE) {
+        const directory = `artifacts/visual-review/workspace-makeover/${process.env.WORKSPACE_CAPTURE}`; await mkdir(directory, { recursive: true });
+        await page.screenshot({ path: `${directory}/my-day-history-${width}-${theme}.png`, animations: "disabled" });
+      }
+    }
+  }
+  expect(requests.filter(path => path.startsWith("/api/my-day/history"))).toHaveLength(2);
+  expect(requests.some(path => path.startsWith("/api/team-kpi") || path.startsWith("/api/pipeline"))).toBe(false);
 });
 
 test("Visits full-range chart reconciles 31 busy dates without pager or refresh fanout", async ({ page }) => {

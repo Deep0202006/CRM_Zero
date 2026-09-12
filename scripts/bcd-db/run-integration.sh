@@ -21,6 +21,7 @@ case "${1:-}" in
     awk '/^create or replace function public.transition_lead_stage_v2/ {exit} {print}' supabase/migrations/032_pipeline_authoritative_transitions.sql | psql -X -v ON_ERROR_STOP=1
     awk '/^-- Pipeline may not create employee work/ {exit} {print}' supabase/migrations/037_pipeline_authority_and_resource_budget.sql | psql -X -v ON_ERROR_STOP=1
     psql -X -v ON_ERROR_STOP=1 -c 'grant select on public.tasks,public.call_logs,public.pipeline_transition_operations to service_role;'
+    awk '/^ALTER TABLE call_logs ENABLE ROW LEVEL SECURITY;/ {print}' supabase/schema.sql | psql -X -v ON_ERROR_STOP=1
     awk '/^ALTER TABLE public.call_logs/ {active=1} /^ALTER TABLE public.client_queries/ {exit} active {print}' supabase/migrations/029_team_kpi_source_sync_repair.sql | psql -X -v ON_ERROR_STOP=1
     awk '/^CREATE TABLE IF NOT EXISTS public.mapping_requests /,/^\);/ {print} /^ALTER TABLE public.mapping_requests ENABLE ROW LEVEL SECURITY/ {print}' supabase/migrations/006_mapping_requests.sql | psql -X -v ON_ERROR_STOP=1
     awk '/^ALTER TABLE public.mapping_requests$/,/ADD COLUMN IF NOT EXISTS requested_by.*;/ {print}' supabase/migrations/026_team_kpi_repair.sql | psql -X -v ON_ERROR_STOP=1
@@ -32,7 +33,28 @@ case "${1:-}" in
     awk '/^create or replace function public.erp_normalized_key_v1/,/^grant all on public.erp_systems to service_role;/ {print}' supabase/migrations/047_distributor_erp_partner_visibility.sql | psql -X -v ON_ERROR_STOP=1
     awk '/^alter table public.field_visits$/,/^create or replace function public.confirm_field_visit_erp_v1/ {if (/^create or replace function/) exit; print}' supabase/migrations/048_field_visit_erp_observation.sql | psql -X -v ON_ERROR_STOP=1
     awk '/^create or replace function public.field_visit_erp_intelligence_v1/,/^grant execute on function public.field_visit_erp_intelligence_v1/ {print}' supabase/migrations/048_field_visit_erp_observation.sql | psql -X -v ON_ERROR_STOP=1
-    psql -X -v ON_ERROR_STOP=1 -f supabase/migrations/055_crm_bcd_readers.sql ;;
+    psql -X -v ON_ERROR_STOP=1 -f supabase/manual/precheck_055_crm_bcd_readers.sql
+    if postcheck_before=$(psql -X -v ON_ERROR_STOP=1 -f supabase/manual/verify_055_crm_bcd_readers.sql 2>&1); then
+      echo 'POSTCHECK_ACCEPTED_UNAPPLIED055' >&2; exit 1
+    fi
+    [[ "$postcheck_before" == *BCD055_READER_MISSING* ]] || { echo "$postcheck_before" >&2; exit 1; }
+    # Snapshot protected catalogs, not business rows, before the additive migration.
+    catalog_query="select md5(string_agg(value,E'\\n' order by value)) from (
+      select pg_get_functiondef(oid) value from pg_proc where pronamespace='public'::regnamespace and proname in ('mapping_request_attribution_guard_v1','call_log_owner_audit_guard_v1','guard_pipeline_employee_status_write','track_lead_stage_change')
+      union all select pg_get_triggerdef(oid) from pg_trigger where not tgisinternal and tgrelid in ('public.mapping_requests'::regclass,'public.call_logs'::regclass,'public.leads'::regclass)
+      union all select row_to_json(p)::text from pg_policies p where schemaname='public'
+      union all select conname||':'||convalidated::text||':'||pg_get_constraintdef(oid) from pg_constraint where conrelid in ('public.field_visits'::regclass,'public.mapping_requests'::regclass,'public.call_logs'::regclass,'public.pipeline_transition_operations'::regclass)
+      union all select pg_get_indexdef(indexrelid) from pg_index where indrelid in ('public.field_visits'::regclass,'public.mapping_requests'::regclass,'public.call_logs'::regclass,'public.pipeline_transition_operations'::regclass)
+      union all select relname||':'||relrowsecurity::text from pg_class where oid in ('public.field_visits'::regclass,'public.mapping_requests'::regclass,'public.call_logs'::regclass,'public.pipeline_transition_operations'::regclass)
+    ) protected"
+    catalog_before=$(psql -X -At -v ON_ERROR_STOP=1 -c "$catalog_query")
+    psql -X -v ON_ERROR_STOP=1 -f supabase/migrations/055_crm_bcd_readers.sql
+    psql -X -v ON_ERROR_STOP=1 -f supabase/manual/verify_055_crm_bcd_readers.sql
+    [[ "$catalog_before" == "$(psql -X -At -v ON_ERROR_STOP=1 -c "$catalog_query")" ]] || { echo '055_CHANGED_PROTECTED_CATALOG' >&2; exit 1; }
+    if precheck_after=$(psql -X -v ON_ERROR_STOP=1 -f supabase/manual/precheck_055_crm_bcd_readers.sql 2>&1); then
+      echo 'PRECHECK_ACCEPTED_COLLIDING055' >&2; exit 1
+    fi
+    [[ "$precheck_after" == *BCD055_FUNCTION_COLLISION_STOP* ]] || { echo "$precheck_after" >&2; exit 1; } ;;
   fixture) psql -X -v ON_ERROR_STOP=1 -f scripts/bcd-db/fixture.sql ;;
   assertion)
     psql -X -v ON_ERROR_STOP=1 -f scripts/bcd-db/assertion.sql

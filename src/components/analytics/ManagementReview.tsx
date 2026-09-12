@@ -41,7 +41,7 @@ export default function ManagementReview() {
   const title = task?.title ?? target?.target_name ?? "Current work record";
   return <section className="space-y-3" aria-label="Admin current workload review" aria-busy={loading}>
     <form className="flex flex-wrap items-end gap-2" onSubmit={event => { event.preventDefault(); void load(employee); }}>
-      <label className="min-w-0 flex-1 text-sm">Current employee<select className="field-control w-full" value={employee} onChange={event => setEmployee(event.target.value)}><option value="">Whole current cohort</option>{report?.cohort.map(member => <option key={member.user_id} value={member.user_id}>{member.name}</option>)}</select></label>
+      <label className="min-w-0 flex-1 basis-full text-sm sm:basis-auto">Current employee<select className="field-control w-full" value={employee} onChange={event => setEmployee(event.target.value)}><option value="">Whole current cohort</option>{report?.cohort.map(member => <option key={member.user_id} value={member.user_id}>{member.name}</option>)}</select></label>
       <Button size="sm" disabled={loading} type="submit">Apply employee</Button><Button size="sm" variant="outline" disabled={loading} onClick={() => void load(report?.employee ?? "")}>Refresh review</Button>
     </form>
     {error && <p role="alert" className="alert-panel alert-panel--danger">{error} {report && "Previous applied workload remains visible."}</p>}
