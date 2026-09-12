@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { aggregateVisitRange, parseVisitRange, type VisitEvent } from "../../src/lib/fieldVisits/range";
 import { getCurrentISTDate } from "../../src/lib/dateTime";
 import { mkdir, writeFile } from "node:fs/promises";
 
@@ -101,6 +102,14 @@ async function seedAdmin(page: Page) {
 async function mockPlatform(page: Page) {
   await page.route("http://127.0.0.1:54321/**", route => route.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
   await page.route("http://127.0.0.1:54321/auth/v1/user", route => route.fulfill({ json: { id: adminId, aud: "authenticated", role: "authenticated", email: "admin@example.test", app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() } }));
+}
+
+async function mockRangeAnalysis(page: Page, events: (params: URLSearchParams) => VisitEvent[]) {
+  await page.route("**/api/admin/visits/analysis?**", route => {
+    const params = new URL(route.request().url()).searchParams, generated_at = new Date().toISOString();
+    const scope = parseVisitRange(params, generated_at);
+    return route.fulfill({ json: { kind: "visit-range-v1", scope, generated_at, retained_source_read: "exhausted", historical_coverage: "uncertified", consistency: "bounded-live-multi-request", ...aggregateVisitRange(scope, events(params)) } });
+  });
 }
 
 async function expectResponsiveAnalytics(page: Page, heading: string, reviewName: string, chartExpected = true) {
@@ -263,6 +272,7 @@ test("UI Foundation ERP manual activation caches success and retries a network f
   await expect(distributorFootprint.getByRole("listitem")).toHaveCount(7);
   await expect(distributorFootprint.getByRole("list")).toContainText("Not captured (unknown):1");
   await page.setViewportSize({ width: 320, height: 844 });
+  await page.getByRole("tab", { name: "Analysis", exact: true }).click();
   await page.emulateMedia({ reducedMotion: "reduce" });
   await expect(page.locator("svg.recharts-surface").first()).toBeVisible();
   await page.getByRole("button", { name: "Use dark theme" }).click();
@@ -281,10 +291,15 @@ test("UI Foundation ERP manual activation caches success and retries a network f
   expect(colors.background).not.toBe("rgba(0, 0, 0, 0)");
 });
 
-test("Visits strip retains exact seven records across six and seven categories", async ({ page }) => {
+test("Visits full-range strip retains fourteen records while the register pages seven records", async ({ page }) => {
   test.skip(foundationPhase === "before", "The baseline does not expose the shared semantic values list");
   await mockPlatform(page);
-  const requestPages: string[] = [];
+  const requestPages: string[] = [], analysisRequests: string[] = [];
+  const fullOutcomes = ["registered", "installed", "installed", "interested", "follow_up", "payment_follow_up", "legacy_unknown", "registered", "installed", "interested", "follow_up", "payment_follow_up", "payment_done", "legacy_unknown"];
+  await mockRangeAnalysis(page, params => {
+    analysisRequests.push(params.toString());
+    return fullOutcomes.map((visit_outcome, index) => ({ visit_id: `93000000-0000-4000-a000-${String(index + 1).padStart(12, "0")}`, user_id: employeeId, visit_date: today, check_in_time: `${today}T04:00:00Z`, visit_outcome, segment_type: "Retailer" }));
+  });
   await page.route(url => url.pathname === "/api/admin/visits", route => {
     const currentPage = Number(new URL(route.request().url()).searchParams.get("page"));
     requestPages.push(String(currentPage));
@@ -297,21 +312,22 @@ test("Visits strip retains exact seven records across six and seven categories",
   await seedAdmin(page);
   await page.goto("/admin/visits");
   const composition = page.getByRole("region", { name: "Outcome composition", exact: true });
-  await expect(composition).toContainText("Current bounded page 1");
+  await expect(composition).toContainText("Full applied range");
   const values = composition.getByRole("list");
   await expect(values).toHaveCount(1);
-  await expect(values).toContainText("Other / historical");
+  await expect(values).toContainText("Legacy unknown");
   await expect(values).toContainText("Installed");
-  await expect(composition).toContainText("7 of 14 matching visits");
+  await expect(page.getByText(/Applied:.*7 of 14 matching visits/)).toBeVisible();
   await page.getByRole("button", { name: "Next", exact: true }).click();
-  await expect(composition).toContainText("Current bounded page 2");
+  await expect(composition).toContainText("Full applied range");
   await expect(values).toHaveCount(1);
-  await expect(values).toContainText("Other / historical");
+  await expect(values).toContainText("Legacy unknown");
   await expect(values).toContainText("Payment done");
   const counts = await values.getByRole("listitem").allTextContents();
   const valuesOnly = counts.map(text => Number(text.match(/·\s*([\d,]+)/)?.[1]?.replaceAll(",", "")));
-  expect(valuesOnly).toEqual([1, 1, 1, 1, 1, 1, 1]);
-  expect(valuesOnly.reduce((sum, value) => sum + value, 0)).toBe(7);
+  expect([...valuesOnly].sort((a, b) => a - b)).toEqual([1, 2, 2, 2, 2, 2, 3]);
+  expect(valuesOnly.reduce((sum, value) => sum + value, 0)).toBe(14);
+  expect(analysisRequests).toHaveLength(1);
   expect(requestPages).toEqual(["1", "2"]);
 });
 
@@ -379,6 +395,9 @@ test("Team Intelligence preserves exact contribution totals with one initial KPI
 test("Visits visual composition reconciles the bounded page and closes with server filters", async ({ page }) => {
   await mockPlatform(page);
   const requestUrls: string[] = [];
+  await mockRangeAnalysis(page, params => ["Retailer", "Distributor"].filter(segment => !params.has("segment") || params.get("segment") === segment).map((segment_type, index) => ({
+    visit_id: `93000000-0000-4000-a000-${String(index + 1).padStart(12, "0")}`, user_id: employeeId, visit_date: today, check_in_time: `${today}T04:00:00Z`, visit_outcome: segment_type === "Retailer" ? "installed" : "payment_done", segment_type,
+  })));
   await page.route(url => url.pathname === "/api/admin/visits", route => {
     const url = new URL(route.request().url());
     requestUrls.push(url.toString());
@@ -391,16 +410,17 @@ test("Visits visual composition reconciles the bounded page and closes with serv
   });
   await seedAdmin(page);
   await page.goto("/admin/visits");
-  await expect(page.getByRole("region", { name: "Outcome composition" })).toContainText("2 of 2 matching visits", { timeout: 15_000 });
+  await expect(page.getByRole("region", { name: "Full-range Visit activity" })).toContainText("2 retained Visit records", { timeout: 15_000 });
   expect(requestUrls).toHaveLength(1);
   await captureFoundation(page, "visits", () => requestUrls);
   if (foundationPhase === "before") return;
+  await page.getByText("Refine representative, outcome and dates", { exact: true }).click();
   await page.getByText("Date and segment filters", { exact: true }).click();
   await page.getByLabel("Segment", { exact: true }).selectOption("Retailer");
   expect(requestUrls).toHaveLength(1);
   await page.getByRole("button", { name: "Apply filters", exact: true }).click();
   await expect.poll(() => requestUrls.length).toBe(2);
   expect(new URL(requestUrls.at(-1)!).searchParams.get("segment")).toBe("Retailer");
-  await expect(page.getByText("Current bounded page 1 · 1 of 1 matching visits", { exact: false }).first()).toBeVisible();
+  await expect(page.getByRole("region", { name: "Full-range Visit activity" })).toContainText("1 retained Visit records");
   await expectResponsiveAnalytics(page, "Visit register", "visits", false);
 });

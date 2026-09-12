@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import dynamic from "next/dynamic";
 import { Download } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
@@ -24,6 +24,11 @@ const VisitsIntelligence = dynamic(() => import("@/components/analytics/VisitsIn
 });
 const FieldVisitErpIntelligence = dynamic(() => import("@/components/analytics/FieldVisitErpIntelligence"), { ssr: false, loading: () => <AnalyticsSkeleton label="Loading ERP intelligence" /> });
 const CurrentErpBaselineEditor = dynamic(() => import("@/components/visits/CurrentErpBaselineEditor"), { ssr: false });
+const subscribeAnalysisWidth = (notify: () => void) => {
+  const media = window.matchMedia("(min-width: 640px)");
+  media.addEventListener("change", notify);
+  return () => media.removeEventListener("change", notify);
+};
 
 interface AdminVisit extends LocalFieldVisit {
   has_selfie_evidence?: boolean;
@@ -53,6 +58,7 @@ export default function AdminVisitsPage() {
 }
 
 function AdminVisitsWorkspace() {
+  const wideAnalysis = useSyncExternalStore(subscribeAnalysisWidth, () => window.matchMedia("(min-width: 640px)").matches, () => false);
   const { isAdmin, currentUser } = useAuth();
   const actorId = currentUser?.user_id;
   const [initialQuery] = useState(initialVisitQuery);
@@ -352,7 +358,7 @@ function AdminVisitsWorkspace() {
           {selected && <VisitDetail key={selected.visit.visit_id} visit={selected.visit} scope={selected.scope} />}
         </ContextRail>
       </div></TabsContent>
-      <TabsContent value="analysis" forceMount className="order-1 data-[state=inactive]:hidden sm:data-[state=inactive]:block"><Tabs value={analyticsMode} onValueChange={(value) => setAnalyticsMode(value as "activity" | "erp")} activationMode="manual" className="gap-3">
+      <TabsContent value="analysis" forceMount className="order-1 data-[state=inactive]:hidden sm:data-[state=inactive]:block">{(wideAnalysis || workspaceView === "analysis") && <Tabs value={analyticsMode} onValueChange={(value) => setAnalyticsMode(value as "activity" | "erp")} activationMode="manual" className="gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2"><TabsList aria-label="Visit analytics"><TabsTrigger value="activity">Visit Activity</TabsTrigger><TabsTrigger value="erp">ERP Intelligence</TabsTrigger></TabsList>
           {analyticsMode === "activity" && <Button size="sm" variant="outline" disabled={!analysis || analysis.key !== appliedKey} onClick={() => setAnalysisRevision(value => value + 1)}>Refresh analysis</Button>}</div>
         <TabsContent value="activity">{analyticsMode === "activity" && hasLoaded && <div className="space-y-3">
@@ -367,7 +373,7 @@ function AdminVisitsWorkspace() {
         </>}
       </TabsContent>
 
-      </Tabs></TabsContent>
+      </Tabs>}</TabsContent>
       </Tabs>
       <details className="workspace-disclosure"><summary>Global visit context</summary><p className="text-xs">{appliedGlobalScope}. Totals exclude date and search filters. Unavailable counts are not zero.</p><dl className="workspace-counts"><div><dt>All-time visits</dt><dd>{hasLoaded ? allTimeTotal?.toLocaleString("en-IN") ?? "Unavailable" : "—"}</dd></div><div><dt>Visits today · India</dt><dd>{hasLoaded ? todayTotal?.toLocaleString("en-IN") ?? "Unavailable" : "—"}</dd></div></dl></details>
     </div>
