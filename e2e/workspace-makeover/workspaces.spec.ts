@@ -50,10 +50,10 @@ test("Admin Review is lazy and reconciles current records, employee scope and re
   await expect(rail).toContainText("Missed is read-only");
   await expect(rail.getByRole("link", { name: /Open your agenda/ })).toHaveCount(0);
   await page.setViewportSize({ width: 390, height: 900 });
-  await expect(page.getByRole("tab", { name: "Review", exact: true })).toBeInViewport();
   const sheet = page.getByRole("dialog", { name: "Missed regional service follow-up", exact: true });
   await expect(sheet).toContainText("94000000-0000-4000-a000-000000000009");
   await page.keyboard.press("Escape"); await expect(missed).toBeFocused();
+  await expect(page.getByRole("tab", { name: "Review", exact: true })).toBeInViewport();
   await review.getByRole("button", { name: /^Allocated targets/ }).click();
   await expect(review).toContainText("Allocated targets have no recorded due date");
   await expect(review.getByRole("button", { name: /Western regional allocated client/ })).toBeVisible();
@@ -83,7 +83,7 @@ test("My Day history is lazy, self-only and reconciles retained dates without Pi
   await page.setViewportSize({ width: 1440, height: 900 }); await page.goto("/my-day");
   await expect(page.getByRole("heading", { name: "Coming up", exact: true })).toBeVisible();
   expect(requests.some(path => path.startsWith("/api/my-day/history"))).toBe(false);
-  await page.getByRole("tab", { name: "History", exact: true }).click();
+  await page.getByRole("tab", { name: "My history", exact: true }).click();
   await expect(page.getByRole("heading", { name: /Your confirmed records/ })).toBeVisible();
   await page.getByLabel("From (IST)").fill(addISTDateDays(today, -31));
   await page.getByRole("button", { name: "Apply range", exact: true }).click();

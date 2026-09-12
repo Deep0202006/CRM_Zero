@@ -85,6 +85,27 @@ for (const [name, marker, names, types, args] of [
   assert.equal(plan[0].Plan['Actual Rows'], 1);
   assert.deepEqual(JSON.parse(psql(`${command} execute pipeline_inner(${args});`)), JSON.parse(psql(`select public.crm_${name.replace('-', '_')}_v1(${args});`)));
   console.log(JSON.stringify({ inner_query_plan: name, plan }));
+  if (name === 'pipeline-register') for (const [variant, values] of [
+    ['ordinary', "'Retailer','Pipeline fixture',null,null,null,1,50,false,false,false,false,'2026-09-09'"],
+    ['overdue-only', "'Retailer','Pipeline fixture',null,null,null,1,50,true,false,true,false,'2026-09-09'"],
+    ['recent-only', "'Retailer','Pipeline fixture',null,null,null,1,50,true,false,false,true,'2026-09-09'"],
+    ['busy-neighbor', "'Retailer','Neighbor exact scope',null,null,null,1,50,true,false,false,false,'2026-09-09'"],
+  ]) {
+    assert.equal(values.split(',').length, names.length);
+    const measured = JSON.parse(psql(`${command} explain(analyze,buffers,format json) execute pipeline_inner(${values});`));
+    assert.equal(measured[0].Plan['Actual Rows'], 1);
+    assert.deepEqual(JSON.parse(psql(`${command} execute pipeline_inner(${values});`)), JSON.parse(psql(`select public.crm_pipeline_register_v1(${values});`)));
+    console.log(JSON.stringify({ inner_query_plan: `${name}-${variant}`, plan: measured }));
+  }
+}
+// Native source predicates are measured separately from RPC Function Scan wrappers.
+for (const [name, query] of [
+  ['calls-native', "select log_id,user_id,timestamp,outcome from public.call_logs where user_id=md5('user1')::uuid and timestamp>='2026-09-06 18:30+00' and timestamp<'2026-09-08 18:30+00' order by timestamp,log_id limit 1000"],
+  ['mapping-snapshot-native', "select request_id,mapped_by,mapped_by_id_snapshot,completed_at,status from public.mapping_requests where mapped_by_id_snapshot=md5('user1')::uuid and status='Completed' and completed_at>=current_timestamp-interval '2 days' and completed_at<current_timestamp order by completed_at,request_id limit 1000"],
+]) {
+  const measured = JSON.parse(psql(`set statement_timeout='7s'; explain(analyze,buffers,format json) ${query}`));
+  assert.equal(measured[0].Plan['Actual Rows'], name === 'calls-native' ? 221 : 101);
+  console.log(JSON.stringify({ inner_query_plan: name, plan: measured }));
 }
 const directory = mkdtempSync(join(tmpdir(), 'crm-bcd-http-'));
 let server;
