@@ -75,6 +75,20 @@ jobs:
     needs: preflight
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    services:
+      postgres:
+        image: ${{ needs.preflight.outputs.postgres-required == 'true' && 'postgres:17.6' || '' }}
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { ref: "${{ github.event.pull_request.head.sha }}", fetch-depth: 0 }
@@ -82,6 +96,17 @@ jobs:
         with: { node-version: 24.13.0, cache: npm }
       - if: needs.preflight.outputs.postgres-required == 'true'
         run: npm ci
+      - if: needs.preflight.outputs.postgres-required == 'true'
+        name: Verify host runtime and disposable loopback PostgreSQL
+        run: |
+          set -euo pipefail
+          if ! command -v psql || ! command -v createdb || ! command -v dropdb || ! command -v pg_isready; then
+            sudo apt-get update
+            sudo apt-get install --no-install-recommends -y postgresql-client
+          fi
+          for tool in node bash psql createdb dropdb pg_isready tar; do command -v "$tool"; done
+          test "$(node --version)" = "v24.13.0"
+          pg_isready -h 127.0.0.1 -p 5432 -U postgres -d postgres -t 5
       - if: needs.preflight.outputs.postgres-required == 'true'
         name: Execute exact planned PostgreSQL proofs
         run: npm run proof:run -- --kind postgres --base "$KERNEL_BASE_SHA" --head "$KERNEL_HEAD_SHA"

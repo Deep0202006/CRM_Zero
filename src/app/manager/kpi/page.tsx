@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/Button";
 import { AnalyticsSkeleton } from "@/components/analytics/AnalyticsPanel";
 const FunnelTab = dynamic(() => import("./FunnelTab"), { ssr: false, loading: () => <AnalyticsSkeleton label="Loading pipeline funnel" /> });
 const TeamHistory = dynamic(() => import("@/components/analytics/TeamHistory"), { ssr: false, loading: () => <AnalyticsSkeleton label="Loading retained history" /> });
+const ManagementReview = dynamic(() => import("@/components/analytics/ManagementReview"), { ssr: false, loading: () => <AnalyticsSkeleton label="Loading current workload" /> });
 
 const TeamKpiIntelligence = dynamic(() => import("@/components/analytics/TeamKpiIntelligence"), {
   ssr: false,
@@ -58,7 +59,7 @@ export default function ManagerKpiPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"Team" | "Funnel">("Team");
+  const [activeTab, setActiveTab] = useState<"Team" | "Funnel" | "Review">("Team");
   const [reportMode, setReportMode] = useState<"today" | "history">("today");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const employeeTrigger = useRef<HTMLButtonElement | null>(null);
@@ -176,9 +177,10 @@ export default function ManagerKpiPage() {
 
   return (
     <div className="app-page crm-workspace">
-      <header className="workspace-heading"><div><h1>Team KPI</h1><p>{activeTab === "Funnel" ? "Admin Pipeline inspection · Existing authorized report" : reportMode === "history" ? "Retained call records · Complete activity coverage unknown" : `Today · ${todayDate} · Asia/Kolkata`}</p></div>{reportMode === "today" && activeTab === "Team" && <Button size="sm" variant="outline" onClick={() => void loadTeamKpi(true)} disabled={loading || refreshing || !isAdmin} icon={<RefreshCw size={14} />}>Refresh</Button>}</header>
-      <Tabs value={activeTab === "Funnel" ? "Funnel" : reportMode} onValueChange={(value) => { setActiveTab(value === "Funnel" ? "Funnel" : "Team"); if (value !== "Funnel") setReportMode(value as "today" | "history"); setSelectedId(null); }} activationMode="manual">
-        <TabsList aria-label="Performance report view" className="max-w-full overflow-x-auto justify-start"><TabsTrigger value="today">Today</TabsTrigger><TabsTrigger value="history">Employee history</TabsTrigger><TabsTrigger value="Funnel">Pipeline inspection</TabsTrigger></TabsList>
+      <header className="workspace-heading"><div><h1>Team KPI</h1><p>{activeTab === "Review" ? "Admin current workload · Tasks and allocated targets kept separate" : activeTab === "Funnel" ? "Admin Pipeline inspection · Existing authorized report" : reportMode === "history" ? "Retained record history · Complete activity coverage unknown" : `Today · ${todayDate} · Asia/Kolkata`}</p></div>{reportMode === "today" && activeTab === "Team" && <Button size="sm" variant="outline" onClick={() => void loadTeamKpi(true)} disabled={loading || refreshing || !isAdmin} icon={<RefreshCw size={14} />}>Refresh</Button>}</header>
+      <Tabs value={activeTab !== "Team" ? activeTab : reportMode} onValueChange={(value) => { setActiveTab(value === "Funnel" || value === "Review" ? value : "Team"); if (value !== "Funnel" && value !== "Review") setReportMode(value as "today" | "history"); setSelectedId(null); }} activationMode="manual">
+        <TabsList aria-label="Performance report view" className="grid w-full max-w-full grid-cols-2 sm:inline-flex sm:w-fit"><TabsTrigger value="today">Today</TabsTrigger><TabsTrigger value="history">Employee history</TabsTrigger><TabsTrigger value="Funnel">Pipeline inspection</TabsTrigger><TabsTrigger value="Review">Review</TabsTrigger></TabsList>
+        <TabsContent value="Review">{activeTab === "Review" && isAdmin && currentUser && <ManagementReview key={currentUser.user_id} />}</TabsContent>
         <TabsContent value="history">{reportMode === "history" && activeTab === "Team" && isAdmin && currentUser && <TeamHistory key={currentUser.user_id} />}</TabsContent>
         <TabsContent value="today" className="space-y-4">
           {warning && (
@@ -285,7 +287,7 @@ export default function ManagerKpiPage() {
         <Button variant="outline" aria-expanded={showComparison} onClick={() => setShowComparison((value) => !value)}>{showComparison ? "Hide" : "Show"} employee reference</Button>
         {showComparison && report && <TeamKpiIntelligence rows={report.rows} comparison comparisonAvailable={!warning && !error && visibleReportMatchesDate} />}
         </TabsContent>
-        <TabsContent value="Funnel">{activeTab === "Funnel" && <FunnelTab />}</TabsContent>
+        <TabsContent value="Funnel">{activeTab === "Funnel" && isAdmin && currentUser && <FunnelTab key={currentUser.user_id} />}</TabsContent>
       </Tabs>
     </div>
   );

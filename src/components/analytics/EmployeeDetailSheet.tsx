@@ -2,10 +2,12 @@
 
 import type { RefObject } from "react";
 import type { TeamKpiResponse } from "@/lib/teamKpi/contract";
-import { HISTORY_METRICS, type HistoryMetric, type HistoryReport } from "@/lib/teamKpi/history";
+import { type HistoryMetric, type HistoryReport } from "@/lib/teamKpi/history";
+import { RETAINED_METRICS, retainedChangeLabel } from "@/lib/teamKpi/retainedHistory";
+import { RetainedHistoryChart } from "./RetainedHistoryChart";
 import { ContextRail } from "@/components/workspace/ContextRail";
 
-export function EmployeeDetailSheet({ report, history, metric = "calls_made", selectedId, onClose, returnFocus, refreshing, error }: {
+export function EmployeeDetailSheet({ report, history, selectedId, onClose, returnFocus, refreshing, error }: {
   report?: TeamKpiResponse;
   history?: HistoryReport;
   metric?: HistoryMetric;
@@ -17,6 +19,8 @@ export function EmployeeDetailSheet({ report, history, metric = "calls_made", se
 }) {
   const row = report?.rows.find((item) => item.user_id === selectedId);
   const historical = history?.employees.find((item) => item.user_id === selectedId);
+  const retained = history?.retained_record_history;
+  const personal = retained?.employees.find(item => item.user_id === selectedId);
   const employee = historical ?? row;
   const time = (value: string) => new Date(value).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" });
   return <ContextRail open={selectedId !== null} title={employee?.name ?? "Employee unavailable"} description={employee?.role ?? "This employee is no longer available in the current report."} onClose={onClose} returnFocus={returnFocus}>
@@ -26,17 +30,16 @@ export function EmployeeDetailSheet({ report, history, metric = "calls_made", se
           <p className="text-xs text-[var(--text-secondary)]">Last refreshed: {time(history.generated_at)} IST</p>
           {refreshing && <p role="status">Refreshing. The previous applied scope remains visible.</p>}
           {error && <p role="alert">{error} Showing the previous applied scope.</p>}
-          <h3 className="font-semibold">{HISTORY_METRICS[metric].label}</h3>
-          <p>{HISTORY_METRICS[metric].reason}</p>
-          {historical && <dl className="grid grid-cols-[minmax(0,1fr)_auto] gap-3">
-            <dt>Selected-period retained calls</dt><dd>{metric === "calls_made" ? historical.retained_calls?.toLocaleString("en-IN") ?? "Unavailable" : "Unavailable"}</dd>
-            <dt>Own previous-period retained calls ({history.scope.previous_from} to {history.scope.previous_to})</dt><dd>{metric === "calls_made" ? historical.previous_retained_calls?.toLocaleString("en-IN") ?? "Unavailable" : "Unavailable"}</dd>
-            <dt>Own period change</dt><dd>Unavailable</dd>
-          </dl>}
-          <p>Periods are not certified comparable{history.coverage.partial_today ? "; today has only elapsed coverage" : ""}. No absolute or percentage change is claimed.</p>
+          {retained && personal && <>
+            <h3 className="font-semibold">{RETAINED_METRICS[retained.metric].label}</h3>
+            <p>{RETAINED_METRICS[retained.metric].meaning}</p>
+            <dl className="space-y-2 tabular-nums"><div><dt>Selected-period retained records</dt><dd>{personal.current?.toLocaleString("en-IN") ?? "Unavailable"}</dd></div><div><dt>Own previous-period retained records ({history.scope.previous_from} to {history.scope.previous_to})</dt><dd>{personal.previous?.toLocaleString("en-IN") ?? "Unavailable"}</dd></div><div><dt>Own period change</dt><dd>{retainedChangeLabel(personal.comparison, personal.previous)}</dd></div></dl>
+            <RetainedHistoryChart from={history.scope.from} previousFrom={history.scope.previous_from} values={personal.daily} previousValues={personal.previous_daily} label={RETAINED_METRICS[retained.metric].label} scope={historical?.name ?? "Selected employee"} />
+          </>}
+          <p>Comparisons describe retained-record counts only, never complete work or productivity. Partial today and mutable Mapping snapshots are not comparable.</p>
           <p>{history.coverage.reason}</p>
           <p>Reference: {history.cohort.count} current internal roster members, including this employee. Not historical membership or a productivity ranking.</p>
-          <p>Latest retained call in this range: {historical?.latest_activity_time ? `${time(historical.latest_activity_time)} IST` : "Unavailable"}</p>
+          {retained?.metric === "calls_made" && <p>Latest retained call in this range: {historical?.latest_activity_time ? `${time(historical.latest_activity_time)} IST` : "Unavailable"}</p>}
           <p className="text-xs text-[var(--text-secondary)]">Historical tasks, allocated targets, mappings, queries, follow-up subsets and unique completed work are withheld where event meaning or attribution cannot be established.</p>
         </>}
         {report && <>

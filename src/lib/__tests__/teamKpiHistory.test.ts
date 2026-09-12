@@ -2,6 +2,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { buildHistoryReport, historyReportSchema, parseHistoryScope } from "../teamKpi/history";
 import { HISTORY_BUDGET, loadTeamKpiHistory } from "../teamKpi/historyServer";
+import { createReportResource } from "../analytics/reportResource";
 
 const a = "00000000-0000-4000-8000-000000000001", b = "00000000-0000-4000-8000-000000000002";
 const now = "2026-09-09T06:00:00.000Z";
@@ -71,39 +72,43 @@ describe("bounded Team history contract", () => {
 
 type Result = { data: unknown[] | null; count?: number | null; error?: unknown };
 function reader(overrides: Record<string, Result[]> = {}) {
+  const resource = createReportResource(new AbortController().signal);
+  resources.push(resource);
   const operations: Array<[string, string, ...unknown[]]> = [];
   const queues: Record<string, Result[]> = { users: [{ data: members.map((member) => ({ ...member, is_active: true })), count: 2 }], user_capabilities: [{ data: [], count: 0 }], call_logs: [{ data: [] }], ...overrides };
   const from = jest.fn((table: string) => {
     const result = queues[table]?.shift() ?? { data: null, error: "unexpected read" };
     const chain: Record<string, unknown> = {};
-    for (const method of ["select", "eq", "in", "order", "limit", "gte", "lt", "range"]) chain[method] = (...args: unknown[]) => { operations.push([table, method, ...args]); return chain; };
+    for (const method of ["select", "eq", "in", "order", "limit", "gte", "lt", "range", "or", "setHeader", "retry", "abortSignal"]) chain[method] = (...args: unknown[]) => { operations.push([table, method, ...args]); return chain; };
     chain.then = (resolve: (value: Result) => unknown) => Promise.resolve(resolve({ error: null, ...result }));
     return chain;
   });
-  return { client: { from } as unknown as SupabaseClient, operations, from };
+  return { client: { from } as unknown as SupabaseClient, operations, from, resource };
 }
+const resources: Array<ReturnType<typeof createReportResource>> = [];
+afterEach(() => { resources.splice(0).forEach(resource => resource.finish()); });
 describe("bounded authorized History readers", () => {
   it("constrains calls to the full cohort and one combined interval without an empty capability IN", async () => {
     const mock = reader();
-    const result = await loadTeamKpiHistory(mock.client, scope(`&employee=${a}`), now);
+    const result = await loadTeamKpiHistory(mock.client, scope(`&employee=${a}`), now, mock.resource);
     expect(mock.from.mock.calls.map(([table]) => table)).toEqual(["users", "user_capabilities", "call_logs"]);
     expect(mock.operations).toContainEqual(["call_logs", "in", "user_id", [a, b]]);
-    expect(mock.operations).toContainEqual(["call_logs", "gte", "timestamp", "2026-09-04T18:30:00.000Z"]);
-    expect(mock.operations).toContainEqual(["call_logs", "lt", "timestamp", "2026-09-08T18:30:00.000Z"]);
+    expect(mock.operations).toContainEqual(["call_logs", "gte", "timestamp", "2026-09-04T18:30:00.000000Z"]);
+    expect(mock.operations).toContainEqual(["call_logs", "lt", "timestamp", "2026-09-08T18:30:00.000000Z"]);
     expect(result.coverage.requests).toBe(3);
   });
   it("rejects out-of-cohort selection before reading calls and fails closed on truncated directory", async () => {
     const external = reader({ user_capabilities: [{ data: [{ user_id: b, capability_code: "erp_partner_viewer" }], count: 1 }] });
-    await expect(loadTeamKpiHistory(external.client, scope(`&employee=${b}`), now)).rejects.toMatchObject({ status: 404 });
+    await expect(loadTeamKpiHistory(external.client, scope(`&employee=${b}`), now, external.resource)).rejects.toMatchObject({ status: 404 });
     expect(external.from).not.toHaveBeenCalledWith("call_logs");
     const truncated = reader({ users: [{ data: [], count: 201 }] });
-    await expect(loadTeamKpiHistory(truncated.client, scope(), now)).rejects.toMatchObject({ code: "HISTORY_COHORT_UNAVAILABLE" });
+    await expect(loadTeamKpiHistory(truncated.client, scope(), now, truncated.resource)).rejects.toMatchObject({ code: "HISTORY_COHORT_UNAVAILABLE" });
   });
   it("bounds pagination and never emits a partial count after source failure or budget exhaustion", async () => {
-    const fullPage = Array.from({ length: HISTORY_BUDGET.pageSize }, (_, i) => call(String(i), "2026-09-07T00:00:00Z"));
-    for (const pages of [[{ data: fullPage }, { data: null, error: "failed" }], Array.from({ length: HISTORY_BUDGET.callPages }, () => ({ data: fullPage }))]) {
+    const fullPage = (page: number) => Array.from({ length: HISTORY_BUDGET.pageSize }, (_, i) => call(`10000000-0000-4000-8000-${String(page * 1000 + i).padStart(12, "0")}`, "2026-09-07T00:00:00Z"));
+    for (const pages of [[{ data: fullPage(0) }, { data: null, error: "failed" }], Array.from({ length: HISTORY_BUDGET.callPages }, (_, page) => ({ data: fullPage(page) }))]) {
       const mock = reader({ call_logs: [...pages] });
-      const result = await loadTeamKpiHistory(mock.client, scope(), now);
+      const result = await loadTeamKpiHistory(mock.client, scope(), now, mock.resource);
       expect(result.coverage.source_read).toBe("unavailable");
       expect(result.totals.retained_calls).toBeNull();
       expect(result.coverage.requests).toBeLessThanOrEqual(HISTORY_BUDGET.requests);

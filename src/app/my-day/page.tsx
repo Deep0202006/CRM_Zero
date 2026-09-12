@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import dynamic from "next/dynamic";
 import { liveQuery } from "dexie";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -25,6 +26,10 @@ import { getCurrentISTDate, getISTBusinessDayBounds, getISTDateKey } from "@/lib
 import { mergePaymentFollowUps, type PaymentFollowUpIdentity } from "@/lib/fieldVisits/paymentFollowUps";
 import { getCanonicalDailyUserMetrics } from "@/lib/workMetrics/canonical";
 import PaymentCollectionsPriorityPanel from "@/components/PaymentCollectionsPriorityPanel";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/Tabs";
+import { AnalyticsSkeleton } from "@/components/analytics/AnalyticsPanel";
+
+const OwnHistory = dynamic(() => import("@/components/analytics/TeamHistory"), { ssr: false, loading: () => <AnalyticsSkeleton label="Loading your retained history" /> });
 
 interface DailySummary { genuine_calls_today: number; followup_calls_today: number; confirmed_genuine_call_ids: string[]; confirmed_followup_call_ids: string[]; normal_tasks_completed_today: number; followup_tasks_completed_today: number; total_tasks_completed_today: number; pending_followups: number; unique_completed_work: number; generated_at: string; }
 
@@ -36,6 +41,7 @@ export default function MyDayPage() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [markingId, setMarkingId] = useState<string | null>(null);
   const [agendaView, setAgendaView] = useState<AgendaView>("Today");
+  const [workspaceView, setWorkspaceView] = useState("agenda");
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const taskTrigger = useRef<HTMLButtonElement | null>(null);
   const [allocatedTargets, setAllocatedTargets] = useState<LocalAllocatedTarget[]>([]);
@@ -386,11 +392,16 @@ export default function MyDayPage() {
   };
 
   const todayKey = getCurrentISTDate();
+  const upcomingTasks = sortTasks(tasks.filter(task => task.assigned_to === currentUser?.user_id && task.is_active !== false && task.status !== "Completed" && task.status !== "Missed" && task.due_date > todayKey))
+    .sort((a, b) => a.due_date.localeCompare(b.due_date)).slice(0, 5);
   const selectedTask = tasks.find((task) => task.task_id === selectedTaskId);
   return (
     <div className="app-page crm-workspace">
       <header className="workspace-heading"><div><h1>My Day</h1><p>{todayKey} · Asia/Kolkata · Your assigned work</p></div><Button variant="outline" onClick={handleSyncData} disabled={isSyncing} icon={<RefreshCw size={15} />}>{isSyncing ? "Syncing" : "Sync data"}</Button></header>
       {taskActionMessage && <div className={`alert-panel ${taskActionMessage.type === "success" ? "alert-panel--success" : "alert-panel--danger"}`} role={taskActionMessage.type === "success" ? "status" : "alert"}>{taskActionMessage.text}</div>}
+      <Tabs value={workspaceView} onValueChange={setWorkspaceView} activationMode="manual"><TabsList aria-label="My Day view"><TabsTrigger value="agenda">Agenda</TabsTrigger><TabsTrigger value="history">My history</TabsTrigger></TabsList>
+      <TabsContent value="history">{workspaceView === "history" && currentUser && <OwnHistory key={currentUser.user_id} self />}</TabsContent>
+      <TabsContent value="agenda" className="space-y-4">
       <div className="workspace-columns">
         <div className="min-w-0">
           {loading ? <SkeletonCard /> : <WorkAgenda tasks={tasks} today={todayKey} view={agendaView} onView={setAgendaView} selectedId={selectedTaskId} onSelect={(task, trigger) => { taskTrigger.current = trigger; setSelectedTaskId(task.task_id); }} onComplete={handleComplete} onDelete={handleDelete} canDelete={(task) => isAdmin || currentUser?.user_id === task.assigned_by} markingId={markingId} />}
@@ -401,7 +412,7 @@ export default function MyDayPage() {
           <dl className="space-y-2"><div><dt>Priority</dt><dd>{selectedTask.priority}</dd></div><div><dt>Task source</dt><dd>{selectedTask.source}</dd></div></dl>
           {selectedTask.related_lead_id && <p>This assigned task retains its exact linked lead. Pipeline-derived lead signals are not included in My Day.</p>}
           {currentUser && isValidSelfScheduledFollowUp(selectedTask, currentUser.user_id) && <p>Completing this follow-up requires a call outcome. Saved offline work remains pending until confirmed.</p>}
-        </ContextRail> : <aside className="workspace-upcoming"><h2>Coming up</h2><p className="mt-1 text-xs text-[var(--text-secondary)]">Active future-due tasks · No invented appointment times</p><ol className="mt-3 space-y-3">{tasks.filter((task) => task.status !== "Completed" && task.due_date > todayKey).slice(0, 5).map((task) => <li key={task.task_id}><button className="min-h-11 text-left text-sm font-semibold" onClick={(event) => { taskTrigger.current = event.currentTarget; setSelectedTaskId(task.task_id); }}>{task.title}</button><p className="text-xs text-[var(--text-secondary)]">{task.due_date}</p></li>)}</ol><Button variant="ghost" size="sm" onClick={() => setAgendaView("Later")}>View later tasks</Button></aside>}
+        </ContextRail> : <aside className="workspace-upcoming"><h2>Coming up</h2><p className="mt-1 text-xs text-[var(--text-secondary)]">Active future-due tasks · No invented appointment times</p><ol className="mt-3 space-y-3">{upcomingTasks.map((task) => <li key={task.task_id}><button className="min-h-11 text-left text-sm font-semibold" onClick={(event) => { taskTrigger.current = event.currentTarget; setSelectedTaskId(task.task_id); }}>{task.title}</button><p className="text-xs text-[var(--text-secondary)]">{task.due_date}</p></li>)}</ol><Button variant="ghost" size="sm" onClick={() => setAgendaView("Later")}>View later tasks</Button></aside>}
       </div>
       {/* Allocated Field Targets */}
       {(allocatedTargets.length > 0 || targetLoadError || targetNotice) && (
@@ -490,6 +501,7 @@ export default function MyDayPage() {
           {hasSupport && <><div><dt>Queries resolved today · local</dt><dd>{queriesResolvedToday}</dd></div><div><dt>Open queries · local</dt><dd>{openQueries}</dd></div></>}
         </dl><p className="text-xs">Linked follow-up call/task pairs count once in unique completed work. These counts are not a productivity score.</p>
       </details>
+      </TabsContent></Tabs>
       <Modal
         open={Boolean(completionDialogTask)}
         onClose={() => !markingId && setCompletionDialogTask(null)}

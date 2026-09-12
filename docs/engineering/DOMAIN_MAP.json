@@ -160,6 +160,7 @@
       ],
       "pathPatterns": [
         "src/components/admin/**",
+        "scripts/bcd-db/fixture.sql",
         "src/lib/__tests__/productionConsistencyGuards.test.ts",
         "src/lib/__tests__/retiredEmployeeIdentityErasurePolicy.test.ts",
         "src/lib/__tests__/userRetirementArtifacts.test.ts",
@@ -180,6 +181,9 @@
       ],
       "authorityRefs": [
         "employee_identity",
+        "employee_public_profile",
+        "application_capability_catalog",
+        "user_capability_assignment",
         "retired_employee_identity_erasure_operation"
       ],
       "capabilityRefs": [
@@ -255,6 +259,7 @@
       ],
       "pathPatterns": [
         "src/lib/__tests__/callHistoryAuthority.test.ts",
+        "scripts/bcd-db/fixture.sql",
         "src/lib/__tests__/callLifetimeHistoryCount.test.ts"
       ],
       "serverBoundaries": [
@@ -303,6 +308,13 @@
         "src/components/visits"
       ],
       "pathPatterns": [
+        "supabase/migrations/055_crm_bcd_readers.sql",
+        "supabase/manual/precheck_055_crm_bcd_readers.sql",
+        "supabase/manual/verify_055_crm_bcd_readers.sql",
+        "scripts/bcd-db/**",
+        "src/lib/analytics/reportResource.ts",
+        "src/lib/__tests__/bcdReaders.test.ts",
+        "src/lib/__tests__/bcdExport.test.ts",
         "src/lib/__tests__/fieldVisitErpClosure.test.ts",
         "src/lib/__tests__/fieldVisitPincodeClosure.test.ts",
         "src/lib/__tests__/fieldVisitRecoveryCompatibility.test.ts"
@@ -352,7 +364,7 @@
         "src/lib/clientOptions.ts",
         "src/lib/db.ts"
       ],
-      "pathPatterns": [],
+      "pathPatterns": ["scripts/bcd-db/fixture.sql"],
       "serverBoundaries": [],
       "contractPaths": [
         "docs/contracts/mappings.md"
@@ -387,6 +399,7 @@
     },
     {
       "id": "pipeline",
+      "pathPatterns": ["scripts/bcd-db/fixture.sql"],
       "aliases": [
         "pipeline"
       ],
@@ -447,6 +460,8 @@
       "pathPatterns": [
           "src/lib/__tests__/teamKpiApiContract.test.ts",
           "src/lib/__tests__/teamKpiHistory.test.ts",
+          "src/lib/__tests__/retainedHistory.test.ts",
+          "src/lib/__tests__/managementReview.test.ts",
           "e2e/team-history/**",
           "artifacts/visual-review/team-history-v1/**"
       ],
@@ -614,6 +629,7 @@
     },
     {
       "id": "erp",
+      "pathPatterns": ["scripts/bcd-db/fixture.sql", "scripts/bcd-db/assertion.sql", "src/lib/fieldVisits/export.ts"],
       "aliases": [
         "ERP"
       ],
@@ -882,6 +898,7 @@
     },
     {
       "id": "task-allocation",
+      "pathPatterns": ["scripts/bcd-db/fixture.sql"],
       "aliases": [
         "city-allocation",
         "task allocation",
@@ -907,7 +924,8 @@
         "docs/contracts/queries.md"
       ],
       "authorityRefs": [
-        "task_allocation"
+        "task_allocation",
+        "task_instance"
       ],
       "capabilityRefs": [
         "task-allocation-batch-rpc"
@@ -937,6 +955,7 @@
       "surfacePaths": [
         "src/app/my-day",
         "src/lib/taskEngine.ts",
+        "src/lib/workMetrics/genuineTask.ts",
         "src/lib/__tests__/myDayConsumption.test.ts",
         "src/app/api/my-day"
       ],

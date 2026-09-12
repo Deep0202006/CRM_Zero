@@ -48,7 +48,7 @@ describe("sales operating layer semantics", () => {
   });
 
   it("sanitizes server search and emits stable attention reason codes", () => {
-    expect(sanitizePipelineSearch("  Acme,(Pune)%  ")).toBe("Acme Pune");
+    expect(sanitizePipelineSearch("  Acme,(Pune)%  ")).toBe("Acme,(Pune)%");
     const reasons = attentionReasons({
       stageAgeDays: 17,
       today: "2026-09-03",
@@ -60,23 +60,39 @@ describe("sales operating layer semantics", () => {
 
   it("computes completed-stage p50, average, sample, and coverage from real intervals", () => {
     const result = completedStageVelocity([
-      { lead_id: "a", expected_stage: "New", target_stage: "Contacted", confirmed_at: "2026-09-02T00:00:00Z" },
-      { lead_id: "b", expected_stage: "New", target_stage: "Contacted", confirmed_at: "2026-09-05T00:00:00Z" },
-    ], new Map([["a", "2026-09-01T00:00:00Z"], ["b", "2026-09-01T00:00:00Z"]]));
-    expect(result.rows).toContainEqual({ stage: "New", p50_days: 2.5, average_days: 2.5, sample_n: 2 });
+      { lead_id: "a", expected_stage: "New", target_stage: "Contacted", confirmed_at: "2026-09-01T00:00:00Z", operation_id: "a1", event_kind: "user_transition", reason: null },
+      { lead_id: "a", expected_stage: "Contacted", target_stage: "Interested", confirmed_at: "2026-09-02T00:00:00Z", operation_id: "a2", event_kind: "user_transition", reason: null },
+      { lead_id: "b", expected_stage: "New", target_stage: "Contacted", confirmed_at: "2026-09-01T00:00:00Z", operation_id: "b1", event_kind: "user_transition", reason: null },
+      { lead_id: "b", expected_stage: "Contacted", target_stage: "Interested", confirmed_at: "2026-09-05T00:00:00Z", operation_id: "b2", event_kind: "user_transition", reason: null },
+    ]);
+    expect(result.rows).toContainEqual({ stage: "Contacted", p50_days: 2.5, average_days: 2.5, sample_n: 2 });
+    expect(result.rows.some(row => row.stage === "New")).toBe(false);
     expect(result).toMatchObject({ sample_n: 2, coverage_n: 2, coverage_pct: 100 });
   });
 
   it("returns exactly 12 real periods with explicit zeroes and direction counts", () => {
     const history = buildSalesHistory(
       [{ lead_id: "a", created_at: "2026-09-03T04:00:00Z" }],
-      [{ lead_id: "a", expected_stage: "Installation", target_stage: "Payment", confirmed_at: "2026-09-03T06:00:00Z" }],
+      [{ lead_id: "a", expected_stage: "Installation", target_stage: "Payment", confirmed_at: "2026-09-03T06:00:00Z", event_kind: "user_transition", reason: null }],
       "2026-09-03",
       "weeks",
     );
     expect(history).toHaveLength(12);
     expect(history.slice(0, -1).every((point) => point.new_leads === 0 && point.movements === 0)).toBe(true);
     expect(history.at(-1)).toMatchObject({ new_leads: 1, successes: 1, movements: 1, advanced: 1, regressed: 0 });
+  });
+
+  it("withholds unproved, corrected, tied and truncated-boundary intervals", () => {
+    const entrance = { lead_id: "a", operation_id: "a1", expected_stage: "New", target_stage: "Contacted", confirmed_at: "2026-09-01T00:00:00Z", event_kind: "user_transition", reason: null };
+    const exit = { ...entrance, operation_id: "a2", expected_stage: "Contacted", target_stage: "Interested", confirmed_at: "2026-09-03T00:00:00Z" };
+    expect(completedStageVelocity([exit]).sample_n).toBe(0);
+    expect(completedStageVelocity([entrance, exit], true)).toMatchObject({ sample_n: 0, coverage_n: 1, coverage_pct: 0 });
+    expect(completedStageVelocity([entrance, { ...entrance, operation_id: "tie" }, exit]).sample_n).toBe(0);
+    expect(completedStageVelocity([{ ...entrance, event_kind: "system_correction", reason: "Correction" }, exit]).sample_n).toBe(0);
+    expect(completedStageVelocity([entrance, { ...exit, expected_stage: "Registration" }]).sample_n).toBe(0);
+    expect(completedStageVelocity([entrance, exit]).rows).toEqual([{ stage: "Contacted", p50_days: 2, average_days: 2, sample_n: 1 }]);
+    const history = buildSalesHistory([], [{ ...exit, expected_stage: "Payment", target_stage: "Converted", event_kind: "system_correction", reason: "Preserved correction" }], "2026-09-03", "weeks");
+    expect(history.at(-1)).toMatchObject({ movements: 1, successes: 0, advanced: 0 });
   });
 
   it("reconciles source denominators and classifies exact follow-up urgency", () => {
@@ -129,7 +145,10 @@ describe("sales operating layer integration guards", () => {
     expect(context).toContain(".limit(20)");
     expect(context).toContain(".limit(10)");
     expect(inspection).toContain(".limit(50)");
-    expect(inspection).toContain("sanitizePipelineSearch");
+    expect(inspection).toContain("parsePipelineFilters");
+    expect(inspection).toContain('rpc("crm_pipeline_register_v1"');
+    expect(inspection).not.toContain("FILTER_ID_LIMIT");
+    expect(context).toContain('.not("status", "in", "(Completed,Missed)")');
     expect(manager).toContain("/api/pipeline/inspection");
     expect(manager).not.toMatch(/\.from\(["'](?:pipeline_funnel_summary|lead_source_performance|avg_time_in_stage)/);
     expect([context, inspection, manager].join("\n")).not.toContain("setInterval");
