@@ -315,13 +315,13 @@ test("Visits full-range strip retains fourteen records while the register pages 
   await expect(composition).toContainText("Full applied range");
   const values = composition.getByRole("list");
   await expect(values).toHaveCount(1);
-  await expect(values).toContainText("Legacy unknown");
+  await expect(values).toContainText("Unknown / legacy outcome");
   await expect(values).toContainText("Installed");
   await expect(page.getByText(/Applied:.*7 of 14 matching visits/)).toBeVisible();
   await page.getByRole("button", { name: "Next", exact: true }).click();
   await expect(composition).toContainText("Full applied range");
   await expect(values).toHaveCount(1);
-  await expect(values).toContainText("Legacy unknown");
+  await expect(values).toContainText("Unknown / legacy outcome");
   await expect(values).toContainText("Payment done");
   const counts = await values.getByRole("listitem").allTextContents();
   const valuesOnly = counts.map(text => Number(text.match(/·\s*([\d,]+)/)?.[1]?.replaceAll(",", "")));
