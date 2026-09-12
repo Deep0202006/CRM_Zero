@@ -1,4 +1,5 @@
 /** @jest-environment node */
+import { readFileSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
 import { aggregateVisitRange, parseVisitRange, parseVisitRegister, visitRegisterResultSchema, visitRangeReportSchema, readVisitEvents, type VisitEvent } from "../fieldVisits/range";
 import { boundedReportJson, createReportResource } from "../analytics/reportResource";
@@ -22,6 +23,21 @@ const client = (fetch: typeof globalThis.fetch) => createClient("https://fixture
 });
 
 describe("B-D bounded read slice", () => {
+  it("keeps Pipeline inner-plan fixture arguments aligned with every prepared SQL parameter", () => {
+    const source = readFileSync("scripts/bcd-db/http.mjs", "utf8");
+    const rows = [...source.matchAll(/\['pipeline-(register|history)', '[^']+', \[([^\]]+)\], '([^']+)', "([^"]+)"\]/g)];
+    expect(rows.map(row => row[1])).toEqual(["register", "history"]);
+    for (const row of rows) {
+      const names = row[2].split(","), types = row[3].split(","), args = row[4].split(",");
+      expect(types).toHaveLength(names.length);
+      expect(args).toHaveLength(names.length);
+      if (row[1] === "register") {
+        expect(names).toHaveLength(12);
+        expect(args.slice(7, 11)).toEqual(["true", "true", "true", "true"]);
+        expect(args[11]).toBe("'2026-09-09'");
+      }
+    }
+  });
   it("reconciles full-range daily, outcome and representative counts without accepting unavailable or truncated charts", () => {
     const report = { kind: "visit-range-v1", scope: scope(), generated_at: "2026-09-09T06:00:00Z",
       retained_source_read: "exhausted", historical_coverage: "uncertified", consistency: "bounded-live-multi-request",

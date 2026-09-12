@@ -70,9 +70,11 @@ for (const [name, args] of [
   console.log(JSON.stringify({ inner_query_plan: `export-${name}`, synthetic_source_rows: 21063, plan }));
 }
 for (const [name, marker, names, types, args] of [
-  ['pipeline-register', 'base', ['p_segment','p_search','p_owner','p_source','p_stage','p_page','p_page_size','p_inspection','p_stale','p_overdue','p_recent','p_as_of'], 'text,text,uuid,text,text,integer,integer,boolean,boolean,boolean,boolean,timestamptz', "'Retailer','Pipeline fixture',null,null,null,1,50,true,true,true,'2026-09-09'"],
+  ['pipeline-register', 'base', ['p_segment','p_search','p_owner','p_source','p_stage','p_page','p_page_size','p_inspection','p_stale','p_overdue','p_recent','p_as_of'], 'text,text,uuid,text,text,integer,integer,boolean,boolean,boolean,boolean,timestamptz', "'Retailer','Pipeline fixture',null,null,null,1,50,true,true,true,true,'2026-09-09'"],
   ['pipeline-history', 'new_leads', ['p_segment','p_from','p_to'], 'text,timestamptz,timestamptz', "'Retailer','2026-09-01','2026-09-09'"],
 ]) {
+  assert.equal(args.split(',').length, names.length, `${name}: fixture arguments must match the complete SQL signature`);
+  assert.equal(types.split(',').length, names.length, `${name}: prepared types must match the complete SQL signature`);
   const blocks = [...migration.matchAll(new RegExp(`(with ${marker} as[\\s\\S]*?) into result (from sized;)`, 'g'))];
   assert.equal(blocks.length, 1, `${name}: exact inner statement`);
   const query = `${blocks[0][1]} ${blocks[0][2]}`;
