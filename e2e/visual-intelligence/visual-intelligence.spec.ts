@@ -364,7 +364,7 @@ test("Team Intelligence preserves exact contribution totals with one initial KPI
   expect(requests).toBe(2);
   await page.getByRole("tab", { name: /Pipeline inspection/ }).click();
   await expect(page.getByRole("region", { name: "Current stage occupancy" })).toBeVisible();
-  await page.getByText("Inspection-list filters only", { exact: true }).click();
+  await page.getByText("Register filters", { exact: true }).click();
   await page.getByLabel("Recent change").check();
   await expect.poll(() => inspectionRequests.length).toBe(2);
   expect(new URL(inspectionRequests.at(-1)!).searchParams.get("recentChange")).toBe("true");

@@ -101,7 +101,9 @@ do $$ declare signature text; f record; a jsonb; b jsonb; expected jsonb; begin
     'public.crm_visit_register_v1(date,date,uuid,text,text,text,date,integer)',
     'public.crm_visit_representatives_v1(text,text,uuid,uuid)',
     'public.crm_visit_export_v1(date,date,uuid,text,text,text,date,timestamptz,uuid)',
-    'public.crm_visit_export_erp_v1()'
+    'public.crm_visit_export_erp_v1()',
+    'public.crm_pipeline_register_v1(text,text,uuid,text,text,integer,integer,boolean,boolean,boolean,boolean,timestamptz)',
+    'public.crm_pipeline_history_v1(text,timestamptz,timestamptz)'
   ] loop
     select * into strict f from pg_proc where oid=signature::regprocedure;
     if f.prosecdef or f.provolatile<>'s' or not (f.proconfig @> array['search_path=pg_catalog, public','statement_timeout=7s'])
