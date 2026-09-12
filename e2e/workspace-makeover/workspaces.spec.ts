@@ -36,7 +36,7 @@ test("Admin Review is lazy and reconciles current records, employee scope and re
   await review.getByRole("button", { name: /^Allocated targets/ }).click();
   await expect(review).toContainText("Allocated targets have no recorded due date");
   await expect(review.getByRole("button", { name: /Western regional allocated client/ })).toBeVisible();
-  await review.getByLabel("Current employee", { exact: true }).selectOption(employee);
+  await review.getByRole("combobox", { name: "Current employee", exact: true }).selectOption(employee);
   await review.getByRole("button", { name: "Apply employee", exact: true }).click();
   await expect(review.getByRole("button", { name: /^Allocated targets/ })).toHaveText("Allocated targets · 0");
   await review.getByRole("button", { name: /^Tasks/ }).click(); await expect(missed).toBeVisible();
