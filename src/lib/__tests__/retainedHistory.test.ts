@@ -147,7 +147,9 @@ it.each(["visits", "mappings_completed"] as const)("fails closed on malformed, f
       url.pathname = `/${table}`; targets.push(url.pathname + url.search); return resource.fetch(url, init);
     } } });
     try {
-      const scope = parseHistoryScope(new URLSearchParams(`from=${date}&to=${date}&metric=${metric}`), generatedAt)!;
+      // CI may cross IST midnight after the lifecycle fixture completes.
+      const from = mapping ? new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(Date.parse(generatedAt) - 86400000)) : date;
+      const scope = parseHistoryScope(new URLSearchParams(`from=${from}&to=${date}&metric=${metric}`), generatedAt)!;
       const result = await readRetainedHistory(client, scope, cohort, generatedAt, resource);
       const expected = mapping ? Array.from({ length: 101 }, (_, n) => uuid(`history-mapping${n + 1}`))
         : [...Array.from({ length: 120 }, (_, n) => uuid(`busy-call${n + 1}`)), ...Array.from({ length: 101 }, (_, n) => uuid(`micro-call${n + 1}`))];

@@ -1,8 +1,53 @@
 import { expect, test } from "@playwright/test";
 import { mkdir } from "node:fs/promises";
-import { leads, report, setup, tasks, today, visits } from "./fixtures";
+import { actor, employee, leads, report, setup, tasks, today, visits } from "./fixtures";
 import { addISTDateDays } from "../../src/lib/dateTime";
 import { aggregateVisitRange, parseVisitRange } from "../../src/lib/fieldVisits/range";
+import { buildManagementReview, type ReviewTask } from "../../src/lib/teamKpi/review";
+
+test("Admin Review is lazy and reconciles current records, employee scope and read-only Missed detail", async ({ page }) => {
+  const requests = await setup(page);
+  const rows: ReviewTask[] = tasks.map(row => ({ ...row, template_id: null }) as ReviewTask);
+  rows.push({ ...rows[0], task_id: "94000000-0000-4000-a000-000000000009", title: "Missed regional service follow-up", status: "Missed", assigned_to: employee });
+  const cohort = [{ user_id: actor, name: "Asha Mehta", role: "Field" }, { user_id: employee, name: "Nikhil Rao — Western Regional Field Operations", role: "Field" }];
+  let failed = false;
+  await page.route("**/api/team-kpi/review?**", route => {
+    if (failed) return route.fulfill({ status: 503, json: { message: "Synthetic workload unavailable" } });
+    const selected = new URL(route.request().url()).searchParams.get("employee");
+    return route.fulfill({ json: buildManagementReview({ members: cohort, employee: selected, today, generatedAt: new Date().toISOString(), tasks: rows,
+      targets: [{ target_id: "96000000-0000-4000-a000-000000000001", assigned_to_user_id: actor, target_name: "Western regional allocated client", target_username: "regional-client", city: "Pune", is_completed: false, created_at: `${today}T02:00:00Z` }], taskError: null, targetError: null }) });
+  });
+  await page.setViewportSize({ width: 1440, height: 900 }); await page.goto("/manager/kpi");
+  await expect(page.getByRole("button", { name: "Asha Mehta", exact: true })).toBeVisible();
+  expect(requests.filter(path => path.startsWith("/api/team-kpi/review"))).toHaveLength(0);
+  await page.getByRole("tab", { name: "Review", exact: true }).click();
+  const review = page.getByRole("region", { name: "Admin current workload review" });
+  await expect(review.getByRole("button", { name: /^Tasks/ })).toHaveText("Tasks · 4");
+  const missed = review.getByRole("button", { name: /Missed regional service follow-up/ });
+  await missed.click();
+  const rail = page.getByRole("complementary", { name: "Missed regional service follow-up", exact: true });
+  await expect(rail).toContainText("94000000-0000-4000-a000-000000000009");
+  await expect(rail).toContainText("Missed is read-only");
+  await expect(rail.getByRole("link", { name: /Open your agenda/ })).toHaveCount(0);
+  await page.setViewportSize({ width: 390, height: 900 });
+  const sheet = page.getByRole("dialog", { name: "Missed regional service follow-up", exact: true });
+  await expect(sheet).toContainText("94000000-0000-4000-a000-000000000009");
+  await page.keyboard.press("Escape"); await expect(missed).toBeFocused();
+  await review.getByRole("button", { name: /^Allocated targets/ }).click();
+  await expect(review).toContainText("Allocated targets have no recorded due date");
+  await expect(review.getByRole("button", { name: /Western regional allocated client/ })).toBeVisible();
+  await review.getByLabel("Current employee", { exact: true }).selectOption(employee);
+  await review.getByRole("button", { name: "Apply employee", exact: true }).click();
+  await expect(review.getByRole("button", { name: /^Allocated targets/ })).toHaveText("Allocated targets · 0");
+  await review.getByRole("button", { name: /^Tasks/ }).click(); await expect(missed).toBeVisible();
+  await expect(review.getByRole("button", { name: /Confirm the recorded visit/ })).toHaveCount(0);
+  failed = true; await review.getByRole("button", { name: "Refresh review", exact: true }).click();
+  await expect(review.getByRole("alert")).toContainText("Previous applied workload remains visible");
+  await expect(missed).toBeVisible();
+  expect(requests.filter(path => path.startsWith("/api/team-kpi/review"))).toHaveLength(3);
+  await page.getByRole("button", { name: "Use dark theme" }).click();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1)).toBe(true);
+});
 
 test("Visits full-range chart reconciles 31 busy dates without pager or refresh fanout", async ({ page }) => {
   test.setTimeout(120_000);
