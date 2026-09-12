@@ -362,7 +362,7 @@
         "src/lib/clientOptions.ts",
         "src/lib/db.ts"
       ],
-      "pathPatterns": [],
+      "pathPatterns": ["scripts/bcd-db/fixture.sql"],
       "serverBoundaries": [],
       "contractPaths": [
         "docs/contracts/mappings.md"

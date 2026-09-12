@@ -18,9 +18,17 @@ case "${1:-}" in
     awk '/^-- PART 1B/,/^-- PART 1D/ {print}' supabase/migrations/002_addendum.sql | psql -X -v ON_ERROR_STOP=1
     awk '/^ALTER TABLE public.leads ADD COLUMN IF NOT EXISTS stage_entered_at/,/;$/ {print}' supabase/migrations/002_addendum.sql | psql -X -v ON_ERROR_STOP=1
     awk '/^alter table public.leads add column if not exists lead_source/,/;$/ {print} /^alter table public.leads add column if not exists area / {print}' supabase/migrations/003_pipeline_optimization.sql | psql -X -v ON_ERROR_STOP=1
-    awk '/^create or replace function public.track_lead_stage_change/ {exit} {print}' supabase/migrations/032_pipeline_authoritative_transitions.sql | psql -X -v ON_ERROR_STOP=1
+    awk '/^create or replace function public.transition_lead_stage_v2/ {exit} {print}' supabase/migrations/032_pipeline_authoritative_transitions.sql | psql -X -v ON_ERROR_STOP=1
     awk '/^-- Pipeline may not create employee work/ {exit} {print}' supabase/migrations/037_pipeline_authority_and_resource_budget.sql | psql -X -v ON_ERROR_STOP=1
     psql -X -v ON_ERROR_STOP=1 -c 'grant select on public.tasks,public.call_logs,public.pipeline_transition_operations to service_role;'
+    awk '/^ALTER TABLE public.call_logs/ {active=1} /^ALTER TABLE public.client_queries/ {exit} active {print}' supabase/migrations/029_team_kpi_source_sync_repair.sql | psql -X -v ON_ERROR_STOP=1
+    awk '/^CREATE TABLE IF NOT EXISTS public.mapping_requests /,/^\);/ {print} /^ALTER TABLE public.mapping_requests ENABLE ROW LEVEL SECURITY/ {print}' supabase/migrations/006_mapping_requests.sql | psql -X -v ON_ERROR_STOP=1
+    awk '/^ALTER TABLE public.mapping_requests$/,/ADD COLUMN IF NOT EXISTS requested_by.*;/ {print}' supabase/migrations/026_team_kpi_repair.sql | psql -X -v ON_ERROR_STOP=1
+    psql -X -v ON_ERROR_STOP=1 -f supabase/migrations/044_field_visit_pincode.sql
+    psql -X -v ON_ERROR_STOP=1 -f supabase/migrations/051_mapping_attribution_visibility.sql
+    awk '/^alter table public.mapping_requests/ {active=1} /^alter table public.distributor_accounts add constraint/ {exit} active {print}' supabase/migrations/054_creator_updates_billed_erp_payment.sql | psql -X -v ON_ERROR_STOP=1
+    awk '/^CREATE INDEX IF NOT EXISTS idx_call_logs_kpi_user_timestamp/,/;$/ {print} /^CREATE INDEX IF NOT EXISTS idx_mapping_requests_kpi_mapper_time/,/;$/ {print}' supabase/migrations/029_team_kpi_source_sync_repair.sql | psql -X -v ON_ERROR_STOP=1
+    psql -X -v ON_ERROR_STOP=1 -c 'grant select on public.mapping_requests to service_role; grant select on public.users,public.user_capabilities to authenticated; grant select,insert,update on public.mapping_requests to authenticated;'
     awk '/^create or replace function public.erp_normalized_key_v1/,/^grant all on public.erp_systems to service_role;/ {print}' supabase/migrations/047_distributor_erp_partner_visibility.sql | psql -X -v ON_ERROR_STOP=1
     awk '/^alter table public.field_visits$/,/^create or replace function public.confirm_field_visit_erp_v1/ {if (/^create or replace function/) exit; print}' supabase/migrations/048_field_visit_erp_observation.sql | psql -X -v ON_ERROR_STOP=1
     awk '/^create or replace function public.field_visit_erp_intelligence_v1/,/^grant execute on function public.field_visit_erp_intelligence_v1/ {print}' supabase/migrations/048_field_visit_erp_observation.sql | psql -X -v ON_ERROR_STOP=1

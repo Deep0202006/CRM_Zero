@@ -131,6 +131,35 @@ it.each(["visits", "mappings_completed"] as const)("fails closed on malformed, f
 
 // Real HTTP, enabled only by the disposable GitHub runner fixture.
 (process.env.BCD_HTTP_FIXTURE_TOKEN ? describe : describe.skip)("real PostgREST retained history", () => {
+  it.each(["calls_made", "mappings_completed"] as const)("exhausts native %s with exact identities, microsecond cursors and foreign-author exclusion", async metric => {
+    expect(process.platform).toBe("linux"); expect(process.env.GITHUB_ACTIONS).toBe("true");
+    expect(process.env.CRM_POSTGRES_SERVICE_DISPOSABLE).toBe("1"); expect(process.env.PGHOST).toBe("127.0.0.1");
+    expect(process.env.PGDATABASE).toMatch(/^kernel_bcd_readers_postgres_[a-f0-9]{8}_0$/);
+    const uuid = (name: string) => { const h = createHash("md5").update(name).digest("hex"); return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`; };
+    const cohort = [uuid("user1"), ...Array.from({ length: 199 }, (_, n) => uuid(`absent-history-user${n}`))];
+    const mapping = metric === "mappings_completed", table = mapping ? "mapping_requests" : "call_logs";
+    const generatedAt = new Date().toISOString();
+    const date = mapping ? new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(generatedAt)) : "2026-09-08";
+    const resource = createReportResource(new AbortController().signal), targets: string[] = [];
+    const client = createClient("http://127.0.0.1:3103", process.env.BCD_HTTP_FIXTURE_TOKEN!, { auth: { persistSession: false, autoRefreshToken: false }, global: { fetch: (input, init) => {
+      const url = new URL(String(input));
+      if (url.origin !== "http://127.0.0.1:3103" || url.pathname !== `/rest/v1/${table}`) throw Error("FIXTURE_HTTP_SCOPE");
+      url.pathname = `/${table}`; targets.push(url.pathname + url.search); return resource.fetch(url, init);
+    } } });
+    try {
+      const scope = parseHistoryScope(new URLSearchParams(`from=${date}&to=${date}&metric=${metric}`), generatedAt)!;
+      const result = await readRetainedHistory(client, scope, cohort, generatedAt, resource);
+      const expected = mapping ? Array.from({ length: 101 }, (_, n) => uuid(`history-mapping${n + 1}`))
+        : [...Array.from({ length: 120 }, (_, n) => uuid(`busy-call${n + 1}`)), ...Array.from({ length: 101 }, (_, n) => uuid(`micro-call${n + 1}`))];
+      expect(result.events.map(row => row.id).sort()).toEqual(expected.sort());
+      expect(result.events.every(row => row.user_id === uuid("user1"))).toBe(true);
+      expect(targets).toHaveLength(mapping ? 3 : 4);
+      expect(resource.diagnostics.reader_http_requests).toBe(targets.length);
+      expect(targets.slice(1).every(target => new URL(target, "http://127.0.0.1:3103").searchParams.has("or"))).toBe(true);
+      if (!mapping) expect(result.events.find(row => row.id === uuid("micro-call1"))?.timestamp).toBe("2026-09-08T04:00:00.000001Z");
+      console.log(JSON.stringify({ native_history_http: metric, cohort: cohort.length, exact_ids: expected.length, requests_including_eof: targets.length, maximum_request_target_bytes: Math.max(...targets.map(target => Buffer.byteLength(target))), ...resource.diagnostics }));
+    } finally { resource.finish(); }
+  }, 15000);
   it("exhausts the 200-identity native Visit predicate through capped first and cursor HTTP requests", async () => {
     expect(process.platform).toBe("linux"); expect(process.env.GITHUB_ACTIONS).toBe("true");
     expect(process.env.CRM_POSTGRES_SERVICE_DISPOSABLE).toBe("1"); expect(process.env.PGHOST).toBe("127.0.0.1");

@@ -7,6 +7,11 @@ do $$ begin
 end $$;
 grant usage on schema public to service_role;
 grant select on public.users, public.leads, public.field_visits, public.user_capabilities to service_role;
+-- Reuse the existing Mapping fixture's claims helpers, without its destructive schema bootstrap.
+create schema if not exists auth;
+create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
+create function public.has_capability(p_code text) returns boolean language sql stable security definer set search_path=pg_catalog,public as $$ select exists(select 1 from public.user_capabilities where user_id=auth.uid() and capability_code=p_code) $$;
+grant usage on schema public,auth to authenticated,service_role;
 
 -- Fail closed if a tracked definition/extraction changes or silently produces no SQL.
 do $$ begin

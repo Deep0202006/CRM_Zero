@@ -59,3 +59,27 @@ analyze public.pipeline_transition_operations;
 analyze public.users;
 analyze public.leads;
 analyze public.field_visits;
+
+-- Genuine current Mapping snapshots: the tracked 054 guard owns attribution/time.
+select set_config('request.jwt.claim.sub',md5('user1')::uuid::text,false);
+insert into public.mapping_requests(request_id,distributor_name_unregistered,retailer_name_unregistered)
+select md5('history-mapping'||g)::uuid,'Synthetic distributor','Synthetic retailer '||g from generate_series(1,101) g;
+update public.mapping_requests set status='Completed';
+do $$ declare previous_time timestamptz; begin
+  select completed_at into previous_time from public.mapping_requests where request_id=md5('history-mapping1')::uuid;
+  update public.mapping_requests set status='Pending' where request_id=md5('history-mapping1')::uuid;
+  if exists(select 1 from public.mapping_requests where request_id=md5('history-mapping1')::uuid and (completed_at is not null or mapped_by_id_snapshot is not null)) then raise exception 'REOPEN_RETAINS_FALSE_COMPLETION'; end if;
+  update public.mapping_requests set status='Completed' where request_id=md5('history-mapping1')::uuid;
+  if not exists(select 1 from public.mapping_requests where request_id=md5('history-mapping1')::uuid and completed_at>previous_time and mapped_by_id_snapshot=md5('user1')::uuid) then raise exception 'RECOMPLETION_NOT_RESTAMPED'; end if;
+end $$;
+select set_config('request.jwt.claim.sub',md5('user2')::uuid::text,false);
+insert into public.mapping_requests(request_id,distributor_name_unregistered,retailer_name_unregistered)
+values(md5('foreign-history-mapping')::uuid,'Foreign distributor','Foreign retailer');
+update public.mapping_requests set status='Completed' where request_id=md5('foreign-history-mapping')::uuid;
+select set_config('request.jwt.claim.sub','',false);
+-- Microsecond precision survives the native Call cursor; no historical UPDATE.
+insert into public.call_logs(log_id,user_id,lead_id,timestamp,outcome)
+select md5('micro-call'||g)::uuid,md5('user1')::uuid,md5('pipeline1')::uuid,
+  timestamptz '2026-09-08 04:00:00+00'+g*interval '1 microsecond','Contacted' from generate_series(1,101) g;
+analyze public.mapping_requests;
+analyze public.call_logs;
