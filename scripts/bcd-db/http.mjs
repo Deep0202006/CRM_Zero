@@ -69,6 +69,21 @@ for (const [name, args] of [
   assert.deepEqual(JSON.parse(psql(`${exportPrepare} execute bcd_export(${args});`)), JSON.parse(psql(`select public.crm_visit_export_v1(${args});`)));
   console.log(JSON.stringify({ inner_query_plan: `export-${name}`, synthetic_source_rows: 21063, plan }));
 }
+for (const [name, marker, names, types, args] of [
+  ['pipeline-register', 'base', ['p_segment','p_search','p_owner','p_source','p_stage','p_page','p_page_size','p_inspection','p_stale','p_overdue','p_recent','p_as_of'], 'text,text,uuid,text,text,integer,integer,boolean,boolean,boolean,boolean,timestamptz', "'Retailer','Pipeline fixture',null,null,null,1,50,true,true,true,'2026-09-09'"],
+  ['pipeline-history', 'new_leads', ['p_segment','p_from','p_to'], 'text,timestamptz,timestamptz', "'Retailer','2026-09-01','2026-09-09'"],
+]) {
+  const blocks = [...migration.matchAll(new RegExp(`(with ${marker} as[\\s\\S]*?) into result (from sized;)`, 'g'))];
+  assert.equal(blocks.length, 1, `${name}: exact inner statement`);
+  const query = `${blocks[0][1]} ${blocks[0][2]}`;
+  assert.deepEqual([...new Set(query.match(/\bp_\w+\b/g))].sort(), [...names].sort());
+  const command = `set search_path=pg_catalog,public; set statement_timeout='7s'; prepare pipeline_inner(${types}) as ${query.replace(/\bp_\w+\b/g, key => `$${names.indexOf(key)+1}`)}`;
+  const plan = JSON.parse(psql(`${command} explain(analyze,buffers,format json) execute pipeline_inner(${args});`));
+  assert.notEqual(plan[0].Plan['Node Type'], 'Function Scan');
+  assert.equal(plan[0].Plan['Actual Rows'], 1);
+  assert.deepEqual(JSON.parse(psql(`${command} execute pipeline_inner(${args});`)), JSON.parse(psql(`select public.crm_${name.replace('-', '_')}_v1(${args});`)));
+  console.log(JSON.stringify({ inner_query_plan: name, plan }));
+}
 const directory = mkdtempSync(join(tmpdir(), 'crm-bcd-http-'));
 let server;
 let observed;
@@ -120,6 +135,20 @@ try {
     return { status: response.status, data: JSON.parse(text), bytes: Buffer.byteLength(text) };
   };
   const scope = { p_from: '2026-08-01', p_to: '2026-08-03' };
+  const pipelineScope = { p_segment: 'Retailer', p_search: 'Pipeline fixture', p_inspection: true, p_overdue: true, p_recent: true, p_as_of: '2026-09-09' };
+  const pipeline = await rpc(pipelineScope, token, 'crm_pipeline_register_v1');
+  assert.equal(pipeline.status, 200, JSON.stringify(pipeline.data));
+  assert.equal(pipeline.data.total, 600); assert.equal(pipeline.data.leads.length, 50);
+  assert.ok(pipeline.data.leads.every(row => row.next_task?.task_id && row.recent_transition?.operation_id));
+  assert.ok(pipeline.bytes <= 1048576);
+  const pipelineHistory = await rpc({ p_segment: 'Retailer', p_from: '2026-09-01', p_to: '2026-09-09' }, token, 'crm_pipeline_history_v1');
+  assert.equal(pipelineHistory.status, 200, JSON.stringify(pipelineHistory.data));
+  assert.equal(pipelineHistory.data.transitions.length, 600); assert.equal(pipelineHistory.data.transition_limited, false);
+  for (const authorization of ['', jwt('authenticated')]) {
+    assert.ok([401,403].includes((await rpc(pipelineScope, authorization, 'crm_pipeline_register_v1')).status));
+    assert.ok([401,403].includes((await rpc({ p_segment: 'Retailer', p_from: '2026-09-01', p_to: '2026-09-09' }, authorization, 'crm_pipeline_history_v1')).status));
+  }
+  console.log(JSON.stringify({ pipeline_http: { register_rows: pipeline.data.leads.length, matched: pipeline.data.total, history_events: pipelineHistory.data.transitions.length, register_bytes: pipeline.bytes, history_bytes: pipelineHistory.bytes } }));
   for (const authorization of ['', jwt('authenticated')]) assert.ok([401, 403].includes((await rpc(scope, authorization)).status));
   for (const name of ['crm_visit_register_v1','crm_visit_representatives_v1','crm_visit_export_v1','crm_visit_export_erp_v1']) {
     for (const authorization of ['',jwt('authenticated')]) assert.ok([401,403].includes((await rpc({},authorization,name)).status));

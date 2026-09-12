@@ -13,6 +13,14 @@ case "${1:-}" in
     awk '/^ALTER TABLE public.field_visits$/,/^  ADD COLUMN IF NOT EXISTS pincode text NULL;/ {print; if (/^  ADD COLUMN IF NOT EXISTS pincode text NULL;/) exit}' supabase/migrations/044_field_visit_pincode.sql | psql -X -v ON_ERROR_STOP=1
     awk '/^alter table public.field_visits$/,/^  add column if not exists selfie_purge_started_at timestamptz;/ {print; if (/^  add column if not exists selfie_purge_started_at timestamptz;/) exit}' supabase/migrations/036_field_visit_evidence_lifecycle.sql | psql -X -v ON_ERROR_STOP=1
     psql -X -v ON_ERROR_STOP=1 -f scripts/bcd-db/synthetic-schema.sql
+    # Reuse the exact task/call and Pipeline definitions needed by the read slice.
+    awk '/^CREATE TABLE IF NOT EXISTS call_logs/,/^-- 11\. Task Upload Batches Table/ {print}' supabase/schema.sql | psql -X -v ON_ERROR_STOP=1
+    awk '/^-- PART 1B/,/^-- PART 1D/ {print}' supabase/migrations/002_addendum.sql | psql -X -v ON_ERROR_STOP=1
+    awk '/^ALTER TABLE public.leads ADD COLUMN IF NOT EXISTS stage_entered_at/,/;$/ {print}' supabase/migrations/002_addendum.sql | psql -X -v ON_ERROR_STOP=1
+    awk '/^alter table public.leads add column if not exists lead_source/,/;$/ {print} /^alter table public.leads add column if not exists area / {print}' supabase/migrations/003_pipeline_optimization.sql | psql -X -v ON_ERROR_STOP=1
+    awk '/^create or replace function public.track_lead_stage_change/ {exit} {print}' supabase/migrations/032_pipeline_authoritative_transitions.sql | psql -X -v ON_ERROR_STOP=1
+    awk '/^-- Pipeline may not create employee work/ {exit} {print}' supabase/migrations/037_pipeline_authority_and_resource_budget.sql | psql -X -v ON_ERROR_STOP=1
+    psql -X -v ON_ERROR_STOP=1 -c 'grant select on public.tasks,public.call_logs,public.pipeline_transition_operations to service_role;'
     awk '/^create or replace function public.erp_normalized_key_v1/,/^grant all on public.erp_systems to service_role;/ {print}' supabase/migrations/047_distributor_erp_partner_visibility.sql | psql -X -v ON_ERROR_STOP=1
     awk '/^alter table public.field_visits$/,/^create or replace function public.confirm_field_visit_erp_v1/ {if (/^create or replace function/) exit; print}' supabase/migrations/048_field_visit_erp_observation.sql | psql -X -v ON_ERROR_STOP=1
     awk '/^create or replace function public.field_visit_erp_intelligence_v1/,/^grant execute on function public.field_visit_erp_intelligence_v1/ {print}' supabase/migrations/048_field_visit_erp_observation.sql | psql -X -v ON_ERROR_STOP=1

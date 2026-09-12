@@ -21,6 +21,7 @@ export default function TeamHistory({ self = false }: { self?: boolean }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const trigger = useRef<HTMLButtonElement | null>(null);
   const [loading, setLoading] = useState(false), [error, setError] = useState<string | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
   const pending = useRef<AbortController | null>(null);
   const load = useCallback(async (filters: Filters) => {
     pending.current?.abort();
@@ -54,7 +55,8 @@ export default function TeamHistory({ self = false }: { self?: boolean }) {
   const retained = report?.retained_record_history;
   const scopeLabel = self ? "Your confirmed records" : appliedEmployee?.name ?? "Whole current roster";
   return <div className="space-y-3">
-    <form className="space-y-2" onSubmit={event => { event.preventDefault(); void load(draft); }}>
+    <Button variant="outline" size="sm" className="xl:hidden" aria-expanded={showFilters} aria-controls="history-filters" onClick={() => setShowFilters(value => !value)}>{showFilters ? "Hide filters" : "Change range or metric"}</Button>
+    <form id="history-filters" className={`${showFilters ? "block" : "hidden xl:block"} space-y-2`} onSubmit={event => { event.preventDefault(); void load(draft); }}>
       <div className="grid grid-cols-2 items-end gap-2 xl:grid-cols-5">
         <label className="text-sm">From (IST)<input className="field-control w-full" type="date" required max={getCurrentISTDate()} value={draft.from} onChange={event => setDraft({ ...draft, from: event.target.value })} /></label>
         <label className="text-sm">Through (IST)<input className="field-control w-full" type="date" required max={getCurrentISTDate()} value={draft.to} onChange={event => setDraft({ ...draft, to: event.target.value })} /></label>
@@ -66,11 +68,12 @@ export default function TeamHistory({ self = false }: { self?: boolean }) {
       {dirty && <p role="status" className="text-xs">Filters changed. The report still shows its previous applied scope.</p>}
     </form>
     {error && <p role="alert" className="alert-panel alert-panel--danger">{error} {report ? "Previous applied report remains visible." : "No report is available."}</p>}
+    {error && !report && <Button size="sm" variant="outline" disabled={loading} onClick={() => void load(initial.current)}>Retry history</Button>}
     {loading && <p role="status">Loading retained observations… {report && "Previous applied report remains visible."}</p>}
     {report && retained && <>
       <header className="space-y-1"><div className="flex flex-wrap items-center justify-between gap-2"><h2 className="section-title text-balance">{scopeLabel} · {report.scope.from} to {report.scope.to}</h2><Button size="sm" variant="outline" disabled={loading} onClick={() => void load({ from: report.scope.from, to: report.scope.to, employee: report.scope.employee ?? "", metric: retained.metric })}>Refresh history</Button></div>
         <p className="text-sm tabular-nums"><strong>{display(retained.current)}</strong> {RETAINED_METRICS[retained.metric].label} · Own previous period: {display(retained.previous)} · {retainedChangeLabel(retained.comparison, retained.previous)}</p>
-        <p className="text-xs text-[var(--text-secondary)]">Read at {new Date(report.generated_at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST · {retained.source_read === "exhausted" ? "Selected retained source exhausted" : "Source unavailable"} · Historical capture uncertified · Live multi-request consistency{report.coverage.partial_today ? " · Today is partial" : ""}</p>
+        <p className="text-xs text-[var(--text-secondary)]">Updated {new Date(report.generated_at).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" })} IST · {retained.source_read === "exhausted" ? "Retained records, capture uncertified" : "Source unavailable"}{report.coverage.partial_today ? " · Today is partial" : ""}</p>
       </header>
       <div className="workspace-columns"><div className="min-w-0 space-y-3">
         <RetainedHistoryChart from={report.scope.from} previousFrom={report.scope.previous_from} values={retained.daily} previousValues={retained.previous_daily} label={RETAINED_METRICS[retained.metric].label} scope={scopeLabel} />

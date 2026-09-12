@@ -1,3 +1,28 @@
+do $$ declare r jsonb; begin
+  if to_regclass('public.tasks') is null or to_regclass('public.call_logs') is null
+    or to_regclass('public.pipeline_transition_operations_lead_confirmed_idx') is null
+    or not exists(select 1 from pg_constraint where conrelid='public.pipeline_transition_operations'::regclass and confrelid='public.leads'::regclass and contype='f')
+    then raise exception 'PIPELINE_TRACKED_SCHEMA_EXTRACTION'; end if;
+  r:=public.crm_pipeline_register_v1('Retailer',p_search=>'Matching business');
+  if (r->>'total')::integer<>61 or jsonb_array_length(r->'leads')<>50 then raise exception 'PIPELINE_LITERAL_REGISTER'; end if;
+  r:=public.crm_pipeline_register_v1('Retailer',p_search=>'Pipeline fixture',p_inspection=>true,p_overdue=>true,p_recent=>true,p_as_of=>'2026-09-09');
+  if (r->>'total')::integer<>600 or jsonb_array_length(r->'leads')<>50 then raise exception 'PIPELINE_GLOBAL_CANDIDATE_CAP'; end if;
+  r:=public.crm_pipeline_register_v1('Retailer',p_search=>'Pipeline fixture',p_stage=>'New');
+  if (r->>'total')::integer<>300 or (select sum((v->>'count')::integer) from jsonb_array_elements(r->'stages') v)<>600 then raise exception 'PIPELINE_FACET_SCOPE'; end if;
+  r:=public.crm_pipeline_register_v1('Retailer',p_search=>'Neighbor exact scope',p_inspection=>true,p_as_of=>'2026-09-09');
+  if not exists(select 1 from jsonb_array_elements(r->'leads') v where v->>'lead_id'=md5('pipeline2')::uuid::text
+    and v->'next_task'->>'task_id'=md5('pipeline-task2')::uuid::text and v->'recent_call'->>'log_id'=md5('neighbor-call')::uuid::text) then raise exception 'PIPELINE_BUSY_NEIGHBOR_CONTEXT'; end if;
+  r:=public.crm_pipeline_history_v1('Retailer','2026-09-01','2026-09-09');
+  if jsonb_array_length(r->'transitions')<>600 or (r->>'transition_limited')::boolean then raise exception 'PIPELINE_HISTORY_SEGMENT_BEFORE_LIMIT'; end if;
+  if not exists(select 1 from jsonb_array_elements(r->'transitions') v where v->>'lead_id'=md5('pipeline2')::uuid::text)
+    or exists(select 1 from jsonb_array_elements(r->'leads') v where v->>'lead_id'=md5('pipeline2')::uuid::text) then raise exception 'PIPELINE_OLD_LEAD_EVENT_LOST'; end if;
+  r:=public.crm_pipeline_history_v1('Distributor','2026-09-01','2026-09-09');
+  if jsonb_array_length(r->'transitions')<>2000 or not (r->>'transition_limited')::boolean then raise exception 'PIPELINE_HISTORY_SENTINEL'; end if;
+  if has_function_privilege('anon','public.crm_pipeline_register_v1(text,text,uuid,text,text,integer,integer,boolean,boolean,boolean,boolean,timestamptz)','execute')
+    or has_function_privilege('authenticated','public.crm_pipeline_history_v1(text,timestamptz,timestamptz)','execute') then raise exception 'PIPELINE_PUBLIC_READ'; end if;
+  begin perform public.crm_pipeline_register_v1('Retailer',p_page=>401); raise exception 'PIPELINE_PAGE_UNBOUNDED'; exception when invalid_parameter_value then null; end;
+  begin perform public.crm_pipeline_history_v1('Retailer',now()-interval '368 days',now()); raise exception 'PIPELINE_HISTORY_UNBOUNDED'; exception when invalid_parameter_value then null; end;
+end $$;
 do $$ begin
   if to_regclass('public.field_visits_erp_latest_business_idx') is null
     or to_regprocedure('public.field_visit_erp_intelligence_v1()') is null

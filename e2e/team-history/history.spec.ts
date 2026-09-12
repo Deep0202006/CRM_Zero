@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { mkdir } from "node:fs/promises";
 import { addISTDateDays } from "../../src/lib/dateTime";
 import { buildHistoryReport, parseHistoryScope } from "../../src/lib/teamKpi/history";
+import { RETAINED_METRICS } from "../../src/lib/teamKpi/retainedHistory";
 import { setup, actor, employee, today, report as todayReport } from "../workspace-makeover/fixtures";
 
 const members = [{ user_id: actor, name: "Asha Mehta", role: "Administrator" }, { user_id: employee, name: "Nikhil Rao — Field Operations and Regional Customer Support", role: "Field" }];
@@ -28,7 +29,7 @@ test("typed history reconciles 31 dates, personal change, metric, Sheet, keyboar
   await expect(page.getByRole("heading", { name: "Team KPI register", exact: true })).toBeVisible();
   expect(requests.filter(value => value.startsWith("/api/team-kpi?"))).toHaveLength(0);
   await page.getByRole("tab", { name: "Employee history", exact: true }).focus(); await page.keyboard.press("Enter");
-  const register = page.getByRole("region", { name: "Employee history register", exact: true });
+  const register = page.getByRole("region", { name: "Employee history register", exact: true }).and(page.locator('[tabindex="0"]'));
   await expect(register).toContainText("1,234");
   await page.getByLabel("From (IST)").fill(addISTDateDays(today, -31));
   await page.getByRole("button", { name: "Apply range", exact: true }).click();
@@ -41,7 +42,7 @@ test("typed history reconciles 31 dates, personal change, metric, Sheet, keyboar
   await dailyToggle.click();
   const requestCount = requests.length, chart = page.locator("svg.recharts-surface:visible");
   await chart.focus(); await page.keyboard.press("ArrowRight");
-  await expect(page.locator(".recharts-tooltip-wrapper:visible")).toContainText("Retained calls");
+  await expect(page.locator(".recharts-tooltip-wrapper:visible")).toContainText(RETAINED_METRICS.calls_made.label);
   await expect(register).toContainText("617"); await expect(register).toContainText("100%");
   if (capture) await mkdir(directory, { recursive: true });
   for (const theme of ["light", "dark"] as const) {
@@ -68,7 +69,7 @@ test("typed history reconciles 31 dates, personal change, metric, Sheet, keyboar
   await page.getByLabel("Record type").selectOption("visits");
   await expect(rail).toContainText("1,234");
   await page.getByRole("button", { name: "Apply range", exact: true }).click();
-  await expect(rail).toContainText("Retained visits"); await expect(rail).toContainText("93");
+  await expect(rail).toContainText(RETAINED_METRICS.visits.label); await expect(rail).toContainText("93");
   await page.getByLabel("Record type").selectOption("mappings_completed");
   await page.getByRole("button", { name: "Apply range", exact: true }).click();
   await expect(rail).toContainText("Mapping"); await expect(rail).toContainText("snapshot");
@@ -80,13 +81,13 @@ test("typed history reconciles 31 dates, personal change, metric, Sheet, keyboar
   fail = true;
   await page.getByLabel("From (IST)").fill(addISTDateDays(today, -6));
   await page.getByRole("button", { name: "Apply range", exact: true }).click();
-  await expect(page.getByRole("alert")).toContainText("Previous applied report remains visible");
+  await expect(page.getByRole("main").getByRole("alert")).toContainText("Previous applied report remains visible");
   await expect(page.getByRole("heading", { name: new RegExp(`${members[1].name} · ${addISTDateDays(today, -31)}`) })).toBeVisible();
   fail = false; stall = true;
   await page.clock.install();
   await page.getByRole("button", { name: "Refresh history", exact: true }).click();
   await page.clock.fastForward(12001);
-  await expect(page.getByRole("alert")).toContainText("History took too long");
+  await expect(page.getByRole("main").getByRole("alert")).toContainText("History took too long");
   await expect(page.getByRole("button", { name: "Apply range", exact: true })).toBeEnabled();
   stall = false; unavailable = true;
   await page.getByRole("button", { name: "Refresh history", exact: true }).click();
@@ -111,7 +112,7 @@ test("My Day mounts only self history and never requests Team or Pipeline data",
   await page.getByLabel("Record type").selectOption("visits");
   expect(requests.filter(value => value.startsWith("/api/my-day/history"))).toHaveLength(1);
   await page.getByRole("button", { name: "Apply range", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Retained visits by IST date", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: `${RETAINED_METRICS.visits.label} by IST date`, exact: true })).toBeVisible();
   expect(requests.filter(value => value.startsWith("/api/my-day/history"))).toHaveLength(2);
   expect(requests.some(value => value.startsWith("/api/team-kpi") || value.startsWith("/api/pipeline"))).toBe(false);
   await page.getByRole("tab", { name: "Agenda", exact: true }).click();

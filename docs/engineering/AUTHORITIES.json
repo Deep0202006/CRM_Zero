@@ -182,6 +182,11 @@
     {
       "id": "pipeline_stage",
       "authority": "public.leads.status via public.transition_lead_stage_v2",
+      "writeSelectors": [
+        { "schema": "public", "resource": "leads", "column": "status" },
+        { "schema": "public", "resource": "pipeline_transition_operations", "columns": ["operation_id", "lead_id", "actor_id", "expected_stage", "target_stage", "confirmed_at"], "operationKinds": ["insert"] }
+      ],
+      "notes": ["Registers the existing032/037 transition operation record and disposable fixture inserts; no new product writer or transition permission."],
       "identity": ["lead_id"]
     },
     {
@@ -368,6 +373,14 @@
       "writer": "Admin user-management boundary",
       "readers": ["server authorization"],
       "mustNotOwn": ["auth login identity"]
+    },
+    {
+      "id": "task_instance",
+      "authority": "public.tasks",
+      "identity": ["task_id"],
+      "writeSelectors": [{ "schema": "public", "resource": "tasks", "columns": ["task_id", "assigned_to", "title", "priority", "status", "source", "related_lead_id", "due_date"], "operationKinds": ["insert"] }],
+      "owns": ["existing Task identity, current assignment and current status"],
+      "notes": ["Registers existing002 Task fields used by disposable B-D fixtures; Admin Review is read-only and does not infer historical completion credit or create work."]
     },
     {
       "id": "task_allocation",
