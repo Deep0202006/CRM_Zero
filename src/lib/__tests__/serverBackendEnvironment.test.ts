@@ -81,6 +81,16 @@ describe("server backend client boundary", () => {
     expect(createClient).not.toHaveBeenCalled();
   });
 
+  it("forwards only an explicit report-scoped fetch without changing default clients", () => {
+    getServerBackendEnvironment.mockReturnValue({ status: "configured", deployment: "production", url: "https://authorized.example", anonKey: "public-fixture-key" });
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "server-fixture-key";
+    const scopedFetch = jest.fn();
+    createServerServiceClient({ fetch: scopedFetch });
+    createServerServiceClient();
+    expect(createClient.mock.calls[0]?.slice(2)[0]).toMatchObject({ global: { fetch: scopedFetch } });
+    expect(createClient.mock.calls[1]?.slice(2)[0]).not.toHaveProperty("global");
+  });
+
   it("allows only an anonymous loopback client for the test fixture", () => {
     getServerBackendEnvironment.mockReturnValue({
       status: "configured",

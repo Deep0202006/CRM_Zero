@@ -1469,7 +1469,7 @@
         "R2",
         "R3"
       ],
-      "rule": "Owner applies reviewed SQL, then records a read-only postcheck; Git metadata alone is not production proof.",
+      "rule": "Production migrations are Owner-manual in Supabase SQL Editor. Prepare numbered ordinary SQL and catalog pre/postchecks in the worktree; test only disposable synthetic databases in GitHub CI, never a database runtime on the Owner Windows device. Track prepared, CI-tested, Owner-applied and Production-verified separately. Commit, CI PASS, merge and deployment do not advance the applied ledger; only actual Owner certification does. No CLI db push or simulated migration metadata.",
       "why": "Schema release authority stays human-owned.",
       "evidence": [
         "docs/engineering/WORKFLOW.md"

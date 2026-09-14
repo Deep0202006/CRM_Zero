@@ -56,7 +56,7 @@ export const TEAM_KPI_METRICS: ReadonlyArray<{ key: TeamKpiMetricKey; label: str
   { key: "tasks_completed", label: "Tasks done", color: "var(--viz-primary)" },
 ];
 
-const VISIT_OUTCOMES: ReadonlyArray<{ key: string; label: string; color: string }> = [
+export const VISIT_OUTCOMES: ReadonlyArray<{ key: string; label: string; color: string }> = [
   { key: "registered", label: "New registration", color: "var(--viz-primary)" },
   { key: "installed", label: "Installed", color: "var(--viz-success)" },
   { key: "interested", label: "Interested", color: "var(--viz-info)" },

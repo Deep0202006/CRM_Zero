@@ -35,9 +35,12 @@ describe("Field Visit latest-unique-business ERP Intelligence", () => {
       expect.objectContaining({ Segment: "Retailer", Category: "MARG", Businesses: 2, "Share %": 50 }),
     ]));
     const route = read("src/app/api/admin/export-visits/route.ts");
-    expect(route).toContain('admin.rpc("field_visit_erp_intelligence_v1")');
-    expect(route).toContain('"Retailer ERP"');
-    expect(route).toContain('"Distributor ERP"');
+    const exporter = read("src/lib/fieldVisits/export.ts");
+    expect(route).toContain("readVisitExportErp(backend.client, resource)");
+    expect(exporter).toContain('client.rpc("crm_visit_export_erp_v1")');
+    expect(exporter).toContain('`${segment} ERP`');
+    expect(exporter).toContain('"Retailer", "Distributor"');
+    expect(read("supabase/migrations/055_crm_bcd_readers.sql")).toContain("result:=public.field_visit_erp_intelligence_v1()");
   });
 
   it("keeps admin intelligence server-authoritative, segment-separated, and recoverable", () => {

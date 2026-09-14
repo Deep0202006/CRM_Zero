@@ -1,142 +1,40 @@
-import { NextResponse } from "next/server";
-import type { SupabaseClient } from "@supabase/supabase-js";
-import * as xlsx from "xlsx";
 import { backendUnavailableResponse, createServerServiceClient } from "@/lib/serverBackendEnvironment";
-import { getISTBusinessDayBounds, isValidISTDateKey } from "@/lib/dateTime";
-import { getOutcomeLabel } from "@/lib/fieldVisits/contract";
-import { buildErpIntelligenceExportRows, type ErpSegment } from "./exportRows";
+import { createReportResource, ReportUnavailable } from "@/lib/analytics/reportResource";
+import { buildVisitExportWorkbook, parseVisitExport, readVisitExport, readVisitExportErp } from "@/lib/fieldVisits/export";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-const EXPORT_PAGE_SIZE = 500;
-
-function jsonError(status: number, error: string) {
-  return NextResponse.json({ error }, { status, headers: { "Cache-Control": "no-store" } });
-}
-
-async function verifyAdmin(admin: SupabaseClient, token: string) {
-  const { data: auth, error } = await admin.auth.getUser(token);
-  if (error || !auth.user) return 401;
-  const [{ data: user }, { data: capabilities, error: capabilityError }] = await Promise.all([
-    admin.from("users").select("is_active").eq("user_id", auth.user.id).maybeSingle(),
-    admin.from("user_capabilities").select("capability_code").eq("user_id", auth.user.id),
-  ]);
-  if (capabilityError || !(user?.is_active === true || user?.is_active === 1)) return 403;
-  return (capabilities ?? []).some((row) => row.capability_code === "admin") ? 200 : 403;
-}
-
 export async function GET(request: Request) {
-  const serviceResult = createServerServiceClient();
-  if (!serviceResult.ok) return backendUnavailableResponse();
-  const authorization = request.headers.get("authorization") ?? "";
-  const token = authorization.startsWith("Bearer ") ? authorization.slice(7).trim() : "";
-  if (!token) return jsonError(401, "Authentication required.");
-  const admin = serviceResult.client;
-  const authorizationStatus = await verifyAdmin(admin, token);
-  if (authorizationStatus !== 200) return jsonError(authorizationStatus, authorizationStatus === 401 ? "Authentication required." : "Administrator access required.");
-
-  const url = new URL(request.url);
-  const requestedDate = url.searchParams.get("date") ?? "";
-  const date = isValidISTDateKey(requestedDate) ? requestedDate : "";
-  const dateFrom = isValidISTDateKey(url.searchParams.get("date_from") ?? "") ? url.searchParams.get("date_from")! : "";
-  const dateTo = isValidISTDateKey(url.searchParams.get("date_to") ?? "") ? url.searchParams.get("date_to")! : "";
-  const representative = url.searchParams.get("agent");
-  const segment = url.searchParams.get("segment");
-  const outcome = url.searchParams.get("outcome");
-  const search = (url.searchParams.get("search") ?? "").trim();
-  const selectedBounds = date ? getISTBusinessDayBounds(date) : null;
-  let searchClauses: string[] = [];
-  const safeSearch = search.replace(/[%_,().]/g, " ").trim();
-  if (safeSearch) {
-    const [{ data: matchingUsers }, { data: matchingLeads }] = await Promise.all([
-      admin.from("users").select("user_id").or(`name.ilike.%${safeSearch}%,email.ilike.%${safeSearch}%`).limit(50),
-      admin.from("leads").select("lead_id").or(`business_name.ilike.%${safeSearch}%,contact_person.ilike.%${safeSearch}%,phone.ilike.%${safeSearch}%`).limit(50),
+  const resource = createReportResource(request.signal);
+  try {
+    resource.check();
+    const backend = createServerServiceClient({ fetch: resource.fetch });
+    if (!backend.ok) return backendUnavailableResponse();
+    const authorization = request.headers.get("authorization") ?? "";
+    const token = authorization.startsWith("Bearer ") ? authorization.slice(7).trim() : "";
+    if (!token) return Response.json({ error: "Authentication required." }, { status: 401 });
+    const { data, error } = await backend.client.auth.getUser(token);
+    resource.check();
+    if (error || !data.user) return Response.json({ error: "Authentication required." }, { status: 401 });
+    const [profile, caps] = await Promise.all([
+      resource.read(backend.client.from("users").select("is_active").eq("user_id", data.user.id).limit(2), true),
+      resource.read(backend.client.from("user_capabilities").select("capability_code").eq("user_id", data.user.id).eq("capability_code", "admin").limit(1), true),
     ]);
-    searchClauses = [
-      `visit_notes.ilike.%${safeSearch}%`,
-      `person_met.ilike.%${safeSearch}%`,
-      ...(matchingUsers?.length ? [`user_id.in.(${matchingUsers.map((row) => row.user_id).join(",")})`] : []),
-      ...(matchingLeads?.length ? [`lead_id.in.(${matchingLeads.map((row) => `"${row.lead_id}"`).join(",")})`] : []),
-    ];
-  }
-  const visits: Array<Record<string, unknown> & { visit_id: string; user_id: string; lead_id: string }> = [];
-  for (let from = 0; ; from += EXPORT_PAGE_SIZE) {
-    let query = admin.from("field_visits")
-      .select("visit_id,user_id,lead_id,visit_date,check_in_time,check_in_lat,check_in_lng,address,pincode,segment_type,person_met,visit_outcome,visit_notes,follow_up_date,selfie_storage_path,selfie_purged_at,created_at,erp_id,erp_usage_state,erp_systems(erp_name)")
-      .order("created_at", { ascending: false })
-      .order("visit_id", { ascending: false })
-      .range(from, from + EXPORT_PAGE_SIZE - 1);
-    if (date && selectedBounds) query = query.or(`visit_date.eq.${date},and(check_in_time.gte.${selectedBounds.startsAt},check_in_time.lt.${selectedBounds.endsAt})`);
-    if (!date && dateFrom) query = query.gte("visit_date", dateFrom);
-    if (!date && dateTo) query = query.lte("visit_date", dateTo);
-    if (representative && representative !== "ALL") query = query.eq("user_id", representative);
-    if (segment && segment !== "ALL") query = query.eq("segment_type", segment);
-    if (outcome && outcome !== "ALL") query = query.eq("visit_outcome", outcome);
-    if (searchClauses.length) query = query.or(searchClauses.join(","));
-    const { data, error } = await query;
-    if (error) return jsonError(500, "Unable to export field visits.");
-    visits.push(...((data ?? []) as typeof visits));
-    if (!data || data.length < EXPORT_PAGE_SIZE) break;
-  }
-
-  const uniqueVisits = [...new Map(visits.map((visit) => [visit.visit_id, visit])).values()];
-  const userIds = [...new Set(uniqueVisits.map((visit) => visit.user_id))];
-  const users = [];
-  for (let index = 0; index < userIds.length; index += 100) {
-    const { data, error } = await admin.from("users").select("user_id,name,email").in("user_id", userIds.slice(index, index + 100));
-    if (error) return jsonError(500, "Unable to export representative identities.");
-    users.push(...(data ?? []));
-  }
-  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  const leadIds = [...new Set(uniqueVisits.map((visit) => visit.lead_id).filter((id) => uuidPattern.test(id)))];
-  const leads = [];
-  for (let index = 0; index < leadIds.length; index += 100) {
-    const { data, error } = await admin.from("leads").select("lead_id,business_name").in("lead_id", leadIds.slice(index, index + 100));
-    if (error) return jsonError(500, "Unable to export business identities.");
-    leads.push(...(data ?? []));
-  }
-  const usersById = new Map(users.map((user) => [user.user_id, user]));
-  const leadsById = new Map(leads.map((lead) => [lead.lead_id, lead]));
-  const addressHeading = segment === "Retailer" ? "Area" : "Address";
-  const rows = uniqueVisits.map((visit) => {
-    const user = usersById.get(visit.user_id);
-    const lead = leadsById.get(visit.lead_id);
-    const checkIn = new Date(String(visit.check_in_time));
-    return {
-      "Visit ID": visit.visit_id,
-      Representative: user?.name ?? `Unknown representative · ${visit.user_id.slice(0, 8)}`,
-      "Representative email": user?.email ?? "Unavailable",
-      "Visit date": visit.visit_date,
-      "Check-in time": Number.isNaN(checkIn.getTime()) ? "Unavailable" : checkIn.toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", second: "2-digit" }),
-      Segment: visit.segment_type,
-      Business: lead?.business_name?.trim() || visit.lead_id?.trim() || "Unavailable business",
-      "Person met": visit.person_met ?? "",
-      [addressHeading]: visit.address ?? "Legacy visit — address not captured",
-      Pincode: visit.pincode ?? "",
-      Latitude: visit.check_in_lat ?? "",
-      Longitude: visit.check_in_lng ?? "",
-      Outcome: getOutcomeLabel(String(visit.visit_outcome)),
-      ERP: visit.erp_usage_state === "erp" ? ((visit.erp_systems as { erp_name?: string } | null)?.erp_name ?? "Not captured") : visit.erp_usage_state === "none" ? "None" : "Not captured",
-      "ERP Capture State": visit.erp_usage_state === "erp" ? "ERP" : visit.erp_usage_state === "none" ? "None" : "Not captured",
-      "Follow-up date": visit.follow_up_date ?? "",
-      Notes: visit.visit_notes ?? "",
-      "Selfie status": visit.selfie_purged_at ? "Expired after 5-day retention" : visit.selfie_storage_path ? "Available" : "Pending",
-    };
-  });
-  const { data: erpIntelligence, error: erpIntelligenceError } = await admin.rpc("field_visit_erp_intelligence_v1");
-  if (erpIntelligenceError) return jsonError(500, "Unable to export ERP intelligence.");
-  const segments = (erpIntelligence ?? {}) as Partial<Record<"Retailer" | "Distributor", ErpSegment>>;
-  const worksheet = xlsx.utils.json_to_sheet(rows);
-  const workbook = xlsx.utils.book_new();
-  xlsx.utils.book_append_sheet(workbook, worksheet, "Field Visits");
-  xlsx.utils.book_append_sheet(workbook, xlsx.utils.json_to_sheet(buildErpIntelligenceExportRows("Retailer", segments.Retailer)), "Retailer ERP");
-  xlsx.utils.book_append_sheet(workbook, xlsx.utils.json_to_sheet(buildErpIntelligenceExportRows("Distributor", segments.Distributor)), "Distributor ERP");
-  const buffer = xlsx.write(workbook, { type: "buffer", bookType: "xlsx" });
-  return new NextResponse(buffer, {
-    headers: {
-      "Cache-Control": "no-store",
-      "Content-Disposition": `attachment; filename="FieldVisitsExport_${date || "all"}.xlsx"`,
-      "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    },
-  });
+    if (profile.error || caps.error || profile.data?.length !== 1 || profile.data[0].is_active !== true || !caps.data?.some(cap => cap.capability_code === "admin")) return Response.json({ error: "Administrator access required." }, { status: 403 });
+    let scope;
+    try { scope = parseVisitExport(new URL(request.url).searchParams, new Date().toISOString()); }
+    catch { return Response.json({ error: "Choose a valid date or range of up to 31 days before exporting." }, { status: 400 }); }
+    const rows = await readVisitExport(backend.client, scope, resource);
+    const erp = await readVisitExportErp(backend.client, resource);
+    const buffer = buildVisitExportWorkbook(rows, erp, scope, resource);
+    return new Response(new Uint8Array(buffer), { headers: {
+      "Cache-Control": "no-store", "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "Content-Disposition": `attachment; filename="FieldVisitsExport_${scope.date || scope.date_from}.xlsx"`,
+      "X-Export-Visit-Count": String(rows.length), "X-Export-Reader-Requests": String(resource.diagnostics.reader_requests),
+    } });
+  } catch (error) {
+    return Response.json({ error: "Export unavailable or too large. Narrow the date range or filters and retry. No partial workbook was created.",
+      code: error instanceof ReportUnavailable ? error.message : "VISIT_EXPORT_UNAVAILABLE",
+    }, { status: 503, headers: { "Cache-Control": "no-store" } });
+  } finally { resource.finish(); }
 }

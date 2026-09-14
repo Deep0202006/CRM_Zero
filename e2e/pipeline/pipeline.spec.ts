@@ -30,7 +30,7 @@ async function mock(page: Page, actor: string) {
     const leads = segment === "Retailer"
       ? [{ lead_id: retailLead, business_name: "Retail Shop", contact_person: "Riya", phone: "999", segment_type: "Retailer", status: "Installation", assigned_to: owner, owner_name: "Assigned Owner", created_at: "2026-08-12T00:00:00Z" }]
       : [{ lead_id: distributorLead, business_name: "Distributor Firm", contact_person: "Dev", phone: "888", segment_type: "Distributor", status: "Installation", assigned_to: owner, owner_name: "Assigned Owner", created_at: "2026-08-12T00:00:00Z" }];
-    return route.fulfill({ json: { leads, operations: [], page: 1, pageSize: 50, total: 1, hasMore: false } });
+    return route.fulfill({ json: { leads, recovery: { operations: [], safe_replay_targets: [] }, page: 1, pageSize: 50, total: 1, has_more: false } });
   });
   await page.route("**/api/pipeline/transition", async route => {
     const command = route.request().postDataJSON();
@@ -77,7 +77,7 @@ test("Retailer omits Payment, Distributor retains it, and owner can act", async 
 test("Pipeline remains bounded and usable on mobile", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 }); await mock(page, other); await seed(page, other, "employee"); await page.goto("/onboarding");
   await expect(page.getByLabel(/Retailer pipeline board/)).toBeVisible();
-  await expect(page.getByText("Page 1 · showing 1 of 1")).toBeVisible();
+  await expect(page.getByText(/Applied:.*1 confirmed matches/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Next", exact: true })).toBeDisabled();
 });
 

@@ -7,6 +7,7 @@ import { isLegacyPipelineStatusMutation } from "./legacyQueue";
 import { recoverOwnedLegacyPipelineStages } from "./legacyRecoveryRuntime";
 import type { ConfirmedPipelineOperation } from "./legacyRecovery";
 import type { PipelineStage } from "../pipelineStages";
+import { EMPTY_PIPELINE_FILTERS, type PipelineFilters } from "./salesReview";
 
 export interface PipelinePendingState {
   target: string;
@@ -20,6 +21,9 @@ export interface PipelineSnapshot {
   page: number;
   total: number;
   hasMore: boolean;
+  stages: Array<{ stage: string; count: number }> | null;
+  filters: PipelineFilters;
+  pendingCreationIds: string[];
 }
 
 function asLeadView(lead: LocalLead, ownerName: string): PipelineLeadView {
@@ -62,32 +66,52 @@ async function localSnapshot(selectedSegment: PipelineSegment, actorId: string, 
   return { visible, pendingCreations, queue, total };
 }
 
-export async function fetchPipelineSnapshot(segments: readonly PipelineSegment[], actorId: string, page = 1, selectedSegment: PipelineSegment = "Retailer"): Promise<PipelineSnapshot> {
+export async function fetchPipelineSnapshot(segments: readonly PipelineSegment[], actorId: string, page = 1, selectedSegment: PipelineSegment = "Retailer", filters: PipelineFilters = EMPTY_PIPELINE_FILTERS, signal?: AbortSignal): Promise<PipelineSnapshot> {
   const local = await localSnapshot(selectedSegment, actorId, page);
-  if (typeof navigator === "undefined" || !navigator.onLine) return { leads: local.visible, pending: pendingStateFromQueue(local.queue), authorityState: "offline", page, total: local.total, hasMore: page * 50 < local.total };
+  const matches = (lead: PipelineLeadView) => (!filters.stage || lead.status === filters.stage) && (!filters.owner || lead.assigned_to === filters.owner)
+    && (!filters.source || lead.lead_source === filters.source) && (!filters.search || [lead.business_name, lead.contact_person, lead.phone, lead.area].some(value => value?.toLowerCase().includes(filters.search.toLowerCase())));
+  const fallback = { leads: local.visible.filter(matches), pending: pendingStateFromQueue(local.queue), page, total: local.total, hasMore: page * 50 < local.total,
+    filters, stages: null, pendingCreationIds: local.pendingCreations.map(row => row.lead_id) };
+  if (typeof navigator === "undefined" || !navigator.onLine) return { ...fallback, authorityState: "offline" };
   try {
+    signal?.throwIfAborted();
     const { data } = await supabase.auth.getSession();
     const token = data.session?.access_token;
-    if (!token) throw new Error("No session");
-    const response = await fetch(`/api/pipeline/leads?page=${page}&pageSize=50&segment=${selectedSegment}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+    if (!token || data.session?.user.id !== actorId) throw new Error("No matching session");
+    signal?.throwIfAborted();
+    const query = new URLSearchParams({ page: String(page), pageSize: "50", segment: selectedSegment });
+    for (const [key, value] of Object.entries(filters)) if (value) query.set(key, value);
+    const response = await fetch(`/api/pipeline/leads?${query}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store", signal });
     if (!response.ok) throw new Error("Pipeline read failed");
-    let body = await response.json() as { leads: PipelineLeadView[]; page: number; total: number; has_more: boolean; recovery?: { operations?: ConfirmedPipelineOperation[]; safe_replay_targets?: PipelineStage[] } };
+    let body = await response.json() as { leads: PipelineLeadView[]; page: number; total: number; has_more: boolean; filters?: PipelineFilters; stages?: Array<{ stage: string; count: number }> | null; recovery?: { operations?: ConfirmedPipelineOperation[]; safe_replay_targets?: PipelineStage[] } };
+    signal?.throwIfAborted();
+    const validate = () => {
+      if (body.page !== page || !Number.isSafeInteger(body.total) || body.total < 0 || typeof body.has_more !== "boolean" || !Array.isArray(body.leads) || body.leads.length > 50
+        || new Set(body.leads.map(lead => lead.lead_id)).size !== body.leads.length || body.leads.some(lead => lead.segment_type !== selectedSegment || !matches(lead))
+        || (body.filters && Object.keys(filters).some(key => body.filters![key as keyof PipelineFilters] !== filters[key as keyof PipelineFilters]))) throw new Error("Pipeline scope mismatch");
+    };
+    validate();
     let server = body.leads.filter((lead) => segments.includes(lead.segment_type));
     const recoveryLocalLeads = (await db.leads.bulkGet(server.map((lead) => lead.lead_id))).filter((lead): lead is LocalLead => Boolean(lead));
+    signal?.throwIfAborted();
     const recovery = await recoverOwnedLegacyPipelineStages({
       actorId, serverLeads: server, localLeads: recoveryLocalLeads, queue: local.queue,
       confirmedOperations: body.recovery?.operations ?? [], safeReplayTargets: body.recovery?.safe_replay_targets ?? [],
     }).catch(() => ({ autoRecoverable: 0, recovered: 0, alreadySatisfied: 0, reviewRequired: 0, noEvidence: 0, serverChanged: false }));
     if (recovery.serverChanged) {
-      const refreshed = await fetch(`/api/pipeline/leads?page=${page}&pageSize=50&segment=${selectedSegment}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+      const refreshed = await fetch(`/api/pipeline/leads?${query}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store", signal });
       if (!refreshed.ok) throw new Error("Pipeline recovery refresh failed");
       body = await refreshed.json();
+      validate();
       server = body.leads.filter((lead) => segments.includes(lead.segment_type));
     }
+    signal?.throwIfAborted();
     if (server.length) await db.leads.bulkPut(server);
     const currentQueue = await db.sync_queue.toArray();
-    return { leads: mergeAuthoritativePipeline(server, local.pendingCreations), pending: pendingStateFromQueue(currentQueue), authorityState: "server", page: body.page, total: body.total, hasMore: body.has_more };
+    const pendingCreations = local.pendingCreations.filter(matches).filter(row => !server.some(confirmed => confirmed.lead_id === row.lead_id));
+    return { leads: mergeAuthoritativePipeline(server, pendingCreations), pending: pendingStateFromQueue(currentQueue), authorityState: "server", page: body.page, total: body.total, hasMore: body.has_more,
+      filters: body.filters ?? filters, stages: body.stages ?? null, pendingCreationIds: pendingCreations.map(row => row.lead_id) };
   } catch {
-    return { leads: local.visible, pending: pendingStateFromQueue(local.queue), authorityState: "error", page, total: local.total, hasMore: page * 50 < local.total };
+    return { ...fallback, authorityState: "error" };
   }
 }

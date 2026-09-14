@@ -55,6 +55,10 @@
 
 ## RELEASE DEPENDENCY
 
+- B–D register and inspection use the additive055 reader contract. Ordinary unfiltered reads retain their bounded compatibility fallback; requested filters/analytics fail explicitly when their reader is unavailable.
+- A completed mutation or confirmed replay invalidates any pre-mutation snapshot, even at the same filter/page key. An aborted response cannot replace visible confirmed state or write an older Lead into the local cache. Exact selected context reloads once after confirmation; breakpoint changes preserve that identity and pending context.
+- Inspection stage facets share segment/search/owner/source, excluding the selected stage and attention filters. Linked overdue/recent predicates execute before count/pagination. Historical velocity requires compatible consecutive recorded transitions; current stage age is not a completed historical duration.
+
 - Owner must apply migrations 037 then 038 before this application release; Codex must not apply them.
 - Browser-local evidence cannot be remotely enumerated; a browser/device that no longer has it cannot reconstruct it.
 - Automatic legacy replay remains disabled because preserved browser evidence can be incomplete; review is safer than guessed mutation.

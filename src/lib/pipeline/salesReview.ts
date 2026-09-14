@@ -1,5 +1,29 @@
 import { addISTDateDays, getISTDateKey } from "@/lib/dateTime";
 import { PIPELINE_STAGES, type PipelineStage } from "@/lib/pipelineStages";
+import { isCallLeadId } from "@/lib/callLogs/contract";
+import { z } from "zod";
+
+export type PipelineFilters = { search: string; stage: string; owner: string; source: string };
+export const EMPTY_PIPELINE_FILTERS: PipelineFilters = { search: "", stage: "", owner: "", source: "" };
+export function parsePipelineFilters(params: URLSearchParams) {
+  const search = sanitizePipelineSearch(params.get("search")), stage = params.get("stage") ?? "", owner = params.get("owner") ?? "", source = (params.get("source") ?? "").normalize("NFKC").trim();
+  if ((stage && !PIPELINE_STAGES.includes(stage as PipelineStage)) || (owner && !isCallLeadId(owner)) || source.length > 120
+    || ["search", "stage", "owner", "source", "page", "pageSize", "segment"].some(key => params.getAll(key).length > 1)) throw new Error("PIPELINE_INVALID_FILTER");
+  return { search, stage, owner: owner.toLowerCase(), source };
+}
+const uuid = z.string().refine(isCallLeadId), text = z.string().max(32768), timestamp = z.string().refine(value => Number.isFinite(Date.parse(value)));
+export const pipelineRegisterSchema = z.object({
+  leads: z.array(z.object({ lead_id: uuid, business_name: text, contact_person: text, phone: text,
+    segment_type: z.enum(["Retailer", "Distributor"]), status: z.enum(PIPELINE_STAGES), assigned_to: uuid.nullable(), owner_name: text,
+    created_at: timestamp, stage_entered_at: timestamp.nullable(), onboarded_at: timestamp.nullable(),
+    lead_source: text.nullable().transform(value => value ?? undefined), area: text.nullable().transform(value => value ?? undefined),
+    next_task: z.object({ task_id: uuid, title: text, status: z.string(), due_date: z.string(), priority: z.string() }).nullable(),
+    recent_call: z.object({ log_id: uuid, outcome: text.nullable(), timestamp }).nullable(),
+    recent_transition: z.object({ operation_id: uuid, lead_id: uuid, expected_stage: z.string(), target_stage: z.string(), confirmed_at: timestamp, event_kind: z.string(), reason: text.nullable() }).nullable(),
+  })).max(50), total: z.number().int().nonnegative(), page: z.number().int().min(1).max(400), page_size: z.number().int().min(1).max(50),
+  stages: z.array(z.object({ stage: z.enum(PIPELINE_STAGES), count: z.number().int().nonnegative() })).max(9),
+}).refine(value => new Set(value.leads.map(row => row.lead_id)).size === value.leads.length && value.leads.length <= value.page_size
+  && value.total >= value.leads.length && new Set(value.stages.map(row => row.stage)).size === value.stages.length);
 
 export type MovementDirection = "advanced" | "regressed" | "cycle" | "neutral";
 export type AttentionReasonCode = "STALE_STAGE" | "OVERDUE_TASK" | "CHANGED_TODAY" | "CHANGED_RECENTLY" | "ADVANCED" | "REGRESSED" | "NO_EXACT_NEXT_TASK";
@@ -10,6 +34,9 @@ export type PipelineTransitionFact = {
   expected_stage: string;
   target_stage: string;
   confirmed_at: string;
+  operation_id?: string;
+  event_kind?: string;
+  reason?: string | null;
 };
 
 export async function pipelineTaskIdFor(userId: string, leadId: string, dueDate: string): Promise<string> {
@@ -62,7 +89,7 @@ export function currentStageAgeRows(
 }
 
 export function sanitizePipelineSearch(value: string | null): string {
-  return (value ?? "").normalize("NFKC").replace(/[,()%]/g, " ").replace(/\s+/g, " ").trim().slice(0, 80);
+  return (value ?? "").normalize("NFKC").replace(/\s+/g, " ").trim().slice(0, 80);
 }
 
 export function canReadLinkedWork(isAdmin: boolean, viewerId: string, ownerId: string | null | undefined): boolean {
@@ -97,23 +124,26 @@ function median(values: number[]) {
   return ordered.length % 2 ? ordered[middle] : (ordered[middle - 1] + ordered[middle]) / 2;
 }
 
-export function completedStageVelocity(transitions: PipelineTransitionFact[], leadCreatedAt: Map<string, string>) {
+export function completedStageVelocity(transitions: PipelineTransitionFact[], limited = false) {
+  const boundary = limited ? transitions.reduce((oldest, row) => row.confirmed_at < oldest ? row.confirmed_at : oldest, "9999") : null;
   const byLead = new Map<string, PipelineTransitionFact[]>();
   for (const row of transitions) byLead.set(row.lead_id, [...(byLead.get(row.lead_id) ?? []), row]);
   const durations = new Map<PipelineStage, number[]>();
   let eligible = 0;
-  for (const [leadId, rows] of byLead) {
+  for (const rows of byLead.values()) {
     rows.sort((left, right) => left.confirmed_at.localeCompare(right.confirmed_at));
-    let enteredAt = leadCreatedAt.get(leadId) ?? null;
-    let enteredStage = "New";
-    for (const row of rows) {
-      if (enteredAt && row.expected_stage === enteredStage && PIPELINE_STAGES.includes(row.expected_stage as PipelineStage)) {
-        eligible += 1;
-        const days = (Date.parse(row.confirmed_at) - Date.parse(enteredAt)) / 86_400_000;
-        if (Number.isFinite(days) && days >= 0) durations.set(row.expected_stage as PipelineStage, [...(durations.get(row.expected_stage as PipelineStage) ?? []), days]);
-      }
-      enteredAt = row.confirmed_at;
-      enteredStage = row.target_stage;
+    const occurrences = new Map<string, number>();
+    for (const row of rows) occurrences.set(row.confirmed_at, (occurrences.get(row.confirmed_at) ?? 0) + 1);
+    for (let index = 1; index < rows.length; index++) {
+      const entered = rows[index - 1], left = rows[index];
+      eligible++;
+      const tied = occurrences.get(entered.confirmed_at)! > 1 || occurrences.get(left.confirmed_at)! > 1;
+      const days = (Date.parse(left.confirmed_at) - Date.parse(entered.confirmed_at)) / 86_400_000;
+      if (entered.confirmed_at === boundary || tied || entered.event_kind !== "user_transition" || left.event_kind !== "user_transition"
+        || entered.reason !== null || left.reason !== null || !entered.operation_id || !left.operation_id || entered.operation_id === left.operation_id
+        || entered.target_stage !== left.expected_stage || !PIPELINE_STAGES.includes(left.expected_stage as PipelineStage)
+        || !Number.isFinite(days) || days <= 0) continue;
+      durations.set(left.expected_stage as PipelineStage, [...(durations.get(left.expected_stage as PipelineStage) ?? []), days]);
     }
   }
   const sampleN = [...durations.values()].reduce((sum, values) => sum + values.length, 0);
@@ -160,6 +190,7 @@ export function buildSalesHistory(leads: SalesHistoryLead[], transitions: Pipeli
     const point = points.get(keyFor(transition.confirmed_at));
     if (!point) continue;
     point.movements += 1;
+    if (transition.event_kind !== "user_transition" || transition.reason !== null) continue;
     const direction = movementDirection(transition.expected_stage, transition.target_stage);
     if (direction === "advanced") point.advanced += 1;
     if (direction === "regressed") point.regressed += 1;
