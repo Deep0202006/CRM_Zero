@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { Download } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
@@ -11,6 +11,9 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { ContextRail } from "@/components/workspace/ContextRail";
 import { Chip } from "@/components/ui/Chip";
 import { Button } from "@/components/ui/Button";
+import { MetricCard } from "@/components/ui/MetricCard";
+
+const metricCardClass = "min-w-0 [&]:min-h-0 [&]:p-3 [&]:gap-1 [&_[data-slot=card-footer]]:mt-1 [&_[data-slot=card-footer]]:text-[10px] [&_[data-slot=card-footer]]:leading-3";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/Tabs";
 import { getOutcomeLabel } from "@/lib/fieldVisits/contract";
 import { AnalyticsSkeleton } from "@/components/analytics/AnalyticsPanel";
@@ -18,17 +21,12 @@ import { adminVisitOutcomeLabel as getAdminOutcomeLabel, initialVisitQuery, visi
 import { parseVisitRange, visitRangeReportSchema, type VisitRangeReport } from "@/lib/fieldVisits/range";
 import type { FieldVisitErpSegment } from "@/components/analytics/FieldVisitErpIntelligence";
 
-const VisitsIntelligence = dynamic(() => import("@/components/analytics/VisitsIntelligence"), {
+const VisitSummaryCharts = dynamic(() => import("./VisitSummaryCharts"), {
   ssr: false,
   loading: () => <AnalyticsSkeleton label="Loading field activity intelligence" />,
 });
 const FieldVisitErpIntelligence = dynamic(() => import("@/components/analytics/FieldVisitErpIntelligence"), { ssr: false, loading: () => <AnalyticsSkeleton label="Loading ERP intelligence" /> });
 const CurrentErpBaselineEditor = dynamic(() => import("@/components/visits/CurrentErpBaselineEditor"), { ssr: false });
-const subscribeAnalysisWidth = (notify: () => void) => {
-  const media = window.matchMedia("(min-width: 640px)");
-  media.addEventListener("change", notify);
-  return () => media.removeEventListener("change", notify);
-};
 
 interface AdminVisit extends LocalFieldVisit {
   has_selfie_evidence?: boolean;
@@ -58,7 +56,6 @@ export default function AdminVisitsPage() {
 }
 
 function AdminVisitsWorkspace() {
-  const wideAnalysis = useSyncExternalStore(subscribeAnalysisWidth, () => window.matchMedia("(min-width: 640px)").matches, () => false);
   const { isAdmin, currentUser } = useAuth();
   const actorId = currentUser?.user_id;
   const [initialQuery] = useState(initialVisitQuery);
@@ -103,7 +100,6 @@ function AdminVisitsWorkspace() {
   const realtimeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [realtimeSubscribed, setRealtimeSubscribed] = useState(false);
   const [analyticsMode, setAnalyticsMode] = useState<"activity" | "erp">("activity");
-  const [workspaceView, setWorkspaceView] = useState("work");
   const [analysis, setAnalysis] = useState<{ key: string; report: VisitRangeReport | null; error: string } | null>(null);
   const [analysisRevision, setAnalysisRevision] = useState(0);
   const [manageCurrentErpOpen, setManageCurrentErpOpen] = useState(false);
@@ -316,10 +312,19 @@ function AdminVisitsWorkspace() {
   return (
     <div className="app-page min-w-0 crm-workspace">
       <header className="workspace-heading"><div><h1>Visits overview</h1><p>Confirmed field records · India business dates</p></div><Button size="sm" variant="outline" title="Export the applied record filters" icon={<Download size={14} />} onClick={handleExport} isLoading={exporting} disabled={!hasLoaded || loading}>Export to Excel</Button></header>
+      <section aria-label="Visit metrics" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <MetricCard label="All-time visits" value={hasLoaded ? allTimeTotal?.toLocaleString("en-IN") ?? <span className="text-base tracking-normal">Unavailable</span> : "—"} note="Excludes date and search" className={metricCardClass} />
+        <MetricCard label="Visits today" value={hasLoaded ? todayTotal?.toLocaleString("en-IN") ?? <span className="text-base tracking-normal">Unavailable</span> : "—"} note="India date · excludes search" className={metricCardClass} />
+        <MetricCard label="Matching visits" value={hasLoaded ? matchedTotal.toLocaleString("en-IN") : "—"} note="Applied register filters" className={metricCardClass} />
+        {analysis?.key === appliedKey && analysis.report?.representative_breakdown === "exhausted" && <MetricCard label="Representatives in selected range" value={analysis.report.representatives!.length} note="Complete retained authors" className={metricCardClass} />}
+      </section>
+      {hasLoaded && <p className="text-xs text-[var(--text-secondary)]">Global counts: {appliedGlobalScope}. Unavailable counts are not zero.</p>}
       {exportError && <p role="alert" className="alert-panel alert-panel--danger">{exportError}</p>}
-      <form aria-label="Visit filters" className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end" onSubmit={(event) => { event.preventDefault(); void loadData(1, draftQuery); }}>
-        <label className="grid min-w-0 gap-1 text-xs">Search visits<input aria-label="Search visits" className="field-control min-w-0" placeholder="Business, representative, or notes" value={search} maxLength={160} onChange={(event) => setSearch(event.target.value)} /></label>
-        <details className="order-3 sm:col-span-2"><summary className="min-h-11 cursor-pointer text-sm">Refine representative, outcome and dates</summary>
+      <form aria-label="Visit filters" className="grid grid-cols-2 items-end gap-2 sm:grid-cols-5" onSubmit={(event) => { event.preventDefault(); void loadData(1, draftQuery); }}>
+        <label className="order-0 grid min-w-0 gap-1 text-xs sm:col-span-2">Search visits<input aria-label="Search visits" className="field-control min-w-0" placeholder="Business, representative, or notes" value={search} maxLength={160} onChange={(event) => setSearch(event.target.value)} /></label>
+        <div className="order-0 flex flex-wrap items-center gap-2"><Button size="sm" type="submit" disabled={loading}>Apply filters</Button>{hasLoaded && visitQueryKey(draftQuery) !== appliedKey && <p role="status" className="text-xs">Filters changed. Records still show the applied scope.</p>}</div>
+        <div className="order-1 grid min-w-0 gap-1 text-xs [&_label]:grid [&_label]:gap-1"><label>From date<input aria-label="Date From" type="date" className="field-control min-w-0" value={dateFrom} onChange={(event) => { setDate(""); setDateFrom(event.target.value); }} /></label></div><div className="order-1 grid min-w-0 gap-1 text-xs [&_label]:grid [&_label]:gap-1"><label>To date<input aria-label="Date To" type="date" className="field-control min-w-0" value={dateTo} onChange={(event) => { setDate(""); setDateTo(event.target.value); }} /></label></div>
+        <details className="order-3 col-span-2 sm:col-span-5"><summary className="min-h-11 cursor-pointer text-sm">Refine representative, outcome and dates</summary>
         <div className="grid min-w-0 gap-3 text-xs text-[var(--text-secondary)] sm:grid-cols-2 [&_label]:grid [&_label]:min-w-0 [&_label]:gap-1"><label>Representative
         <select aria-label="Representative" className="field-control min-w-0" value={representative} onFocus={() => { if (!representativeLoaded && !representativeRequest.current && !representativeError) void loadRepresentatives(); }} onChange={(event) => setRepresentative(event.target.value)}>
           <option value="ALL">All representatives</option>
@@ -331,19 +336,32 @@ function AdminVisitsWorkspace() {
           {["registered", "installed", "interested", "follow_up", "payment_follow_up", "payment_done", "not_interested"].map((value) => <option key={value} value={value}>{getOutcomeLabel(value)}</option>)}
         </select></label></div>
         <details><summary className="cursor-pointer text-sm">Find current or historical representatives</summary><div className="flex flex-wrap items-end gap-2"><label className="grid min-w-0 gap-1 text-xs">Representative name or email<input className="field-control" value={representativeSearch} maxLength={160} onChange={(event) => setRepresentativeSearch(event.target.value)} /></label><Button type="button" size="sm" variant="outline" disabled={representativeLoading} onClick={() => void loadRepresentatives()}>Search representatives</Button><Button type="button" size="sm" variant="outline" disabled={!representativeCursor || representativeLoading} onClick={() => void loadRepresentatives(true)}>Next representatives</Button></div><p className="text-xs">25 options per search page, plus the selected person. Includes current field capabilities and retained visit authors, including inactive people. Choose a Representative above, then Apply filters.</p>{representativeLoading && <p role="status">Loading representative options…</p>}{representativeError && <p role="alert">{representativeError}</p>}</details>
-        <details><summary className="cursor-pointer text-sm">Date and segment filters</summary><div className="grid min-w-0 gap-3 text-xs text-[var(--text-secondary)] sm:grid-cols-3 [&_label]:grid [&_label]:min-w-0 [&_label]:gap-1"><label>Legacy visit or check-in date<input aria-label="Visit date" type="date" className="field-control min-w-0" value={date} onChange={(event) => setDate(event.target.value)} /></label><label>From date<input aria-label="Date From" type="date" className="field-control min-w-0" value={dateFrom} onChange={(event) => { setDate(""); setDateFrom(event.target.value); }} /></label><label>To date<input aria-label="Date To" type="date" className="field-control min-w-0" value={dateTo} onChange={(event) => { setDate(""); setDateTo(event.target.value); }} /></label><label>Segment
+        <details><summary className="cursor-pointer text-sm">Date and segment filters</summary><div className="grid min-w-0 gap-3 text-xs text-[var(--text-secondary)] sm:grid-cols-3 [&_label]:grid [&_label]:min-w-0 [&_label]:gap-1"><label>Legacy visit or check-in date<input aria-label="Visit date" type="date" className="field-control min-w-0" value={date} onChange={(event) => setDate(event.target.value)} /></label><label>Segment
         <select aria-label="Segment" className="field-control min-w-0" value={segment} onChange={(event) => setSegment(event.target.value)}>
           <option value="ALL">All segments</option><option value="Retailer">Retailer</option><option value="Distributor">Distributor</option>
         </select></label></div><div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="outline" onClick={() => setDate(getCurrentISTDate())}>Today · legacy</Button><Button type="button" size="sm" variant="outline" onClick={() => { setDate(""); setDateFrom(""); setDateTo(""); }}>All dates</Button></div></details>
         </details>
-        <div className="flex items-center gap-3"><Button size="sm" type="submit" disabled={loading}>Apply filters</Button>{hasLoaded && visitQueryKey(draftQuery) !== appliedKey && <p role="status" className="text-xs">Filters changed. Records still show the applied scope.</p>}</div>
       </form>
       {legacyMismatchCount > 0 && <div role="status" className="alert-panel alert-panel--warning">Included {legacyMismatchCount} confirmed visits whose stored date differs from their India check-in date.</div>}
       {errorMessage && <div role="alert" className="alert-panel alert-panel--danger">{errorMessage} {hasLoaded && <span>The last confirmed records and their applied scope remain visible.</span>} <Button size="sm" variant="outline" onClick={() => void loadData(attempted.current.page, attempted.current.query)}>Retry request</Button></div>}
       <p className="text-xs text-[var(--text-secondary)]" aria-live="polite">{hasLoaded ? `Applied: ${appliedScope} · Loaded page ${appliedPage} · ${visits.length} of ${matchedTotal} matching visits` : "Loading confirmed visits…"}{loading && hasLoaded ? " · Refreshing…" : ""}</p>
-      <Tabs value={workspaceView} onValueChange={setWorkspaceView} activationMode="manual" className="gap-3">
-      <TabsList aria-label="Visits workspace view" className="sm:hidden"><TabsTrigger value="work">Work</TabsTrigger><TabsTrigger value="analysis">Analysis</TabsTrigger></TabsList>
-      <TabsContent value="work" forceMount className="order-2 data-[state=inactive]:hidden sm:data-[state=inactive]:block"><div className="workspace-columns">
+      <Tabs value={analyticsMode} onValueChange={(value) => setAnalyticsMode(value as "activity" | "erp")} activationMode="manual" className="gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-2"><TabsList aria-label="Visit analytics"><TabsTrigger value="activity" aria-label="Visit Activity">Activity</TabsTrigger><TabsTrigger value="erp">ERP Intelligence</TabsTrigger></TabsList>
+          {analyticsMode === "activity" && <Button size="sm" variant="outline" disabled={!analysis || analysis.key !== appliedKey} onClick={() => setAnalysisRevision(value => value + 1)}>Refresh analysis</Button>}</div>
+        <TabsContent value="activity">{analyticsMode === "activity" && hasLoaded && <div className="space-y-3">
+          {!analysis || analysis.key !== appliedKey ? <AnalyticsSkeleton label="Loading full-range Visit activity" /> : analysis.report ? <VisitSummaryCharts visits={visits} page={appliedPage} report={analysis.report} scope={appliedScope} matchedTotal={matchedTotal} onOutcome={(key) => { setOutcome(key); void loadData(1, { ...appliedQuery.current, outcome: key }); }} onRepresentative={(id) => { setRepresentative(id); void loadData(1, { ...appliedQuery.current, representative: id }); }} /> : <p role="status" className="alert-panel alert-panel--warning">{analysis.error}</p>}
+        </div>}</TabsContent>
+      <TabsContent value="erp" className="order-3 space-y-4 sm:order-2">
+        {analyticsMode === "erp" && <>
+          <p className="text-sm leading-5 text-[var(--text-secondary)]">Current ERP footprint counts unique businesses across confirmed visits and Admin baselines. Visit filters above apply to the register and activity view, not this footprint.</p>
+          {erpSegments ? <FieldVisitErpIntelligence segments={erpSegments} /> : erpError ? <div role="alert" className="alert-panel alert-panel--danger">{erpError} <Button size="sm" variant="outline" onClick={() => void loadErpIntelligence()}>Retry</Button></div> : <AnalyticsSkeleton label="Loading ERP intelligence" />}
+          <Button size="sm" variant="outline" className="min-h-11" onClick={() => setManageCurrentErpOpen((open) => !open)}>{manageCurrentErpOpen ? "Close Current ERP" : "Manage Current ERP"}</Button>
+          {manageCurrentErpOpen && <CurrentErpBaselineEditor onSaved={() => { setErpSegments(null); setErpError(""); void loadErpIntelligence(); }} />}
+        </>}
+      </TabsContent>
+
+      </Tabs>
+      <div className="workspace-columns">
         <section className="workspace-register" data-workspace-register tabIndex={-1} aria-label="Confirmed visit history">
           <header className="flex items-center justify-between gap-3 border-b border-[var(--border-subtle)] px-4 py-2"><h2 className="text-base font-semibold">Visit register</h2><Button size="sm" variant="ghost" onClick={() => void loadData(appliedPage)}>Refresh</Button></header>
           <ol key={appliedPage} aria-label="Loaded Visit records" tabIndex={0} className="max-h-96 overflow-y-auto divide-y divide-[var(--border-subtle)]">{visits.map((visit) => <li key={visit.visit_id} className="workspace-task-row" data-selected={selected?.visit.visit_id === visit.visit_id}>
@@ -357,25 +375,7 @@ function AdminVisitsWorkspace() {
         <ContextRail open={Boolean(selected)} title={selected?.visit.leads?.business_name || selected?.visit.lead_id || "Visit detail"} description={selected ? `${selected.visit.segment_type} · ${getAdminOutcomeLabel(selected.visit.visit_outcome)}` : "Select a visit"} onClose={() => setSelected(null)} returnFocus={visitTrigger}>
           {selected && <VisitDetail key={selected.visit.visit_id} visit={selected.visit} scope={selected.scope} />}
         </ContextRail>
-      </div></TabsContent>
-      <TabsContent value="analysis" forceMount className="order-1 data-[state=inactive]:hidden sm:data-[state=inactive]:block">{(wideAnalysis || workspaceView === "analysis") && <Tabs value={analyticsMode} onValueChange={(value) => setAnalyticsMode(value as "activity" | "erp")} activationMode="manual" className="gap-3">
-        <div className="flex flex-wrap items-center justify-between gap-2"><TabsList aria-label="Visit analytics"><TabsTrigger value="activity">Visit Activity</TabsTrigger><TabsTrigger value="erp">ERP Intelligence</TabsTrigger></TabsList>
-          {analyticsMode === "activity" && <Button size="sm" variant="outline" disabled={!analysis || analysis.key !== appliedKey} onClick={() => setAnalysisRevision(value => value + 1)}>Refresh analysis</Button>}</div>
-        <TabsContent value="activity">{analyticsMode === "activity" && hasLoaded && <div className="space-y-3">
-          {!analysis || analysis.key !== appliedKey ? <AnalyticsSkeleton label="Loading full-range Visit activity" /> : analysis.report ? <VisitsIntelligence report={analysis.report} scope={appliedScope} matchedTotal={matchedTotal} onOutcome={(key) => { setOutcome(key); setWorkspaceView("work"); void loadData(1, { ...appliedQuery.current, outcome: key }); }} onRepresentative={(id) => { setRepresentative(id); setWorkspaceView("work"); void loadData(1, { ...appliedQuery.current, representative: id }); }} /> : <p role="status" className="alert-panel alert-panel--warning">{analysis.error}</p>}
-        </div>}</TabsContent>
-      <TabsContent value="erp" className="order-3 space-y-4 sm:order-2">
-        {analyticsMode === "erp" && <>
-          <p className="text-sm leading-5 text-[var(--text-secondary)]">Current ERP footprint counts unique businesses across confirmed visits and Admin baselines. Visit filters above apply to the register and activity view, not this footprint.</p>
-          {erpSegments ? <FieldVisitErpIntelligence segments={erpSegments} /> : erpError ? <div role="alert" className="alert-panel alert-panel--danger">{erpError} <Button size="sm" variant="outline" onClick={() => void loadErpIntelligence()}>Retry</Button></div> : <AnalyticsSkeleton label="Loading ERP intelligence" />}
-          <Button size="sm" variant="outline" className="min-h-11" onClick={() => setManageCurrentErpOpen((open) => !open)}>{manageCurrentErpOpen ? "Close Current ERP" : "Manage Current ERP"}</Button>
-          {manageCurrentErpOpen && <CurrentErpBaselineEditor onSaved={() => { setErpSegments(null); setErpError(""); void loadErpIntelligence(); }} />}
-        </>}
-      </TabsContent>
-
-      </Tabs>}</TabsContent>
-      </Tabs>
-      <details className="workspace-disclosure"><summary>Global visit context</summary><p className="text-xs">{appliedGlobalScope}. Totals exclude date and search filters. Unavailable counts are not zero.</p><dl className="workspace-counts"><div><dt>All-time visits</dt><dd>{hasLoaded ? allTimeTotal?.toLocaleString("en-IN") ?? "Unavailable" : "—"}</dd></div><div><dt>Visits today · India</dt><dd>{hasLoaded ? todayTotal?.toLocaleString("en-IN") ?? "Unavailable" : "—"}</dd></div></dl></details>
+      </div>
     </div>
   );
 }

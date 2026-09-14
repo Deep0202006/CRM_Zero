@@ -272,7 +272,6 @@ test("UI Foundation ERP manual activation caches success and retries a network f
   await expect(distributorFootprint.getByRole("listitem")).toHaveCount(7);
   await expect(distributorFootprint.getByRole("list")).toContainText("Not captured (unknown):1");
   await page.setViewportSize({ width: 320, height: 844 });
-  await page.getByRole("tab", { name: "Analysis", exact: true }).click();
   await page.emulateMedia({ reducedMotion: "reduce" });
   await expect(page.locator("svg.recharts-surface").first()).toBeVisible();
   await page.getByRole("button", { name: "Use dark theme" }).click();
@@ -291,7 +290,7 @@ test("UI Foundation ERP manual activation caches success and retries a network f
   expect(colors.background).not.toBe("rgba(0, 0, 0, 0)");
 });
 
-test("Visits full-range strip retains fourteen records while the register pages seven records", async ({ page }) => {
+test("Visits full-range donut retains fourteen records while the register pages seven records", async ({ page }) => {
   test.skip(foundationPhase === "before", "The baseline does not expose the shared semantic values list");
   await mockPlatform(page);
   const requestPages: string[] = [], analysisRequests: string[] = [];
@@ -324,7 +323,7 @@ test("Visits full-range strip retains fourteen records while the register pages 
   await expect(values).toContainText("Unknown / legacy outcome");
   await expect(values).toContainText("Payment done");
   const counts = await values.getByRole("listitem").allTextContents();
-  const valuesOnly = counts.map(text => Number(text.match(/·\s*([\d,]+)/)?.[1]?.replaceAll(",", "")));
+  const valuesOnly = counts.map(text => Number(text.match(/([\d,]+) of \d+/)?.[1]?.replaceAll(",", "")));
   expect([...valuesOnly].sort((a, b) => a - b)).toEqual([1, 2, 2, 2, 2, 2, 3]);
   expect(valuesOnly.reduce((sum, value) => sum + value, 0)).toBe(14);
   expect(analysisRequests).toHaveLength(1);
@@ -364,7 +363,7 @@ test("Team Intelligence preserves exact contribution totals with one initial KPI
   await captureFoundation(page, "team-kpi", () => ({ teamKpi: requests, pipeline: inspectionRequests.length }));
   if (foundationPhase === "before") return;
   for (const [label, value] of [["Calls today", "10"], ["Tasks completed", "5"], ["Mappings completed", "3"], ["Queries resolved", "5"]]) {
-    await expect(page.locator(".workspace-counts > div").filter({ hasText: label }).locator("dd")).toHaveText(value);
+    await expect(page.locator(".metric-card").filter({ hasText: label }).locator(".metric-card__value")).toHaveText(value);
   }
   const register = page.getByRole("region", { name: "Team KPI register", exact: true }).last();
   await expect(register.locator("tbody tr").first()).toContainText("Field Employee");

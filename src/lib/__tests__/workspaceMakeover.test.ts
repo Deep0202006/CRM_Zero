@@ -3,8 +3,20 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { CompositionStrip, compositionReconciles } from "@/components/analytics/CompositionStrip";
 import { WorkAgenda, taskAgendaView } from "@/components/workspace/WorkAgenda";
 import { getOrGenerateTodayTasks, sortTasks, type LocalTask } from "@/lib/taskEngine";
+import MyDaySummaryCharts from "@/app/my-day/MyDaySummaryCharts";
 
 const mockTasks: LocalTask[] = [];
+
+it("renders independent focus rings without inventing a mixed-metric total or target", () => {
+  const focus = [{ key: "tasks", label: "Tasks to close", value: 3, color: "red" }, { key: "calls", label: "Calls today", value: 5, color: "blue" }];
+  const html = renderToStaticMarkup(createElement(MyDaySummaryCharts, { focus, urgency: [{ key: "missed", label: "Missed", value: 2, color: "gray" }] }));
+  expect(html).toContain("Tasks to close: 3. Calls today: 5");
+  expect(html).toContain("Independent");
+  expect(html).toContain("Missed");
+  expect(html).not.toContain(">8<");
+  expect(html).not.toContain("On-time");
+  expect(html).not.toContain("<details");
+});
 jest.mock("@/lib/dateTime", () => ({ getCurrentISTDate: () => "2026-09-09" }));
 jest.mock("@/lib/supabaseClient", () => ({ isSupabaseConfigured: false }));
 jest.mock("@/lib/db", () => ({
