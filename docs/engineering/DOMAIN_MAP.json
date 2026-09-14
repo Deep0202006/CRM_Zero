@@ -29,7 +29,7 @@
       "aliases": ["UI Foundation", "chart presentation"],
       "riskFloor": "R3",
       "surfacePaths": ["src/components/ui", "src/components/analytics", "src/components/workspace", "src/design-system"],
-      "codeRoots": ["src/components/ui", "src/components/analytics"],
+      "codeRoots": ["src/components/ui", "src/components/analytics", "src/app/admin/visits/VisitSummaryCharts.tsx"],
       "pathPatterns": ["e2e/workspace-makeover/**", "artifacts/visual-review/workspace-makeover/**", "src/lib/__tests__/coreReliabilityRelease.test.ts", "src/lib/__tests__/workspaceMakeover.test.ts", "src/lib/__tests__/myDayConsumption.test.ts", "components.json", "src/lib/utils.ts", "src/app/globals.css", "e2e/visual-intelligence/**", "src/lib/__tests__/visualIntelligence*.test.ts", "src/lib/__tests__/teamKpiPageContract.test.ts", "src/lib/__tests__/currentErpFootprint.test.ts", "artifacts/visual-review/ui-foundation-before/**", "artifacts/visual-review/ui-foundation-after/**"],
       "serverBoundaries": [],
       "contractPaths": ["docs/contracts/visual-intelligence.md"],

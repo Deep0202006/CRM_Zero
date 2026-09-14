@@ -25,6 +25,10 @@ import { Chip } from "@/components/ui/Chip";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
 import { AnalyticsSkeleton } from "@/components/analytics/AnalyticsPanel";
+import { MetricCard } from "@/components/ui/MetricCard";
+
+const metricCardClass = "min-w-0 [&]:min-h-0 [&]:p-3 [&]:gap-1 [&_.metric-card__label]:normal-case [&_.metric-card__label]:tracking-normal [&_[data-slot=card-footer]]:mt-1 [&_[data-slot=card-footer]]:text-[10px] [&_[data-slot=card-footer]]:leading-3 [&_.metric-card__value]:break-words";
+const TeamSummaryCharts = dynamic(() => import("./TeamSummaryCharts"), { ssr: false, loading: () => <AnalyticsSkeleton label="Loading team intelligence" /> });
 const FunnelTab = dynamic(() => import("./FunnelTab"), { ssr: false, loading: () => <AnalyticsSkeleton label="Loading pipeline funnel" /> });
 const TeamHistory = dynamic(() => import("@/components/analytics/TeamHistory"), { ssr: false, loading: () => <AnalyticsSkeleton label="Loading retained history" /> });
 const ManagementReview = dynamic(() => import("@/components/analytics/ManagementReview"), { ssr: false, loading: () => <AnalyticsSkeleton label="Loading current workload" /> });
@@ -205,12 +209,19 @@ export default function ManagerKpiPage() {
             </div>
           )}
 
-          <dl className="workspace-counts" aria-label="Today confirmed work">
-            {[["Calls today", totals.calls_made], ["Tasks completed · includes targets", totals.tasks_completed], ["Mappings completed", totals.mappings_completed], ["Queries resolved", totals.queries_handled]].map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{report ? Number(value).toLocaleString("en-IN") : "—"}</dd></div>)}
+          <section aria-label="Today confirmed work" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {[["Calls today", totals.calls_made], ["Tasks completed", totals.tasks_completed], ["Mappings completed", totals.mappings_completed], ["Queries resolved", totals.queries_handled]].map(([label, value]) => <MetricCard key={label} label={String(label)} value={report ? Number(value).toLocaleString("en-IN") : "—"} note={label === "Tasks completed" ? "Includes targets" : report && !visibleReportMatchesDate ? `Retained ${report.target_date}` : "Confirmed today"} className={metricCardClass} />)}
+          </section>
+          <dl className="grid grid-cols-3 gap-3 text-xs">
+            <div><dt className="text-[var(--text-secondary)]">Team members</dt><dd className="font-semibold">{report ? totals.team_members.toLocaleString("en-IN") : "—"}</dd></div>
+            <div><dt className="text-[var(--text-secondary)]">Follow-up calls</dt><dd className="font-semibold">{report ? totals.followup_calls.toLocaleString("en-IN") : "—"}</dd></div>
+            <div><dt className="text-[var(--text-secondary)]">Unique completed work</dt><dd className="font-semibold">{report ? totals.total_completed_work.toLocaleString("en-IN") : "—"}</dd></div>
           </dl>
+          {report && <p className="text-xs text-[var(--text-secondary)]">Confirmed report · {report.target_date} · Refreshed {formatActivityTime(report.generated_at)} IST{refreshing ? " · Refreshing…" : ""}</p>}
 
           {loading && <p role="status">Loading confirmed Team KPI data…</p>}
           {!visibleReportMatchesDate && report && <p role="status">This retained report is from {report.target_date}; refresh for Today.</p>}
+          {report && <TeamSummaryCharts rows={rows} comparisonAvailable={!warning && !error && visibleReportMatchesDate} />}
           <div className="workspace-columns">
           <section className="data-table-shell" aria-labelledby="kpi-table-title">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-subtle)] px-4 py-2">
@@ -278,12 +289,7 @@ export default function ManagerKpiPage() {
           </section>
           {report && <EmployeeDetailSheet report={report} selectedId={selectedId} onClose={() => setSelectedId(null)} returnFocus={employeeTrigger} refreshing={refreshing} error={error} />}
           </div>
-        <details className="workspace-disclosure"><summary>Additional daily counts · scope and deduplication</summary>          <dl className="flex flex-wrap gap-x-6 gap-y-3 text-sm">
-            <div><dt className="text-[var(--text-secondary)]">Team members</dt><dd className="font-semibold">{report ? totals.team_members.toLocaleString("en-IN") : "—"}</dd></div>
-            <div><dt className="text-[var(--text-secondary)]">Follow-up calls · subset of Calls</dt><dd className="font-semibold">{report ? totals.followup_calls.toLocaleString("en-IN") : "—"}</dd></div>
-            <div><dt className="text-[var(--text-secondary)]">Unique completed work · linked call/task counted once</dt><dd className="font-semibold">{report ? totals.total_completed_work.toLocaleString("en-IN") : "—"}</dd></div>
-          </dl>
-</details>
+        <details className="workspace-disclosure"><summary>Daily count methodology</summary><p className="text-xs">Follow-up calls are a subset of Calls. Unique completed work counts linked call/task pairs once. Separate work-type counts can overlap and are not a productivity score.</p></details>
         <Button variant="outline" aria-expanded={showComparison} onClick={() => setShowComparison((value) => !value)}>{showComparison ? "Hide" : "Show"} employee reference</Button>
         {showComparison && report && <TeamKpiIntelligence rows={report.rows} comparison comparisonAvailable={!warning && !error && visibleReportMatchesDate} />}
         </TabsContent>

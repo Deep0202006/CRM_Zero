@@ -6,6 +6,51 @@ import { aggregateVisitRange, parseVisitRange } from "../../src/lib/fieldVisits/
 import { buildManagementReview, type ReviewTask } from "../../src/lib/teamKpi/review";
 import { buildHistoryReport, parseHistoryScope } from "../../src/lib/teamKpi/history";
 
+test("restored My Day rings reconcile real urgency and do not add requests", async ({ page }) => {
+  const requests = await setup(page);
+  await page.evaluate(async ({ actor, tasks, employee }) => {
+    const request = indexedDB.open("CRMDatabase");
+    const database = await new Promise<IDBDatabase>(resolve => { request.onsuccess = () => resolve(request.result); });
+    const tx = database.transaction("tasks", "readwrite");
+    tx.objectStore("tasks").put({ ...tasks[0], task_id: "94000000-0000-4000-a000-000000000011", status: "Missed" });
+    tx.objectStore("tasks").put({ ...tasks[0], task_id: "94000000-0000-4000-a000-000000000012", assigned_to: employee });
+    tx.objectStore("tasks").put({ ...tasks[0], task_id: "94000000-0000-4000-a000-000000000013", assigned_to: actor, is_active: false });
+    await new Promise<void>(resolve => { tx.oncomplete = () => resolve(); }); database.close();
+  }, { actor, tasks, employee });
+  await page.goto("/my-day");
+  const urgency = page.getByRole("region", { name: "Urgency ribbon" });
+  await expect(urgency).toBeVisible();
+  for (const label of ["Overdue", "Today", "Later", "Missed"]) await expect(urgency.locator("dl > div").filter({ has: page.getByText(label, { exact: true }) }).locator("dd")).toHaveText("1");
+  const cards = page.getByRole("region", { name: "Daily work summary" });
+  await expect(cards.locator(".metric-card").filter({ hasText: "Tasks done" }).locator(".metric-card__value")).toHaveText("1");
+  await expect(cards.locator(".metric-card").filter({ hasText: "Unique completed work" }).locator(".metric-card__value")).toHaveText("6");
+  // The fixture has no confirmed call IDs: the existing ID-union reader truthfully reports 0, not the response's unbacked count.
+  await expect(cards.locator(".metric-card").filter({ has: page.getByText("Calls today", { exact: true }) }).locator(".metric-card__value")).toHaveText("0");
+  await page.setViewportSize({ width: 390, height: 900 }); await page.getByRole("button", { name: "Use dark theme" }).click();
+  await expect(urgency).toBeVisible();
+  expect(requests.filter(path => path === "/api/my-day/daily-summary")).toHaveLength(1);
+  expect(requests.some(path => path.startsWith("/api/pipeline") || path.startsWith("/api/team-kpi") || path.startsWith("/api/my-day/history"))).toBe(false);
+});
+
+test("restored Team donut partitions a single metric and radar uses raw cohort values without requests", async ({ page }) => {
+  const requests = await setup(page);
+  await page.goto("/manager/kpi");
+  const ring = page.getByRole("region", { name: "Contribution ring" }), radar = page.getByRole("region", { name: "Employee shape vs team" });
+  await expect(ring.locator(".recharts-pie")).toBeVisible();
+  await expect(radar.locator(".recharts-radar").first()).toBeVisible();
+  for (const row of report.rows) await expect(ring.getByRole("listitem").filter({ hasText: row.name })).toContainText(`${row.calls_made} of ${report.totals.calls_made}`);
+  const selection = ring.getByRole("combobox", { name: "Contribution metric" });
+  await selection.focus(); await page.keyboard.press("Home"); await page.keyboard.press("Enter");
+  await selection.selectOption("tasks_completed");
+  await expect(ring).toContainText("Zero total");
+  await radar.getByRole("combobox", { name: "Radar employee" }).selectOption(actor);
+  await expect(radar.getByRole("table", { name: "Raw radar values" }).getByRole("row").filter({ has: page.getByRole("rowheader", { name: "Calls", exact: true }) })).toContainText(String(report.rows.find(row => row.user_id === actor)!.calls_made));
+  await expect(radar).toContainText("Each axis scales independently");
+  await page.setViewportSize({ width: 390, height: 900 }); await page.getByRole("button", { name: "Use dark theme" }).click();
+  expect(requests.filter(path => path === "/api/team-kpi")).toHaveLength(1);
+  expect(requests.some(path => path.startsWith("/api/pipeline") || path.includes("/history") || path.includes("/review"))).toBe(false);
+});
+
 test("Admin Review is lazy and reconciles current records, employee scope and read-only Missed detail", async ({ page }) => {
   const requests = await setup(page);
   const rows: ReviewTask[] = tasks.map(row => ({ ...row, template_id: null }) as ReviewTask);
@@ -197,32 +242,27 @@ test("Visits full-range chart reconciles 31 busy dates without pager or refresh 
     if (await page.evaluate(() => document.documentElement.dataset.theme) !== theme) await page.getByRole("button", { name: `Use ${theme} theme` }).click();
     for (const width of [1440, 390]) {
       await page.setViewportSize({ width, height: 900 }); await page.getByRole("main").evaluate(node => node.scrollTo(0, 0));
-      await expect(page.getByRole("button", { name: leads[0].business_name, exact: true })).toBeInViewport();
+      await expect(page.locator(".metric-card").first()).toBeInViewport();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1)).toBe(true);
       if (process.env.WORKSPACE_CAPTURE) {
         const directory = `artifacts/visual-review/workspace-makeover/${process.env.WORKSPACE_CAPTURE}`;
         await mkdir(directory, { recursive: true });
         await page.screenshot({ path: `${directory}/visits-busy-${width}-${theme}.png`, animations: "disabled" });
-        if (width === 390) await page.getByRole("tab", { name: "Analysis", exact: true }).click();
         await activity.scrollIntoViewIfNeeded();
         await page.screenshot({ path: `${directory}/visits-range-${width}-${theme}.png`, animations: "disabled" });
-        if (width === 390) await page.getByRole("tab", { name: "Work", exact: true }).click();
       }
     }
   }
-  await page.getByRole("tab", { name: "Analysis", exact: true }).click();
   const refresh = page.getByRole("button", { name: "Refresh analysis", exact: true });
   await refresh.focus(); await page.keyboard.press("Enter"); await expect(refresh).toBeEnabled();
   expect(analysisRequests()).toBe(3);
   await page.getByRole("button", { name: "Filter outcome: Follow-up", exact: true }).click();
   await expect(page.getByText(/Applied:.*Follow-up.*Loaded page 1.*20 of 20/)).toBeVisible();
-  await page.getByRole("tab", { name: "Analysis", exact: true }).click();
   await expect(activity).toContainText("20 retained Visit records");
   expect(analysisRequests()).toBe(4);
   await page.getByText("Representative context · retained Visit authors", { exact: true }).click();
   await activity.getByRole("button", { name: `${rows[0].users.name} · 20 retained visits`, exact: true }).click();
   await expect(page.getByText(new RegExp(`Applied:.*${rows[0].user_id}.*Loaded page 1`))).toBeVisible();
-  await page.getByRole("tab", { name: "Analysis", exact: true }).click();
   await expect(activity).toContainText("20 retained Visit records");
   expect(analysisRequests()).toBe(5);
   for (const endpoint of ["/api/admin/visits?", "/api/admin/visits/analysis?"]) {
@@ -233,7 +273,6 @@ test("Visits full-range chart reconciles 31 busy dates without pager or refresh 
   await page.route("**/api/admin/visits/analysis?**", route => route.fulfill({ status: 503, json: { code: "VISIT_SOURCE_LIMIT" } }));
   await refresh.click(); await expect(page.getByRole("status").filter({ hasText: "Range analysis unavailable" })).toBeVisible();
   await expect(activity).toHaveCount(0);
-  await page.getByRole("tab", { name: "Work", exact: true }).click();
   await expect(page.getByRole("button", { name: leads[0].business_name, exact: true })).toBeVisible();
 });
 
@@ -249,7 +288,26 @@ test(`populated ${name} desktop and mobile review`, async ({ page }) => {
     for (const width of [1440, 390]) {
       await page.setViewportSize({ width, height: 900 }); await page.evaluate(() => document.fonts.ready);
       await page.evaluate(() => window.scrollTo(0, 0));
-      await expect(name === "team" ? page.getByRole("button", { name: record, exact: true }) : page.getByText(record, { exact: false }).first()).toBeInViewport();
+      await page.getByRole("main").evaluate(node => node.scrollTo(0, 0));
+      if (name === "pipeline") await expect(page.getByText(record, { exact: false }).first()).toBeInViewport();
+      else {
+        const cards = page.locator(".metric-card"), charts = page.locator(".analytics-panel").first(), register = page.locator("[data-workspace-register]").first();
+        await expect(cards.first()).toBeInViewport();
+        await expect(charts).toBeVisible();
+        expect(await charts.evaluate(node => !node.closest("details:not([open]), [hidden]"))).toBe(true);
+        await expect(charts.locator("svg").first()).toBeVisible();
+        expect((await cards.last().boundingBox())!.y).toBeLessThan((await charts.boundingBox())!.y);
+        expect((await charts.boundingBox())!.y).toBeLessThan((await register.boundingBox())!.y);
+        if (process.env.UI_RESTORATION_CAPTURE) {
+          const directory = "artifacts/visual-review/workspace-makeover/ui-restoration"; await mkdir(directory, { recursive: true });
+          await page.screenshot({ path: `${directory}/${name}-${width}-${theme}-top.png`, animations: "disabled" });
+          await charts.evaluate(node => node.scrollIntoView({ block: "start", behavior: "instant" }));
+          await page.screenshot({ path: `${directory}/${name}-${width}-${theme}-charts.png`, animations: "disabled" });
+          const contextPanel = page.locator(".analytics-panel").nth(name === "team" ? 2 : 1);
+          await contextPanel.evaluate(node => node.scrollIntoView({ block: "start", behavior: "instant" }));
+          await page.screenshot({ path: `${directory}/${name}-${width}-${theme}-context.png`, animations: "disabled" });
+        }
+      }
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1)).toBe(true);
       if (name === "pipeline") expect((await page.getByRole("searchbox").boundingBox())!.width).toBeGreaterThan(180);
       if (process.env.WORKSPACE_CAPTURE && (!process.env.WORKSPACE_CAPTURE_ONLY || process.env.WORKSPACE_CAPTURE_ONLY === name)) { const directory = `artifacts/visual-review/workspace-makeover/${process.env.WORKSPACE_CAPTURE}`; await mkdir(directory, { recursive: true }); await page.screenshot({ path: `${directory}/${name}-${width}${theme === "dark" ? "-dark" : ""}.png`, animations: "disabled" }); }
@@ -481,8 +539,7 @@ test("Visits evidence cannot open after its selected detail closes, even when tr
   release!(); await (await completed).finished();
   await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
   expect(await page.evaluate(()=>document.documentElement.dataset.evidenceOpens)).toBe("0");
-  await page.getByText("Global visit context",{exact:true}).click();
-  await expect(page.locator(".workspace-counts")).toContainText("Unavailable");
+  await expect(page.getByRole("region", { name: "Visit metrics" })).toContainText("Unavailable");
 });
 
 test("Pipeline confirmation invalidates an older snapshot and keeps exact context across the Sheet breakpoint", async ({ page }) => {

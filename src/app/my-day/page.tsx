@@ -28,6 +28,11 @@ import { getCanonicalDailyUserMetrics } from "@/lib/workMetrics/canonical";
 import PaymentCollectionsPriorityPanel from "@/components/PaymentCollectionsPriorityPanel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/Tabs";
 import { AnalyticsSkeleton } from "@/components/analytics/AnalyticsPanel";
+import { MetricCard } from "@/components/ui/MetricCard";
+
+const metricCardClass = "min-w-0 [&]:min-h-0 [&]:p-3 [&]:gap-1 [&_.metric-card__label]:normal-case [&_.metric-card__label]:tracking-normal [&_[data-slot=card-footer]]:mt-1 [&_[data-slot=card-footer]]:text-[10px] [&_[data-slot=card-footer]]:leading-3 [&_.metric-card__value]:break-words";
+
+const MyDaySummaryCharts = dynamic(() => import("./MyDaySummaryCharts"), { ssr: false, loading: () => <AnalyticsSkeleton label="Loading your work signals" /> });
 
 const OwnHistory = dynamic(() => import("@/components/analytics/TeamHistory"), { ssr: false, loading: () => <AnalyticsSkeleton label="Loading your retained history" /> });
 
@@ -392,12 +397,38 @@ export default function MyDayPage() {
   };
 
   const todayKey = getCurrentISTDate();
+  const activeWork = tasks.filter((task) => task.assigned_to === currentUser?.user_id && task.is_active !== false && task.status !== "Completed");
+  const focus = [
+    { key: "tasks", label: "Tasks to close", value: activeWork.length, color: "var(--viz-primary)" },
+    { key: "targets", label: "Open field targets", value: allocatedTargets.length, color: "var(--viz-info)" },
+    { key: "payments", label: "Payment follow-ups today", value: paymentFollowUps.length, color: "var(--viz-warning)" },
+    { key: "mappings", label: "Mappings done today", value: mappedToday, color: "var(--viz-success)" },
+    ...(hasOnboarding ? [{ key: "calls", label: "Calls today", value: dailySummary?.genuine_calls_today ?? localCallsToday, color: "var(--viz-pending)" }] : []),
+  ];
+  const urgency = [
+    { key: "overdue", label: "Overdue", value: activeWork.filter((task) => task.status !== "Missed" && task.due_date < todayKey).length, color: "var(--viz-danger)" },
+    { key: "today", label: "Today", value: activeWork.filter((task) => task.status !== "Missed" && task.due_date === todayKey).length, color: "var(--viz-warning)" },
+    { key: "later", label: "Later", value: activeWork.filter((task) => task.status !== "Missed" && task.due_date > todayKey).length, color: "var(--viz-info)" },
+    { key: "missed", label: "Missed", value: activeWork.filter((task) => task.status === "Missed").length, color: "var(--viz-muted)" },
+  ];
   const upcomingTasks = sortTasks(tasks.filter(task => task.assigned_to === currentUser?.user_id && task.is_active !== false && task.status !== "Completed" && task.status !== "Missed" && task.due_date > todayKey))
     .sort((a, b) => a.due_date.localeCompare(b.due_date)).slice(0, 5);
   const selectedTask = tasks.find((task) => task.task_id === selectedTaskId);
   return (
     <div className="app-page crm-workspace">
-      <header className="workspace-heading"><div><h1>My Day</h1><p>{todayKey} · Asia/Kolkata · Your assigned work</p></div><Button variant="outline" onClick={handleSyncData} disabled={isSyncing} icon={<RefreshCw size={15} />}>{isSyncing ? "Syncing" : "Sync data"}</Button></header>
+      <header className="workspace-heading [&]:flex-row [&]:items-start"><div><h1>My Day</h1><p>{todayKey} · Asia/Kolkata · Your assigned work</p></div><Button variant="outline" onClick={handleSyncData} disabled={isSyncing} icon={<RefreshCw size={15} />}>{isSyncing ? "Syncing" : "Sync data"}</Button></header>
+      {workspaceView === "agenda" && <><section aria-label="Daily work summary" className="space-y-3">
+        <div className="grid grid-cols-3 gap-2 lg:grid-cols-4">
+          <MetricCard label="Tasks done" value={dailySummary?.total_tasks_completed_today ?? <span className="text-base tracking-normal">Unavailable</span>} note="Confirmed · includes targets" className={metricCardClass} />
+          <MetricCard label="Mappings done" value={loading ? "—" : mappedToday} note="Local today" className={metricCardClass} />
+          {hasOnboarding && <><MetricCard label="Calls today" value={dailySummary?.genuine_calls_today ?? localCallsToday} note="Local + confirmed IDs" className={metricCardClass} /><MetricCard label="Follow-up calls" value={dailySummary?.followup_calls_today ?? localFollowupCallsToday} note="Subset of Calls" className={metricCardClass} /></>}
+          <MetricCard label="Unique completed work" value={dailySummary?.unique_completed_work ?? <span className="text-base tracking-normal">Unavailable</span>} note="Confirmed · deduplicated" className={metricCardClass} />
+          {hasSupport && <><MetricCard label="Queries resolved today" value={loading ? "—" : queriesResolvedToday} note="Local · yours" className={metricCardClass} /><MetricCard label="Open queries" value={loading ? "—" : openQueries} note="Local · yours" className={metricCardClass} /></>}
+        </div>
+        <p className="text-xs text-[var(--text-secondary)]">Local: this device. {dailySummary ? `Confirmed snapshot: ${new Date(dailySummary.generated_at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST.` : "Confirmed summary unavailable."}</p>
+        {dailySummaryError && <div role="alert" className="alert-panel alert-panel--danger">{dailySummaryError}</div>}
+      </section>
+      {loading ? <AnalyticsSkeleton label="Loading your work signals" /> : <MyDaySummaryCharts focus={focus} urgency={urgency} />}</>}
       {taskActionMessage && <div className={`alert-panel ${taskActionMessage.type === "success" ? "alert-panel--success" : "alert-panel--danger"}`} role={taskActionMessage.type === "success" ? "status" : "alert"}>{taskActionMessage.text}</div>}
       <Tabs value={workspaceView} onValueChange={setWorkspaceView} activationMode="manual"><TabsList aria-label="My Day view"><TabsTrigger value="agenda">Agenda</TabsTrigger><TabsTrigger value="history">My history</TabsTrigger></TabsList>
       <TabsContent value="history">{workspaceView === "history" && currentUser && <OwnHistory key={currentUser.user_id} self />}</TabsContent>
@@ -491,16 +522,7 @@ export default function MyDayPage() {
 
 
       <PaymentCollectionsPriorityPanel />
-      {dailySummaryError && <div role="alert" className="alert-panel alert-panel--danger">{dailySummaryError}</div>}
-      <details className="workspace-disclosure"><summary>Daily work summary · distinct recorded work types</summary>
-        <dl className="workspace-counts">
-          <div><dt>Tasks done · confirmed, includes targets</dt><dd>{dailySummary?.total_tasks_completed_today ?? "Unavailable"}</dd></div>
-          <div><dt>Mappings done · local</dt><dd>{mappedToday}</dd></div>
-          {hasOnboarding && <><div><dt>Calls today · local and confirmed IDs</dt><dd>{dailySummary?.genuine_calls_today ?? localCallsToday}</dd></div><div><dt>Follow-up calls · subset of Calls</dt><dd>{dailySummary?.followup_calls_today ?? localFollowupCallsToday}</dd></div></>}
-          <div><dt>Unique completed work · confirmed</dt><dd>{dailySummary?.unique_completed_work ?? "Unavailable"}</dd></div>
-          {hasSupport && <><div><dt>Queries resolved today · local</dt><dd>{queriesResolvedToday}</dd></div><div><dt>Open queries · local</dt><dd>{openQueries}</dd></div></>}
-        </dl><p className="text-xs">Linked follow-up call/task pairs count once in unique completed work. These counts are not a productivity score.</p>
-      </details>
+      <details className="workspace-disclosure"><summary>How daily counts differ</summary><p className="text-xs">Linked follow-up call/task pairs count once in unique completed work. Tasks done includes allocated targets. Local counts cover this device, not certified historical capture. These distinct counts are not a productivity score.</p></details>
       </TabsContent></Tabs>
       <Modal
         open={Boolean(completionDialogTask)}
