@@ -27,7 +27,7 @@ import { Button } from "@/components/ui/Button";
 import { AnalyticsSkeleton } from "@/components/analytics/AnalyticsPanel";
 import { MetricCard } from "@/components/ui/MetricCard";
 
-const metricCardClass = "min-w-0 [&]:min-h-0 [&]:p-3 [&]:gap-1 [&_.metric-card__label]:normal-case [&_.metric-card__label]:tracking-normal [&_[data-slot=card-footer]]:mt-1 [&_[data-slot=card-footer]]:text-[10px] [&_[data-slot=card-footer]]:leading-3 [&_.metric-card__value]:break-words";
+const metricCardClass = "min-w-0 [&]:min-h-0 [&]:p-3 [&]:gap-1 [&_[data-slot=card-footer]]:mt-1 [&_[data-slot=card-footer]]:text-[10px] [&_[data-slot=card-footer]]:leading-3";
 const TeamSummaryCharts = dynamic(() => import("./TeamSummaryCharts"), { ssr: false, loading: () => <AnalyticsSkeleton label="Loading team intelligence" /> });
 const FunnelTab = dynamic(() => import("./FunnelTab"), { ssr: false, loading: () => <AnalyticsSkeleton label="Loading pipeline funnel" /> });
 const TeamHistory = dynamic(() => import("@/components/analytics/TeamHistory"), { ssr: false, loading: () => <AnalyticsSkeleton label="Loading retained history" /> });
