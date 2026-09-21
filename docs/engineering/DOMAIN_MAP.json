@@ -310,6 +310,8 @@
       "pathPatterns": [
         "supabase/migrations/055_crm_bcd_readers.sql",
         "supabase/migrations/056_crm_visit_overview_v2.sql",
+        "supabase/manual/precheck_056_crm_visit_overview_v2.sql",
+        "supabase/manual/verify_056_crm_visit_overview_v2.sql",
         "supabase/manual/precheck_055_crm_bcd_readers.sql",
         "supabase/manual/verify_055_crm_bcd_readers.sql",
         "scripts/bcd-db/**",
