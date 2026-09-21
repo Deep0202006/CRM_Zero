@@ -1,8 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { mkdir } from "node:fs/promises";
-import { actor, employee, leads, report, setup, tasks, today, visits } from "./fixtures";
+import { actor, buildVisitSummary, employee, leads, report, setup, tasks, today, visits } from "./fixtures";
 import { addISTDateDays } from "../../src/lib/dateTime";
-import { aggregateVisitRange, parseVisitRange } from "../../src/lib/fieldVisits/range";
 import { buildManagementReview, type ReviewTask } from "../../src/lib/teamKpi/review";
 import { buildHistoryReport, parseHistoryScope } from "../../src/lib/teamKpi/history";
 
@@ -200,7 +199,7 @@ test("Visits full-range chart reconciles 31 busy dates without pager or refresh 
     leads: { ...leads[index % leads.length], business_name: index ? `Retained business ${index} — Western Regional Pharmaceutical Distribution and Service Centre` : leads[0].business_name },
     users: { name: "Asha Mehta — Western Region Field Operations and Service Coordination", email: "asha@example.test" },
   }));
-  const matchedRows = (params: URLSearchParams) => rows.filter(row => row.visit_date >= params.get("date_from")! && row.visit_date <= params.get("date_to")!
+  const matchedRows = (params: URLSearchParams) => rows.filter(row => (!params.has("date_from") || row.visit_date >= params.get("date_from")!) && (!params.has("date_to") || row.visit_date <= params.get("date_to")!)
     && (!params.has("outcome") || row.visit_outcome === params.get("outcome"))
     && (!params.has("representative") || row.user_id === params.get("representative"))
     && (!params.has("segment") || row.segment_type === params.get("segment"))
@@ -211,32 +210,30 @@ test("Visits full-range chart reconciles 31 busy dates without pager or refresh 
     return route.fulfill({ json: { visits: matched.slice((number - 1) * 50, number * 50), total: matched.length, page: number, has_more: number * 50 < matched.length, all_time_total: null, today_total: null } });
   });
   await page.route("**/api/admin/visits/analysis?**", route => {
-    const now = new Date().toISOString(), scope = parseVisitRange(new URL(route.request().url()).searchParams, now);
-    const aggregate = aggregateVisitRange(scope, matchedRows(new URL(route.request().url()).searchParams));
-    return route.fulfill({ json: { kind: "visit-range-v1", scope, generated_at: now, retained_source_read: "exhausted", historical_coverage: "uncertified", consistency: "bounded-live-multi-request", ...aggregate, representatives: aggregate.representatives?.map(row => ({ ...row, name: rows[0].users.name })) } });
+    const params = new URL(route.request().url()).searchParams;
+    return route.fulfill({ json: buildVisitSummary(params, matchedRows(params)) });
   });
   await page.setViewportSize({ width: 1440, height: 900 }); await page.goto("/admin/visits");
   const activity = page.getByRole("region", { name: "Full-range Visit activity", exact: true });
   await expect(activity).toBeVisible();
-  await page.getByText("Refine representative, outcome and dates", { exact: true }).click();
-  await page.getByText("Date and segment filters", { exact: true }).click();
+  await page.getByLabel("Date scope", { exact: true }).selectOption("range");
   await page.getByLabel("Date From", { exact: true }).fill(addISTDateDays(today, -30));
-  await page.getByRole("button", { name: "Apply filters", exact: true }).click();
-  await expect(activity).toContainText("80 retained Visit records · 31 IST business dates");
-  await page.getByText("Refine representative, outcome and dates", { exact: true }).click();
+  await page.getByLabel("Date To", { exact: true }).fill(today);
+  await expect(activity).toContainText("80 retained Visit records");
   const analysisRequests = () => requests.filter(path => path.startsWith("/api/admin/visits/analysis?")).length;
-  expect(analysisRequests()).toBe(2);
+  const confirmedAnalysisRequests = analysisRequests();
+  expect(confirmedAnalysisRequests).toBeGreaterThanOrEqual(1);
   await page.getByRole("button", { name: "Next", exact: true }).click();
   await expect(page.getByText(/Applied:.*Loaded page 2/)).toBeVisible();
-  await page.getByRole("button", { name: "Refresh", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Apply filters", exact: true })).toBeEnabled();
-  expect(analysisRequests()).toBe(2);
-  await page.getByRole("button", { name: "Previous", exact: true }).click();
-  await page.getByText("Exact daily chart data", { exact: true }).click();
+  expect(analysisRequests()).toBe(confirmedAnalysisRequests);
+  await page.getByRole("tablist", { name: "Visit analytics" }).locator("..").getByRole("button", { name: "Refresh", exact: true }).click();
+  await expect.poll(analysisRequests).toBe(confirmedAnalysisRequests + 1);
+  await expect(page.getByText(/Applied:.*Loaded page 1/)).toBeVisible();
+  await page.getByText("Exact activity chart data", { exact: true }).click();
   const daily = activity.getByRole("table");
   await expect(daily.locator("tbody tr")).toHaveCount(31);
   expect((await daily.locator("tbody td").allTextContents()).reduce((sum, value) => sum + Number(value), 0)).toBe(80);
-  await page.getByText("Exact daily chart data", { exact: true }).click();
+  await page.getByText("Exact activity chart data", { exact: true }).click();
   await expect(page.getByText("Legacy unknown", { exact: true }).first()).toBeVisible();
   for (const theme of ["light", "dark"]) {
     if (await page.evaluate(() => document.documentElement.dataset.theme) !== theme) await page.getByRole("button", { name: `Use ${theme} theme` }).click();
@@ -253,25 +250,25 @@ test("Visits full-range chart reconciles 31 busy dates without pager or refresh 
       }
     }
   }
-  const refresh = page.getByRole("button", { name: "Refresh analysis", exact: true });
+  const refresh = page.getByRole("tablist", { name: "Visit analytics" }).locator("..").getByRole("button", { name: "Refresh", exact: true });
   await refresh.focus(); await page.keyboard.press("Enter"); await expect(refresh).toBeEnabled();
-  expect(analysisRequests()).toBe(3);
+  expect(analysisRequests()).toBe(confirmedAnalysisRequests + 2);
   await page.getByRole("button", { name: "Filter outcome: Follow-up", exact: true }).click();
   await expect(page.getByText(/Applied:.*Follow-up.*Loaded page 1.*20 of 20/)).toBeVisible();
   await expect(activity).toContainText("20 retained Visit records");
-  expect(analysisRequests()).toBe(4);
+  expect(analysisRequests()).toBe(confirmedAnalysisRequests + 3);
   await page.getByText("Representative context · retained Visit authors", { exact: true }).click();
   await activity.getByRole("button", { name: `${rows[0].users.name} · 20 retained visits`, exact: true }).click();
   await expect(page.getByText(new RegExp(`Applied:.*${rows[0].user_id}.*Loaded page 1`))).toBeVisible();
   await expect(activity).toContainText("20 retained Visit records");
-  expect(analysisRequests()).toBe(5);
+  expect(analysisRequests()).toBe(confirmedAnalysisRequests + 4);
   for (const endpoint of ["/api/admin/visits?", "/api/admin/visits/analysis?"]) {
     const params = new URL(`http://fixture.invalid${requests.filter(path => path.startsWith(endpoint)).at(-1)!}`).searchParams;
     expect(params.get("representative")).toBe(rows[0].user_id); expect(params.get("outcome")).toBe("follow_up");
     if (endpoint === "/api/admin/visits?") expect(params.get("page")).toBe("1");
   }
   await page.route("**/api/admin/visits/analysis?**", route => route.fulfill({ status: 503, json: { code: "VISIT_SOURCE_LIMIT" } }));
-  await refresh.click(); await expect(page.getByRole("status").filter({ hasText: "Range analysis unavailable" })).toBeVisible();
+  await refresh.click(); await expect(page.getByRole("status").filter({ hasText: "Visit summary is unavailable" })).toBeVisible();
   await expect(activity).toHaveCount(0);
   await expect(page.getByRole("button", { name: leads[0].business_name, exact: true })).toBeVisible();
 });
@@ -408,20 +405,16 @@ test("Visits representative search is lazy and independent of register paging, r
   await page.goto("/admin/visits");
   await expect(page.getByText("Acme Medical and General Stores",{exact:false}).first()).toBeVisible();
   expect(pickerRequests).toHaveLength(0);
-  await page.getByText("Refine representative, outcome and dates", { exact: true }).click();
   const selector=page.getByLabel("Representative",{exact:true});
   await selector.focus();
   await expect(selector.locator("option")).toHaveCount(2);
   await selector.selectOption(current.user_id);
-  await page.getByText("Find current or historical representatives",{exact:true}).click();
-  await page.getByLabel("Representative name or email").fill("Former");
+  await page.getByLabel("Find representative").fill("Former");
   expect(pickerRequests).toHaveLength(1);
-  await page.getByRole("button",{name:"Search representatives",exact:true}).click();
+  await page.getByRole("button",{name:"Search",exact:true}).click();
   await expect(selector.locator("option")).toHaveCount(3);
   await expect(selector).toHaveValue(current.user_id);
   await expect(selector.locator(`option[value="${former.user_id}"]`)).toContainText("inactive — historical");
-  expect(requests.filter(path=>path.startsWith("/api/admin/visits?"))).toHaveLength(1);
-  await page.getByRole("button",{name:"Apply filters",exact:true}).click();
   await expect.poll(()=>requests.filter(path=>path.startsWith("/api/admin/visits?")).length).toBe(2);
   expect(pickerRequests).toHaveLength(2);
   expect(pickerRequests[1].get("selected")).toBe(current.user_id);
@@ -448,9 +441,8 @@ test("Visits retains applied page and selected UUID through failed filters; deta
   fail = true;
   await page.getByRole("textbox", { name: "Search visits", exact: true }).fill("no match");
   expect(registerRequests).toHaveLength(2);
-  await page.getByRole("button", { name: "Apply filters", exact: true }).click();
   await expect(page.getByRole("alert").filter({ hasText: "Fixture refresh unavailable" })).toBeVisible();
-  await expect(page.getByRole("region", { name: "Outcome composition" })).toContainText("Full applied range");
+  await expect(page.getByRole("region", { name: "Outcome composition" })).toContainText("Complete confirmed scope");
   await expect(record).toBeVisible();
   await expect(rail).toContainText("Page 2");
   expect(requests.some(path => path.includes("/evidence"))).toBe(false);
@@ -471,7 +463,7 @@ test("Visits retains applied page and selected UUID through failed filters; deta
   expect(registerRequests.at(-1)!.has("search")).toBe(false);
 });
 
-test("Visits background refresh cannot replace a pending Apply", async ({ page }) => {
+test("Visits background refresh cannot replace a pending search", async ({ page }) => {
   await setup(page);
   const queries: URLSearchParams[] = [];
   let release: (() => void) | undefined;
@@ -484,11 +476,9 @@ test("Visits background refresh cannot replace a pending Apply", async ({ page }
   await page.goto("/admin/visits");
   await expect(page.getByRole("button", { name: leads[0].business_name, exact: true })).toBeVisible();
   await page.getByRole("textbox", { name: "Search visits", exact: true }).fill("Acme");
-  await page.getByRole("button", { name: "Apply filters", exact: true }).click();
   await expect.poll(() => Boolean(release)).toBe(true);
-  await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+  await page.evaluate(() => { Object.defineProperty(document, "visibilityState", { configurable: true, value: "hidden" }); document.dispatchEvent(new Event("visibilitychange")); Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" }); document.dispatchEvent(new Event("visibilitychange")); });
   release!();
-  await expect(page.getByRole("button", { name: "Apply filters", exact: true })).toBeEnabled();
   await expect(page.getByText(/Applied:.*Search: Acme/)).toBeVisible();
   expect(queries).toHaveLength(2);
 });
@@ -510,10 +500,13 @@ test("Visits export captures applied filters and cannot download after workspace
   });
   await page.goto("/admin/visits");
   await expect(page.getByRole("button", { name: "Export to Excel" })).toBeEnabled();
-  await page.getByRole("textbox", { name: "Search visits", exact: true }).fill("unapplied draft");
+  await page.getByRole("textbox", { name: "Search visits", exact: true }).fill("confirmed search");
+  await expect(page.getByRole("button", { name: "Export to Excel" })).toBeDisabled();
+  await expect(page.getByText(/Applied:.*Search: confirmed search/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Export to Excel" })).toBeEnabled();
   await page.getByRole("button", { name: "Export to Excel" }).click();
   await expect.poll(() => Boolean(release)).toBe(true);
-  expect(query!.has("search")).toBe(false);
+  expect(query!.get("search")).toBe("confirmed search");
   await page.getByRole("link", { name: "My Day", exact: true }).first().click();
   await expect(page).toHaveURL(/\/my-day$/);
   const completed = page.waitForResponse(response => response.url().includes("/export-visits"));
