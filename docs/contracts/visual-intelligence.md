@@ -10,7 +10,7 @@ Team KPI has compact Today counts and a name-default employee register. PR112 Hi
 
 Operational Pipeline board/list use the same bounded snapshot and owner actions. Selected context is exact-UUID guarded across asynchronous reads, changes of selection, close, unmount and account changes, with a bounded retryable timeout. Admin Pipeline uses canonical stage occupancy, one selected 12-period event line, separate current-stage age and completed-interval P50/mean/sample tables, and reconciled source conversion. Segment-wide analytics and list-only filters are labeled separately.
 
-Visits puts the confirmed register first. The compact outcome strip partitions only the successful applied page, including explicit historical unknowns. Failed draft filters cannot relabel retained records. Selected detail retains its original record snapshot and scope. ERP composition still adapts from donut to bars above six categories and preserves unique-business reconciliation; field ERP coverage uses paired 0–100 bars. Calls, Distributor milestones and Renewals remain separate unchanged consumers.
+Visits puts the confirmed register first. A server aggregate supplies lifetime activity and all seven canonical outcome cards; historical unknowns appear separately when present. Direct representative, outcome, date, segment, and search controls commit one coherent scope to summary, register, and export. Late responses cannot relabel the confirmed scope. Selected detail retains its original record snapshot and scope. ERP composition still adapts from donut to bars above six categories and preserves unique-business reconciliation; field ERP coverage uses paired 0–100 bars. Calls, Distributor milestones and Renewals remain separate unchanged consumers.
 
 ## VISUAL TRUTH
 
@@ -26,10 +26,10 @@ Every visualization declares its source metric, filter scope, timezone, unit, de
 
 - My Day: zero visualization requests; unnecessary owned-lead, transition, converted-lead and weekly-digest consumption removed. Existing task generation/deduplication/recovery and real Later task reads are reused.
 - Team KPI: one initial `/api/team-kpi` request; existing scoped Realtime signal; no polling.
-- Visits Overview: one initial bounded `/api/admin/visits` request; page size 50; evidence remains click-only; no polling.
+- Visits Overview: one 50-row register request plus one server aggregate request initially and per filter change; pagination repeats only the register request; evidence remains click-only; no polling.
 - Manager Pipeline: one bounded `/api/pipeline/inspection` request per explicit server-filter change; page size 50; no polling or chart-owned request.
 - Calls, Distributor Status, Renewals, and Field ERP: zero visualization requests; their existing metrics/read paths are unchanged.
-- Visualization database-query delta: zero. Removing unnecessary My Day consumption does not expand server readers.
+- Visits charts use one bounded aggregate database statement; other visualization database-query deltas remain zero.
 - Visualization writes, Storage reads, and Realtime channels: zero.
 
 ## PROVENANCE

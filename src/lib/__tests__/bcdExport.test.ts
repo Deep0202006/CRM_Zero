@@ -31,7 +31,9 @@ describe("bounded Visits export", () => {
     expect(parseVisitExport(visitQueryParams(applied), "2026-09-09T00:00:00Z")).toMatchObject({ search: "%_,().", representative: actor });
     expect(parseVisitExport(visitQueryParams(draft), "2026-09-09T00:00:00Z").search).not.toBe("%_,().");
     expect(parseVisitExport(new URLSearchParams(`date=2026-08-01&agent=${actor}`), "2026-09-09T00:00:00Z").representative).toBe(actor);
-    for (const query of ["", "page=1", "date_from=2026-08-01", "date_from=2026-08-01&date_to=2026-09-01", "date=2026-02-30",
+    expect(parseVisitExport(new URLSearchParams(), "2026-09-09T00:00:00Z")).not.toHaveProperty("date_from");
+    expect(parseVisitExport(new URLSearchParams("date_from=2026-08-01&date_to=2026-09-01"), "2026-09-09T00:00:00Z").date_to).toBe("2026-09-01");
+    for (const query of ["page=1", "date_from=2026-08-01", "date=2026-02-30",
       `date=2026-08-01&agent=${actor}&representative=${actor}`, `date=2026-08-01&agent=${actor}&agent=${actor}`,
       "date=2026-08-01&search=a&search=b", "date=2026-08-01&employee=x"]) expect(() => parseVisitExport(new URLSearchParams(query), "2026-09-09T00:00:00Z")).toThrow();
   });

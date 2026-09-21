@@ -5,6 +5,18 @@ Do not execute this packet until the complete PR114 acceptance and required
 final-head CI are reviewed. This document is not an application certificate.
 The Owner-applied repository boundary remains **54/54**.
 
+## Visits Overview 056 follow-on packet
+
+Migration 056 is also prepared and disposable-CI-tested only. It requires 055 first and adds three read-only, security-invoker functions: `crm_visit_summary_v1`, `crm_visit_register_v2`, and `crm_visit_export_v2`. It changes no table, RLS policy, index, business row, or v1 function.
+
+After 055 is Owner-applied and verified, use the three 056 files from one final reviewed commit in this order: `supabase/manual/precheck_056_crm_visit_overview_v2.sql`, `supabase/migrations/056_crm_visit_overview_v2.sql`, then `supabase/manual/verify_056_crm_visit_overview_v2.sql`. The precheck returns `BCD056_PRECHECK_PASS_NOT_APPLIED` for a clean target or `BCD056_PRECHECK_ALREADY_APPLIED_USE_POSTCHECK` for all three exact signatures; partial or conflicting names stop. The migration is one transaction. The postcheck must return `BCD056_POSTCHECK_PASS_OWNER_EVIDENCE_REQUIRED`. Do not rerun the migration when precheck reports already applied.
+
+| Order | Repository file | SHA-256 |
+|---|---|---|
+| 1 | `supabase/manual/precheck_056_crm_visit_overview_v2.sql` | `8ef3b7b95079c3f0aaff22584641bc185568d87d3f89c4b3ec07a0d7a1560f66` |
+| 2 | `supabase/migrations/056_crm_visit_overview_v2.sql` | `220af2ee4dd60b6d800a89cbcc61a312daa4c8aed274a4fd96b5c46645956205` |
+| 3 | `supabase/manual/verify_056_crm_visit_overview_v2.sql` | `7985f3595b1f96706ec1d89e801c09ab0ca52dc60813e70cfa51bad766304781` |
+
 ## Exact files and integrity
 
 Migration source is unchanged from reviewed implementation commit

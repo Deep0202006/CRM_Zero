@@ -28,6 +28,18 @@ insert into public.field_visits(visit_id,user_id,lead_id,visit_date,check_in_tim
 select md5('plan'||g)::uuid, md5('user'||(1+g%61))::uuid, (md5('lead'||(1+g%61))::uuid)::text,
   date '2026-01-01'+(g%180), timestamptz '2026-01-01 04:00:00+00'+(g%180)*interval '1 day',
   'interested','Retailer',null,null,null from generate_series(1,20000) g;
+-- Sparse lifetime scope proves bucket boundaries retain zero-count intervals.
+insert into public.field_visits(visit_id,user_id,lead_id,visit_date,check_in_time,visit_outcome,segment_type,visit_notes)
+values
+  (md5('interval-start')::uuid,md5('user1')::uuid,md5('lead1')::uuid::text,'2024-01-01','2024-01-01 04:00+00','registered','Retailer','interval-endpoints'),
+  (md5('interval-end')::uuid,md5('user1')::uuid,md5('lead1')::uuid::text,'2026-01-02','2026-01-02 04:00+00','payment_done','Retailer','interval-endpoints');
+insert into public.field_visits(visit_id,user_id,lead_id,visit_date,check_in_time,visit_outcome,segment_type,visit_notes)
+select md5('outcome'||g)::uuid,md5('user2')::uuid,md5('lead2')::uuid::text,'2025-12-15','2025-12-15 04:00+00',
+  (array['installed','follow_up','payment_follow_up','not_interested','interested','payment_done','registered'])[g],
+  case when g%2=0 then 'Distributor' else 'Retailer' end,'all-outcomes'
+from generate_series(1,7) g;
+insert into public.field_visits(visit_id,user_id,lead_id,visit_date,check_in_time,visit_outcome,segment_type,visit_notes)
+values(md5('outcome-extra')::uuid,md5('user3')::uuid,md5('lead3')::uuid::text,'2025-12-16','2025-12-16 04:00+00','interested','Retailer','all-outcomes');
 insert into public.erp_systems(erp_id,erp_name,erp_key,created_by) values (md5('erp')::uuid,'Synthetic ERP','synthetic erp',md5('user1')::uuid);
 update public.field_visits set erp_usage_state='erp',erp_id=md5('erp')::uuid,visit_notes='Literal %_,(). exact' where visit_id=md5('bulk1')::uuid;
 update public.field_visits set erp_usage_state='none' where visit_id=md5('legacy')::uuid;

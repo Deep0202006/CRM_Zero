@@ -14,11 +14,12 @@ import { Button } from "@/components/ui/Button";
 import { MetricCard } from "@/components/ui/MetricCard";
 
 const metricCardClass = "min-w-0 [&]:min-h-0 [&]:p-3 [&]:gap-1 [&_[data-slot=card-footer]]:mt-1 [&_[data-slot=card-footer]]:text-[10px] [&_[data-slot=card-footer]]:leading-3";
+const outcomeKeys = ["registered", "installed", "interested", "follow_up", "payment_follow_up", "payment_done", "not_interested"] as const;
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/Tabs";
 import { getOutcomeLabel } from "@/lib/fieldVisits/contract";
 import { AnalyticsSkeleton } from "@/components/analytics/AnalyticsPanel";
 import { adminVisitOutcomeLabel as getAdminOutcomeLabel, initialVisitQuery, visitQueryKey, visitQueryParams, type VisitQuery } from "@/lib/fieldVisits/query";
-import { parseVisitRange, visitRangeReportSchema, type VisitRangeReport } from "@/lib/fieldVisits/range";
+import { parseVisitSummary, visitSummaryReportSchema, type VisitSummaryReport } from "@/lib/fieldVisits/range";
 import type { FieldVisitErpSegment } from "@/components/analytics/FieldVisitErpIntelligence";
 
 const VisitSummaryCharts = dynamic(() => import("./VisitSummaryCharts"), {
@@ -60,6 +61,7 @@ function AdminVisitsWorkspace() {
   const actorId = currentUser?.user_id;
   const [initialQuery] = useState(initialVisitQuery);
   const appliedQuery = useRef(initialQuery);
+  const intendedQuery = useRef(initialQuery);
   const [appliedKey, setAppliedKey] = useState("");
   const attempted = useRef({ query: initialQuery, page: 1 });
   const registerRequest = useRef<AbortController | null>(null);
@@ -80,9 +82,10 @@ function AdminVisitsWorkspace() {
   const [todayTotal, setTodayTotal] = useState<number | null>(null);
   const [matchedTotal, setMatchedTotal] = useState(0);
   const [legacyMismatchCount, setLegacyMismatchCount] = useState(0);
-  const [date, setDate] = useState("");
   const [dateFrom, setDateFrom] = useState(initialQuery.dateFrom);
   const [dateTo, setDateTo] = useState(initialQuery.dateTo);
+  const [dateMode, setDateMode] = useState<"all" | "today" | "single" | "range">("all");
+  const [dateError, setDateError] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [search, setSearch] = useState("");
   const [representative, setRepresentative] = useState("ALL");
@@ -97,17 +100,18 @@ function AdminVisitsWorkspace() {
   const representativeQuery = useRef("");
   const representativeRequest = useRef<AbortController | null>(null);
   const requestSequence = useRef(0);
+  const committedSearch = useRef("");
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const realtimeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const visibilityWasHidden = useRef(false);
   const [realtimeSubscribed, setRealtimeSubscribed] = useState(false);
   const [analyticsMode, setAnalyticsMode] = useState<"activity" | "erp">("activity");
-  const [analysis, setAnalysis] = useState<{ key: string; report: VisitRangeReport | null; error: string } | null>(null);
+  const [analysis, setAnalysis] = useState<{ key: string; report: VisitSummaryReport | null; error: string } | null>(null);
   const [analysisRevision, setAnalysisRevision] = useState(0);
   const [manageCurrentErpOpen, setManageCurrentErpOpen] = useState(false);
   const [erpSegments, setErpSegments] = useState<Record<string, FieldVisitErpSegment> | null>(null);
   const [erpError, setErpError] = useState("");
   const erpRequest = useRef<AbortController | null>(null);
-  const draftQuery: VisitQuery = { date, dateFrom, dateTo, search, representative, segment, outcome };
-
   const loadData = useCallback(async (targetPage = 1, query = appliedQuery.current) => {
     if (!isAdmin || !actorId) return;
     registerRequest.current?.abort();
@@ -135,7 +139,8 @@ function AdminVisitsWorkspace() {
       appliedQuery.current = query;
       setAppliedKey(visitQueryKey(query));
       setVisits(result.visits ?? []);
-      setAppliedScope(`${date || `${dateFrom || "All dates"} to ${dateTo || "present"}`} · ${representative === "ALL" ? "All representatives" : representative} · ${segment} segments · ${outcome === "ALL" ? "All outcomes" : getAdminOutcomeLabel(outcome)}${search.trim() ? ` · Search: ${search.trim()}` : ""}`);
+      const dateScope = date || (dateFrom && dateTo ? (dateFrom === dateTo ? dateFrom : `${dateFrom} to ${dateTo}`) : "All time");
+      setAppliedScope(`${dateScope} · ${representative === "ALL" ? "All representatives" : representative} · ${segment === "ALL" ? "All segments" : segment} · ${outcome === "ALL" ? "All outcomes" : getAdminOutcomeLabel(outcome)}${search.trim() ? ` · Search: ${search.trim()}` : ""}`);
       setAppliedGlobalScope(`${representative === "ALL" ? "All representatives" : representative} · ${segment} segments · ${outcome === "ALL" ? "All outcomes" : getAdminOutcomeLabel(outcome)}`);
       setAppliedPage(result.page ?? targetPage);
       setHasMore(Boolean(result.has_more) && targetPage < 400);
@@ -156,6 +161,18 @@ function AdminVisitsWorkspace() {
     }
   }, [actorId, isAdmin]);
 
+  const commitQuery = useCallback((change: Partial<VisitQuery>) => {
+    if (searchTimer.current) { clearTimeout(searchTimer.current); searchTimer.current = null; }
+    const next = { ...intendedQuery.current, ...change };
+    intendedQuery.current = next;
+    if (Boolean(next.dateFrom) !== Boolean(next.dateTo) || (next.dateFrom && next.dateTo && next.dateFrom > next.dateTo)) {
+      setDateError("Choose both From and To dates in chronological order.");
+      return;
+    }
+    setDateError("");
+    void loadData(1, next);
+  }, [loadData]);
+
   const loadRepresentatives = async (next = false) => {
     representativeRequest.current?.abort();
     const controller = new AbortController();
@@ -174,7 +191,11 @@ function AdminVisitsWorkspace() {
       if (!response.ok) throw new Error(result.code === "VISIT_READER_ACTIVATION_REQUIRED" ? "Representative search requires reader activation. Existing records remain available." : "Representative search unavailable. Retry Search representatives.");
       if (controller.signal.aborted) return;
       const items = result.items as typeof representatives;
-      setRepresentatives(result.selected && !items.some((item) => item.user_id === result.selected.user_id) ? [result.selected, ...items] : items);
+      setRepresentatives((current) => {
+        const combined = next ? [...current, ...items] : items;
+        if (result.selected && !combined.some((item) => item.user_id === result.selected.user_id)) combined.unshift(result.selected);
+        return [...new Map(combined.map((item) => [item.user_id, item])).values()];
+      });
       setRepresentativeCursor(result.next_cursor); representativeQuery.current = search;
       setRepresentativeLoaded(true);
     } catch (error) {
@@ -185,8 +206,7 @@ function AdminVisitsWorkspace() {
     }
   };
 
-  // Only a committed scope or an explicit analysis refresh starts this report.
-  // Register pages, realtime and visibility refreshes never fan out into analysis.
+  // Register pagination never refetches the aggregate; a confirmed filter key does.
   useEffect(() => {
     if (!hasLoaded || !actorId) return;
     const query = appliedQuery.current;
@@ -194,16 +214,15 @@ function AdminVisitsWorkspace() {
     const load = async () => {
       setAnalysis(null);
       try {
-        if (query.date || !query.dateFrom || !query.dateTo) throw new Error("Range analysis requires canonical From and To dates, up to 31 days. Legacy date and all-date records remain available; their scope is not silently converted.");
         const params = visitQueryParams(query);
-        const expected = parseVisitRange(params, new Date().toISOString());
+        const expected = parseVisitSummary(params, new Date().toISOString());
         const { data } = await supabase.auth.getSession();
         if (controller.signal.aborted) return;
         if (!data.session?.access_token || data.session.user.id !== actorId) throw new Error("Sign in again to load analysis.");
         const response = await fetch(`/api/admin/visits/analysis?${params}`, { headers: { Authorization: `Bearer ${data.session.access_token}` }, cache: "no-store", signal: controller.signal });
         const body = await response.json();
-        if (!response.ok) throw new Error(body.code === "VISIT_READER_ACTIVATION_REQUIRED" ? "Range analysis requires reviewed reader activation. Existing records remain available." : "Range analysis unavailable. Retry analysis or narrow the range; record browsing remains available.");
-        const report = visitRangeReportSchema.parse(body);
+        if (!response.ok) throw new Error(body.code === "VISIT_READER_ACTIVATION_REQUIRED" ? "Visit summary requires reviewed reader activation. Existing records remain available." : "Visit summary is unavailable. The confirmed register scope remains visible.");
+        const report = visitSummaryReportSchema.parse(body);
         if (JSON.stringify(report.scope) !== JSON.stringify(expected)) throw new Error("Analysis returned a different scope. Retry analysis.");
         if (!controller.signal.aborted) setAnalysis({ key: appliedKey, report, error: "" });
       } catch (error) {
@@ -213,6 +232,14 @@ function AdminVisitsWorkspace() {
     void load();
     return () => controller.abort();
   }, [actorId, appliedKey, hasLoaded, analysisRevision]);
+
+  useEffect(() => {
+    intendedQuery.current = { ...intendedQuery.current, search };
+    if (committedSearch.current === search) return;
+    committedSearch.current = search;
+    searchTimer.current = setTimeout(() => { searchTimer.current = null; commitQuery({ search }); }, 300);
+    return () => { if (searchTimer.current) { clearTimeout(searchTimer.current); searchTimer.current = null; } };
+  }, [commitQuery, search]);
 
   const loadErpIntelligence = useCallback(async () => {
     if (!isAdmin || !actorId || erpRequest.current) return;
@@ -239,11 +266,12 @@ function AdminVisitsWorkspace() {
 
   useEffect(() => {
     let alive = true;
+    const sequence = requestSequence;
     queueMicrotask(() => {
       if (!alive) return;
       void loadData(1, initialQuery);
     });
-    return () => { alive = false; ++requestSequence.current; registerRequest.current?.abort(); representativeRequest.current?.abort(); exportRequest.current?.abort(); erpRequest.current?.abort(); erpRequest.current = null; };
+    return () => { alive = false; ++sequence.current; if (searchTimer.current) clearTimeout(searchTimer.current); registerRequest.current?.abort(); representativeRequest.current?.abort(); exportRequest.current?.abort(); erpRequest.current?.abort(); erpRequest.current = null; };
   }, [initialQuery, loadData]);
 
   useEffect(() => {
@@ -265,11 +293,15 @@ function AdminVisitsWorkspace() {
 
   useEffect(() => {
     const updateFallback = () => {
-      if (!realtimeSubscribed && document.visibilityState === "visible" && !registerRequest.current && !failedRequest.current) void loadData(appliedPage);
+      if (document.visibilityState !== "visible") { visibilityWasHidden.current = true; return; }
+      if (visibilityWasHidden.current && !realtimeSubscribed && hasLoaded && !registerRequest.current && !failedRequest.current) {
+        visibilityWasHidden.current = false;
+        void loadData(appliedPage);
+      }
     };
     document.addEventListener("visibilitychange", updateFallback);
     return () => { document.removeEventListener("visibilitychange", updateFallback); };
-  }, [loadData, appliedPage, realtimeSubscribed]);
+  }, [loadData, appliedPage, realtimeSubscribed, hasLoaded]);
 
   const handleExport = async () => {
     exportRequest.current?.abort();
@@ -308,48 +340,53 @@ function AdminVisitsWorkspace() {
       if (exportRequest.current === controller) exportRequest.current = null;
     }
   };
+  const filtersPending = visitQueryKey({ date: "", dateFrom, dateTo, search, representative, segment, outcome }) !== appliedKey;
 
   return (
     <div className="app-page min-w-0 crm-workspace">
-      <header className="workspace-heading"><div><h1>Visits overview</h1><p>Confirmed field records · India business dates</p></div><Button size="sm" variant="outline" title="Export the applied record filters" icon={<Download size={14} />} onClick={handleExport} isLoading={exporting} disabled={!hasLoaded || loading}>Export to Excel</Button></header>
-      <section aria-label="Visit metrics" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <header className="workspace-heading"><div><h1>Visits overview</h1><p>Confirmed field records · India business dates</p></div><Button size="sm" variant="outline" title="Export the confirmed record filters" icon={<Download size={14} />} onClick={handleExport} isLoading={exporting} disabled={!hasLoaded || loading || filtersPending || Boolean(dateError)}>Export to Excel</Button></header>
+      <section aria-label="Visit metrics" className="grid grid-cols-2 gap-3 lg:grid-cols-3">
         <MetricCard label="All-time visits" value={hasLoaded ? allTimeTotal?.toLocaleString("en-IN") ?? <span className="text-base tracking-normal">Unavailable</span> : "—"} note="Excludes date and search" className={metricCardClass} />
         <MetricCard label="Visits today" value={hasLoaded ? todayTotal?.toLocaleString("en-IN") ?? <span className="text-base tracking-normal">Unavailable</span> : "—"} note="India date · excludes search" className={metricCardClass} />
-        <MetricCard label="Matching visits" value={hasLoaded ? matchedTotal.toLocaleString("en-IN") : "—"} note="Applied register filters" className={metricCardClass} />
-        {analysis?.key === appliedKey && analysis.report?.representative_breakdown === "exhausted" && <MetricCard label="Representatives in selected range" value={analysis.report.representatives!.length} note="Complete retained authors" className={metricCardClass} />}
+        <MetricCard label="Matching visits" value={hasLoaded ? matchedTotal.toLocaleString("en-IN") : "—"} note="Confirmed filter scope" className={metricCardClass} />
+      </section>
+      <section aria-label="Visit outcome totals" className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-7">
+        {outcomeKeys.map((key) => <MetricCard key={key} label={getAdminOutcomeLabel(key)} value={analysis?.key === appliedKey && analysis.report ? analysis.report.outcomes[key].toLocaleString("en-IN") : <span className="text-base tracking-normal">Unavailable</span>} note="Confirmed scope" className={metricCardClass} />)}
+        {analysis?.key === appliedKey && analysis.report && analysis.report.unknown_outcome_count > 0 && <MetricCard label="Unknown / legacy" value={analysis.report.unknown_outcome_count.toLocaleString("en-IN")} note="Confirmed scope" className={metricCardClass} />}
       </section>
       {hasLoaded && <p className="text-xs text-[var(--text-secondary)]">Global counts: {appliedGlobalScope}. Unavailable counts are not zero.</p>}
       {exportError && <p role="alert" className="alert-panel alert-panel--danger">{exportError}</p>}
-      <form aria-label="Visit filters" className="grid grid-cols-2 items-end gap-2 sm:grid-cols-5" onSubmit={(event) => { event.preventDefault(); void loadData(1, draftQuery); }}>
+      <div aria-label="Visit filters" className="grid grid-cols-2 items-end gap-2 sm:grid-cols-5">
         <label className="order-0 grid min-w-0 gap-1 text-xs sm:col-span-2">Search visits<input aria-label="Search visits" className="field-control min-w-0" placeholder="Business, representative, or notes" value={search} maxLength={160} onChange={(event) => setSearch(event.target.value)} /></label>
-        <div className="order-0 flex flex-wrap items-center gap-2"><Button size="sm" type="submit" disabled={loading}>Apply filters</Button>{hasLoaded && visitQueryKey(draftQuery) !== appliedKey && <p role="status" className="text-xs">Filters changed. Records still show the applied scope.</p>}</div>
-        <div className="order-1 grid min-w-0 gap-1 text-xs [&_label]:grid [&_label]:gap-1"><label>From date<input aria-label="Date From" type="date" className="field-control min-w-0" value={dateFrom} onChange={(event) => { setDate(""); setDateFrom(event.target.value); }} /></label></div><div className="order-1 grid min-w-0 gap-1 text-xs [&_label]:grid [&_label]:gap-1"><label>To date<input aria-label="Date To" type="date" className="field-control min-w-0" value={dateTo} onChange={(event) => { setDate(""); setDateTo(event.target.value); }} /></label></div>
-        <details className="order-3 col-span-2 sm:col-span-5"><summary className="min-h-11 cursor-pointer text-sm">Refine representative, outcome and dates</summary>
+        <label className="order-0 grid min-w-0 gap-1 text-xs">Date<select aria-label="Date scope" className="field-control min-w-0" value={dateMode} onChange={(event) => { const mode = event.target.value as typeof dateMode; setDateMode(mode); if (mode === "all") { setDateFrom(""); setDateTo(""); commitQuery({ date: "", dateFrom: "", dateTo: "" }); } else if (mode === "today") { const today = getCurrentISTDate(); setDateFrom(today); setDateTo(today); commitQuery({ date: "", dateFrom: today, dateTo: today }); } else { setDateFrom(""); setDateTo(""); intendedQuery.current = { ...intendedQuery.current, date: "", dateFrom: "", dateTo: "" }; setDateError(mode === "single" ? "Choose a date." : "Choose both From and To dates."); } }}><option value="all">All time</option><option value="today">Today</option><option value="single">Single date</option><option value="range">Custom range</option></select></label>
+        {dateMode === "single" && <div className="order-1 grid min-w-0 gap-1 text-xs"><label className="grid gap-1">Visit date<input aria-label="Visit date" type="date" className="field-control min-w-0" value={dateFrom} onChange={(event) => { setDateFrom(event.target.value); setDateTo(event.target.value); commitQuery({ date: "", dateFrom: event.target.value, dateTo: event.target.value }); }} /></label></div>}
+        {dateMode === "range" && <><div className="order-1 grid min-w-0 gap-1 text-xs"><label className="grid gap-1">From<input aria-label="Date From" type="date" className="field-control min-w-0" value={dateFrom} onChange={(event) => { setDateFrom(event.target.value); commitQuery({ date: "", dateFrom: event.target.value, dateTo }); }} /></label></div><div className="order-1 grid min-w-0 gap-1 text-xs"><label className="grid gap-1">To<input aria-label="Date To" type="date" className="field-control min-w-0" value={dateTo} onChange={(event) => { setDateTo(event.target.value); commitQuery({ date: "", dateFrom, dateTo: event.target.value }); }} /></label></div></>}
         <div className="grid min-w-0 gap-3 text-xs text-[var(--text-secondary)] sm:grid-cols-2 [&_label]:grid [&_label]:min-w-0 [&_label]:gap-1"><label>Representative
-        <select aria-label="Representative" className="field-control min-w-0" value={representative} onFocus={() => { if (!representativeLoaded && !representativeRequest.current && !representativeError) void loadRepresentatives(); }} onChange={(event) => setRepresentative(event.target.value)}>
+        <select aria-label="Representative" className="field-control min-w-0" value={representative} onFocus={() => { if (!representativeLoaded && !representativeRequest.current && !representativeError) void loadRepresentatives(); }} onChange={(event) => { setRepresentative(event.target.value); commitQuery({ representative: event.target.value }); }}>
           <option value="ALL">All representatives</option>
           {representative !== "ALL" && !representatives.some((user) => user.user_id === representative) && <option value={representative}>Selected identity · {representative}</option>}
           {representatives.map((user) => <option key={user.user_id} value={user.user_id}>{user.name || user.user_id}{user.email ? ` (${user.email})` : ""}{user.is_active ? "" : " — inactive"}{user.historical_only ? " — historical" : ""}</option>)}
         </select></label><label>Outcome
-        <select aria-label="Outcome" className="field-control min-w-0" value={outcome} onChange={(event) => setOutcome(event.target.value)}>
+        <select aria-label="Outcome" className="field-control min-w-0" value={outcome} onChange={(event) => { setOutcome(event.target.value); commitQuery({ outcome: event.target.value }); }}>
           <option value="ALL">All outcomes</option>
-          {["registered", "installed", "interested", "follow_up", "payment_follow_up", "payment_done", "not_interested"].map((value) => <option key={value} value={value}>{getOutcomeLabel(value)}</option>)}
+          {outcomeKeys.map((value) => <option key={value} value={value}>{getOutcomeLabel(value)}</option>)}
         </select></label></div>
-        <details><summary className="cursor-pointer text-sm">Find current or historical representatives</summary><div className="flex flex-wrap items-end gap-2"><label className="grid min-w-0 gap-1 text-xs">Representative name or email<input className="field-control" value={representativeSearch} maxLength={160} onChange={(event) => setRepresentativeSearch(event.target.value)} /></label><Button type="button" size="sm" variant="outline" disabled={representativeLoading} onClick={() => void loadRepresentatives()}>Search representatives</Button><Button type="button" size="sm" variant="outline" disabled={!representativeCursor || representativeLoading} onClick={() => void loadRepresentatives(true)}>Next representatives</Button></div><p className="text-xs">25 options per search page, plus the selected person. Includes current field capabilities and retained visit authors, including inactive people. Choose a Representative above, then Apply filters.</p>{representativeLoading && <p role="status">Loading representative options…</p>}{representativeError && <p role="alert">{representativeError}</p>}</details>
-        <details><summary className="cursor-pointer text-sm">Date and segment filters</summary><div className="grid min-w-0 gap-3 text-xs text-[var(--text-secondary)] sm:grid-cols-3 [&_label]:grid [&_label]:min-w-0 [&_label]:gap-1"><label>Legacy visit or check-in date<input aria-label="Visit date" type="date" className="field-control min-w-0" value={date} onChange={(event) => setDate(event.target.value)} /></label><label>Segment
-        <select aria-label="Segment" className="field-control min-w-0" value={segment} onChange={(event) => setSegment(event.target.value)}>
+        <div className="col-span-2 flex flex-wrap items-end gap-2 sm:col-span-5"><label className="grid min-w-0 flex-1 gap-1 text-xs">Find representative<input aria-label="Find representative" className="field-control" placeholder="Name or email" value={representativeSearch} maxLength={160} onChange={(event) => setRepresentativeSearch(event.target.value)} /></label><Button type="button" size="sm" variant="outline" disabled={representativeLoading} onClick={() => void loadRepresentatives()}>Search</Button><Button type="button" size="sm" variant="outline" disabled={!representativeCursor || representativeLoading} onClick={() => void loadRepresentatives(true)}>Load more</Button><Button type="button" size="sm" variant="outline" onClick={() => { const query = initialVisitQuery(); intendedQuery.current = query; committedSearch.current = ""; setDateFrom(""); setDateTo(""); setDateMode("all"); setDateError(""); setSearch(""); setRepresentative("ALL"); setSegment("ALL"); setOutcome("ALL"); void loadData(1, query); }}>Clear filters</Button></div>{representativeLoading && <p role="status" className="text-xs">Loading representative options…</p>}{representativeError && <p role="alert" className="text-xs">{representativeError}</p>}
+        <div className="grid min-w-0 gap-3 text-xs text-[var(--text-secondary)] [&_label]:grid [&_label]:min-w-0 [&_label]:gap-1"><label>Segment
+        <select aria-label="Segment" className="field-control min-w-0" value={segment} onChange={(event) => { setSegment(event.target.value); commitQuery({ segment: event.target.value }); }}>
           <option value="ALL">All segments</option><option value="Retailer">Retailer</option><option value="Distributor">Distributor</option>
-        </select></label></div><div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="outline" onClick={() => setDate(getCurrentISTDate())}>Today · legacy</Button><Button type="button" size="sm" variant="outline" onClick={() => { setDate(""); setDateFrom(""); setDateTo(""); }}>All dates</Button></div></details>
-        </details>
-      </form>
+        </select></label></div>
+        {dateError && <p role="alert" className="col-span-2 text-xs text-red-600 sm:col-span-5">{dateError} The last confirmed scope remains visible.</p>}
+        {hasLoaded && filtersPending && !dateError && <p role="status" className="col-span-2 text-xs sm:col-span-5">Updating filters. The last confirmed scope remains visible.</p>}
+      </div>
       {legacyMismatchCount > 0 && <div role="status" className="alert-panel alert-panel--warning">Included {legacyMismatchCount} confirmed visits whose stored date differs from their India check-in date.</div>}
       {errorMessage && <div role="alert" className="alert-panel alert-panel--danger">{errorMessage} {hasLoaded && <span>The last confirmed records and their applied scope remain visible.</span>} <Button size="sm" variant="outline" onClick={() => void loadData(attempted.current.page, attempted.current.query)}>Retry request</Button></div>}
       <p className="text-xs text-[var(--text-secondary)]" aria-live="polite">{hasLoaded ? `Applied: ${appliedScope} · Loaded page ${appliedPage} · ${visits.length} of ${matchedTotal} matching visits` : "Loading confirmed visits…"}{loading && hasLoaded ? " · Refreshing…" : ""}</p>
       <Tabs value={analyticsMode} onValueChange={(value) => setAnalyticsMode(value as "activity" | "erp")} activationMode="manual" className="gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2"><TabsList aria-label="Visit analytics"><TabsTrigger value="activity" aria-label="Visit Activity">Activity</TabsTrigger><TabsTrigger value="erp">ERP Intelligence</TabsTrigger></TabsList>
-          {analyticsMode === "activity" && <Button size="sm" variant="outline" disabled={!analysis || analysis.key !== appliedKey} onClick={() => setAnalysisRevision(value => value + 1)}>Refresh analysis</Button>}</div>
+          {analyticsMode === "activity" && <Button size="sm" variant="outline" disabled={!hasLoaded || loading} onClick={() => { setAnalysisRevision(value => value + 1); void loadData(1, appliedQuery.current); }}>Refresh</Button>}</div>
         <TabsContent value="activity">{analyticsMode === "activity" && hasLoaded && <div className="space-y-3">
-          {!analysis || analysis.key !== appliedKey ? <AnalyticsSkeleton label="Loading full-range Visit activity" /> : analysis.report ? <VisitSummaryCharts visits={visits} page={appliedPage} report={analysis.report} scope={appliedScope} matchedTotal={matchedTotal} onOutcome={(key) => { setOutcome(key); void loadData(1, { ...appliedQuery.current, outcome: key }); }} onRepresentative={(id) => { setRepresentative(id); void loadData(1, { ...appliedQuery.current, representative: id }); }} /> : <p role="status" className="alert-panel alert-panel--warning">{analysis.error}</p>}
+          {!analysis || analysis.key !== appliedKey ? <AnalyticsSkeleton label="Loading full-range Visit activity" /> : analysis.report ? <VisitSummaryCharts visits={visits} page={appliedPage} report={analysis.report} scope={appliedScope} matchedTotal={matchedTotal} onOutcome={(key) => { setOutcome(key); commitQuery({ outcome: key }); }} onRepresentative={(id) => { setRepresentative(id); commitQuery({ representative: id }); }} /> : <p role="status" className="alert-panel alert-panel--warning">{analysis.error}</p>}
         </div>}</TabsContent>
       <TabsContent value="erp" className="order-3 space-y-4 sm:order-2">
         {analyticsMode === "erp" && <>
@@ -363,12 +400,12 @@ function AdminVisitsWorkspace() {
       </Tabs>
       <div className="workspace-columns">
         <section className="workspace-register" data-workspace-register tabIndex={-1} aria-label="Confirmed visit history">
-          <header className="flex items-center justify-between gap-3 border-b border-[var(--border-subtle)] px-4 py-2"><h2 className="text-base font-semibold">Visit register</h2><Button size="sm" variant="ghost" onClick={() => void loadData(appliedPage)}>Refresh</Button></header>
+          <header className="flex items-center justify-between gap-3 border-b border-[var(--border-subtle)] px-4 py-2"><h2 className="text-base font-semibold">Visit register</h2><Button size="sm" variant="ghost" onClick={() => { setAnalysisRevision(value => value + 1); void loadData(1, appliedQuery.current); }}>Refresh</Button></header>
           <ol key={appliedPage} aria-label="Loaded Visit records" tabIndex={0} className="max-h-96 overflow-y-auto divide-y divide-[var(--border-subtle)]">{visits.map((visit) => <li key={visit.visit_id} className="workspace-task-row" data-selected={selected?.visit.visit_id === visit.visit_id}>
             <div className="min-w-0 flex-1"><button type="button" className="min-h-11 text-left text-sm font-semibold" aria-pressed={selected?.visit.visit_id === visit.visit_id} onClick={(event) => { visitTrigger.current = event.currentTarget; setSelected({ visit, scope: `${appliedScope} · Page ${appliedPage}` }); }}>{visit.leads?.business_name?.trim() || visit.lead_id?.trim() || "Unavailable business"}</button><p className="text-xs text-[var(--text-secondary)]">{visit.users?.name || "Unknown representative"} · {visit.segment_type} · {new Date(visit.check_in_time).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" })} IST</p></div>
             <Chip variant={getAdminOutcomeVariant(visit.visit_outcome)} size="sm">{getAdminOutcomeLabel(visit.visit_outcome)}</Chip>
           </li>)}</ol>
-          {!visits.length && <div className="p-4 text-sm"><p>{loading ? "Loading visits…" : "No confirmed visits match these filters."}</p><Button size="sm" variant="outline" onClick={() => { const query = { date: "", dateFrom: "", dateTo: "", search: "", representative: "ALL", segment: "ALL", outcome: "ALL" }; setDate(""); setDateFrom(""); setDateTo(""); setSearch(""); setRepresentative("ALL"); setSegment("ALL"); setOutcome("ALL"); void loadData(1, query); }}>Clear filters</Button></div>}
+          {!visits.length && <div className="p-4 text-sm"><p>{loading ? "Loading visits…" : "No confirmed visits match these filters."}</p></div>}
           <footer className="flex items-center justify-between border-t border-[var(--border-subtle)] p-3"><span className="text-xs">Loaded page {appliedPage}</span><div className="flex gap-2"><Button size="sm" variant="outline" disabled={appliedPage <= 1 || loading} onClick={() => void loadData(appliedPage - 1)}>Previous</Button><Button size="sm" variant="outline" disabled={!hasMore || loading} onClick={() => void loadData(appliedPage + 1)}>Next</Button></div></footer>
           {appliedPage === 400 && matchedTotal > 20000 && <p role="status" className="p-3 text-sm">Display limit reached. Narrow the date range or filters to inspect additional records.</p>}
         </section>
@@ -381,21 +418,26 @@ function AdminVisitsWorkspace() {
 }
 
 function VisitDetail({ visit, scope }: { visit: AdminVisit; scope: string }) {
-  return <>
-    <p className="text-xs text-[var(--text-secondary)]">Selected record snapshot from: {scope}. Changing register filters does not change this selection.</p>
-    <dl className="space-y-3">
-      <div><dt>Representative</dt><dd>{visit.users?.name || "Unknown"} · {visit.users?.email || "Email unavailable"}</dd></div>
-      <div><dt>Person met</dt><dd>{visit.person_met || "Unavailable"}</dd></div>
-      <div><dt>{visit.segment_type === "Retailer" ? "Area" : "Address"}</dt><dd className="whitespace-pre-wrap">{visit.address?.trim() || "Legacy visit — address was not captured"}</dd></div>
-      <div><dt>Pincode</dt><dd>{visit.pincode?.trim() || "Not captured"}</dd></div>
-      <div><dt>ERP at visit</dt><dd>{visit.erp_usage_state === "erp" ? visit.erp_name || "Not captured" : visit.erp_usage_state === "none" ? "None" : "Not captured"}</dd></div>
-      <div><dt>Follow-up date</dt><dd>{visit.follow_up_date || "None recorded"}</dd></div>
-      <div><dt>Notes</dt><dd className="whitespace-pre-wrap">{visit.visit_notes || "None recorded"}</dd></div>
-      <div><dt>Sync</dt><dd>{visit.sync_status || "Confirmed"}</dd></div>
-      <div><dt>GPS</dt><dd>{visit.check_in_lat != null && visit.check_in_lng != null ? <a target="_blank" rel="noreferrer" className="underline" href={`https://www.google.com/maps?q=${visit.check_in_lat},${visit.check_in_lng}`}>{visit.check_in_lat}, {visit.check_in_lng} · Open Location</a> : "Not captured"}</dd></div>
-    </dl>
-    {visit.selfie_status === "AVAILABLE" ? <EvidenceButton visitId={visit.visit_id} /> : <p>{visit.selfie_status === "PURGED" ? "Selfie captured · Expired after 5-day retention" : "Evidence pending"}</p>}
-  </>;
+  const field = "grid gap-0.5 min-w-0";
+  const label = "text-[11px] font-medium uppercase tracking-wide text-[var(--text-secondary)]";
+  const value = "break-words text-[13px] leading-5 text-[var(--text-primary)]";
+  return <div className="space-y-3">
+    <p className="text-[11px] text-[var(--text-secondary)]">Selected from {scope}</p>
+    <section className="space-y-2 border-b border-[var(--border-subtle)] pb-3"><h3 className="text-xs font-semibold">Contact</h3><dl className="grid grid-cols-2 gap-x-3 gap-y-2">
+      <div className={`${field} col-span-2`}><dt className={label}>Representative</dt><dd className={value}>{visit.users?.name || "Unknown"} · {visit.users?.email || "Email unavailable"}</dd></div>
+      <div className={field}><dt className={label}>Person met</dt><dd className={value}>{visit.person_met || "Unavailable"}</dd></div>
+      <div className={field}><dt className={label}>Pincode</dt><dd className={value}>{visit.pincode?.trim() || "Not captured"}</dd></div>
+      <div className={`${field} col-span-2`}><dt className={label}>{visit.segment_type === "Retailer" ? "Area" : "Address"}</dt><dd className={`${value} whitespace-pre-wrap`}>{visit.address?.trim() || "Legacy visit — address was not captured"}</dd></div>
+    </dl></section>
+    <section className="space-y-2 border-b border-[var(--border-subtle)] pb-3"><h3 className="text-xs font-semibold">Visit</h3><dl className="grid grid-cols-2 gap-x-3 gap-y-2">
+      <div className={field}><dt className={label}>ERP at visit</dt><dd className={value}>{visit.erp_usage_state === "erp" ? visit.erp_name || "Not captured" : visit.erp_usage_state === "none" ? "None" : "Not captured"}</dd></div>
+      <div className={field}><dt className={label}>Follow-up</dt><dd className={value}>{visit.follow_up_date || "None recorded"}</dd></div>
+      <div className={field}><dt className={label}>Sync</dt><dd className={value}>{visit.sync_status || "Confirmed"}</dd></div>
+      <div className={field}><dt className={label}>GPS</dt><dd className={value}>{visit.check_in_lat != null && visit.check_in_lng != null ? <a target="_blank" rel="noreferrer" className="underline" href={`https://www.google.com/maps?q=${visit.check_in_lat},${visit.check_in_lng}`}>{visit.check_in_lat}, {visit.check_in_lng} · Open Location</a> : "Not captured"}</dd></div>
+    </dl></section>
+    <section className="space-y-2"><h3 className="text-xs font-semibold">Notes</h3><p className={`${value} whitespace-pre-wrap`}>{visit.visit_notes || "None recorded"}</p></section>
+    {visit.selfie_status === "AVAILABLE" ? <EvidenceButton visitId={visit.visit_id} /> : <p className={value}>{visit.selfie_status === "PURGED" ? "Selfie captured · Expired after 5-day retention" : "Evidence pending"}</p>}
+  </div>;
 }
 
 function EvidenceButton({ visitId }: { visitId: string }) {

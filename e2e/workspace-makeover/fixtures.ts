@@ -2,7 +2,7 @@ import { expect, type Page } from "@playwright/test";
 import { addISTDateDays, getCurrentISTDate } from "../../src/lib/dateTime";
 import { buildTeamKpiReport } from "../../src/lib/teamKpi/aggregate";
 import { buildHistoryReport, parseHistoryScope } from "../../src/lib/teamKpi/history";
-import { aggregateVisitRange, parseVisitRange } from "../../src/lib/fieldVisits/range";
+import { parseVisitSummary, visitSummaryReportSchema } from "../../src/lib/fieldVisits/range";
 
 export const actor = "91000000-0000-4000-a000-000000000001";
 export const employee = "92000000-0000-4000-a000-000000000001";
@@ -14,6 +14,24 @@ const users = [{ user_id: actor, name: "Asha Mehta", is_active: true }, { user_i
 const calls = Array.from({ length: 17 }, (_, i) => ({ log_id: `call-${i}`, user_id: i < 10 ? actor : employee, timestamp: `${addISTDateDays(today, -(i % 4))}T04:00:00Z`, outcome: "Connected" }));
 export const report = buildTeamKpiReport({ targetDate: today, users, userCapabilities: users.map(u => ({ user_id: u.user_id, capability_code: "field_ret" })), capabilities: [{ code: "field_ret", label: "Field" }], calls, tasks: [], taskHistory: [], mappings: [], clientQueries: [], attendance: [], allocatedTargets: [] });
 
+export function buildVisitSummary(params: URLSearchParams, rows: typeof visits) {
+  const generated_at = new Date().toISOString(), scope = parseVisitSummary(params, generated_at);
+  const outcomes = { registered: 0, installed: 0, interested: 0, follow_up: 0, payment_follow_up: 0, payment_done: 0, not_interested: 0 };
+  let unknown_outcome_count = 0;
+  for (const row of rows) if (row.visit_outcome in outcomes) outcomes[row.visit_outcome as keyof typeof outcomes]++; else unknown_outcome_count++;
+  const dates = rows.map(row => row.visit_date).sort(), scope_start_date = scope.date_from ?? dates[0] ?? null, scope_end_date = scope.date_to ?? dates.at(-1) ?? null;
+  const span = scope_start_date && scope_end_date ? Math.round((Date.parse(`${scope_end_date}T00:00:00Z`) - Date.parse(`${scope_start_date}T00:00:00Z`)) / 86_400_000) + 1 : 0;
+  const bucket_days = span ? Math.max(1, Math.ceil(span / 366)) : null;
+  const activity = bucket_days ? Array.from({ length: Math.ceil(span / bucket_days) }, (_, index) => {
+    const start_date = addISTDateDays(scope_start_date!, index * bucket_days), end_date = [addISTDateDays(start_date, bucket_days - 1), scope_end_date!].sort()[0];
+    return { start_date, end_date, count: rows.filter(row => row.visit_date >= start_date && row.visit_date <= end_date).length };
+  }) : [];
+  const representativeCounts = new Map<string, number>(); for (const row of rows) representativeCounts.set(row.user_id, (representativeCounts.get(row.user_id) ?? 0) + 1);
+  return visitSummaryReportSchema.parse({ kind: "visit-summary-v1", schema_version: 1, scope, generated_at, retained_source_read: "aggregated", historical_coverage: "uncertified", consistency: "single-statement-snapshot",
+    filtered_total: rows.length, outcomes, unknown_outcome_count, scope_start_date, scope_end_date, bucket_days, activity, date_mismatch_count: 0,
+    representatives: [...representativeCounts].map(([user_id, count]) => ({ user_id, name: rows.find(row => row.user_id === user_id)?.users?.name ?? null, count })), representative_breakdown: "exhausted" });
+}
+
 export async function setup(page: Page, empty = false) {
   const requests: string[] = [];
   page.on("request", request => { if (new URL(request.url()).pathname.startsWith("/api/")) requests.push(new URL(request.url()).pathname + new URL(request.url()).search); });
@@ -24,8 +42,10 @@ export async function setup(page: Page, empty = false) {
   await page.route("**/api/my-day/receivables", route => route.fulfill({ json: { items: [], generated_at: new Date().toISOString() } }));
   await page.route("**/api/admin/visits?**", route => route.fulfill({ json: { visits: empty ? [] : visits, page: 1, has_more: false, total: empty ? 0 : visits.length, all_time_total: 127, today_total: 12, representatives: [{ user_id: actor, name: "Asha Mehta", email: "asha@example.test", is_active: true, capabilities: [], historical_only: false }], legacy_date_mismatch_count: 0 } }));
   await page.route("**/api/admin/visits/analysis?**", route => {
-    const now = new Date().toISOString(), scope = parseVisitRange(new URL(route.request().url()).searchParams, now);
-    return route.fulfill({ json: { kind: "visit-range-v1", scope, generated_at: now, retained_source_read: "exhausted", historical_coverage: "uncertified", consistency: "bounded-live-multi-request", ...aggregateVisitRange(scope, empty ? [] : visits.filter(row => row.visit_date >= scope.date_from && row.visit_date <= scope.date_to && (!scope.representative || row.user_id === scope.representative) && (!scope.outcome || row.visit_outcome === scope.outcome) && (!scope.segment || row.segment_type === scope.segment))) } });
+    const params = new URL(route.request().url()).searchParams, scope = parseVisitSummary(params, new Date().toISOString());
+    const rows = empty ? [] : visits.filter(row => (!scope.date_from || row.visit_date >= scope.date_from) && (!scope.date_to || row.visit_date <= scope.date_to) && (!scope.representative || row.user_id === scope.representative) && (!scope.outcome || row.visit_outcome === scope.outcome) && (!scope.segment || row.segment_type === scope.segment)
+      && (!scope.search || [row.users.name, row.users.email, row.leads.business_name, row.leads.contact_person, row.leads.phone, row.visit_notes, row.person_met, row.address].some(value => value?.toLowerCase().includes(scope.search.toLowerCase()))));
+    return route.fulfill({ json: buildVisitSummary(params, rows) });
   });
   await page.route("**/api/team-kpi**", route => { const params = new URL(route.request().url()).searchParams; const scope = parseHistoryScope(params, new Date().toISOString()); return route.fulfill({ json: scope ? buildHistoryReport({ scope, members: report.rows, calls: empty ? [] : calls, generatedAt: new Date().toISOString(), requests: 4 }) : report }); });
   await page.route("**/api/pipeline/leads?**", route => { const segment = new URL(route.request().url()).searchParams.get("segment") ?? "Retailer"; return route.fulfill({ json: { leads: empty ? [] : leads.map(lead => ({ ...lead, segment_type: segment })), recovery: { operations: [], safe_replay_targets: [] }, page: 1, pageSize: 50, total: empty ? 0 : leads.length, has_more: false, stages: ["New", "Contacted", "Interested", "Registration"].map(stage => ({ stage, count: empty ? 0 : leads.filter(lead => lead.status === stage).length })) } }); });

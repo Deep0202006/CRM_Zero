@@ -1,4 +1,3 @@
-import { addISTDateDays, getCurrentISTDate } from "@/lib/dateTime";
 import { getOutcomeLabel } from "./contract";
 
 export function adminVisitOutcomeLabel(outcome: string) {
@@ -11,8 +10,7 @@ export function adminVisitOutcomeLabel(outcome: string) {
 
 export type VisitQuery = { date: string; dateFrom: string; dateTo: string; search: string; representative: string; segment: string; outcome: string };
 export function initialVisitQuery(): VisitQuery {
-  const today = getCurrentISTDate();
-  return { date: "", dateFrom: addISTDateDays(today, -6), dateTo: today, search: "", representative: "ALL", segment: "ALL", outcome: "ALL" };
+  return { date: "", dateFrom: "", dateTo: "", search: "", representative: "ALL", segment: "ALL", outcome: "ALL" };
 }
 export function visitQueryParams(query: VisitQuery): URLSearchParams {
   const params = new URLSearchParams();

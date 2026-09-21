@@ -40,6 +40,13 @@ test("Admin Visits Overview is bounded, responsive, legacy-safe, and loads evide
   await mockSupabase(page, adminId); await seed(page, "admin");
   let evidenceRequests = 0;
   await page.route("**/api/admin/visits/evidence**", route => { evidenceRequests++; return route.fulfill({ json: { url: "https://example.test/selfie.jpg" } }); });
+  await page.route("**/api/admin/visits/analysis**", route => route.fulfill({ json: { kind: "visit-summary-v1", schema_version: 1,
+    scope: { version: "1", date_from: null, date_to: null, representative: null, segment: null, outcome: null, search: "" }, generated_at: new Date().toISOString(),
+    retained_source_read: "aggregated", historical_coverage: "uncertified", consistency: "single-statement-snapshot", filtered_total: 2,
+    outcomes: { registered: 0, installed: 0, interested: 1, follow_up: 0, payment_follow_up: 0, payment_done: 1, not_interested: 0 }, unknown_outcome_count: 0,
+    scope_start_date: today, scope_end_date: today, bucket_days: 1,
+    activity: [{ start_date: today, end_date: today, count: 2 }], date_mismatch_count: 0,
+    representatives: [{ user_id: employeeId, name: "Field Employee", count: 2 }], representative_breakdown: "exhausted" } }));
   await page.route("**/api/admin/visits**", route => route.fulfill({ json: { visits: [
     { visit_id: "50000000-0000-4000-a000-000000000001", user_id: employeeId, lead_id: leadId, visit_date: today, check_in_time: "2026-08-12T05:00:00Z", check_in_lat: 18.52, check_in_lng: 73.85, address: "१२ मुख्य सड़क\nपुणे", pincode: "012345", visit_outcome: "payment_done", visit_notes: "Full multiline\nnotes remain readable", person_met: "Priya", segment_type: "Distributor", follow_up_date: null, sync_status: "synced", selfie_status: "AVAILABLE", has_selfie_evidence: true, users: { name: "Field Employee", email: "employee@example.test" }, leads: { business_name: "Unicode व्यवसाय" } },
     { visit_id: "50000000-0000-4000-a000-000000000002", user_id: employeeId, lead_id: "legacy", visit_date: "2026-08-01", check_in_time: "2026-08-01T05:00:00Z", address: null, pincode: null, visit_outcome: "interested", person_met: "Owner", segment_type: "Retailer", selfie_status: "PURGED", users: { name: "Field Employee" }, leads: { business_name: "Legacy Store" } },
@@ -47,15 +54,21 @@ test("Admin Visits Overview is bounded, responsive, legacy-safe, and loads evide
   for (const viewport of [{ width: 390, height: 844 }, { width: 820, height: 1180 }, { width: 1440, height: 900 }]) {
     await page.setViewportSize(viewport); await page.goto("/admin/visits");
     await expect(page.getByRole("heading", { name: "VISITS OVERVIEW" })).toBeVisible();
+    await page.getByRole("button", { name: /Unicode/ }).click();
     await expect(page.getByText("१२ मुख्य सड़क")).toBeVisible();
+    await expect(page.getByText("012345", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Close" }).click();
+    await page.getByRole("button", { name: "Legacy Store" }).click();
     await expect(page.getByText("Legacy visit — address was not captured")).toBeVisible();
-    await expect(page.getByText("Selfie expired after 5-day retention")).toBeVisible();
-    await page.getByText("Visit detail").first().click();
-    await expect(page.getByText(/Pincode:\s*012345/)).toBeVisible();
+    await expect(page.getByText(/Expired after 5-day retention/)).toBeVisible();
+    await page.getByRole("button", { name: "Close" }).click();
     expect(evidenceRequests).toBe(0);
   }
+  await page.getByRole("button", { name: /Unicode/ }).click();
   await page.getByRole("button", { name: "View Selfie" }).click();
   await expect.poll(() => evidenceRequests).toBe(1);
+  await expect(page.getByLabel("Date scope")).toBeVisible();
+  await page.getByLabel("Date scope").selectOption("range");
   await expect(page.getByLabel("Date From")).toBeVisible(); await expect(page.getByLabel("Date To")).toBeVisible();
 });
 
@@ -154,7 +167,7 @@ test("Admin ERP intelligence retries independently and export remains available"
   });
   await page.route("**/api/admin/export-visits**", route => route.fulfill({ status: 200, contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", body: "export" }));
   await page.goto("/admin/visits");
-  await page.getByRole("button", { name: "ERP Intelligence" }).click();
+  await page.getByRole("tab", { name: "ERP Intelligence" }).click();
   await expect(page.getByRole("alert").filter({ hasText: "ERP intelligence is temporarily unavailable" })).toContainText("Retry");
   await page.getByRole("button", { name: "Retry" }).click();
   await expect(page.getByText("Retailer ERP Footprint")).toBeVisible();
@@ -181,7 +194,7 @@ test("Admin current ERP editor searches, exposes provenance fields, and saves on
     Distributor: { unique_businesses: 1, observed_count: 0, erp_using_count: 0, none_count: 0, not_captured_count: 1, coverage_percent: 0, categories: [{ erp_name: "Not captured", state: "not_captured", count: 1, share_percent: 100 }] },
   } } }));
   await page.route("**/api/admin/visits**", route => new URL(route.request().url()).pathname === "/api/admin/visits" ? route.fulfill({ json: { visits: [], page: 1, total: 0, all_time_total: 0, today_total: 0, has_more: false, representatives: [] } }) : route.fallback());
-  await page.goto("/admin/visits"); await page.getByRole("button", { name: "ERP Intelligence" }).click(); await page.getByRole("button", { name: "Manage Current ERP" }).click();
+  await page.goto("/admin/visits"); await page.getByRole("tab", { name: "ERP Intelligence" }).click(); await page.getByRole("button", { name: "Manage Current ERP" }).click();
   await expect(page.getByText("Alpha Retail", { exact: true })).toBeVisible(); await expect(page.getByText("legacy-dist", { exact: true })).toBeVisible();
   for (const heading of ["Type", "Latest visit", "Source", "Last updated"]) await expect(page.getByRole("cell", { name: heading, exact: true })).toBeVisible();
   await expect(page.getByLabel("Current ERP state")).toBeVisible(); await expect(page.getByLabel("Search business or ERP")).toBeVisible();

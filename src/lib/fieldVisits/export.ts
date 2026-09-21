@@ -15,7 +15,6 @@ export function parseVisitExport(params: URLSearchParams, now: string) {
   // Preserve the historical alias at this boundary only; readers use representative.
   if (normalized.has("agent")) { normalized.set("representative", normalized.get("agent")!); normalized.delete("agent"); }
   const scope = parseVisitRegister(normalized, now);
-  if (!scope.date && (!scope.date_from || !scope.date_to)) throw new Error("VISIT_EXPORT_RANGE_REQUIRED");
   return scope;
 }
 export type VisitExportScope = ReturnType<typeof parseVisitExport>;
@@ -56,7 +55,7 @@ export async function readVisitExport(client: SupabaseClient, scope: VisitExport
   const legacy = scope.date ? getISTBusinessDayBounds(scope.date) : null;
   // Reserve one of the SAME24 reader attempts for independently scoped ERP. EOF is charged.
   for (let page = 0; page < 23; page++) {
-    const result = await resource.read(client.rpc("crm_visit_export_v1", {
+    const result = await resource.read(client.rpc("crm_visit_export_v2", {
       p_from: scope.date_from ?? null, p_to: scope.date_to ?? null, p_legacy_date: scope.date ?? null,
       p_representative: scope.representative, p_segment: scope.segment, p_outcome: scope.outcome, p_search: scope.search,
       p_after_created: cursor?.created_at ?? null, p_after_id: cursor?.visit_id ?? null,
@@ -69,7 +68,7 @@ export async function readVisitExport(client: SupabaseClient, scope: VisitExport
     for (const row of batch) {
       const key = `${row.created_at}/${row.visit_id}`;
       const inDate = scope.date ? row.visit_date === scope.date || (legacy && Date.parse(row.check_in_time) >= Date.parse(legacy.startsAt) && Date.parse(row.check_in_time) < Date.parse(legacy.endsAt))
-        : row.visit_date >= scope.date_from! && row.visit_date <= scope.date_to!;
+        : !scope.date_from || !scope.date_to || (row.visit_date >= scope.date_from && row.visit_date <= scope.date_to);
       if (!inDate || (scope.representative && row.user_id !== scope.representative)
         || (scope.segment && row.segment_type !== scope.segment) || (scope.outcome && row.visit_outcome !== scope.outcome)
         || seen.has(row.visit_id) || (cursor && key >= `${cursor.created_at}/${cursor.visit_id}`)) throw new ReportUnavailable("VISIT_EXPORT_SCOPE_OR_ORDER");

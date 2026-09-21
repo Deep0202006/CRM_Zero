@@ -28,39 +28,26 @@ export async function GET(request: Request) {
     if (account.error || caps.error || account.data?.length !== 1 || account.data[0].is_active !== true || !caps.data?.some((cap) => cap.capability_code === "admin")) return errorResponse(403, "Administrator access required.");
     let scope;
     try { scope = parseVisitRegister(new URL(request.url).searchParams, new Date().toISOString()); }
-    catch { return errorResponse(400, "Invalid visit filters. Use a complete range of at most 31 days or a separate legacy date; pages 1–400."); }
+    catch { return errorResponse(400, "Invalid visit filters. Use all dates, a complete canonical range, or a separate legacy date; pages 1–400."); }
     const { page, representative, segment, outcome, search } = scope;
     const date = scope.date ?? "", dateFrom = scope.date_from ?? "", dateTo = scope.date_to ?? "";
-    const selectedBounds = date ? getISTBusinessDayBounds(date) : null;
-    const matched = await resource.read(admin.rpc("crm_visit_register_v1", {
+    const matched = await resource.read(admin.rpc("crm_visit_register_v2", {
       p_from: dateFrom || null, p_to: dateTo || null, p_representative: representative,
       p_segment: segment, p_outcome: outcome, p_search: search, p_legacy_date: date || null, p_page: page,
     }));
-    if (matched.error && matched.error.code !== "PGRST202") throw new ReportUnavailable("VISIT_REGISTER_UNAVAILABLE");
-    const activationPending = Boolean(matched.error);
-    // No capped identity lookup: absent joined SQL cannot establish complete search.
-    if (activationPending && search) return errorResponse(503, "Joined visit search requires reader activation. Clear search to keep browsing confirmed records.");
-    const exact = activationPending ? null : visitRegisterResultSchema.parse(matched.data);
-    if (exact && exact.page !== page) throw new ReportUnavailable("VISIT_REGISTER_SCOPE_MISMATCH");
+    if (matched.error) throw new ReportUnavailable(matched.error.code === "PGRST202" ? "VISIT_READER_ACTIVATION_REQUIRED" : "VISIT_REGISTER_UNAVAILABLE");
+    const exact = visitRegisterResultSchema.parse(matched.data);
+    if (exact.page !== page) throw new ReportUnavailable("VISIT_REGISTER_SCOPE_MISMATCH");
     let query = admin.from("field_visits").select(projection, { count: "exact" })
       .order("created_at", { ascending: false }).order("visit_id", { ascending: false });
-    if (exact) query = query.in("visit_id", exact.visit_ids);
-    else {
-      query = query.range((page-1)*PAGE_SIZE, page*PAGE_SIZE-1);
-      if (date && selectedBounds) query = query.or(`visit_date.eq.${date},and(check_in_time.gte.${selectedBounds.startsAt},check_in_time.lt.${selectedBounds.endsAt})`);
-      if (dateFrom) query = query.gte("visit_date", dateFrom);
-      if (dateTo) query = query.lte("visit_date", dateTo);
-      if (representative) query = query.eq("user_id", representative);
-      if (segment) query = query.eq("segment_type", segment);
-      if (outcome) query = query.eq("visit_outcome", outcome);
-    }
-    const rows = exact?.visit_ids.length === 0 ? { data: [], error: null, count: 0 } : await resource.read(query);
+    query = query.in("visit_id", exact.visit_ids);
+    const rows = exact.visit_ids.length === 0 ? { data: [], error: null, count: 0 } : await resource.read(query);
     if (rows.error || rows.count === null) throw new ReportUnavailable("VISIT_RECORDS_UNAVAILABLE");
-    const total = exact?.total ?? rows.count;
+    const total = exact.total;
     const expected = Math.min(PAGE_SIZE, Math.max(0,total-(page-1)*PAGE_SIZE));
     if (rows.data?.length !== expected) throw new ReportUnavailable("VISIT_RECORDS_CHANGED_OR_LIMITED");
     const visitsPage = rows.data as Array<Record<string, unknown> & { visit_id: string; user_id: string; lead_id: string }>;
-    if (exact && visitsPage.some((row,index) => row.visit_id !== exact.visit_ids[index])) throw new ReportUnavailable("VISIT_RECORDS_CHANGED_OR_LIMITED");
+    if (visitsPage.some((row,index) => row.visit_id !== exact.visit_ids[index])) throw new ReportUnavailable("VISIT_RECORDS_CHANGED_OR_LIMITED");
     const userIds = [...new Set(visitsPage.map((visit) => visit.user_id))];
     const uuidPattern = /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
     const leadIds = [...new Set(visitsPage.map((visit) => visit.lead_id).filter((id) => uuidPattern.test(id)))];
@@ -96,23 +83,13 @@ export async function GET(request: Request) {
       (q: typeof allTimeQuery) => outcome ? q.eq("visit_outcome",outcome) : q,
     ]) { allTimeQuery=apply(allTimeQuery); todayQuery=apply(todayQuery); }
     const [allTime,todayCount] = await Promise.all([resource.read(allTimeQuery),resource.read(todayQuery)]);
-    let mismatchCount = exact?.legacy_date_mismatch_count ?? 0;
-    if (!exact && date && selectedBounds) {
-      let mismatches = admin.from("field_visits").select("visit_id",{ count:"exact",head:true })
-        .or(`visit_date.is.null,visit_date.neq.${date}`).gte("check_in_time",selectedBounds.startsAt).lt("check_in_time",selectedBounds.endsAt);
-      if (representative) mismatches=mismatches.eq("user_id",representative);
-      if (segment) mismatches=mismatches.eq("segment_type",segment);
-      if (outcome) mismatches=mismatches.eq("visit_outcome",outcome);
-      const result=await resource.read(mismatches);
-      if (result.error || result.count===null) throw new ReportUnavailable("VISIT_MISMATCH_COUNT_UNAVAILABLE");
-      mismatchCount=result.count;
-    }
+    const mismatchCount = exact.legacy_date_mismatch_count;
     resource.check();
     return boundedReportJson({ visits,scope,page,page_size:PAGE_SIZE,total,
       has_more:page*PAGE_SIZE<total,page_limit:400,pagination_limited:page===400 && page*PAGE_SIZE<total,
       all_time_total:allTime.error ? null : allTime.count,today_total:todayCount.error ? null : todayCount.count,
       date,date_from:dateFrom,date_to:dateTo,legacy_date_mismatch_count:mismatchCount,
-      reader_activation:activationPending ? "pending" : "available",consistency:"bounded-live-multi-request",
+      reader_activation:"available",consistency:"bounded-live-multi-request",
       generated_at:new Date().toISOString(),diagnostics:resource.diagnostics,
     });
   } catch (error) {
