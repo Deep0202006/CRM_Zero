@@ -23,6 +23,53 @@ do $$ declare r jsonb; begin
   begin perform public.crm_pipeline_register_v1('Retailer',p_page=>401); raise exception 'PIPELINE_PAGE_UNBOUNDED'; exception when invalid_parameter_value then null; end;
   begin perform public.crm_pipeline_history_v1('Retailer',now()-interval '368 days',now()); raise exception 'PIPELINE_HISTORY_UNBOUNDED'; exception when invalid_parameter_value then null; end;
 end $$;
+do $$ declare r jsonb; expected integer; span integer; begin
+  foreach span in array array[366,367,732,733] loop
+    r:=public.crm_visit_summary_v1(date '2024-01-01',date '2024-01-01'+(span-1),p_search=>'interval-endpoints');
+    expected:=ceil(span::numeric/ceil(span::numeric/366))::integer;
+    if jsonb_array_length(r->'activity')<>expected
+      or (r->'activity'->0->>'start_date')::date<>date '2024-01-01'
+      or (r->'activity'->-1->>'end_date')::date<>date '2024-01-01'+(span-1)
+      then raise exception 'SUMMARY_BUCKET_BOUNDARY %',span; end if;
+  end loop;
+  r:=public.crm_visit_summary_v1(p_search=>'interval-endpoints');
+  if (r->>'filtered_total')::integer<>2 or (r->'outcomes'->>'registered')::integer<>1
+    or (r->'outcomes'->>'payment_done')::integer<>1 or (r->>'unknown_outcome_count')::integer<>0
+    or (select sum((x->>'count')::integer) from jsonb_array_elements(r->'activity') x)<>2
+    then raise exception 'SUMMARY_LIFETIME_RECONCILIATION'; end if;
+  r:=public.crm_visit_summary_v1('2025-12-15','2025-12-15',md5('user2')::uuid,'Distributor','follow_up','all-outcomes');
+  if (r->>'filtered_total')::integer<>1 or (r->'outcomes'->>'follow_up')::integer<>1 then raise exception 'SUMMARY_COMBINED_FILTERS'; end if;
+  if (public.crm_visit_summary_v1(p_search=>'all-outcomes')->>'filtered_total')::integer<>8
+    or (public.crm_visit_summary_v1(p_representative=>md5('user2')::uuid,p_search=>'all-outcomes')->>'filtered_total')::integer<>7
+    or (public.crm_visit_summary_v1(p_outcome=>'interested',p_search=>'all-outcomes')->>'filtered_total')::integer<>2
+    or (public.crm_visit_summary_v1('2025-12-15','2025-12-15',p_search=>'all-outcomes')->>'filtered_total')::integer<>7
+    or (public.crm_visit_summary_v1(p_representative=>md5('user2')::uuid,p_outcome=>'interested',p_search=>'all-outcomes')->>'filtered_total')::integer<>1
+    or (public.crm_visit_summary_v1('2025-12-15','2025-12-15',md5('user2')::uuid,p_search=>'all-outcomes')->>'filtered_total')::integer<>7
+    or (public.crm_visit_summary_v1('2025-12-15','2025-12-15',p_outcome=>'interested',p_search=>'all-outcomes')->>'filtered_total')::integer<>1
+    or (public.crm_visit_summary_v1('2025-12-15','2025-12-15',md5('user2')::uuid,p_outcome=>'interested',p_search=>'all-outcomes')->>'filtered_total')::integer<>1
+    then raise exception 'SUMMARY_EIGHT_FILTER_COMBINATIONS'; end if;
+  r:=public.crm_visit_summary_v1('2026-08-01','2026-08-02',md5('user61')::uuid);
+  if (r->>'filtered_total')::integer<>2 then raise exception 'SUMMARY_HISTORICAL_AUTHOR_OR_LEGACY_REFERENCE'; end if;
+  r:=public.crm_visit_summary_v1(p_search=>'no such visit');
+  if (r->>'filtered_total')::integer<>0 or jsonb_array_length(r->'activity')<>0
+    or r->>'scope_start_date' is not null or r->>'bucket_days' is not null then raise exception 'SUMMARY_EMPTY_SCOPE'; end if;
+  r:=public.crm_visit_summary_v1();
+  if (r->>'filtered_total')::integer<=20000
+    or (select sum(value::integer) from jsonb_each_text(r->'outcomes'))+(r->>'unknown_outcome_count')::integer<>(r->>'filtered_total')::integer
+    or (select sum((x->>'count')::integer) from jsonb_array_elements(r->'activity') x)<>(r->>'filtered_total')::integer
+    then raise exception 'SUMMARY_FULL_SCALE_RECONCILIATION'; end if;
+  if jsonb_array_length(public.crm_visit_register_v2()->'visit_ids')<>50
+    or (public.crm_visit_register_v2('2024-01-01','2026-01-02',p_search=>'interval-endpoints')->>'total')::integer<>2
+    or jsonb_array_length(public.crm_visit_export_v2(p_search=>'interval-endpoints'))<>2
+    then raise exception 'VISIT_V2_LIFETIME_READERS'; end if;
+  begin perform public.crm_visit_summary_v1('2026-01-01',null); raise exception 'SUMMARY_PARTIAL_RANGE'; exception when invalid_parameter_value then null; end;
+  begin perform public.crm_visit_summary_v1('2026-01-02','2026-01-01'); raise exception 'SUMMARY_REVERSED_RANGE'; exception when invalid_parameter_value then null; end;
+  begin perform public.crm_visit_summary_v1(current_date+1,current_date+1); raise exception 'SUMMARY_FUTURE_RANGE'; exception when invalid_parameter_value then null; end;
+  if has_function_privilege('anon','public.crm_visit_summary_v1(date,date,uuid,text,text,text)','EXECUTE')
+    or has_function_privilege('authenticated','public.crm_visit_register_v2(date,date,uuid,text,text,text,date,integer)','EXECUTE')
+    or has_function_privilege('authenticated','public.crm_visit_export_v2(date,date,uuid,text,text,text,date,timestamptz,uuid)','EXECUTE')
+    then raise exception 'VISIT_V2_PUBLIC_EXECUTION'; end if;
+end $$;
 do $$ begin
   if to_regclass('public.field_visits_erp_latest_business_idx') is null
     or to_regprocedure('public.field_visit_erp_intelligence_v1()') is null

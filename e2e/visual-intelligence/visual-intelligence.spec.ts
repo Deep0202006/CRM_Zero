@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { aggregateVisitRange, parseVisitRange, type VisitEvent } from "../../src/lib/fieldVisits/range";
+import { parseVisitSummary, type VisitEvent } from "../../src/lib/fieldVisits/range";
 import { getCurrentISTDate } from "../../src/lib/dateTime";
 import { mkdir, writeFile } from "node:fs/promises";
 
@@ -105,10 +105,18 @@ async function mockPlatform(page: Page) {
 }
 
 async function mockRangeAnalysis(page: Page, events: (params: URLSearchParams) => VisitEvent[]) {
-  await page.route("**/api/admin/visits/analysis?**", route => {
+  await page.route("**/api/admin/visits/analysis?**", async route => {
     const params = new URL(route.request().url()).searchParams, generated_at = new Date().toISOString();
-    const scope = parseVisitRange(params, generated_at);
-    return route.fulfill({ json: { kind: "visit-range-v1", scope, generated_at, retained_source_read: "exhausted", historical_coverage: "uncertified", consistency: "bounded-live-multi-request", ...aggregateVisitRange(scope, events(params)) } });
+    if (params.has("representative") && !params.has("outcome")) await new Promise(resolve => setTimeout(resolve, 200));
+    const scope = parseVisitSummary(params, generated_at), rows = events(params);
+    const outcomes = { registered: 0, installed: 0, interested: 0, follow_up: 0, payment_follow_up: 0, payment_done: 0, not_interested: 0 };
+    let unknown = 0;
+    for (const row of rows) if (row.visit_outcome && row.visit_outcome in outcomes) outcomes[row.visit_outcome as keyof typeof outcomes]++; else unknown++;
+    const dates = rows.map(row => row.visit_date).sort(), start = scope.date_from ?? dates[0] ?? null, end = scope.date_to ?? dates.at(-1) ?? null;
+    return route.fulfill({ json: { kind: "visit-summary-v1", schema_version: 1, scope, generated_at, retained_source_read: "aggregated", historical_coverage: "uncertified", consistency: "single-statement-snapshot",
+      filtered_total: rows.length, outcomes, unknown_outcome_count: unknown, scope_start_date: start, scope_end_date: end, bucket_days: start ? 1 : null,
+      activity: start ? [{ start_date: start, end_date: end, count: rows.length }] : [], date_mismatch_count: 0,
+      representatives: rows.length ? [{ user_id: employeeId, name: "Field Employee", count: rows.length }] : [], representative_breakdown: "exhausted" } });
   });
 }
 
@@ -311,20 +319,22 @@ test("Visits full-range donut retains fourteen records while the register pages 
   await seedAdmin(page);
   await page.goto("/admin/visits");
   const composition = page.getByRole("region", { name: "Outcome composition", exact: true });
-  await expect(composition).toContainText("Full applied range");
+  await expect(composition).toContainText("Complete confirmed scope");
   const values = composition.getByRole("list");
   await expect(values).toHaveCount(1);
   await expect(values).toContainText("Unknown / legacy outcome");
   await expect(values).toContainText("Installed");
+  for (const label of ["New Registration", "Installed", "Interested", "Follow-up", "Payment follow-up", "Payment done", "Not interested"])
+    await expect(page.getByRole("region", { name: "Visit outcome totals" }).getByText(label, { exact: true })).toBeVisible();
   await expect(page.getByText(/Applied:.*7 of 14 matching visits/)).toBeVisible();
   await page.getByRole("button", { name: "Next", exact: true }).click();
-  await expect(composition).toContainText("Full applied range");
+  await expect(composition).toContainText("Complete confirmed scope");
   await expect(values).toHaveCount(1);
   await expect(values).toContainText("Unknown / legacy outcome");
   await expect(values).toContainText("Payment done");
   const counts = await values.getByRole("listitem").allTextContents();
   const valuesOnly = counts.map(text => Number(text.match(/([\d,]+) of \d+/)?.[1]?.replaceAll(",", "")));
-  expect([...valuesOnly].sort((a, b) => a - b)).toEqual([1, 2, 2, 2, 2, 2, 3]);
+  expect([...valuesOnly].sort((a, b) => a - b)).toEqual([0, 1, 2, 2, 2, 2, 2, 3]);
   expect(valuesOnly.reduce((sum, value) => sum + value, 0)).toBe(14);
   expect(analysisRequests).toHaveLength(1);
   expect(requestPages).toEqual(["1", "2"]);
@@ -394,17 +404,21 @@ test("Team Intelligence preserves exact contribution totals with one initial KPI
 test("Visits visual composition reconciles the bounded page and closes with server filters", async ({ page }) => {
   await mockPlatform(page);
   const requestUrls: string[] = [];
-  await mockRangeAnalysis(page, params => ["Retailer", "Distributor"].filter(segment => !params.has("segment") || params.get("segment") === segment).map((segment_type, index) => ({
+  await mockRangeAnalysis(page, params => ["Retailer", "Distributor"].filter(segment => (!params.has("segment") || params.get("segment") === segment)
+    && (!params.has("outcome") || params.get("outcome") === (segment === "Retailer" ? "installed" : "payment_done"))).map((segment_type, index) => ({
     visit_id: `93000000-0000-4000-a000-${String(index + 1).padStart(12, "0")}`, user_id: employeeId, visit_date: today, check_in_time: `${today}T04:00:00Z`, visit_outcome: segment_type === "Retailer" ? "installed" : "payment_done", segment_type,
   })));
-  await page.route(url => url.pathname === "/api/admin/visits", route => {
+  await page.route("**/api/admin/visits/representatives?**", route => route.fulfill({ json: { items: [{ user_id: employeeId, name: "Field Employee", email: "employee@example.test", is_active: false, historical_only: true, cursor_name: "Field Employee" }], selected: null, has_more: false, next_cursor: null } }));
+  await page.route(url => url.pathname === "/api/admin/visits", async route => {
     const url = new URL(route.request().url());
     requestUrls.push(url.toString());
+    if (url.searchParams.has("representative") && !url.searchParams.has("outcome")) await new Promise(resolve => setTimeout(resolve, 200));
     const retailerOnly = url.searchParams.get("segment") === "Retailer";
+    const selectedOutcome = url.searchParams.get("outcome");
     const visits = [
       { visit_id: "93000000-0000-4000-a000-000000000001", user_id: employeeId, lead_id: "94000000-0000-4000-a000-000000000001", visit_date: today, check_in_time: "2026-08-15T04:00:00Z", address: "Pune", visit_outcome: "installed", person_met: "Owner", segment_type: "Retailer", selfie_status: "PURGED", users: { name: "Field Employee" }, leads: { business_name: "Retail Shop" } },
       { visit_id: "93000000-0000-4000-a000-000000000002", user_id: employeeId, lead_id: "94000000-0000-4000-a000-000000000002", visit_date: today, check_in_time: "2026-08-15T06:00:00Z", address: "Mumbai", visit_outcome: "payment_done", person_met: "Owner", segment_type: "Distributor", selfie_status: "PURGED", users: { name: "Field Employee" }, leads: { business_name: "Distributor Shop" } },
-    ].filter(visit => !retailerOnly || visit.segment_type === "Retailer");
+    ].filter(visit => (!retailerOnly || visit.segment_type === "Retailer") && (!selectedOutcome || visit.visit_outcome === selectedOutcome));
     return route.fulfill({ json: { visits, page: 1, page_size: 50, total: visits.length, all_time_total: 2, today_total: 2, has_more: false, representatives: [{ user_id: employeeId, name: "Field Employee", email: "employee@example.test", is_active: true, capabilities: ["field_ret"], historical_only: false }] } });
   });
   await seedAdmin(page);
@@ -413,13 +427,22 @@ test("Visits visual composition reconciles the bounded page and closes with serv
   expect(requestUrls).toHaveLength(1);
   await captureFoundation(page, "visits", () => requestUrls);
   if (foundationPhase === "before") return;
-  await page.getByText("Refine representative, outcome and dates", { exact: true }).click();
-  await page.getByText("Date and segment filters", { exact: true }).click();
   await page.getByLabel("Segment", { exact: true }).selectOption("Retailer");
-  expect(requestUrls).toHaveLength(1);
-  await page.getByRole("button", { name: "Apply filters", exact: true }).click();
   await expect.poll(() => requestUrls.length).toBe(2);
   expect(new URL(requestUrls.at(-1)!).searchParams.get("segment")).toBe("Retailer");
   await expect(page.getByRole("region", { name: "Full-range Visit activity" })).toContainText("1 retained Visit records");
+  await page.getByLabel("Representative", { exact: true }).focus();
+  await expect(page.getByLabel("Representative", { exact: true }).getByRole("option", { name: "Field Employee" })).toBeAttached();
+  await page.getByLabel("Representative", { exact: true }).selectOption(employeeId);
+  await page.getByLabel("Outcome", { exact: true }).selectOption("installed");
+  await expect.poll(() => requestUrls.length).toBe(4);
+  const latest = new URL(requestUrls.at(-1)!);
+  expect(latest.searchParams.get("representative")).toBe(employeeId);
+  expect(latest.searchParams.get("outcome")).toBe("installed");
+  await expect(page.getByRole("region", { name: "Full-range Visit activity" })).toContainText("1 retained Visit records");
+  await page.getByRole("button", { name: "Clear filters" }).click();
+  await expect.poll(() => requestUrls.length).toBe(5);
+  expect([...new URL(requestUrls.at(-1)!).searchParams.keys()]).toEqual(["page"]);
+  await expect(page.getByRole("region", { name: "Full-range Visit activity" })).toContainText("2 retained Visit records");
   await expectResponsiveAnalytics(page, "Visit register", "visits", false);
 });

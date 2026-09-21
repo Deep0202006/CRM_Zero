@@ -23,13 +23,13 @@ export async function GET(request: Request) {
     if (profile.error || caps.error || profile.data?.length !== 1 || profile.data[0].is_active !== true || !caps.data?.some(cap => cap.capability_code === "admin")) return Response.json({ error: "Administrator access required." }, { status: 403 });
     let scope;
     try { scope = parseVisitExport(new URL(request.url).searchParams, new Date().toISOString()); }
-    catch { return Response.json({ error: "Choose a valid date or range of up to 31 days before exporting." }, { status: 400 }); }
+    catch { return Response.json({ error: "Choose a valid date scope before exporting." }, { status: 400 }); }
     const rows = await readVisitExport(backend.client, scope, resource);
     const erp = await readVisitExportErp(backend.client, resource);
     const buffer = buildVisitExportWorkbook(rows, erp, scope, resource);
     return new Response(new Uint8Array(buffer), { headers: {
       "Cache-Control": "no-store", "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename="FieldVisitsExport_${scope.date || scope.date_from}.xlsx"`,
+      "Content-Disposition": `attachment; filename="FieldVisitsExport_${scope.date || scope.date_from || "all"}.xlsx"`,
       "X-Export-Visit-Count": String(rows.length), "X-Export-Reader-Requests": String(resource.diagnostics.reader_requests),
     } });
   } catch (error) {

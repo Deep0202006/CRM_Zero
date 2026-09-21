@@ -30,7 +30,7 @@ for (const [name, args] of [
   const plan = JSON.parse(psql(`${prepare} explain (analyze,buffers,format json) execute bcd_plan(${args});`));
   assert.notEqual(plan[0].Plan['Node Type'], 'Function Scan');
   assert.ok(plan[0].Plan['Actual Rows'] <= 1000);
-  console.log(JSON.stringify({ inner_query_plan: name, synthetic_source_rows: 21063, plan }));
+  console.log(JSON.stringify({ inner_query_plan: name, synthetic_source_rows: 21073, plan }));
 }
 const smallArgs = "'2026-08-01','2026-08-02',null,null,null,'',null,null";
 const extractedIds = psql(`${prepare} execute bcd_plan(${smallArgs});`).split(/\r?\n/).map((line) => line.split('|')[0]);
@@ -50,7 +50,7 @@ for (const [name, marker, names, types, args] of [
   assert.notEqual(plan[0].Plan['Node Type'], 'Function Scan');
   assert.equal(plan[0].Plan['Actual Rows'], 1);
   assert.deepEqual(JSON.parse(psql(`${command} execute bcd_inner(${args});`)), JSON.parse(psql(`select public.crm_visit_${name === 'register' ? 'register' : 'representatives'}_v1(${args});`)));
-  console.log(JSON.stringify({ inner_query_plan: name, synthetic_source_rows: 21063, plan }));
+  console.log(JSON.stringify({ inner_query_plan: name, synthetic_source_rows: 21073, plan }));
 }
 const exportBlocks = [...migration.matchAll(/(with export_selected as[\s\S]*?) into result (from export_budget b;)/g)];
 assert.equal(exportBlocks.length, 1, 'Export plan must measure the actual bounded inner statement');
@@ -67,7 +67,7 @@ for (const [name, args] of [
   assert.notEqual(plan[0].Plan['Node Type'], 'Function Scan');
   assert.equal(plan[0].Plan['Actual Rows'], 1);
   assert.deepEqual(JSON.parse(psql(`${exportPrepare} execute bcd_export(${args});`)), JSON.parse(psql(`select public.crm_visit_export_v1(${args});`)));
-  console.log(JSON.stringify({ inner_query_plan: `export-${name}`, synthetic_source_rows: 21063, plan }));
+  console.log(JSON.stringify({ inner_query_plan: `export-${name}`, synthetic_source_rows: 21073, plan }));
 }
 for (const [name, marker, names, types, args] of [
   ['pipeline-register', 'base', ['p_segment','p_search','p_owner','p_source','p_stage','p_page','p_page_size','p_inspection','p_stale','p_overdue','p_recent','p_as_of'], 'text,text,uuid,text,text,integer,integer,boolean,boolean,boolean,boolean,timestamptz', "'Retailer','Pipeline fixture',null,null,null,1,50,true,true,true,true,'2026-09-09'"],
@@ -173,7 +173,7 @@ try {
   }
   console.log(JSON.stringify({ pipeline_http: { register_rows: pipeline.data.leads.length, matched: pipeline.data.total, history_events: pipelineHistory.data.transitions.length, register_bytes: pipeline.bytes, history_bytes: pipelineHistory.bytes } }));
   for (const authorization of ['', jwt('authenticated')]) assert.ok([401, 403].includes((await rpc(scope, authorization)).status));
-  for (const name of ['crm_visit_register_v1','crm_visit_representatives_v1','crm_visit_export_v1','crm_visit_export_erp_v1']) {
+  for (const name of ['crm_visit_register_v1','crm_visit_representatives_v1','crm_visit_export_v1','crm_visit_export_erp_v1','crm_visit_summary_v1','crm_visit_register_v2','crm_visit_export_v2']) {
     for (const authorization of ['',jwt('authenticated')]) assert.ok([401,403].includes((await rpc({},authorization,name)).status));
   }
   const expected = execFileSync('psql', ['-X', '-A', '-t', '-v', 'ON_ERROR_STOP=1', '-c', "select visit_id from public.field_visits where visit_date between '2026-08-01' and '2026-08-03' order by visit_date,visit_id"], { encoding: 'utf8' }).trim().split(/\r?\n/);
@@ -214,6 +214,13 @@ try {
     registerIds.push(...result.data.visit_ids);
   }
   assert.deepEqual(registerIds,psql("select visit_id from public.field_visits where visit_date between '2026-08-01' and '2026-08-02' order by created_at desc,visit_id desc").split(/\r?\n/));
+  const summary=await rpc({p_search:'interval-endpoints'},token,'crm_visit_summary_v1');
+  assert.equal(summary.status,200,JSON.stringify(summary.data)); assert.equal(summary.data.filtered_total,2);
+  assert.equal(summary.data.activity.reduce((total,row)=>total+row.count,0),2); assert.ok(summary.data.activity.length<=366);
+  const lifetimeRegister=await rpc({p_search:'interval-endpoints'},token,'crm_visit_register_v2');
+  assert.equal(lifetimeRegister.status,200,JSON.stringify(lifetimeRegister.data)); assert.equal(lifetimeRegister.data.total,2);
+  const lifetimeExport=await rpc({p_search:'interval-endpoints'},token,'crm_visit_export_v2');
+  assert.equal(lifetimeExport.status,200,JSON.stringify(lifetimeExport.data)); assert.equal(lifetimeExport.data.length,2);
   const pickerIds=[]; let pickerCursor={},pickerRequests=0,pickerEof=false;
   const selected=psql("select md5('user61')::uuid");
   while(pickerRequests<4) {

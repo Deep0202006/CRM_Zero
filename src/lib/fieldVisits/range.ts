@@ -15,6 +15,66 @@ const scopeSchema = z.object({
   search: z.string().trim().max(160).default(""),
 }).strict();
 export type VisitRangeScope = z.infer<typeof scopeSchema>;
+const optionalScopeSchema = z.object({
+  version: z.literal("1").default("1"),
+  date_from: date.nullable().default(null), date_to: date.nullable().default(null),
+  representative: visitUuid.nullable().default(null),
+  segment: z.enum(["Retailer", "Distributor"]).nullable().default(null),
+  outcome: z.enum(FIELD_VISIT_OUTCOMES).nullable().default(null),
+  search: z.string().trim().max(160).default(""),
+}).strict();
+export type VisitSummaryScope = z.infer<typeof optionalScopeSchema>;
+const safeCount = z.number().int().nonnegative().safe();
+const outcomeCounts = z.object({
+  registered: safeCount, installed: safeCount, interested: safeCount, follow_up: safeCount,
+  payment_follow_up: safeCount, payment_done: safeCount, not_interested: safeCount,
+}).strict();
+const activityBucket = z.object({ start_date: date, end_date: date, count: safeCount }).strict();
+const dateSpan = (from: string, to: string) => Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86400000) + 1;
+export const visitSummaryReportSchema = z.object({
+  kind: z.literal("visit-summary-v1"), schema_version: z.literal(1), scope: optionalScopeSchema,
+  generated_at: z.string().datetime({ offset: true }), retained_source_read: z.literal("aggregated"),
+  historical_coverage: z.literal("uncertified"), consistency: z.literal("single-statement-snapshot"),
+  filtered_total: safeCount, outcomes: outcomeCounts, unknown_outcome_count: safeCount,
+  scope_start_date: date.nullable(), scope_end_date: date.nullable(), bucket_days: z.number().int().positive().max(1000000).nullable(),
+  activity: z.array(activityBucket).max(366), date_mismatch_count: safeCount,
+  representatives: z.array(z.object({ user_id: visitUuid, count: safeCount, name: z.string().max(10000).nullable() })).max(200).nullable(),
+  representative_breakdown: z.enum(["exhausted", "unavailable-cardinality-limit"]),
+}).superRefine((report, context) => {
+  const outcomeTotal = Object.values(report.outcomes).reduce((total, value) => total + value, report.unknown_outcome_count);
+  const activityTotal = report.activity.reduce((total, bucket) => total + bucket.count, 0);
+  const representativeTotal = report.representatives?.reduce((total, row) => total + row.count, 0);
+  const expectedStart = report.scope.date_from ?? report.scope_start_date;
+  const expectedEnd = report.scope.date_to ?? report.scope_end_date;
+  const expectedBucketDays = expectedStart && expectedEnd ? Math.max(1, Math.floor((dateSpan(expectedStart, expectedEnd) + 365) / 366)) : null;
+  const boundariesValid = report.activity.every((bucket, index) => bucket.start_date <= bucket.end_date
+    && report.bucket_days !== null && dateSpan(bucket.start_date, bucket.end_date) <= report.bucket_days
+    && (index === 0 ? bucket.start_date === expectedStart : bucket.start_date === addISTDateDays(report.activity[index - 1].end_date, 1))
+    && (index === report.activity.length - 1 ? bucket.end_date === expectedEnd : dateSpan(bucket.start_date, bucket.end_date) === report.bucket_days));
+  if ((report.scope.date_from === null) !== (report.scope.date_to === null)
+    || (report.scope_start_date === null) !== (report.scope_end_date === null)
+    || outcomeTotal !== report.filtered_total || activityTotal !== report.filtered_total
+    || report.date_mismatch_count > report.filtered_total
+    || report.bucket_days !== expectedBucketDays
+    || (expectedStart === null ? report.activity.length !== 0 : !report.activity.length || !boundariesValid)
+    || (report.representative_breakdown === "exhausted") !== (report.representatives !== null)
+    || (report.representatives && (representativeTotal !== report.filtered_total
+      || new Set(report.representatives.map(row => row.user_id)).size !== report.representatives.length))) {
+    context.addIssue({ code: "custom", message: "VISIT_SUMMARY_RECONCILIATION" });
+  }
+});
+export type VisitSummaryReport = z.infer<typeof visitSummaryReportSchema>;
+
+function parseOptionalScope(params: URLSearchParams, now: string, code: string): VisitSummaryScope {
+  if ([...params.keys()].some((key) => params.getAll(key).length !== 1)) throw new Error(code);
+  const scope = optionalScopeSchema.parse(Object.fromEntries(params));
+  const today = getISTDateKey(now);
+  if ((scope.date_from === null) !== (scope.date_to === null)
+    || (scope.date_from && scope.date_to && (scope.date_from < "1000-02-01" || scope.date_from > scope.date_to || scope.date_to > today))) throw new Error(code);
+  return scope;
+}
+
+export const parseVisitSummary = (params: URLSearchParams, now: string) => parseOptionalScope(params, now, "INVALID_VISIT_SUMMARY_SCOPE");
 const count = z.number().int().nonnegative().max(20000);
 export const visitRangeReportSchema = z.object({
   kind: z.literal("visit-range-v1"), scope: scopeSchema,
@@ -50,7 +110,7 @@ export function parseVisitRegister(params: URLSearchParams, now: string) {
   const today = getISTDateKey(now);
   if (Boolean(scope.date_from) !== Boolean(scope.date_to) || (scope.date && (scope.date_from || scope.date_to))
     || [scope.date, scope.date_from, scope.date_to].some((day) => day && (day < "1000-02-01" || day > today))
-    || (scope.date_from && scope.date_to && (scope.date_from > scope.date_to || scope.date_to > addISTDateDays(scope.date_from, 30)))) throw new Error("INVALID_VISIT_REGISTER_SCOPE");
+    || (scope.date_from && scope.date_to && scope.date_from > scope.date_to)) throw new Error("INVALID_VISIT_REGISTER_SCOPE");
   return scope;
 }
 export const visitRegisterResultSchema = z.object({
@@ -62,6 +122,22 @@ export const visitRegisterResultSchema = z.object({
   if (new Set(value.visit_ids).size !== value.visit_ids.length || value.visit_ids.length !== Math.min(50, Math.max(0, value.total - (value.page - 1) * 50))
     || value.has_more !== (value.page * 50 < value.total) || value.legacy_date_mismatch_count > value.total) context.addIssue({ code: "custom", message: "VISIT_REGISTER_RECONCILIATION" });
 });
+
+export async function readVisitSummary(client: SupabaseClient, scope: VisitSummaryScope, resource: ReportResource) {
+  const result = await resource.read(client.rpc("crm_visit_summary_v1", {
+    p_from: scope.date_from, p_to: scope.date_to, p_representative: scope.representative,
+    p_segment: scope.segment, p_outcome: scope.outcome, p_search: scope.search,
+  }));
+  if (result.error) throw new ReportUnavailable(result.error.code === "PGRST202" ? "VISIT_READER_ACTIVATION_REQUIRED" : "VISIT_SUMMARY_UNAVAILABLE");
+  const parsed = visitSummaryReportSchema.parse({
+    kind: "visit-summary-v1", schema_version: 1, scope, generated_at: new Date().toISOString(),
+    retained_source_read: "aggregated", historical_coverage: "uncertified", consistency: "single-statement-snapshot", ...result.data,
+  });
+  return { filtered_total: parsed.filtered_total, outcomes: parsed.outcomes, unknown_outcome_count: parsed.unknown_outcome_count,
+    scope_start_date: parsed.scope_start_date, scope_end_date: parsed.scope_end_date, bucket_days: parsed.bucket_days,
+    activity: parsed.activity, date_mismatch_count: parsed.date_mismatch_count, representatives: parsed.representatives,
+    representative_breakdown: parsed.representative_breakdown };
+}
 export function parseVisitRange(params: URLSearchParams, now: string): VisitRangeScope {
   if ([...params.keys()].some((key) => params.getAll(key).length !== 1)) throw new Error("INVALID_VISIT_RANGE");
   const today = getISTDateKey(now);

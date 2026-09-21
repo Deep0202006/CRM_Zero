@@ -54,7 +54,16 @@ case "${1:-}" in
     if precheck_after=$(psql -X -v ON_ERROR_STOP=1 -f supabase/manual/precheck_055_crm_bcd_readers.sql 2>&1); then
       echo 'PRECHECK_ACCEPTED_COLLIDING055' >&2; exit 1
     fi
-    [[ "$precheck_after" == *BCD055_FUNCTION_COLLISION_STOP* ]] || { echo "$precheck_after" >&2; exit 1; } ;;
+    [[ "$precheck_after" == *BCD055_FUNCTION_COLLISION_STOP* ]] || { echo "$precheck_after" >&2; exit 1; }
+    psql -X -v ON_ERROR_STOP=1 -f supabase/manual/precheck_056_crm_visit_overview_v2.sql | grep -q BCD056_PRECHECK_PASS_NOT_APPLIED
+    if psql -X -v ON_ERROR_STOP=1 -f supabase/manual/verify_056_crm_visit_overview_v2.sql >/tmp/bcd056-before 2>&1; then echo BCD056_POSTCHECK_ACCEPTED_UNAPPLIED >&2; exit 1; fi
+    grep -q BCD056_READER_MISSING /tmp/bcd056-before
+    psql -X -v ON_ERROR_STOP=1 -f supabase/migrations/056_crm_visit_overview_v2.sql
+    psql -X -v ON_ERROR_STOP=1 -f supabase/manual/verify_056_crm_visit_overview_v2.sql
+    psql -X -v ON_ERROR_STOP=1 -f supabase/manual/precheck_056_crm_visit_overview_v2.sql | grep -q BCD056_PRECHECK_ALREADY_APPLIED_USE_POSTCHECK
+    if psql -X -v ON_ERROR_STOP=1 -f supabase/migrations/056_crm_visit_overview_v2.sql >/tmp/bcd056-rerun 2>&1; then echo BCD056_RERUN_ACCEPTED >&2; exit 1; fi
+    grep -q 'already exists' /tmp/bcd056-rerun
+    psql -X -v ON_ERROR_STOP=1 -f supabase/manual/verify_056_crm_visit_overview_v2.sql ;;
   fixture) psql -X -v ON_ERROR_STOP=1 -f scripts/bcd-db/fixture.sql ;;
   assertion)
     psql -X -v ON_ERROR_STOP=1 -f scripts/bcd-db/assertion.sql
